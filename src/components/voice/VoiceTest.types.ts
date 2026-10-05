@@ -1,0 +1,31 @@
+import type { AudioHistoryItem, PeerRestartProbe } from '../../matrix/network-types';
+import type { VoiceBeforeUpload, VoiceDraft, VoiceProbeReport } from '../../matrix/voice-types';
+import type { VoiceDraftScope } from '../../matrix/voice-draft-store';
+
+export type VoiceUiStatus = { busy: boolean; text: string; error?: string };
+export type VoiceTestProps = {
+  locked: boolean;
+  networkLocked: boolean;
+  diagnostics: boolean;
+  diary: boolean;
+  diaryRoomReady: boolean;
+  diaryHistory: readonly AudioHistoryItem[];
+  diarySharedEventId: string | null;
+  onSaveDiary(draft: VoiceDraft, beforeUpload: VoiceBeforeUpload): Promise<VoiceProbeReport | undefined>;
+  onOpenDiary(eventId: string): Promise<VoiceProbeReport | undefined>;
+  onShareDiary(eventId: string): Promise<void>;
+  peerUserId?: string;
+  draftScope: VoiceDraftScope | null;
+  onStatus(status: VoiceUiStatus): void;
+  onSend(draft: VoiceDraft, beforeUpload: VoiceBeforeUpload): Promise<VoiceProbeReport | undefined>;
+  savedAudio: PeerRestartProbe | null;
+  history: readonly AudioHistoryItem[];
+  ownHistory: readonly AudioHistoryItem[];
+  automaticStage: string;
+  automaticError: string;
+  automaticRetryAllowed: boolean;
+  onRetryAutomatic(): void;
+  onOpenHistory(eventId: string): Promise<VoiceProbeReport | undefined>;
+  onReceiveMissed(): Promise<VoiceProbeReport | undefined>;
+  onReceive(): Promise<VoiceProbeReport | undefined>;
+};

@@ -1,0 +1,8 @@
+{
+  "src/components/architecture/architectureSettings.ts": "ef19a85a2a27d9758b94ad85fbe5e91e700e839fa5618d3f21891ba6900392ac",
+  "src/components/architecture/ArchitectureControls.tsx": "6bab3bbd35c1bb4fb79a437f2ece5777c30c8d7d02f026f18b16f54c514f0687",
+  "src/components/architecture/ArchitectureCover.tsx": "af47f20c622f0c4424510e3926db6a588a03e7c5e937b565a6c0cdbd45fcb47c",
+  "src/components/architecture/architectureExport.ts": "45dd91933df5bdb767d67029d9329f3cec7ec158f873da85cdac033cba6a1145",
+  "src/components/workbench/ComponentsWorkspace.tsx": "b029346fc4cca1322f03b66aec37c60d1b04cb082c613848f98a1ca2559328a4",
+  "src/components/workbench/HomeComponentsPreview.tsx": "e40fd5e529aa308a4359c906757241ee402369a268c42c5ba5434433e57b405d"
+}

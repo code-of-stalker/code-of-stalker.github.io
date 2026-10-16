@@ -1,0 +1,63 @@
+SECOND STEP: COOLDOWN SCREEN — 2026-10-11
+
+Requested reference
+codex-clipboard-bd29c253-c448-4d21-91a3-affb882e8dee.png, 320x568.
+The lock in the reference's step selector was explicitly excluded by the user.
+
+Implementation
+- Record Observation opens /diary through Expo Router; it does not start the
+  question recorder or mutate practice progress.
+- PracticeCooldown owns the locked screen: architecture header/back/close,
+  observation-time caption, unlocked selector, timer panel, opening date,
+  existing diary glyph and cut-corner action.
+- One live gallery and the unavailable step copy sit behind the glass veil.
+  Navigation, countdown and diary action remain sharp and interactive.
+- Web filters that known background directly, using the shared glass material's
+  6px blur and a theme-coloured veil. A sibling backdrop-filter left the canvas
+  visually sharp in the Windows WebKit check despite its computed blur value.
+- Native uses the installed Expo 57 BlurTargetView/BlurView API. Its economy
+  path uses the SDK31+ Android method; the Rust glass remains present.
+- Themes, shared Rust gallery/glass rendering, scan reveal, panel contours,
+  existing automatic glass/vector quality and test-unlock behavior are retained.
+- Expiry uses the existing foreground-aware timer. The opening date is computed
+  from the actual deadline in local calendar time, including tomorrow's date.
+- The timer area can scroll on shorter screens; the diary action is outside
+  that scroller. No background vector spheres were reintroduced.
+
+Files
+src/app/(product)/practice.tsx
+src/features/product/screens/PracticeIntroScreen.tsx
+src/features/product/screens/PracticeCooldown.tsx
+src/features/product/ObservationControls.tsx
+
+Technical checks
+TypeScript: npx tsc --noEmit — passed.
+Lint: npx expo lint --no-cache — passed.
+Web export: npx expo export --platform web — passed.
+Expo 57 versioned BlurView and Router docs and installed types were checked.
+Context7 was consulted and cross-checked against versioned Expo 57 sources.
+No dependency pins or Rust source were changed.
+
+Browser behavior and layout
+Chrome and WebKit: five final layouts passed in each browser: dark
+320x568 / 375x812 / 768x1024, light and neutral 375x812. No page errors.
+Countdown updates, Diary navigation with unchanged progress, returning to
+step 1 through the selector, and removal of the overlay on expiry passed.
+Browser fixtures used isolated encrypted test state, not the user's data.
+Artifacts: .local-preview/panel-fixes/step-two-cooldown-qa.mjs,
+chrome-step-two-cooldown.json, webkit-step-two-cooldown.json and PNGs.
+Final WebKit images confirm the background is visibly blurred, with centered
+heading and sharp foreground controls. The expiry fixture leaves 20 seconds
+for software WebGL startup before testing the actual timer boundary.
+
+Public build
+https://slowly-criteria-spanking-fighting.trycloudflare.com
+HTTP 200; public JS and WASM matched the exported local files byte for byte.
+JS SHA256: 5ffa4494123fda7216a53e4f4356ad784759544f53bd93ed1c38e86dad5b40d3
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1
+Evidence: .local-preview/panel-fixes/step-two-cooldown-public.json.
+
+Validation boundary
+Browser screenshots were inspected against the supplied reference. Physical
+iPad/Android behavior and native BlurView output have not been measured in
+this task. WebKit on Windows is a browser compatibility check, not device QA.

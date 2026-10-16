@@ -5,10 +5,14 @@ node_modules/
 .sdk-inspection/
 .npm-cache-*/
 .expo-recovery-clean-export/
+.expo-recovery-hermes-export/
+.expo-standalone-export/
+.local-apk/
 
 # Expo
 .expo/
 .expo-*-export/
+.expo-diary-native-check/
 dist/
 web-build/
 expo-env.d.ts
@@ -73,3 +77,16 @@ secrets.*.json
 # generated native folders
 /ios
 /android
+
+# Local Rust toolchain and generated compiler caches
+/.local-rust/
+/graphics/product-engine/target/
+/graphics/product-engine/.cache/
+
+# Local previews, Android export checks, and the separate Sites checkout
+/.local-preview/
+/.expo-optimization-android/
+/sites/
+
+# Rebuildable art-gallery previews
+/scripts/product-art/preview/

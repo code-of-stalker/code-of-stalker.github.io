@@ -1,0 +1,30 @@
+<g class="task-train" opacity="0" stroke-linecap="round" stroke-linejoin="round">
+  <defs><clipPath id="task-train-window"><path d="M48 36H240V85H48Z"/></clipPath></defs>
+  <path d="M25 141V27Q25 20 33 20H255Q263 20 263 28V141Z" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".55"/>
+  <path d="M30 140V29Q30 25 35 25H253Q258 25 258 30V140M31 95H257M31 101H257M39 28V91M249 28V91" stroke="var(--book-dim)" stroke-width=".35"/>
+  <path d="M44 32H244V89H44ZM48 36H240V85H48Z" fill="var(--book-paper)" stroke="var(--book-line)" stroke-width=".5"/>
+  <g clip-path="url(#task-train-window)" opacity=".7">
+    <g class="task-train-landscape">
+      <path d="M-30 76L7 44L34 65L61 43L82 66L104 49L143 77L177 52L207 70L246 40L279 68L314 52L352 80" fill="var(--book-cover)" stroke="var(--book-dim)" stroke-width=".4"/>
+      <path d="M-24 83Q17 65 52 80T121 80T188 80T255 80T327 80M7 44L12 60L18 55M61 43L65 57L72 54M177 52L181 63M246 40L248 57L256 50" stroke="var(--book-line)" stroke-width=".3"/>
+      <path d="M4 89V64M0 73L4 67L10 75M40 88V72M35 80L40 74L46 82M109 88V63M102 74L109 66L117 76M200 90V64M193 75L200 68L209 78M288 89V64M281 76L288 68L296 78" stroke="var(--book-line)" stroke-width=".45"/>
+    </g>
+  </g>
+  <path d="M141 34V87M146 34V87M49 85H239M53 39H135M151 39H235" stroke="var(--book-line)" stroke-width=".35"/>
+  <path d="M34 42V81M37 42V81M251 42V81M254 42V81M32 104H83M205 104H256M34 139H254" stroke="var(--book-dim)" stroke-width=".35"/>
+  <!-- The seating group shares the window's centre instead of drifting right. -->
+  <g class="task-train-seating" transform="translate(-16 0)">
+  <!-- Two facing upholstered seats, each cushion directly supports its passenger. -->
+  <path d="M107 121V93Q107 88 112 88H118V119H140V125H108ZM213 121V92Q213 87 208 87H203V119H183V125H212Z" fill="var(--book-paper)" stroke="var(--book-line)" stroke-width=".65"/>
+  <path d="M111 94V116M115 92V116M110 120H138M110 125V140M136 125V140M209 93V116M205 92V116M185 120H210M186 125V140M211 125V140" stroke="var(--book-dim)" stroke-width=".35"/>
+  <path d="M136 123V140M180 123V140M131 140H185M141 124V138M175 124V138" fill="none" stroke="var(--book-line)" stroke-width=".5"/>
+  <g class="task-train-cast"><use href="#task-book-train-people"/></g>
+  <path d="M153 121H160V139H153Z M148 139H165V141H148Z" fill="var(--book-edge)" stroke="var(--book-line)" stroke-width=".5"/>
+  <path class="task-train-table" d="M132 112H183L188 117H127Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".65"/>
+  <path d="M127 117H188V121H127Z" fill="var(--book-edge)" stroke="var(--book-line)" stroke-width=".55"/>
+  <path d="M133 114H181M132 121H183" fill="none" stroke="var(--book-bright)" stroke-width=".3"/>
+  <path class="task-train-cup" d="M165 112V104Q169 102 173 104V112Z" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".4"/>
+  <path d="M173 105Q178 105 177 109Q176 112 173 111" fill="none" stroke="var(--book-bright)" stroke-width=".35"/>
+  </g>
+  <path d="M67 26V19H101V26M187 26V19H221V26M70 22H98M190 22H218M42 133H81M207 133H246" fill="none" stroke="var(--book-line)" stroke-width=".35"/>
+</g>

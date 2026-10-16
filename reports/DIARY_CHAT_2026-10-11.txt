@@ -1,0 +1,61 @@
+Diary implementation — 2026-10-11
+
+Reference
+Figma SYSTEM TEST, node 1257:751. Original navigation, calendar, report prompt,
+input contour and small glyphs downloaded to assets/product/diary. PanelArtwork
+fits frame anchors; glyph dimensions remain fixed. Filter uses a funnel and
+recording reuses the approved lips icon. All three product palettes supported.
+
+Delivered
+- Virtualized combined diary feed: free text, free voice, daily dynamics reports,
+  and the existing architecture observations. Date groups, chronological sort,
+  date ranges/presets, content/media/level filters and all seven Basic steps.
+- Architecture visibility and sort order persist. Architecture answers carry
+  their level/step and an inline expandable question. New saves preserve a
+  snapshot of the question; legacy answers remain readable.
+- Diary recording is independent of architecture navigation and progress.
+  Voice captures up to five minutes; architecture's 15-second limit is unchanged.
+  Stop, review, rerecord, save, playback, seek and volume controls are wired.
+- Text and voice dynamics reports share the feed and have their own filter.
+  The daily prompt reflects reports saved on the current local calendar day.
+- Persistent listen-later bookmarks for every audio source and a dedicated
+  collection, opened with the top-right button. Deleting an entry also removes
+  its bookmark. Shared architecture deletion is explained before confirmation.
+- Existing encrypted state gains optional diaryEntries/listenLater fields.
+  Legacy audio authentication data is unchanged. New diary audio has a separate
+  authenticated metadata namespace. Bookmarks do not modify audio authentication.
+- Responsive typography, pinned composer, native keyboard avoidance and a web
+  visual-viewport adapter. Mobile keyboard input keeps send/record controls visible.
+  Popups keep the existing swipe blocker. Unsaved text/voice has a cancel guard.
+
+Checks
+- TypeScript: passed.
+- Expo lint --no-cache: passed.
+- Web production export: passed.
+- 87 automated storage/capture/regression checks passed. Includes real Web Crypto
+  in the browser adapter fixture; native adapter encryption/file ports are mocked.
+  Covers legacy data, text, long reports, bookmarks, subsequent architecture saves,
+  deletion, failed commits, date filtering, capture cancellation and five-minute
+  native capture configuration. No user diary was used by these tests.
+- Chrome: full real-click flow with synthetic microphone, review/playback,
+  rerecord, voice report, persisted text/bookmarks/sorting, filters and deletion.
+- WebKit: text/report/filter/deletion interactions, all three
+  palettes and mobile/tablet widths. Final full run: no page errors.
+- Both engines: simulated visual-viewport keyboard shrink keeps input visible.
+  Seven screenshots/layout checks per engine, widths 320/375/768.
+- During an earlier repeated-reload WebKit run, two WASM callback errors occurred;
+  fresh probe and two subsequent full runs did not reproduce them. Rust sources
+  and WASM binary were not changed by this task. No physical iPad/Android FPS or
+  microphone validation, or native APK build, is claimed.
+
+Evidence
+.local-preview/panel-fixes/chrome-diary-qa.json
+.local-preview/panel-fixes/webkit-diary-qa.json
+.local-preview/panel-fixes/diary-storage-check.log
+.local-preview/panel-fixes/diary-public.json
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com/diary
+Public JS and WASM verified byte-for-byte against the local production export.
+JS SHA256: dc71d578d7c7954949ae392534693aef0fb733dfe5fcbaf1a6d0b7669a05cc54
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1

@@ -1,0 +1,89 @@
+Tecno — supplied Experiment 04 report — 2026-10-09
+
+Input
+Preserved unchanged as tecno-v4-full-scene.json.
+SHA256 1081CFE0AFFE4AB101693BCA5C685C0CA38DB4816E0A574B67132466878DEE5F.
+Recorded at 2026-10-09 19:35:38 Asia/Tbilisi (15:35:38 UTC).
+Two completed runs: Current / Three.js WebGL2, then Rust / wgpu WebGPU Rgba16Float.
+There is no forced Rust WebGL2 run in this file.
+Both have identical settings, workload and dimensions: 326 x 408 CSS pixels,
+density 2, blur 6, rain plus Observer, reduced motion false.
+The earlier v3 JSON used blur 21; the screenshots used density 1.5. These are
+different conditions and cannot establish improvement from the v4 code changes.
+
+Measured 15–60s result
+                               Current           Rust / WebGPU
+Average FPS                    13.7847           18.9396
+p50 frame interval, ms         67.2              33.7
+p95 frame interval, ms         123.4             123.4
+Intervals above 34ms, %        92.9032           47.9436
+CPU call per frame, ms         16.9448           12.3063
+Rain CPU per frame, ms         7.8000            5.4996
+Command CPU per frame, ms      9.1150            6.7814
+Rain updates/s                 13.5623           14.8223
+Actual measured duration, s    44.9775           44.9322
+
+Rust/WebGPU has +37.40% average FPS and 44.96 percentage points fewer intervals
+above 34ms in this pair. p95 is unchanged; both retain substantial long-frame stalls.
+This is a comparison of complete renderer/backend paths, not Rust versus JS alone.
+These FPS values measure RAF cadence, not independently observed physical presentation.
+
+Five-second averages from scene restart
+Seconds       Current FPS     Rust FPS
+00–05         13.88           18.87
+05–10         15.76           22.90
+10–15         13.08           16.34
+15–20         13.92           18.74
+20–25         14.83           20.51
+25–30         12.17           14.43
+30–35         15.20           21.70
+35–40         11.48           14.00
+40–45         14.83           21.70
+45–50         12.46           18.79
+50–55         15.74           22.95
+55–60         13.42           17.60
+
+Time trend and scope of the conclusion
+- First/last 15s: Current 14.2380 / 13.8671 FPS; Rust 19.3506 / 19.7852 FPS.
+- First/last 30s: Current 13.9408 / 13.8564 FPS; Rust 18.6264 / 19.4595 FPS.
+- This measured minute shows repeated dips followed by recovery, not sustained decay.
+- Five-second FPS patterns have Pearson r=0.9468 across twelve paired buckets.
+  The runs happened separately; matching positions refer to time since scene restart,
+  not simultaneous activity. The correlation is descriptive, not a causal proof.
+- A phase-dependent shared workload is a plausible explanation. This report does not
+  separate SVG paint, rain, GPU work, browser composition or driver scheduling, and
+  cannot identify the Observer alone as the bottleneck.
+
+Important startup limitation
+- At time zero of the Rust measurement, submittedFrames was already 409 and
+  sourceUploads already 323. At the end submittedFrames was 1552 (delta 1143,
+  matching all warmup plus measured frame intervals).
+- Source inspection confirms startMeasurement restarts scene/reveal/SVG, but does
+  not recreate the Rust engine/device. First-frame engine age is not recorded.
+- Therefore this run does not capture all of the first seconds after engine creation.
+  The user's reported initial 50–60 FPS followed by a drop is not disproved or fixed
+  by these data. The next isolated experiment should start collecting automatically
+  at engine creation/first render and distinguish setup time from steady operation.
+
+Resource and playback evidence
+- Across 13 Rust samples, WASM allocated memory stayed 1,703,936 bytes (1.625 MiB).
+- Application texture creation count stayed 5; cached blur attachment views stayed 4;
+  surface skips stayed 0. This does not measure browser/GPU allocations or prove the
+  absence of every kind of leak. No temperature or hardware clock data were collected.
+- Observer playback was moving in both: 39 transform changes, zero replacements.
+- Each timeline has twelve contiguous windows. Timeline frame totals agree with
+  warmup plus measured totals: 835 Current, 1143 Rust. No missing sampled window.
+
+CPU interpretation
+The CPU-call cost per frame fell 27.37%, but measured CPU-call work per second was
+approximately 233.58ms Current versus 233.08ms Rust, because Rust produced more frames.
+Rain CPU per second was approximately 107.52 / 104.16ms; command CPU 125.65 / 128.44ms.
+Do not infer a 27% total CPU, battery or temperature reduction from per-frame cost.
+These timers exclude asynchronous GPU execution and browser SVG/compositor work.
+
+Next useful isolation
+Keep glass/rain backend, settings, dimensions and quality identical. Switch only
+Observer SVG versus a Rust-rendered version, preserving the artwork and animation.
+Capture the run from first engine frame automatically, compare matching motion phases,
+then assess the rendered image and sustained device performance. This Observer-only
+comparison is a proposed next experiment.

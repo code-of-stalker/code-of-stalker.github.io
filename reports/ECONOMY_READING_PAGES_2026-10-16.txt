@@ -1,0 +1,42 @@
+Economy reading pages - 2026-10-16
+
+Scope
+User-selected Economy splits step one into 2 pages and step two into 7 pages, each with its approved Rust illustration. Ordinary High/Balanced articles remain unchanged. Existing pinned preview, autonomous expansion, notched header, shared step menu, book in step two and Home remain. A boundary gesture changes pages with Rust-driven ContentSwap; overflow text remains scrollable. Outgoing art freezes and is removed after the dissolve, so only the selected illustration plays. Larger 18/20px text, paragraph spacing, artwork and a subtle page counter.
+
+Implementation
+src/features/product/motion/readingPages.ts
+src/features/product/motion/EconomyReadingPages.tsx
+src/features/product/screens/PracticeIntroScreen.tsx
+src/features/product/motion/ContentSwap.tsx and ContentSwap.web.tsx
+src/features/product/motion/ReadingExpansion.tsx
+graphics/product-engine/engine/src/reading_layout.rs
+UI content/order and adapters are TypeScript; illustration rendering and transition timelines remain Rust. The optional paged flag moves expanded content below fixed controls; existing ten-value reading callers remain supported.
+
+Technical validation
+Rust build.ps1 -Offline passed: 94 engine tests, 21 native bridge/kernel tests, shader validation, release main/tiny WASM, native runtime generation. Formatting passed. WASM Clippy passed with pre-existing warnings. Final typecheck and lint passed. Final web export and Android/iOS Expo bundle exports passed. No dependency or toolchain upgrades.
+
+Browser validation
+Exact prepared Site cache: 76b820ed201b3d0b74bcf06f
+393x852 and 320x568: pinned preview and zoom retain scrollTop=0; all seven step-two pages advance and reverse; last page bounded; first-step pages forward/reverse; no horizontal overflow; one illustration per page, at most one active; High retains its three inline illustrations. 393x852 additionally enters the real step-one task and returns to the last intro page expanded. CDP touch single-page navigation passed; letter effect produced 5 different samples; reduced-motion navigation passed. Final screenshots inspected.
+
+QA artifacts
+.local-preview/book-projection/economy-pages-checks.json
+.local-preview/book-projection/economy-pages-touch-checks.json
+.local-preview/sites-watcher/economy-pages-archive-verification.json
+
+Source/archive
+Site: appgprj_6acce501d4988191938370d0410d080b
+Source commit: 0c9cd60824ecaf9c6f8819b959d5e27ad4e3c17e
+Archive: C:\Users\qtas5\Documents\Codex\2026-10-02\new-chat\watcher-matrix-check\.local-preview\sites-watcher\watcher-economy-pages-20261016.tar.gz
+Archive SHA256: 218cff80dcf26d1d7bd4994df9857f4d05169df7ae195390bde3516d4a0a8c01
+66 manifest assets and 93 packaged files verified byte-for-byte. The source helper committed/pushed and verified remote HEAD before its known Windows packaging command failed; static packaging fallback succeeded.
+
+Limits
+Browser emulation and bundle exports are technical evidence, not physical mobile-device performance or human visual acceptance. Publication result appended below when returned by Sites.
+
+Publication
+Sites v60, succeeded
+Version ID: appgprj_6acce501d4988191938370d0410d080b~appgver_b65863b2e1408191bcf20177fcc07a09
+Deployment ID: appgdep_6ad132e6dcb881918e98f2a62909e263
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Native completion timestamp: 2026-10-15T20:09:35.621579+00:00

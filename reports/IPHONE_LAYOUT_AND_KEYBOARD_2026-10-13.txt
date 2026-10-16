@@ -1,0 +1,32 @@
+iPhone browser layout and keyboard — 2026-10-13
+
+Changes
+- Practice intro text starts 28px below the panel body edge on regular phones, clearing the fixed upper notch. Shorter widths retain the same notch and 28px inset.
+- Web bottom sheets follow the visual viewport's height and offsetTop, including keyboard resize and pan. Removed double keyboard padding and the 88% sheet height cap.
+- Diary keyboard detection recognizes the rich-text editor iframe. Editor height follows the visible area; Done and the text area stay inside it.
+- Cooldown panel height accounts for measured content, header, footer and the 24px soft edge. Foreground panel can overlap the full-size blurred illustration. Short heights reduce two inner margins without reducing text size.
+- Task step dropdown fills the space below the navigation row, preserving the lower button anchor and the existing contour corners. All seven steps fit in the checked phone layout.
+- Voice sphere size follows the measured question, status and footer heights. Minimum component width is 180px; very short layouts place the timer and hint beside the sphere. Regular layouts keep the status below it.
+- Preserved audio/storage formats, recording hold/lock behavior, task rays, themes and the shared contour fitting contract.
+
+Verification
+- npx tsc --noEmit: passed.
+- npx expo lint: passed, no warnings.
+- Web export and Site preparation: passed.
+- Chrome layout QA: intro at 393x652; cooldown at 393x652, 375x580 and 320x568. Timer, opening time and diary action fit; cooldown scroll overflow is zero.
+- Full step menu at 393x652: starts below navigation and fits all seven rows without scrolling.
+- Embedded voice layout: 393x652, 375x580, 320x568 and 393x480. Timer and hint stay above the step selector; sphere component stays at least 180px wide.
+- Real browser media capture with synthetic microphone input at 393x480: timer advances, recording guidance remains visible, release opens review and Save.
+- Simulated WebKit-style keyboard visual viewport: heights 350, 290 and 500px; offsetTop 0, 95 and 120px. Editor, text and Done fit above the simulated keyboard edge. Text survives dismissal.
+- Other diary sheets remain inside a 320x568 viewport.
+- Browser page/console errors: none.
+- Evidence: .local-preview/iphone-layout/qa.json, capture.json and screenshots.
+- Physical Safari/Telegram iOS keyboard behavior was not measured. Native adapters typechecked; no native build claimed.
+- Graphics cache version: d7b135b74ae1d376910d6d1c.
+
+Publication
+- Site version: 15.
+- Source commit: 75dd2157da879d1758df2df7987e785c3d8ecb8e. Source workflow saved/pushed and verified the remote before the Windows packaging fallback.
+- Archive: 81 verified files; SHA-256 a4b646d6e6d78e29b8ba5d0bb5cb24217356d3cf6ba3aaa0a52b7df237af08de.
+- Deployment appgdep_6ace2938b2b48191bd797b9aa0ff6071 succeeded at 2026-10-13T12:51:24Z.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site

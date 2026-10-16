@@ -1,0 +1,65 @@
+Laboratory Rust comparison — Observer playback correction — 2026-10-09
+
+Reported defect and reproduced cause
+- User: Observer remained still in both v2 engine modes on Tecno.
+- The component created a new dangerouslySetInnerHTML object on every React render.
+  Installed React DOM 19.2.3 sets innerHTML again when that object identity changes.
+  The benchmark publishes metrics every 700ms, replacing the SVG and resetting its
+  CSS animations before the camera's initial 2.24-second hold could end.
+- Before the correction the browser reported animation-play-state running but camera
+  matrix(3.2, 0, 0, 3.2, -352, -6.4), dash offset 0 and ray opacity 0 repeatedly.
+  A requested playing flag and successful renderer initialization were insufficient QA.
+
+Correction
+- Memoize the SVG innerHTML object in the experiment's AttentionAwareness copy.
+- Memoize the Observer component at the benchmark boundary, so metric updates do not
+  rerender it. The memoized HTML also preserves nodes on pause/resume and prop changes.
+- Explicit replay still replaces the animation root once, as intended.
+- Original SVG artwork and its animation timing are unchanged.
+- Added a low-frequency probe of actual camera transforms and DOM node continuity.
+  A running flag alone, a static transform, or repeated node replacement cannot pass.
+- Visible Observer status and each saved benchmark row include playback evidence.
+- Measurement starts above the scene and scrolls it into the viewport. An intersection
+  guard cancels the measurement if less than 80% of the scene remains visible. This
+  prevents offscreen rendering optimizations from silently reducing the tested load.
+- New export: schemaVersion 3, benchmark rain-observer-v3, laboratory-rust-comparison-v3.json.
+
+Input reports
+- laboratory-rust-comparison-v2.json and laboratory-rust-comparison-v2 (2).json are
+  byte-identical. SHA256: 118D238212DF8284782878AF032B46B134D39F2046EF7FD5B9E38B46BB5922CE.
+- Preserved as tecno-v2-observer-restarting.json in this report directory.
+- Same dimensions 326 x 408, density 2, settings and declared workload in both rows.
+  Reduced motion was false. No evidence that a system accessibility setting stopped it.
+- Current: 18.04 FPS, p95 112.1ms, 66.41% frames above 34ms, rain 14.53 updates/s.
+- Rust WebGPU: 24.97 FPS, p95 123.1ms, 19.21% frames above 34ms, rain 16.65 updates/s.
+- Rust had higher average FPS in this defective workload, but a worse p95. The data
+  does not validate full SVG animation load or establish a final migration decision.
+
+Checks passed
+- Experiment TypeScript, ESLint, all 8 JS checks, Vite production build.
+- New probe tests distinguish real transform changes, replaced nodes, static/missing
+  illustrations and intentional pause. Existing uniform/blur/metrics/clock checks pass.
+- Watcher root npm run lint and npm run typecheck.
+- Rust engine and shader equations were not changed; existing release WASM reused.
+- Current and Rust WebGPU completed measurements with Observer movement confirmed:
+  15/16 camera transform changes respectively, zero SVG node replacements in both.
+  Evidence: desktop-v3-playback-validation.json. This validates playback, not device FPS.
+- Pause/resume did not replace the SVG node; the status returned to movement confirmed.
+- Mobile-width measurement scrolled the scene to y=201..611 in an 812px viewport.
+  Deliberately scrolling to the settings cancelled the measurement without saving a row.
+- Installed the updated standalone experiment into existing Laboratory locations.
+  Integrated /rust-glass/index.html returns 200 and references final index-C-ilhIFv.js.
+
+Limits
+- Follow-up: the supplied Tecno v3 report confirms movement in both renderers:
+  20/19 transform changes, zero replacements; preserved as tecno-v3-full-scene.json.
+  Same settings and workload, 326 x 408, density 2. Current 12.4652 FPS / p95 134.9ms;
+  Rust WebGPU 17.0637 FPS / p95 134.5ms. Average +36.89%, CPU call time -31.44%.
+  No time series was collected, so it cannot explain the reported 10-15s slowdown.
+- Final forced WebGL2 desktop playback check also passed: 14 transform changes,
+  zero replacements (desktop-v3-webgl-playback-validation.json). Desktop FPS was
+  throttled near 1Hz; this is functional evidence only.
+- Desktop Chrome scheduling was intermittently throttled by occlusion. Desktop FPS
+  is not a performance comparison; only behavior and export validation are claimed.
+- Temporary phone URL remains https://comparable-theft-provide-existed.trycloudflare.com/.
+  It requires this computer, the preview server and the tunnel to remain running.

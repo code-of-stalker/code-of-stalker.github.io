@@ -1,0 +1,29 @@
+Step header content height — 2026-10-11
+
+Cause
+The shared contour retained a fixed 25px header. Above the 375px typography breakpoint, the dropdown title has a 23px line height, leaving only 1px of padding. The intro header also placed its larger text below the straight part of that contour.
+
+Fix
+- StepPanel and the framed StepDropdown now use intrinsic title rows with a 25px minimum height and 5.5px vertical padding. Text can wrap; both rows report their actual layout height through usePanelSize.
+- stepPanelPaths accepts the measured header height. It translates the notch and diagonal/lower points together rather than scaling the SVG. The 12px notch depth, 32.25px diagonal offset, 8.5px separation and 0.25px strokes remain unchanged.
+- The intro body and compact menu list start below the new header position. Glass, fill, frame and scanner receive the same contour. Theme, illustration motion and quality policy code were not changed.
+- AGENTS.md now explicitly requires content-sized headers with padding before fitting their contour.
+
+Validation
+- TypeScript, Expo lint and the final SDK 57 web export passed.
+- Fifteen existing glass and renderer regression tests passed. Rust code and shaders were not changed.
+- Chrome/WebGPU and desktop WebKit/WebGL2 passed 12 layout cases each: intro and dropdown headers at 320x568, 374x900, 375x812, 440x600, 768x1024 and 375x400.
+- Normal intro header: 25px below 375; 31px at/above 375. Normal dropdown header: 25px below 375; 34px at/above 375. Text retains at least 5.5px padding above/below, and contour feature offsets stay fixed.
+- Simulated larger typography (32px font / 48px line height) wraps into two lines and grows both headers to 107px. Opening/closing and the menu's wheel scroll still work; scrollTop reached 51px on the overflowing menu.
+- No JavaScript page errors or failed HTTP responses in successful browser checks. The neutral theme was additionally confirmed visually and by its rgb(218,219,211) text color, 34px header and 23px text height.
+- Current public JS/WASM return HTTP 200 and match the final local export hashes. The existing preview link serves the update.
+
+Evidence
+.local-preview/panel-fixes/step-header-before.json
+.local-preview/panel-fixes/step-header-export.log
+.local-preview/panel-fixes/webgpu-step-header.json
+.local-preview/panel-fixes/webkit-step-header.json
+.local-preview/panel-fixes/step-header-neutral.png
+.local-preview/panel-fixes/step-header-public.json
+
+Desktop browser validation does not claim physical iPad/Android measurements or native visual acceptance.

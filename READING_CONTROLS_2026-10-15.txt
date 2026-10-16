@@ -1,0 +1,24 @@
+Reading controls and inline animation loops
+
+Changes
+- Both step-two inserts repeat while visible: reveal, 1.8s hold, 2.2s smooth return, 0.6s rest. Paused offscreen/background; reduced motion keeps the settled illustration without a frame loop. Book animation unchanged.
+- Expanded reading header morphs into the task-style 106/136 x 26 step selector. The full title keeps intrinsic measurement; the notch and glass decoration fade, corners and line widths do not stretch.
+- Header remains on the same 32px expansion runway. Compact button and close share center y=28. Original panel returns on reverse scroll. Selecting a step and closing remain functional.
+
+Validation
+- npm run lint: passed.
+- npm run typecheck: passed.
+- scroll-gate, glass geometry, practice-resume: 32 tests passed.
+- 8 browser scene checks: both inserts in all four palettes; repeated pass, offscreen pause, reduced motion, no page errors.
+- Static release browser QA: 320x568, 393x852, 768x1024; stable text width/font/position, reverse scroll, menu preserves offset, no button overlap.
+- Both inserts completed another pass inside the expanded reader, then stopped when scrolled away.
+- Real browser wheel and emulated touch over hero; short step at 393x1000; task transition/back; four themes and close: passed. Physical phones not tested.
+
+Release
+- Existing public site, version 31.
+- Source: 412175c39beb730b4ad39a4998d80c8b9f42f94d
+- Cache: ad4825aab3c81b7d31972ecf; 63 assets verified.
+- Native Sites deployment appgdep_6acfe4fff1008191bfe0338c14109e8b: succeeded.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+- Windows source helper committed/pushed successfully; its shell packager failed. Official prepare-site-build.cjs plus Windows tar produced a verified 88-file archive from the clean source commit; save_site_version accepted that exact commit/archive.
+- Parent app checkout's unrelated work was preserved; no parent Git commit or push.

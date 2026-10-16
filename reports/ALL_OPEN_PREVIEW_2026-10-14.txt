@@ -1,0 +1,22 @@
+All-open preview — 2026-10-14
+
+Settings now expose the existing persisted testUnlockAll preference as «Всё открыто».
+When enabled, «ОТКРЫТЬ ВТОРОЙ ШАГ» opens the real second basic step, including its book animation.
+The step selector can also open step 2 before completion and during the earned cooldown.
+ProductProvider no longer overrides this preference or redirects enabled previews back to step 1.
+The direct settings entry returns to settings with Back/Close.
+Explicit «Второй шаг с таймером» remains a cooldown preview even with all-open enabled.
+Existing repository behavior restores unearned step 1 when disabling the preference and preserves earned deadlines and recordings.
+No completion/deadline is fabricated by viewing step 2. The preference persists in existing encrypted local storage.
+
+Scope: steps 1 and 2 are implemented. Later steps and Intensive/Guidance content are still placeholders; this change does not invent that content.
+Inline paragraph-animation ideas were proposed only; no new illustration was added without selection.
+
+Validation:
+- npm run lint: passed.
+- npm run typecheck: passed.
+- test-access + practice-resume: 9 tests passed, including reload persistence without earned completion.
+- Real browser at 320 x 568, fresh isolated storage: toggle/reload/direct step 2/step selector/step persistence/cooldown preview/disable-and-relock passed; zero pageerror events.
+- .local-preview/book-projection/all-open-checks.json and all-open-settings.png.
+- Existing dev warning «Unexpected text node» from MicrophoneSettings is still visible in settings; unrelated to this change (also recorded during prior book QA).
+- No physical Android/iOS test, Git commit, or publication in this change.

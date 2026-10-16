@@ -1,0 +1,95 @@
+<defs>
+  <g id="task-leaf-spray" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 14Q0 2-4-12M-1 7L-11 1M-1 1L10-5M-2-5L-12-11M-3-7L5-16" stroke="var(--book-line)" stroke-width=".3"/>
+    <g fill="var(--book-paper)" stroke="var(--book-line)" stroke-width=".32">
+      <path d="M-1 7C-4 2-11-2-15 0C-13 6-7 10-1 7Z"/>
+      <path d="M-6 3C-7-3-12-7-16-6C-16 0-12 5-6 3Z"/>
+      <path d="M-1 2C2-5 8-8 13-6C10 0 5 4-1 2Z"/>
+      <path d="M5-1C6-7 11-12 16-10C15-4 10 0 5-1Z"/>
+      <path d="M-2-4C-5-10-11-13-16-11C-12-6-8-3-2-4Z"/>
+      <path d="M-7-9C-9-14-13-17-17-15C-15-11-12-8-7-9Z"/>
+      <path d="M-3-6C-2-12 1-18 6-18C7-12 2-7-3-6Z"/>
+      <path d="M-4-11C-9-14-10-20-7-24C-2-21-1-15-4-11Z"/>
+      <path d="M0 11C3 5 10 3 14 6C12 11 6 14 0 11Z"/>
+    </g>
+    <path d="M-2 6L-12 1M0 1L10-5M-3-5L-13-11M-3-8L4-16M-4-13L-7-21M1 10L11 7" stroke="var(--book-ink)" stroke-width=".23" opacity=".55"/>
+  </g>
+  <g id="task-leaf-pair" stroke="var(--book-line)" stroke-width=".3" fill="var(--book-paper)">
+    <path d="M0 0C-1-7 3-12 7-13C9-6 6-1 0 0ZM0 0C-6 0-11-4-11-9C-4-10 0-6 0 0Z"/>
+    <path d="M0 0L5-10M0 0L-8-7" stroke="var(--book-ink)" stroke-width=".22"/>
+  </g>
+  <g id="task-tree" stroke-linecap="round" stroke-linejoin="round">
+    <!-- A continuous living canopy sits behind the small botanical sprays. -->
+    <path d="M86 86C77 85 73 78 77 72C69 66 71 57 78 54C75 46 81 38 89 39C90 29 100 26 107 31C112 21 122 20 129 26C134 17 146 16 151 24C159 18 169 22 172 29C182 24 192 29 193 38C204 35 213 43 209 51C219 55 220 65 213 71C218 81 210 88 202 88C198 99 185 100 178 94C170 104 157 105 149 98C140 107 127 104 122 98C111 105 100 100 99 93C92 96 86 93 86 86Z" fill="var(--book-paper)" stroke="var(--book-line)" stroke-width=".4"/>
+    <!-- The trunk forks gradually and thickens into roots instead of a bare branch symbol. -->
+    <path d="M132 129C140 120 143 109 141 96C139 87 135 80 127 76L111 66L104 54L109 54L117 64L134 71C140 73 141 73 141 67L137 49L142 49L147 70C149 76 151 77 156 72L168 60L174 43L179 44L173 63L159 80C153 88 151 95 151 105C150 116 152 123 158 128L147 127L140 132Z" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width=".65"/>
+    <path d="M142 101C140 91 137 86 127 84L111 81L100 72L102 69L113 77L132 79M149 101C154 92 163 91 176 90L188 82L191 85L179 95L159 100L151 112" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45"/>
+    <path d="M146 122C143 112 147 103 146 95C144 85 145 81 144 73M149 122C147 111 150 104 149 98M139 125C143 119 143 113 143 107M147 88L154 77L167 64M140 79L127 75L117 69M139 82L128 82M154 96L164 94M138 126L129 131M147 126L154 132M152 126L163 130" stroke="var(--book-line)" stroke-width=".32"/>
+    <path d="M145 104Q142 108 145 111Q148 107 145 104M146 116L147 121M148 90L149 94M142 91L143 96M136 77L141 80M155 83L157 78" stroke="var(--book-dim)" stroke-width=".28"/>
+    <g opacity=".78">
+      <use href="#task-leaf-spray" transform="translate(90 64) rotate(-56) scale(.8)"/>
+      <use href="#task-leaf-spray" transform="translate(101 49) rotate(-31) scale(.84)"/>
+      <use href="#task-leaf-spray" transform="translate(121 43) rotate(14) scale(.79)"/>
+      <use href="#task-leaf-spray" transform="translate(146 39) rotate(-21) scale(.8)"/>
+      <use href="#task-leaf-spray" transform="translate(168 43) rotate(23) scale(.78)"/>
+      <use href="#task-leaf-spray" transform="translate(187 54) rotate(46) scale(.87)"/>
+      <use href="#task-leaf-spray" transform="translate(202 68) rotate(83) scale(.72)"/>
+      <use href="#task-leaf-spray" transform="translate(190 83) rotate(103) scale(.68)"/>
+      <use href="#task-leaf-spray" transform="translate(102 85) rotate(-111) scale(.77)"/>
+      <use href="#task-leaf-spray" transform="translate(124 93) rotate(-162) scale(.65)"/>
+      <use href="#task-leaf-spray" transform="translate(169 91) rotate(153) scale(.69)"/>
+    </g>
+    <g>
+      <use href="#task-leaf-spray" transform="translate(100 68) rotate(-31) scale(.78)"/>
+      <use href="#task-leaf-spray" transform="translate(116 63) rotate(21) scale(.84)"/>
+      <use href="#task-leaf-spray" transform="translate(134 56) rotate(-17) scale(.83)"/>
+      <use href="#task-leaf-spray" transform="translate(154 58) rotate(31) scale(.81)"/>
+      <use href="#task-leaf-spray" transform="translate(174 66) rotate(58) scale(.85)"/>
+      <use href="#task-leaf-spray" transform="translate(193 71) rotate(-11) scale(.7)"/>
+      <use href="#task-leaf-spray" transform="translate(112 82) rotate(-66) scale(.74)"/>
+      <use href="#task-leaf-spray" transform="translate(129 78) rotate(-27) scale(.72)"/>
+      <use href="#task-leaf-spray" transform="translate(153 77) rotate(51) scale(.8)"/>
+      <use href="#task-leaf-spray" transform="translate(178 85) rotate(95) scale(.75)"/>
+      <use href="#task-leaf-pair" transform="translate(90 79) rotate(-45) scale(.8)"/>
+      <use href="#task-leaf-pair" transform="translate(100 96) rotate(-93) scale(.7)"/>
+      <use href="#task-leaf-pair" transform="translate(124 98) rotate(-116) scale(.72)"/>
+      <use href="#task-leaf-pair" transform="translate(161 99) rotate(122) scale(.7)"/>
+      <use href="#task-leaf-pair" transform="translate(199 87) rotate(90) scale(.7)"/>
+      <use href="#task-leaf-pair" transform="translate(210 58) rotate(66) scale(.65)"/>
+    </g>
+    <!-- Fine broken highlights let light fall through the canopy. -->
+    <g stroke="var(--book-bright)" stroke-width=".27" opacity=".55">
+      <path d="M103 40L108 36M121 30L126 28M140 24L144 22M154 32L159 29M171 36L174 32M187 47L192 46M91 51L94 48M116 53L120 50M139 45L144 41M160 47L163 43M181 58L185 57M102 69L106 67M129 67L132 64M157 66L161 63M178 76L182 74"/>
+    </g>
+  </g>
+  <clipPath id="task-lake"><path d="M27 139Q144 130 261 139L272 204H16Z"/></clipPath>
+  <radialGradient id="task-canopy-light"><stop stop-color="var(--book-ink)" stop-opacity=".13"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="141" cy="55" rx="99" ry="54" fill="url(#task-canopy-light)"/>
+  <g stroke="var(--book-dim)" stroke-width=".35" opacity=".8">
+    <path d="M20 119L46 93L55 99L76 76L92 92L109 84M186 89L202 73L226 99L239 90L269 119M33 113L47 101L52 110L61 103L70 107M201 82L215 102L222 107L233 101L246 110"/>
+    <path d="M22 122Q45 113 66 119Q80 115 99 121M190 121Q213 112 233 120Q252 114 269 122M29 128L88 128M201 127L258 127M57 114L66 108L75 114M218 113L223 109L229 114"/>
+    <path d="M223 40Q227 35 232 40Q236 35 241 39M238 49Q241 46 244 49Q247 46 251 49"/>
+  </g>
+  <path d="M125 124L112 128L99 135L113 139L135 137L153 140L175 138L194 134L179 129L163 127L153 124Z" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".5"/>
+  <path d="M101 134L116 132L123 136L136 131L148 134L158 129L174 133L190 134M114 137L125 138M134 135L144 137M164 136L173 135M124 127L130 129M177 130L181 133" stroke="var(--book-dim)" stroke-width=".32"/>
+  <use href="#task-tree"/>
+  <g stroke="var(--book-line)" stroke-width=".35">
+    <path d="M133 126Q128 128 125 131L117 133M143 126L137 130L135 134M150 126L157 128L162 133M155 128L166 129L171 132M120 132L116 126M122 132L124 126M174 131L176 126M178 132L182 127"/>
+    <path d="M25 136Q61 130 101 135M194 135Q232 131 264 137M31 133L32 123M33 133L38 126M47 133L44 124M48 133L52 121M52 134L57 128M239 134L237 123M241 134L245 120M245 135L251 129M258 136L260 128"/>
+  </g>
+  <g clip-path="url(#task-lake)">
+    <g class="task-reflection" transform="translate(0 249) scale(1 -.8)" opacity=".27"><use href="#task-tree"/></g>
+    <path d="M21 146H267M17 155H272M21 166H266M25 179H263M32 194H258" stroke="var(--book-cover)" stroke-width="3"/>
+    <path class="task-lake-lines" d="M34 143H91M197 145H245M55 153H122M171 155H226M31 163H91M196 168H250M73 178H121M166 181H222M95 194H174M40 187H71M223 190H246M118 203H160" stroke="var(--book-dim)" stroke-width=".35"/>
+    <path d="M97 144L112 143M179 145H192M54 149H75M218 152H236M84 159H104M181 162H202M128 171H148M82 184H103M172 191H187" stroke="var(--book-line)" stroke-width=".25" opacity=".6"/>
+    <ellipse class="task-water-0" cx="145" cy="145" rx="22" ry="3" stroke="var(--book-line)" stroke-width=".35"/>
+    <ellipse class="task-water-1" cx="145" cy="150" rx="36" ry="5" stroke="var(--book-line)" stroke-width=".3"/>
+    <ellipse class="task-water-2" cx="145" cy="156" rx="52" ry="7" stroke="var(--book-dim)" stroke-width=".3"/>
+  </g>
+  <g class="task-falling-leaf">
+    <path d="M0 0C-7-1-10-8-6-12C0-11 3-5 0 0Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".35"/>
+    <path d="M0 0L-5-10M-2-5L-6-6" stroke="var(--book-line)" stroke-width=".25"/>
+  </g>
+</g>

@@ -1,0 +1,43 @@
+.voice-recorder { --vr-energy:0; --vr-arc-visibility:0; --vr-line:1; --vr-glow:.85; --vr-color:#e7e100; --vr-light:#fff59a; width:100%; height:100%; max-width:288px; max-height:260px; overflow:visible; display:grid; grid-template-rows:minmax(0,1fr) 66px; color:var(--vr-color); font-family:'Disket Mono',monospace; user-select:none; }
+.vr-button { position:relative; display:block; width:100%; height:100%; min-height:0; padding:0; border:0; color:inherit; background:transparent; cursor:pointer; touch-action:none; -webkit-touch-callout:none; }
+.vr-button:disabled { cursor:default; opacity:1; }
+.vr-button:focus-visible { outline:1px solid #fff59a; outline-offset:-5px; }
+.vr-visual { position:absolute; inset:12px 0 0; display:block; pointer-events:none; }
+.vr-art { position:relative; display:block; width:100%; height:100%; overflow:visible; }
+.voice-wave-field { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; z-index:1; }
+.vr-glass { position:absolute; display:block; border-radius:50%; overflow:hidden; pointer-events:none;
+  background:color-mix(in srgb,var(--vr-glass-fill) var(--vr-glass-opacity),transparent);
+  backdrop-filter:blur(var(--vr-glass-blur)); -webkit-backdrop-filter:blur(var(--vr-glass-blur));
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--vr-glass-light) var(--vr-glass-shine),transparent); }
+.vr-glow { stroke:var(--vr-light); opacity:calc((.25 + var(--vr-energy)*.75)*var(--vr-glow)); }
+.vr-low-motion>circle { stroke-width:calc(1.15px * var(--vr-line)); }
+.vr-low-motion>circle:first-child { stroke-width:calc(.55px * var(--vr-line)); }
+.vr-low-motion>.vr-glow { stroke-width:calc(1.7px * var(--vr-line)); }
+.vr-fill-arc { opacity:var(--vr-arc-visibility); }
+.vr-fill-arc.vr-glow { opacity:calc(var(--vr-arc-visibility) * (.25 + var(--vr-energy)*.75)*var(--vr-glow)); }
+.vr-mid-motion>circle { stroke-width:calc(.7px * var(--vr-line)); }
+.vr-high-motion { stroke-width:calc(.9px * var(--vr-line)); }
+.vr-sphere-motion { stroke-width:calc(.75px * var(--vr-line)); }
+.vr-sphere-motion>.vr-glow { stroke-width:calc(1.2px * var(--vr-line)); }
+.vr-mic,.vr-speaker { stroke-width:calc(.85px * var(--vr-line)); }
+.vr-speaker { display:none; }
+.voice-recorder[data-source='playback'] .vr-speaker { display:block; }
+.voice-recorder[data-source='playback'] .vr-mic { display:none; }
+.voice-recorder[data-state='recording'] .vr-side-marks { display:none; }
+.vr-stop { display:none; }
+.voice-recorder[data-locked='true'][data-state='recording'] .vr-stop { display:block; }
+.voice-recorder[data-locked='true'][data-state='recording'] .vr-mic { display:none; }
+.vr-lock { position:absolute; top:0; left:50%; width:24px; height:34px; margin-left:-12px; display:block; opacity:0; color:inherit; transition:opacity .18s ease-out; pointer-events:none; }
+.vr-lock>svg { display:block; width:100%; height:100%; overflow:visible; }
+.vr-lock::before { content:''; position:absolute; inset:-10px -12px; border-radius:50%; background:radial-gradient(ellipse,#030402f5 20%,#030402d9 40%,#03040280 56%,transparent 75%); filter:blur(2px); }
+.vr-lock>svg { position:relative; }
+.voice-recorder[data-state='recording'] .vr-lock,.voice-recorder[data-state='requesting'] .vr-lock { opacity:1; }
+.vr-time { display:flex; align-items:center; justify-content:center; gap:6px; font:400 10px/14px 'Disket Mono',monospace; letter-spacing:1.5px; color:inherit; opacity:.7; }
+.vr-live-dot { width:4px; height:4px; background:currentColor; opacity:.25; }
+.voice-recorder[data-state='recording'] .vr-time,.voice-recorder[data-source='playback'] .vr-time { opacity:1; color:var(--vr-light); }
+.voice-recorder[data-state='recording'] .vr-live-dot,.voice-recorder[data-source='playback'] .vr-live-dot { opacity:1; box-shadow:0 0 7px var(--vr-color); }
+.vr-footer { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; gap:12px; }
+.vr-hint { max-width:100%; min-height:13px; padding:0 6px; text-align:center; font:400 10px/13px 'Disket Mono',monospace; letter-spacing:.5px; }
+.voice-recorder[data-state='error'] .vr-hint { color:var(--vr-light); font-size:8px; line-height:10px; letter-spacing:0; }
+.voice-recorder[data-state='error'] .vr-footer { padding-top:6px; gap:6px; }
+@media(prefers-reduced-motion:reduce) { .voice-recorder * { transition:none!important; } }

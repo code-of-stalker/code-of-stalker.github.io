@@ -1,0 +1,39 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "checks": {
+    "gestureAndFontTests": 13,
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionExport": "passed",
+    "publicBundleMatchesLocal": true
+  },
+  "browser": {
+    "fontFilesReady": "ready",
+    "boldFamily": "DisketMonoBold",
+    "boldSize": 16,
+    "overviewToExerciseKeyboardNavigation": "passed",
+    "consoleErrors": []
+  },
+  "fontFiles": {
+    "regularWeight": 400,
+    "boldWeight": 700,
+    "missingCyrillic": []
+  },
+  "testedTouchModel": [
+    "continuous reading and onward pull without a second touchstart",
+    "continuous reading back to the top and retreat",
+    "reading inertia cannot advance",
+    "cancelled and reset touch cannot skip",
+    "one transition per gesture"
+  ],
+  "bundle": "entry-b972e13b3db1d3d33483ab0360ec95b0.js",
+  "sha256": "577616c0d41946324e6ef62d8ed51c448e6dbc2c57566c8917ae83a3aa2b6b9e",
+  "deviceChecksPending": [
+    "continuous touch on Tecno",
+    "bold text in Safari on iPhone",
+    "iPad regression"
+  ]
+}

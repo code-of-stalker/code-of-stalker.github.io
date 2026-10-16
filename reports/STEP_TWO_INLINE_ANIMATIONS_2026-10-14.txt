@@ -1,0 +1,43 @@
+Step 2 — two inline animations
+
+After paragraph 2 (reflections / not Him): two copies separate from the central
+person over 5.6 seconds. A narrow light band crosses their projected silhouettes;
+the copies become faint, retaining their thin projection planes. The inner light
+belongs only to the central person.
+
+After paragraph 3 (the only Main Hero): four surrounding contours fade from the
+outside inward over 4.8 seconds. The central figure and chest light remain.
+The source has one restrained breath of light, then settles.
+
+Both reuse the authored person from the approved book source; there is no new
+replacement anatomy. A 0.405px outer contour at the SVG source size keeps the
+small silhouette legible. The scenes contain no raster, particles, external
+network resources or broad Gaussian blur. Mini-art is 264 x 95.33 CSS pixels
+on the 320 x 568 screen, with 12px spacing before the following paragraph.
+
+The book remains after the final paragraph, with its existing 14-second cycle,
+chest highlight and closing motion. Panel contours and text are unchanged.
+
+All three scenes use measured visibility in the reading panel, pause when hidden
+or unfocused/backgrounded, and stop their RAF loop after completion. Short layout
+flashes and rapid scroll-throughs are ignored with a 180ms visibility settle.
+Reduced motion shows each mini scene's static final composition. Palettes follow
+Iskra, Silence, Dune and Astral through the existing book palette bridge.
+
+Implementation: stepTwoInserts.ts, stepTwoInserts.generated.ts,
+build-step-two-inserts.mjs, step-two-inserts-runtime.js, Art adapters and
+PracticeIntroScreen.tsx. No dependencies were added.
+
+Validation:
+- npm run lint and npm run typecheck passed.
+- Browser SVG checks: 2 scenes x 4 palettes, silhouette bounds, no offscreen RAF,
+  pause/resume, settled final state, no replay, palette updates and reduced motion.
+  Evidence: .local-preview/book-projection/insert-checks.json.
+- Mobile web integration checks/evidence: insert-app-checks.json and reading-*.png
+  in the same directory. These cover actual paragraph order, dimensions,
+  scrolling/pausing, theme colors, and the unchanged book closing afterward.
+- The first QA assumption that every insert starts offscreen was incorrect:
+  at 320 x 568, the first insert is already mostly visible below paragraph 2.
+  The corrected check exercises the real starting composition and scroll path.
+- Physical Android/iOS rendering and device performance were not measured.
+- No Git commit, remote push or deployment.

@@ -38,7 +38,7 @@ function fixture(options = {}) {
   let isRecording = false, prepared = false, foreground = true;
   const recorder = { uri,
     async prepareToRecordAsync() { trace.push('prepare'); if (options.prepare) await options.prepare.promise; prepared = true; },
-    record({ forDuration }) { assert.equal(forDuration, 15); trace.push('record'); isRecording = true; },
+    record({ forDuration }) { assert.equal(forDuration, options.limitSeconds ?? 15); trace.push('record'); isRecording = true; },
     getStatus() { return { isRecording, canRecord: prepared, durationMillis: options.duration ?? 2100, metering: -20 }; },
     async stop() { trace.push('stop'); if (options.stop) await options.stop.promise; isRecording = false; prepared = false; },
   };
@@ -46,8 +46,16 @@ function fixture(options = {}) {
     async permission() { trace.push('permission'); if (options.permission) return options.permission.promise; return { granted: !options.denied, canAskAgain: false }; },
     async mode(recording) { trace.push(recording ? 'mode-record' : 'mode-play'); },
     foreground: () => foreground, discard: (file) => { if (file) deleted.push(file); }, changed: state => states.push({ ...state }),
-  });
+  }, options.limitSeconds);
   return { capture, trace, deleted, states, background() { foreground = false; }, get state() { return states.at(-1); } };
+}
+
+for (const limitSeconds of [180, 900]) {
+  test(`configured native capture preserves a ${limitSeconds}-second recording`, async () => {
+    const f = fixture({ limitSeconds, duration: limitSeconds * 1000 });
+    try { await f.capture.start(); await f.capture.stop(); assert.equal(f.state.phase, 'ready'); assert.equal(f.state.draft.durationMs, limitSeconds * 1000); }
+    finally { await f.capture.dispose(); }
+  });
 }
 
 test('records only on explicit start, stops to a local draft, never sends anything', async () => {

@@ -1,0 +1,59 @@
+Reading animation playback and Economy optimization — 2026-10-15
+
+Behavior
+- Restore every visible inline reading scene in both steps, including before zoom.
+- Remove the closest-to-centre exclusion; first and last scenes no longer have to
+  reach the viewport centre. Offscreen scenes pause and preserve their phase.
+- Preserve the locked article during expansion and reverse expansion.
+- Keep the book at the end of step two, and additionally on Home for step-two progress.
+- Restore concurrent repeating letter substitution and dream artwork.
+
+Implementation
+- Reading visibility, delayed acquisition and pause policy stay in Rust reading_focus.
+- Rust PaintCadence limits decorative reading artwork to 30 paints/s at Economy
+  density, preserving elapsed animation time. UI, glass and interactive artwork
+  retain their existing frame policy. Dirty geometry paints immediately.
+- The native WebGL2 adapter copies the output only after a changed render or the
+  first presentation. No duplicate unchanged-frame Canvas2D transfers.
+
+Technical validation
+- Rust engine: 89 tests passed. Native kernel: 20 tests passed.
+- Formatting, WASM release builds, shader validation, typecheck and lint passed.
+- WASM Clippy passed with existing warnings; not a warning-free repository.
+- Browser GPU pacing: 121 normal versus 61 Economy paints over exactly two
+  active seconds; both end at 2.00000 s, resume at 2.00000 s after suspension and
+  advance to 2.05000 s after another 50 ms. This measures paint count, not phone FPS.
+- Offline native graphics document: book, dream-wake and glass produced real pixels,
+  one ready signal each, no runtime errors. Native bridge visibility checks passed.
+
+Browser regression validation
+- Exact Site export cache: 100065845527f29afe3301dd, all 66 asset hashes verified.
+- Viewports 393x852, 320x568 and 908x668: first scenes play before zoom in both
+  steps, multiple visible scenes run concurrently, first/last scenes play at
+  scroll limits, book is present and moving in step two and centred on Home.
+- Article scroll remains zero through autonomous zoom and reverse; real scrolling
+  becomes available after expansion. Final checks use a single zoom gesture so
+  additional wheel gestures cannot advance the short first-step article.
+- Dream chapter: five visible symbol patterns, resumes with five patterns after
+  scrolling away/back; the final sphere advances at the bottom scroll limit.
+  Fully offscreen dream artwork pauses. No browser runtime errors.
+- Automated browser validation is separate from human visual approval and physical
+  mobile-device measurements; neither was performed during this change.
+
+Evidence
+.local-preview/book-projection/visible-economy-main-checks.json
+.local-preview/book-projection/visible-economy-checks.json
+.local-preview/book-projection/economy-paint-cadence.json
+.local-preview/book-projection/native-visible-economy-checks.json
+.local-preview/sites-watcher/visible-economy-archive-verification.json
+
+Publication
+Site version: 58
+Commit: e6d98e77f3dbe6e17bba810376e384ff57f74b3f
+Version ID: appgprj_6acce501d4988191938370d0410d080b~appgver_87b5b9956be0819192c06b85594af5fc
+Deployment ID: appgdep_6ad123a26a28819198572e70688ee3dc
+Native deployment result: succeeded at 2026-10-15T19:04:37.688746+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Windows workflow committed/pushed successfully, then its packaging command failed.
+The static prepare-site-build fallback packaged 93 files and verified the exact
+66-asset snapshot before native save/deploy. No forced push or audience change.

@@ -1,0 +1,25 @@
+Watcher — pinned reading and economy playback, 2026-10-15
+
+Changes:
+- Opening travel is now a Rust-owned gesture channel, separate from the article's native scroll position. Both steps lock the article at scroll offset zero until the autonomous zoom finishes. The same gesture tail cannot scroll the article after opening. Reverse input at the article's top closes the panel autonomously.
+- Removed the former hidden scroll runway and compensation padding. Initial text/illustration content remains fixed before the zoom threshold.
+- Rust ReadingFocus chooses the meaningfully visible animation closest to the viewport center in Economy. Unplayed scenes stay paused; outgoing played scenes coast for 0.34 seconds before pausing. Returning resumes the original scene clock. Acquisition settles for 0.12 seconds to reject quick pass-throughs. Background and disabled-stage state pauses immediately. Other quality modes retain normal visibility playback.
+- The initial large illustration is the only running illustration before expansion in Economy; inline selection starts after expansion.
+- The Home book/projection composition is centered horizontally using its Rust viewBox; palette, contours and approved motion stay intact.
+
+Validation:
+- Engine: 86 tests passed; native shared core: 19 tests passed.
+- Formatting, WASM release builds, shader validation, Clippy, TypeScript and Expo lint passed. Clippy retains warnings, including a non-blocking chunks_exact suggestion in the new focus module.
+- Browser at 393x852, 320x568, 908x668: both steps; subthreshold wheel input without content movement; zero article scroll through complete opening; streamed wheel tails; touch input and keyboard; free article scrolling only after expansion; autonomous reverse.
+- Economy: exact nearest visible scene, unplayed book at phase zero, visible outgoing scene advances briefly then freezes, returning resumes its phase. Observed coasts in probes: 0.278s, 0.281s, 0.286s before final pause (policy grace 0.34s).
+- The dream continuation keeps its opened shell and nearest-scene playback; chapter transition passed.
+- Home book center checked mathematically against the final viewBox and visually on all three viewports.
+- Offline native kernel integration checks passed for gesture expansion and focus/coast messages; native GPU document checks passed. iOS and Android exports passed.
+- These are browser and build checks, not physical-phone validation.
+
+Evidence:
+.local-preview/book-projection/pinned-economy-validation-summary.json
+.local-preview/book-projection/pinned-economy-wide-checks.json
+.local-preview/book-projection/economy-dream-checks.json
+.local-preview/book-projection/native-pinned-economy-checks.json
+.local-preview/sites-watcher/pinned-economy-archive-verification.json

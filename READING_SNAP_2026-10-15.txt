@@ -1,0 +1,25 @@
+Expanded reader mask and automatic header transition
+
+Changes
+- Expanded reading replaces the old notched content clip with a rectangular viewport. Glass contour uses that same rectangle once the original frame has dissolved; reversing restores the authored notch.
+- Before the header changes, scrolling drives a short approach. Crossing 14% of the expansion runway (maximum 48px) commits the remaining transition; reverse approach commits back to the original panel.
+- A 620ms eased transition owns the scroll position until its endpoint. Wheel, touch and keyboard scrolling are temporarily locked; programmatic scrolling remains available. Reduced-motion transitions complete immediately.
+- ScrollGate navigation is disarmed during the automatic movement, so expansion cannot skip into the task. Large article scroll jumps keep their actual position.
+
+Validation
+- npm run lint: passed.
+- npm run typecheck: passed.
+- 36 tests passed: reading snap model, scroll gate, glass geometry, practice resume.
+- Static browser checks at 320x568, 393x852 and 768x1024: forward and reverse completion after input stops, opposite input during the transition, stable text/range, restored geometry, step menu, rectangular mask and top-right content hit-testing.
+- Real wheel and released browser-emulated touch in both directions: passed.
+- Short first step at 393x1000, task progression after a fresh gesture at the reading end, return, all four themes and close: passed. No page errors.
+- Physical devices and native rendering were not tested.
+
+Release
+- Existing public Site version 32; source cf2dd901d256c8adbb16c382d7173f71b37b20d1.
+- Cache 06a9b3ac0b3d70fc24fd266f, 63 assets verified.
+- Archive: 88 files, SHA256 ed18c18ea4018df6752794a31f624469161e775261b7144bea792124f4d0cbb3.
+- Source helper pushed successfully; Windows shell packaging fallback used official prepare-site-build.cjs and verified native tar extraction against the clean source commit.
+- Native deployment appgdep_6ad078c0cf8c8191b6fd0217ffab4e6d succeeded.
+- https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice
+- Unrelated parent checkout work preserved; no parent repository commit or push.

@@ -1,0 +1,53 @@
+Shared panel contours and Guidance collapse — 2026-10-11
+
+Request
+- Restore collapsing Guidance by a repeated title/expand-icon tap.
+- Apply and document one resizing rule for product panels in both axes.
+
+Implementation
+- The overflowing Guidance spiral's decorative container covered its header and intercepted touches. Its wrapper is now pointerEvents="none"; the header remains above decorative artwork. The spiral scene and overflowing halo are preserved.
+- AGENTS.md now requires edge-anchor resizing for frames, glass silhouettes, masks and scanner clips. Corner cuts, notch dimensions, facet widths and stroke widths retain their authored layout-pixel sizes. Approved responsive contour breakpoints remain available.
+- Added a pure Rust panel_geometry core, with an equivalent TypeScript adapter for native rendering. Both grow straight spans and translate far-edge points; a genuinely undersized frame may shrink its corner regions uniformly.
+- PanelArtwork fits local authored SVG paths into actual layout coordinates. On web Rust owns geometry updates and its adapter owns SVG children; React owns only the host, so parent rerenders cannot replace fitted paths with the original markup. No additional GPU context or animation clock is created.
+- Converted Home masks, generic panels/borders, button fallback facets, hint/review frames, observation action frames, step panels/dropdowns and Architecture action frames. Native level frames use nine regions with fixed corner caps. Width-specific Home source contours are retained.
+- Step notches now have fixed depths/widths and follow the right edge as the panel widens. Level corner cuts stay 20px across widths and animated heights.
+- usePanelSize observes fractional border-box dimensions on web. RN Web onLayout rounded a 339.5px panel to 340px and separated the border/glass path from its mask; exact dimensions now align these surfaces.
+- Normal outlines remain 0.25px; the selected Architecture level remains 0.75px. Existing themes, scan reveal, art motion, scroll viewports, placeholder navigation, progress and automatic glass/vector quality policy are retained.
+
+Technical validation
+- Rust formatting passed; 71 Rust core tests passed, including edge translation, fixed corner offsets and interior notches.
+- All 10 shaders validated, plus GLSL-to-WGSL glass/blur validation; release wasm32 build and bindings passed.
+- WASM Clippy completed with 31 existing warnings and no new warnings from the geometry core.
+- Existing motion, renderer, quality, navigation and storage regressions: 55 passed.
+- TypeScript, Expo lint and SDK 57 web export passed.
+
+Browser validation
+- Architecture interaction/animation checks passed in Chrome/WebGPU and desktop WebKit/WebGL2, in dark 320x568, light 375x812 and neutral 768x1024 layouts. Repeated real taps at the Guidance title and minus icon collapsed the level; the title's 25%, 50% and 90% hit positions all reached its header.
+- 743 intermediate level frames (490 Chrome, 253 WebKit) retained the fixed cuts and matched fill, outline and scanner clip. Rapid reversals, shared Intensive/Guidance placeholders, return state, Basic navigation and system reduced motion passed.
+- Final Chrome panel geometry checks passed in all three themes at 320x568, 374x900, 375x400, 439x900, 440x600 and 768x1024. Home frame and mask points matched; SVG roots had no resizing viewBox, diagonal feature offsets stayed fixed, and normal strokes remained 0.25px.
+- Step frames, embedded/compact menus and hint frames passed, including actual hint wheel scrolling. A separate settled-view check confirmed that the Practice content and list stay visible after opening; initial screenshots taken before the parent reveal finished were replaced by settled checks.
+- Final desktop WebKit panel checks also passed in all three themes at the same six Home sizes, plus Practice, embedded/compact menus and hint scrolling. Reviewed the settled neutral menu and themed Home/hint/review screenshots.
+- Recording review frames passed at 320x568, 375x812 and 768x1024 in each Chrome theme, using the browser's fake audio device. Rerecord returned to the recording component.
+- No JavaScript page errors or failed HTTP responses in successful checks. The desktop WebKit runner has no MediaRecorder, so it cannot validate actual voice capture/review entry; this runner limitation is separate from panel geometry checks.
+
+Preview verification
+https://slowly-criteria-spanking-fighting.trycloudflare.com/levels
+- Current public Home, JS and WASM return HTTP 200. Public JS/WASM hashes match the final local export.
+- JS entry-c8d905f4798b0a832ed62cd14cda16a6.js: 9f2a77399dfa39651deae97437696b5c30378b11ce8480f89d889edfd5efe10e
+- watcher_graphics_bg.wasm: 444e70a20f183fb113259278bb96e8e169dbafb721335b0a72df3e8483cc0ea8
+
+Evidence
+.local-preview/panel-fixes/shared-contours-build.log
+.local-preview/panel-fixes/shared-contours-clippy.log
+.local-preview/panel-fixes/shared-contours-regression.log
+.local-preview/panel-fixes/shared-contours-export.log
+.local-preview/panel-fixes/webgpu-shared-contours.json
+.local-preview/panel-fixes/webkit-shared-contours.json
+.local-preview/panel-fixes/webgpu-panel-dimensions.json
+.local-preview/panel-fixes/webkit-panel-dimensions.json
+.local-preview/panel-fixes/shared-contours-public.json
+.local-preview/panel-fixes/webgpu-guidance-final.json
+.local-preview/panel-fixes/webkit-guidance-final.json
+
+Acceptance scope
+Desktop browser checks validate geometry and interactions. No physical iPad/Android measurement, native build or user visual approval is claimed by these checks.

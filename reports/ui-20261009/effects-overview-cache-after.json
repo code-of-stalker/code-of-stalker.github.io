@@ -1,0 +1,841 @@
+{
+  "measured": "UI requestAnimationFrame cadence; no GPU timings",
+  "screen": "/practice",
+  "level": "economy",
+  "reason": "Фиксированное качество для сравнения",
+  "reference": "economy",
+  "cadence": {
+    "p95": 1002.6000000000058,
+    "missedShare": 0.9833333333333333,
+    "refreshMs": 16.666666666666668,
+    "samples": 2,
+    "active": true
+  },
+  "frames": [
+    {
+      "label": "Перед матрицей образов"
+    },
+    {
+      "label": "Стеклянная поверхность",
+      "metrics": {
+        "density": 1,
+        "buffer": [
+          335,
+          512
+        ],
+        "source": [
+          335,
+          512
+        ],
+        "blur": [
+          168,
+          256
+        ],
+        "draws": 128,
+        "blurUpdates": 3,
+        "sourceUpdates": 3,
+        "contourUpdates": 2,
+        "idle": false,
+        "level": "economy"
+      },
+      "awaitingGlass": false
+    },
+    {
+      "label": "Сфера и два круга"
+    }
+  ],
+  "trace": [
+    {
+      "at": 153749,
+      "screen": "/home",
+      "cadence": null,
+      "level": "balanced"
+    },
+    {
+      "at": 154751,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 1,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 155988,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1000.2000000000116,
+        "missedShare": 0.9117647058823529,
+        "refreshMs": 16.666666666666668,
+        "samples": 6,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 156990,
+      "screen": "/home",
+      "cadence": null,
+      "level": "economy",
+      "change": {
+        "from": "balanced",
+        "to": "economy",
+        "reason": "Устойчивые пропуски UI-кадров ≥2 с",
+        "at": 156989.9
+      }
+    },
+    {
+      "at": 157993,
+      "screen": "/home",
+      "cadence": null,
+      "level": "economy"
+    },
+    {
+      "at": 158995,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1002.6000000000058,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 1,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 159998,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 161001,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 162004,
+      "screen": "/home",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 163131,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 1,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 164134,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 165134,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 3,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 41,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 166136,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 3,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 382,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 167139,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 5.399999999994179,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 366,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 168142,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 8.39999999999418,
+        "missedShare": 0.6344086021505376,
+        "refreshMs": 16.666666666666668,
+        "samples": 34,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 169144,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 170144,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 171147,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 172150,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.9000000000233,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 173152,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.9000000000233,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 174155,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 3.1000000000058208,
+        "missedShare": 0.15267175572519084,
+        "refreshMs": 16.666666666666668,
+        "samples": 333,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 175158,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 4.899999999994179,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 364,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 176158,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 5.099999999976717,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 363,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 177160,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 5.2999999999883585,
+        "missedShare": 0,
+        "refreshMs": 16.666666666666668,
+        "samples": 371,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 178166,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 3,
+        "missedShare": 0.6145833333333334,
+        "refreshMs": 16.666666666666668,
+        "samples": 37,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 179168,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 180168,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6000000000058,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 181171,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 182174,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 183177,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1003,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 184179,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1003,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 185179,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.2999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 186181,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 187184,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8000000000175,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 188187,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8000000000175,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 189189,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 190189,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 191192,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 192195,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 193197,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 194200,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 195203,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 196206,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 197208,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 198211,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 199214,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 200216,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6000000000058,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 201216,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6000000000058,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 202219,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 203221,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 204224,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 205224,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 206227,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.5,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 207229,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 208232,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8000000000175,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 209235,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8000000000175,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 210238,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8999999999942,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 211240,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8999999999942,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 212243,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 213245,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 214248,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6999999999825,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 215251,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7000000000116,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 216254,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 217256,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.7999999999884,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 218259,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8999999999942,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 219262,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.8999999999942,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    },
+    {
+      "at": 220264,
+      "screen": "/practice",
+      "cadence": {
+        "p95": 1002.6000000000058,
+        "missedShare": 0.9833333333333333,
+        "refreshMs": 16.666666666666668,
+        "samples": 2,
+        "active": true
+      },
+      "level": "economy"
+    }
+  ]
+}

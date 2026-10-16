@@ -964,7 +964,7 @@ export default function NetworkTestScreen() {
           )}
           {diagnostics && (
             <Link href="/sdk" asChild>
-              <Pressable accessibilityRole="button" disabled={locked} style={[styles.secondaryButton, locked && styles.muted]}>
+              <Pressable accessibilityRole="button" disabled={locked} style={StyleSheet.flatten([styles.secondaryButton, locked && styles.muted])}>
                 <Text style={styles.secondaryText}>Открыть проверку SDK</Text>
               </Pressable>
             </Link>

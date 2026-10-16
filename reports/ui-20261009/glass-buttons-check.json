@@ -1,0 +1,25 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "screens": [
+    "observation",
+    "hint"
+  ],
+  "backClose": "shared GlassIconFace with transparent glyphs and quiet reflection over black",
+  "hintClose": {
+    "backdropBlurPx": 6,
+    "width": 32.5625,
+    "height": 29.075
+  },
+  "consoleErrors": [],
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionExport": "passed",
+    "publicBundleMatchesLocal": true
+  },
+  "publicBundle": "entry-a5ae7fec3e2da9c997954917704bafd6.js",
+  "deviceReview": "pending"
+}

@@ -1,0 +1,49 @@
+Panel content scrolling — 2026-10-11
+
+Cause
+- The independent scanner-light wrapper introduced an inner flex item with
+  flexShrink: 0. Its content could grow beyond the bounded outer panel, so
+  the actual scroll viewport grew to the whole text height.
+- Reproduced in the served build at 320 x 568: the overview panel was 314px,
+  but its inner surface grew to 520px. The scroll viewport was 487px with
+  487px of content; scrollTop remained zero. The hint had the same failure:
+  a 317px outer panel, 483px inner surface and no internal scroll range.
+
+Correction
+- GlassHost's inner surface can now shrink within the outer panel and has
+  explicit zero minimum width/height. Intrinsic panels can still grow to
+  their content; padding and alignment remain on the inner surface.
+- The scanner light remains an independent, non-interactive, contour-clipped
+  sibling. No masks, animations, material, quality settings, frame loops,
+  renderer resources or Rust/WASM code were changed.
+
+Validation
+- TypeScript, Expo lint and SDK57 web export passed.
+- Chrome WebGPU: 320 x 568, 375 x 812, 768 x 1024 and 320 x 400, covering all
+  three themes. Wheel scrolling and actual emulated touch panning succeeded
+  in overflowing overview panels. Tall content that already fits stays still.
+- At 320 x 568 the restored overview viewport is 281px with 487px of content;
+  wheel offset reached 90px, touch offset 115px. Inner and outer panels are
+  both 314px high. Embedded step lists stay within the same panel.
+- Hint viewport is 282px with 448px of content, reaches its 166px end offset;
+  its fixed heading stays in place and the final line becomes fully visible.
+  The bottom fade clears at the end. No ancestors scroll accidentally.
+- Scanner light remains visible during reveal, non-interactive, unmasked
+  and the same size as the inner and outer panel. It clears at completion.
+- Desktop WebKit WebGL2: the same four sizes/themes passed for wheel scrolling,
+  bounded overview and embedded step panels, fixed hint headings, final-line
+  access, bottom fade and scanner visibility. No browser errors in either
+  engine. Touch panning was tested in Chrome, not on a physical iPad.
+- Chrome recording-review regression also passed: intrinsic panel layout,
+  visible scanner, playback, volume/mute, smooth re-record, encrypted save
+  and audio resource cleanup. No browser errors.
+- Public /home, JS and WASM returned HTTP 200; remote files match the export.
+  JS SHA256: 373ac22c85342e3c1db65b533b51b3e75cc286f331377aac8b7b9af846292db1
+  Unchanged WASM SHA256: a6b4c6f78d6e4aecfc682504ad4783642b5fd6e57289cf5ad0f9de8073adcf93
+- No new physical-device measurements or native build claim.
+
+Evidence
+- .local-preview/panel-fixes/scroll-before.json
+- .local-preview/panel-fixes/webgpu-panel-scroll.json
+- .local-preview/panel-fixes/webkit-panel-scroll.json
+- .local-preview/panel-fixes/scroll-public.json

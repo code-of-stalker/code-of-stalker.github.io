@@ -1,0 +1,47 @@
+Architecture level selection — 2026-10-11
+
+Requested change
+- Intensive uses the same temporary placeholder as Guidance when its Details action is pressed.
+- Expanding and collapsing a level must keep its corner cuts stable rather than stretch the entire SVG vertically.
+
+Implementation
+- Both unavailable levels use the existing shared modal and return button. The heading identifies the selected level, survives the closing fade, and returning preserves the expanded level. Basic still enters practice through Expo Router.
+- Web level contours are drawn in actual CSS coordinates without a viewBox scale. A pure Rust geometry core keeps the upper anchors and cut lengths fixed; only bottom anchors move with layout height. ResizeObserver forwards dimensions to the WASM adapter without per-frame React state or a new rendering clock.
+- Fill, outline and scanner glow use the same contour. Cuts remain 45 degrees, the fill follows cut corners, and outlines keep the approved 0.25px / selected 0.75px thickness.
+- Native presentation separates fixed top/bottom SVG caps from the straight middle segment so the corner caps do not stretch vertically.
+- Height and content transitions share a 620ms easing curve with a gentle start and finish. Existing content fade, scanner reveal, themed palettes, rain, artwork and Guidance spiral are retained. Automatic graphics quality logic was not changed.
+
+Technical validation
+- Rust formatting check passed.
+- Rust core: 68 tests passed, including fixed corner lengths and translated bottom anchors across widths and intermediate heights.
+- All 10 existing shaders validated; release wasm32 build and bindings generated successfully.
+- WASM Clippy completed with 31 existing warnings; no warnings from the new geometry files.
+- Existing state, motion and navigation regressions: 71 passed.
+- TypeScript, Expo lint and final SDK 57 web export passed.
+
+Browser validation against the exported build
+- Chrome/WebGPU: dark 320x568, light 375x812, neutral 768x1024; 376 sampled animation frames.
+- Desktop WebKit/WebGL2: same themes and sizes; 170 sampled animation frames.
+- Across all 546 samples, fill and outline paths matched the scanner clip, corners retained their lengths and 45-degree angles, and the contour's bottom matched the animated panel height.
+- Tested closing/opening all levels, rapid reversals, selected outline thickness, Intensive/Guidance placeholders and return state, and the Basic practice route.
+- Separate system reduced-motion cases passed in both engines. Initial scanner glow was observed and kept its independent unmasked light strip with pointer events disabled.
+- No JavaScript page errors or failed HTTP responses in either browser run.
+- Reviewed screenshots of level panels in light, dark and neutral themes and the shared placeholder.
+
+Preview verification
+https://slowly-criteria-spanking-fighting.trycloudflare.com/levels
+- Current public home and generated JS/WASM return HTTP 200 and match the local export byte hashes.
+- JS entry-be553ed772345f9e02443e13eb74e28a.js: 8717f8ad4b78e45f49b15c507a59b7f0197e28676b69fa39b4917e57f1306f72
+- watcher_graphics_bg.wasm: ed33b4698c9fb300db181aa65d4c29ef0431df392d4cd7008e69698578004169
+
+Evidence
+.local-preview/panel-fixes/level-contour-build.log
+.local-preview/panel-fixes/level-contour-clippy.log
+.local-preview/panel-fixes/level-contour-regression.log
+.local-preview/panel-fixes/level-contour-export.log
+.local-preview/panel-fixes/webgpu-level-contour.json
+.local-preview/panel-fixes/webkit-level-contour.json
+.local-preview/panel-fixes/level-contour-public.json
+
+Scope of acceptance
+Desktop browser geometry and behavior checks are technical validation. No physical iPad/Android performance measurement, native build, or user visual acceptance is claimed for this change.

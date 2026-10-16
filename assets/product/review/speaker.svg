@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <!-- Approved Laboratory voice speaker: the review Figma instance currently exports a back arrow. -->
+  <g transform="translate(5 8.3) scale(.7) translate(-108 -94)">
+    <path d="M108 100h6l8-6v22l-8-6h-6ZM127 99a9 9 0 0 1 0 12M130 95a15 15 0 0 1 0 20" stroke="#F5DD07" stroke-width=".75" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

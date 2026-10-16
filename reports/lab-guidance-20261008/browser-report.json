@@ -1,0 +1,19 @@
+{
+  "geometry": {
+    "width": 288,
+    "height": 200
+  },
+  "persistence": "settings survive modes, illustrations, reload and JSON roundtrip",
+  "renderer": {
+    "frames": 504,
+    "guideBrighter": true,
+    "svgNodes": 57
+  },
+  "reducedMotion": 0.89,
+  "english": true,
+  "mobile": {
+    "width": 390,
+    "scrollWidth": 390
+  },
+  "errors": []
+}

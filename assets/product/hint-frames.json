@@ -1,0 +1,4 @@
+{
+  "hint-header": "<svg preserveAspectRatio=\"none\" overflow=\"visible\" style=\"display: block;\" width=\"288.5\" height=\"25.5\" viewBox=\"0 0 288.5 25.5\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path id=\"Panel / Header Outline\" d=\"M288.375 0.125V25.375H0.125V0.125H288.375Z\" fill=\"none\" stroke=\"#F5DD07\" stroke-width=\"0.25\"/>\n</svg>\n\r\n",
+  "hint-body": "<svg preserveAspectRatio=\"none\" overflow=\"visible\" style=\"display: block;\" width=\"288.5\" height=\"282.5\" viewBox=\"0 0 288.5 282.5\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path id=\"Panel / Body Outline\" d=\"M288.375 0.125V282.375H0.125039V282.25L0.168984 0.25V0.125H288.375Z\" fill=\"none\" stroke=\"#F5DD07\" stroke-width=\"0.25\"/>\n</svg>\n\r\n"
+}

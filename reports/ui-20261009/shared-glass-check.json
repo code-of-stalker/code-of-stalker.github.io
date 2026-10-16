@@ -1,0 +1,28 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "materialComponent": "GlassHost",
+  "backGlass": "ready",
+  "closeGlass": "ready",
+  "buttonBackground": "transparent",
+  "extraSvgFill": false,
+  "extraReflection": false,
+  "observedBackBuffer": [
+    44,
+    42
+  ],
+  "hintCloseButtonCount": 0,
+  "hintOutsideDismiss": "passed",
+  "closeNavigation": "passed",
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionExport": "passed",
+    "publicBundleMatchesLocal": true
+  },
+  "bundle": "entry-ccc737cf35466c87815e3108260ba76c.js",
+  "sha256": "7b8e3913b5f3d4bbb951c6d0aeb8d813227a441ba8bb24a3e37e18774a4c1ab8",
+  "deviceVisualReview": "pending"
+}

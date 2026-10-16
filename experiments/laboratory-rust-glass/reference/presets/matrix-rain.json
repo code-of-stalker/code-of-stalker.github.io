@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "matrix-rain",
+  "settings": {
+    "fontSize": 10,
+    "spacing": 1.1,
+    "density": 1,
+    "speed": 0.55,
+    "trailLength": 23,
+    "glow": 1,
+    "brightness": 0.51,
+    "depth": 1,
+    "flicker": 0.22,
+    "color": "#E7E100",
+    "headColor": "#FFF7BF",
+    "backgroundColor": "#000000",
+    "characters": "katakana",
+    "seed": 73,
+    "playing": true,
+    "direction": "down"
+  }
+}

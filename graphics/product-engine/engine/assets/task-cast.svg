@@ -1,0 +1,22 @@
+<g id="task-woman" stroke-linejoin="round" stroke-linecap="round" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45">
+  <path d="M-6-45Q-10-58-3-61Q7-65 9-53L8-44L5-41L9-32L15-12Q7-7-8-11L-6-28L-11-30L-12-34L-7-44ZM-4-11L-4-1L-8 0H0L1-10M8-10L9-2L13 0H6L4-9"/>
+  <path d="M-3-48Q-7-50-5-55L-1-58L5-55L6-50L3-46L-1-47L-2-43M-4-44Q1-40 5-43M-5-39L-8-30L-6-23M7-37L12-27L14-21M-3-32L6-32M-4-26L-4-14M2-26L2-13M7-25L10-14" fill="none"/>
+  <path d="M11-23L17-24L20-15L13-13ZM12-23Q10-29 15-28Q19-27 17-24" stroke="var(--book-ink)"/>
+</g>
+<g id="task-elder" stroke-linejoin="round" stroke-linecap="round" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45">
+  <path d="M-4-47Q-9-51-5-57Q-2-62 5-59Q11-57 9-50L6-46L7-42Q12-39 12-31L9-16L6-5L9-1H2L0-14L-4-3L-9-1H-14L-8-6L-7-22L-8-35Q-9-43-4-47Z"/>
+  <path d="M-4-54Q2-59 9-53M4-52L9-51M6-46L1-46M-4-43L1-36L7-42M1-36L1-21M-4-38L-8-27L-10-25M7-37L15-26L20-25M-5-22L7-21M16-23Q20-29 21-22L20 0" fill="none"/>
+  <path d="M-2-30H2M-1-25H3M5-5H7M-10-2H-5" stroke="var(--book-dim)"/>
+</g>
+<g id="task-hiker" stroke-linejoin="round" stroke-linecap="round" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45">
+  <path d="M-4-48Q-9-53-6-58Q-3-64 4-62Q11-59 8-51L4-47L6-43L11-39L12-26L7-20L6-5L10-1H3L0-18L-5-5L-4-1H-12L-10-6L-8-24L-9-39L-4-44Z"/>
+  <path d="M-8-56Q0-65 10-56L13-54H-8M-4-51L1-47L5-49M-4-44L1-38L6-43M-8-38Q-15-42-15-34L-15-23L-8-22M-4-37L-9-24L-14-20M8-37L14-30L19-35M19-39L18 0M-6-27L7-26M-6-23L4-22M1-36V-28" fill="none"/>
+</g>
+<g id="task-child" stroke-linejoin="round" stroke-linecap="round" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45">
+  <path d="M-4-30Q-9-34-5-39Q0-44 6-39Q10-34 5-30L6-27L9-22L7-15L5-13L5-3L8-1H2L0-12L-3-3L-2-1H-8L-7-5L-6-16L-8-24L-4-28Z"/>
+  <path d="M-6-36L-2-39L2-37L7-36M-3-28L1-25L5-28M-7-24L-14-29M8-23L15-18M-5-16H6M-4-22H4M-1-34H1" fill="none"/>
+</g>
+<g id="task-dancer" stroke-linejoin="round" stroke-linecap="round" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45">
+  <path d="M-3-46Q-10-50-6-56Q-1-62 5-56Q9-51 4-46L5-41L10-35L19-43L22-52L25-52L23-40L10-29L8-23L20-10Q7-4-10-10L-7-24L-7-33L-19-39L-26-49L-24-51L-16-42L-6-40ZM-3-9L-6-2L-11 0H-3L2-8M10-8L16-1H22L19-4L14-10"/>
+  <path d="M-6-54Q-1-59 6-53M-4-42Q1-38 5-41M-5-25Q2-21 8-23M-5-20L-7-12M0-19V-11M5-19L8-10M9-18L14-11" fill="none"/>
+</g>

@@ -1,0 +1,56 @@
+<defs>
+  <linearGradient id="task-palm-shade" x1=".2" y1=".2" x2=".85" y2="1">
+    <stop stop-color="var(--book-paper)" stop-opacity=".7"/>
+    <stop offset=".55" stop-color="var(--book-cover)"/>
+    <stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="task-wrist-light" x1="0" y1="0" x2="0" y2="1">
+    <stop stop-color="var(--book-ink)" stop-opacity=".5"/>
+    <stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/>
+  </linearGradient>
+  <path id="task-palm-shape" d="M125 216C128 196 124 184 118 174C111 164 108 153 104 142C100 132 93 125 87 117C82 110 80 104 83 100C86 96 91 98 95 102L110 119C113 123 116 124 117 118C118 109 114 97 112 86L104 52C102 44 103 38 108 36C113 34 117 39 119 46L131 91C132 97 134 100 135 96C136 90 133 77 132 69L128 33C127 24 129 17 135 16C141 15 145 21 146 30L151 83C152 90 153 94 155 91L158 42C158 33 161 27 166 28C172 29 173 34 172 43L168 96C168 102 170 106 173 101L185 66C188 57 191 52 196 54C201 56 201 62 198 70L187 110C185 116 185 124 186 132C188 148 182 163 176 176C171 187 170 198 171 216"/>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="147" cy="146" rx="79" ry="63" fill="url(#task-ground)" opacity=".45"/>
+  <use href="#task-palm-shape" fill="url(#task-palm-shade)" stroke="var(--book-ink)" stroke-width=".7"/>
+  <!-- The extended fingers retain separate joints and soft, unequal fingertip pads. -->
+  <g stroke="var(--book-line)" stroke-width=".4">
+    <path d="M107 46Q109 41 114 44M108 51Q112 48 116 49M113 65Q117 62 121 64M114 68Q119 65 122 67M119 85Q124 81 129 84M120 88Q124 84 130 87"/>
+    <path d="M132 27Q136 21 141 26M132 33Q137 31 142 33M135 51Q140 48 147 51M135 54Q141 51 147 54M138 75Q145 72 150 75M138 78Q145 75 150 78"/>
+    <path d="M162 38Q166 33 169 37M161 44Q166 41 170 43M160 61Q165 59 170 62M160 64Q165 62 169 65M158 83Q163 82 168 85M158 86Q163 85 168 88"/>
+    <path d="M190 66Q194 62 197 65M187 72Q191 70 196 73M180 91Q185 89 190 93M179 94Q185 92 189 96M175 107Q180 105 185 108"/>
+    <path d="M85 105Q89 101 93 105M89 111Q94 108 98 112M98 123Q102 118 107 121M100 126Q104 122 109 125"/>
+  </g>
+  <!-- Palmar arches: heart line, head line, thenar crease and the soft heel of the hand. -->
+  <g stroke="var(--book-ink)" stroke-width=".5">
+    <path d="M119 111C127 115 133 114 142 111C154 107 165 107 179 112"/>
+    <path d="M117 126C129 120 144 124 155 130C163 134 172 135 181 133"/>
+    <path d="M115 124C126 127 134 137 135 147C137 158 132 170 130 175"/>
+    <path d="M146 173C155 161 157 145 153 135M126 183Q145 178 171 182M128 187Q149 184 170 187"/>
+  </g>
+  <g stroke="var(--book-line)" stroke-width=".32" opacity=".85">
+    <path d="M121 116Q128 119 134 116M143 115Q160 109 174 115M142 109L143 103M152 108L154 102M165 109L168 104M120 130Q131 134 134 145M121 140Q127 145 129 151M113 141Q115 152 122 160M118 155Q122 163 127 167M137 167L142 171M139 173L141 178"/>
+    <path d="M157 142Q169 142 177 139M159 147Q170 146 176 143M160 154Q169 151 173 148M160 162Q166 160 170 155M143 130L140 140L142 151M141 140L136 143M142 151L138 157"/>
+    <path d="M125 99Q129 102 133 101M136 99Q144 103 152 99M157 98Q161 102 166 101M116 115L121 119M176 118L180 123"/>
+  </g>
+  <!-- Fine oblique marks describe volume without turning the hand into a wireframe. -->
+  <g stroke="var(--book-dim)" stroke-width=".25" opacity=".7">
+    <path d="M106 54L110 57M107 59L111 62M109 73L113 76M110 78L115 81M112 92L117 95M113 98L118 102M130 36L134 40M131 41L135 45M133 58L137 62M134 63L138 67M137 84L141 88M137 89L141 93"/>
+    <path d="M169 46L165 50M169 51L165 55M167 69L163 73M167 74L163 78M193 76L188 79M192 81L187 85M188 100L182 103M183 117L179 121M183 125L179 129M181 144L177 148M179 151L174 156M177 158L171 163M174 167L169 172"/>
+    <path d="M108 137L114 142M110 145L115 149M112 152L118 157M116 162L122 167M120 171L125 175M122 176L128 179M136 123L137 126M142 125L143 129M149 128L149 132M163 117L164 122M169 118L170 124"/>
+  </g>
+  <g stroke="url(#task-wrist-light)" stroke-width=".45">
+    <path d="M133 189C135 197 134 206 133 216M160 189C155 201 155 208 157 216M148 190L145 216M128 193L128 209M168 192L166 213"/>
+  </g>
+  <!-- The existing Rust breath phase moves these sensory contours by only a few pixels. -->
+  <g class="task-breath-contour" transform="translate(144 114)">
+    <path d="M-26 19C-16 24-9 34-11 45M11 13C20 19 30 20 37 18M-10 67Q5 62 22 65" stroke="var(--book-bright)" stroke-width=".45"/>
+    <path d="M-29 23Q-21 32-20 42M15 23Q25 27 34 24M-7 72Q7 69 20 71" stroke="var(--book-line)" stroke-width=".3"/>
+  </g>
+  <path class="task-air task-flow" d="M145 203C144 182 151 174 151 158C151 144 141 139 142 126C143 111 144 93 143 81C142 65 139 44 139 31" stroke="var(--book-bright)" stroke-width=".5" stroke-dasharray="3 78"/>
+  <g class="task-air" fill="var(--book-bright)">
+    <circle cx="111" cy="45" r=".6"/><circle cx="137" cy="26" r=".65"/>
+    <circle cx="165" cy="37" r=".55"/><circle cx="194" cy="63" r=".5"/>
+    <circle cx="89" cy="105" r=".5"/>
+  </g>
+</g>

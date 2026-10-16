@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="36" height="20" viewBox="0 0 36 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Control / Toggle / Off">
+<rect x="0.5" y="0.5" width="35" height="19" fill="black" fill-opacity="0.7"/>
+<rect x="0.5" y="0.5" width="35" height="19" stroke="#B69D4B"/>
+<path id="Control / Toggle Thumb" d="M5 4H17V16H11L5 10V4Z" fill="#B69D4B"/>
+</g>
+</svg>

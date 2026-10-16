@@ -1,0 +1,35 @@
+Diary glass and composer alignment — 2026-10-11
+
+Changes
+- Diary-only Matrix background opacity is 0.32. Home and Levels retain their existing rain.
+- Composer input and voice button share a responsive 44px / 48px base height. The input still grows to 116px for multiline drafts, then resets after save.
+- Diary panels, input and controls use the existing Rust GlassHost with the shared effects-quality controller. Decorative glass never captures touches and does not replay scanner reveals on interaction.
+- Prompt, message and header-icon contours retain fixed corner cuts using fitPanelPath. GlassOutline supplies the single 0.25px contour.
+- Removed the eye icon's opaque frame and the prompt/input substitute fills. Existing eye and lips glyphs are preserved.
+- Diary audio, filter and voice-composer controls use the same glass surface. Shared screens, renderer, quality thresholds and persisted user data were not changed.
+
+Technical verification
+- npm run typecheck: passed.
+- npm run lint -- --no-cache: passed.
+- 36 existing tests passed: Diary repository/filter regressions; glass geometry; effects quality; motion visibility.
+- Web export: passed.
+- Chrome and Windows WebKit interaction/layout checks: passed, no page errors. Sizes 320x568, 375x812, 768x1024; dark, light and neutral themes.
+- Empty input and lips button tops/heights agree within 0.5px. Multiline expansion, text save/reset, date filtering, source toggle, bookmark collection, eye navigation and draft protection passed.
+- Chrome fake-microphone check: record, review, save, playback and volume adjustment passed. Diary timer remains 15:00; assignment label remains 3 minutes.
+- The first extended voice check stopped at an ambiguous test locator (seek and volume are both sliders). Named volume locator rerun passed; no application change was needed.
+
+Visual review
+- Reviewed Chrome dark/light/neutral Diary screenshots and the voice-capture screen. Background is quieter; glass facets and corner cuts are visible; composer alignment is correct.
+- Physical iPad/Android performance and microphone input were not measured in this task.
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com/diary
+Public JS and WASM are HTTP 200 and byte-identical to the final local export.
+JS SHA-256: 311a0d39aee12256b4240a6cdbc09f11d3f78f072154554d30f56fa6a0cfb987
+WASM SHA-256 (unchanged): 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1
+
+Evidence
+.local-preview/panel-fixes/chrome-diary-glass-qa.json
+.local-preview/panel-fixes/webkit-diary-glass-qa.json
+.local-preview/panel-fixes/chrome-diary-glass-voice-qa.json
+.local-preview/panel-fixes/diary-glass-public.json

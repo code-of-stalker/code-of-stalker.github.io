@@ -1,0 +1,41 @@
+Step two assignments and launch update checks - 2026-10-16
+
+Product behavior
+Web version discovery starts with bootstrap, without waiting for window load or requestIdleCallback, then repeats every minute while visible and online. Focus/resume/reconnect also check. A stalled fetch aborts at 10 seconds and later checks recover. The running shell is pinned to its installed worker release before activating an update. Existing idle/dirty-text/recording/modal/reading guards still defer reload.
+
+Step two
+After both introductory reading chapters: (1) Notice today, an illustrated prompt without recording; (2) life as a book, another illustrated prompt; (3) four separately saved voice-answer questions; (4) the supplied body/One/Author text in three illustrated pages. All supplied meaning retained, whitespace and orthography normalized. The existing recorder, review, encrypted store and Diary are shared. New answers carry questionText snapshots and are filtered by level, step and question. Closing appears after all four answers. Final completion checks committed step-two answers and records an additive secondStepCompletedAt; the first-step deadline is preserved. Task/question/closing stage resumes across reloads.
+
+Graphics
+Five new Rust scenes: hero-discernment, life-book, body-breath, body-senses, author-intention. Approved book silhouette retained with opaque body material. Geometry, retained SVG authoring, animation sample and transforms live in Rust step_two_tasks.rs and svg_motion.rs. TypeScript provides content/state/layout and existing Rust transition adapters. Theme mapping, visibility pause, reduced-motion and approved reading/book animations retained. Shared web ScrollGate now installs its entry-gesture listener even without an external reading controller; this prevents the first wheel gesture from remaining blocked in standalone task pages.
+
+Code validation
+96 graphics tests and 21 native bridge/kernel tests passed; GLSL/WGSL shaders validated; main/tiny WASM releases and native graphics asset generated. Rust formatting and Clippy passed, with existing warnings. Typecheck and Expo lint passed after final UI changes. Bootstrap 6, worker/cache 11, encrypted storage 12, Diary 6 and resume 6 selected tests passed. Native storage tests use node --experimental-transform-types for the repository's existing TypeScript parameter properties.
+
+Browser validation
+Cache bf7cf86b503399334675fe69. 393x852 Economy: all seven reading pages lead into tasks, two illustrated prompts, prompt-back navigation, task restoration on reload, four actual fake-device microphone captures and review saves, encrypted metadata inspection, closing-page forward/back navigation, explicit completion and restored closing stage. 320x568 High: ordinary articles retained, both prompts, real CDP touch advances exactly one page, long question stays readable, all closing blocks, normal motion changes and reduced motion stays static, no horizontal document overflow. A seeded isolated closing preview without answers correctly rejects completion. Screenshots inspected; no page errors in successful scopes.
+
+Native validation
+Android and iOS Hermes bundle exports passed with the new local Rust graphics runtime. The first sandboxed export could not write its Hermes temporary output; the permitted retry completed both targets. Bundle export is not an APK build or physical-device validation.
+
+Evidence
+.local-preview/step-two-tasks/validation-summary.json
+.local-preview/step-two-tasks/main-393-checks.json
+.local-preview/step-two-tasks/narrow-checks.json
+.local-preview/step-two-tasks/native-export/metadata.json
+
+Publication result appended after native Sites confirmation.
+
+Final update-script check
+Cache ecc70c8bd9d5023488e60206 keeps every tested app/font/art/WASM asset byte-identical to browser QA cache bf7cf86b503399334675fe69. Only index.html (release label) and graphics-cache-updates.js changed to keep the 10 second deadline through JSON body reception. All 7 bootstrap regressions pass, including stalled headers and body.
+
+Published
+Sites v61, succeeded
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Source: de6a22083fc60f7a156efbd3e0286c84af18600e
+Version ID: appgprj_6acce501d4988191938370d0410d080b~appgver_63a66a16fde4819194b6b015f16a8b69
+Deployment ID: appgdep_6ad21a7518308191b2f13a02bb15e405
+Native completion: 2026-10-16T12:37:44.205239+00:00
+Archive: C:\Users\qtas5\Documents\Codex\2026-10-02\new-chat\watcher-matrix-check\.local-preview\sites-watcher\watcher-step-two-tasks-20261016.tar.gz
+Archive SHA256: 898f68d610918416d92f8e2e479708726c574282e17e6c910fd3bbfc02277d5d
+93 archive files and 66 manifest assets verified. Source helper push succeeded before its Windows packaging-command failure; verified static staging/tar fallback used. Final lint passed.

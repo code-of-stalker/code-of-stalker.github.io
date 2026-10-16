@@ -1,0 +1,49 @@
+Architecture reading panel — immersive scroll expansion
+
+The opening composition retains the approved illustration and notched StepPanel.
+Scrolling consumes the illustration area, extends actual frame edges to the
+safe viewport, and continues into normal reading. Reverse scrolling restores
+the composition. No text scale, changing line length, or stretched corner cuts.
+At 320 x 568 the reading viewport grows from 272px to 502px.
+
+Implementation:
+- ReadingExpansion owns bounded scroll-driven geometry. Counter-insets keep the
+  text column fixed; viewport growth and the scroll runway balance each other.
+- Minimum runway uses current-frame geometry rather than previous measured
+  height, so short text on a tall display cannot clamp scrollTop back to zero.
+- Header grows by intrinsic padding, preserving the fitted double notch and
+  a persistent accessible close button. Hidden step menus preserve read position.
+- ReadingDragSurface drives the same ScrollGate from the hero: mouse wheel on
+  web, touch on web/native. No extra scroller or background animation loop.
+- Hero fades/moves out and stops its animation when hidden. Inline illustrations
+  retain their existing visibility measurement, playback and palettes.
+- Existing reading/task boundary gestures, cooldown screen and task layout stay
+  intact. No data schema, stored progress, voice or cache-update changes.
+
+Validation:
+- Lint and TypeScript passed after the final source change.
+- Fresh Expo export and Sites preparation passed; 63 cache assets byte/hash checked.
+- 32 existing scroll-gate, glass/contour and practice-resume tests passed.
+- Browser geometry checks at 320x568, 393x852, 768x1024: forward/reverse scroll,
+  stable line width/font, text displacement matching scroll (within 2px),
+  stable scroll range (within rounding), full safe-viewport bounds, menu return.
+- Final package browser interactions: real wheel and CDP touch over illustration,
+  short Step 1 at 393x1000, reading -> task -> back, theme changes and close.
+- Zero pageerror events. Screenshots visually reviewed for opening, intermediate,
+  full-screen and light-theme states. Browser emulation is not physical-device QA.
+- Evidence: .local-preview/book-projection/expansion-layout-checks.json,
+  expansion-checks.json, expansion-*.png.
+
+Sites release:
+Project appgprj_6acce501d4988191938370d0410d080b, existing public audience.
+Source 56c7a691486e24f27fe1f382c3a03411e4668606; saved version 30.
+Cache 0c997e1104d00757f2d387d3.
+Archive .local-preview/sites-watcher/watcher-reading-expansion-20261014.tar.gz
+SHA256 3695d30943bf0e6cbfd8f28f9a7695256db258765333d43dfbf1ad22b6da3a81
+88 archive files verified against source and extraction.
+Official source helper pushed the Site source; its Bash packager failed on
+Windows. Used official prepare-site-build.cjs plus verified native tar fallback.
+The parent Expo checkout has unrelated ongoing work; it was not committed/pushed.
+Native deployment appgdep_6acfe06052748191b22c8659195fe345: succeeded.
+URL https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Confirmed 2026-10-14T20:05:09Z (2026-10-15 local session date).

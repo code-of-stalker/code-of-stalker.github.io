@@ -1,0 +1,41 @@
+Diary panels and local backup update — 2026-10-13
+
+Implemented
+1. Date, records and Architecture level headings in diary filters now include existing themed icons; optional basic-step heading also has an icon.
+2. Diary information explains local password-protected database copies and opens export directly in the existing bottom sheet. The creation and acknowledgement actions stay visible below the scrolling explanation on small screens.
+3. Filters, diary information, deletion confirmation, backup export and restoration use the shared double-panel component: measured title header, 10px gap, content below, one scanner for the composed sheet. Existing fixed-height report panels remain supported.
+4. The local-storage info glyph is now a readable 16px circle with an i; its stroke remains 0.75 layout pixels.
+5. Architecture answer-list panels use the glass material, with the current theme accent for a selected row instead of hardcoded orange in neutral mode. The header grows with its content.
+6. Text editor title divider uses a measured SVG rule with a 0.25px stroke rather than a CSS border that browsers round to one physical pixel. The rule does not enter the closed-contour geometry fitter.
+
+Backup contract
+- Maximum encrypted file: 512 MiB, raised from 256 MiB in export, import, aggregate validation and repository guards.
+- Existing WATCHER-BACKUP-V1 files remain supported. Encryption format, password derivation, metadata cap and per-record audio cap are unchanged.
+- Browser storage quota is not changed by the backup file limit.
+- Shared export form is used in both diary and settings. It blocks repeated submissions/closing during creation, releases its operation guard after unmount and clears decrypted audio buffers after export. Updates are deferred during export.
+- Native backup settings remain unavailable; the new direct-export action and explanation are web-only.
+
+Checks
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- node --experimental-transform-types --test src/features/product/state/backup.test.mjs src/features/product/state/backup-storage.web.test.mjs: 12 passed.
+- Backup limit regressions accept 504 MiB aggregate audio, reject more than 512 MiB, and reject oversized imports before reading file bytes. Aggregate tests reuse a 24 MiB buffer rather than allocate a 512 MiB archive.
+- Chrome / WebGPU UI checks passed at 320x568, 390x844 and 600x900. Double-panel bounds, single scanner, heading icons, date picker and filter apply, visible backup action, deletion cancel and retained records, settings export, SVG divider, dark theme and neutral answer-list selection verified.
+- Direct diary export downloaded an encrypted copy containing a newly saved text and a recorded audio file. Password decryption recovered both; UI contained no page errors.
+- Visual screenshots and detailed UI results: .local-preview/diary-panels-backup/qa.json and adjacent PNGs.
+- No physical iOS/Android validation performed in this task.
+
+Web build
+- Expo web export and Sites preparation passed.
+- Existing project: appgprj_6acce501d4988191938370d0410d080b.
+- Cache snapshot: 6c5db784038325a518f8f438; 56 graphics/runtime assets, 34,852,431 bytes.
+- Existing encrypted diary/audio storage is separate from the updated graphics cache.
+
+Publication
+- Version 12 deployed successfully through Sites.
+- Pushed source commit: c8a7ca7973bf2115c2739efbfeb2bf5e13d7d2e3; remote HEAD and clean checkout verified by the source workflow before packaging.
+- Windows package subprocess could not start; official prepare-site-build.cjs fallback produced the static archive. All 81 extracted files matched the staged output and source assets by SHA-256.
+- Archive SHA-256: d9e2d94519d20466936c2856cf1fc202bd5e49ade34c9ed2afa243a6436689ad.
+- Saved version: appgprj_6acce501d4988191938370d0410d080b~appgver_9be652ea3c3481918250c63346265748.
+- Deployment: appgdep_6ace0758bea8819193bc7fd22a3d6188; status succeeded.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site

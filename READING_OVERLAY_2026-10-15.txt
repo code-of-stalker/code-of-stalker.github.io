@@ -1,0 +1,22 @@
+Expanded reader: remove the reserved header strip
+
+Changes
+- Step control floats in an absolute overlay. Initial header spacing and text top inset dissolve to zero during expansion; text and artwork scroll beneath the controls.
+- The overlay passes touches through outside the step button. The dropdown alone retains clearance so its options remain usable.
+- Compact step button has a local glass face: approved 6px background blur and 65% themed fill on web, shared DiaryGlass material on native. No backdrop across the full header.
+- Automatic expansion/reversal and initial notched panel remain functional.
+
+Validation
+- Lint and typecheck passed. 36 existing snap/scroll/glass/resume tests passed.
+- Final static browser QA at 320x568, 393x852, 768x1024: reader bounds equal the entire scene; first text starts within 0.5px of its top; no reserved strip; text width/font retained; original composition restored.
+- Wheel, released touch in both directions, touches between controls, dropdown, short first step, task progression/return, all four themes and close passed; no page errors.
+- Screenshots inspected, including glass face over readable page text. Physical devices/native visuals not tested.
+
+Release
+- Public Site version 33; source c49b37b9e774e760d871a3c4eaf6c978d6ec63cf.
+- Cache ff859c629ee9a1c355386ec1; 63 assets verified.
+- Archive 88 files; SHA256 bbaeb91893ed8cfbb039f932e675faf3efed19b5f09abf5a36324ba9e709ff81.
+- Windows source helper pushed; official prepare-site-build.cjs and verified native tar fallback packaged the exact clean source commit.
+- Deployment appgdep_6ad0837be5608191bece436401487e90 succeeded.
+- https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice
+- Parent repository's unrelated work preserved; no parent commit/push.

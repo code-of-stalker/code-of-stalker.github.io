@@ -1,0 +1,66 @@
+{
+  "at375": {
+    "panel": {
+      "bottom": 792,
+      "height": 368.7250061035156,
+      "left": 20,
+      "right": 355.20001220703125,
+      "top": 423.2749938964844,
+      "width": 335.20001220703125,
+      "x": 20,
+      "y": 423.2749938964844
+    },
+    "text": {
+      "mask": "linear-gradient(to left, rgba(0, 0, 0, 0), rgb(0, 0, 0) 6.00913%, rgb(0, 0, 0) 97.6746%, rgba(0, 0, 0, 0))",
+      "rect": {
+        "bottom": 792,
+        "height": 328.0249938964844,
+        "left": 20,
+        "right": 355.20001220703125,
+        "top": 463.9750061035156,
+        "width": 335.20001220703125,
+        "x": 20,
+        "y": 463.9750061035156
+      },
+      "scrollHeight": 638
+    },
+    "sheet": {
+      "animation": "watcher-sheet-enter",
+      "rect": {
+        "bottom": 792,
+        "height": 368.7250061035156,
+        "left": 20,
+        "right": 355.20001220703125,
+        "top": 423.2749938964844,
+        "width": 335.20001220703125,
+        "x": 20,
+        "y": 423.2749938964844
+      },
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    "marquee": "paused"
+  },
+  "at320": {
+    "panel": {
+      "bottom": 552,
+      "height": 317,
+      "left": 16,
+      "right": 304,
+      "top": 235,
+      "width": 288,
+      "x": 16,
+      "y": 235
+    },
+    "text": {
+      "height": 282,
+      "scrollHeight": 448
+    }
+  },
+  "scrollEnd": {
+    "clientHeight": 328,
+    "scrollHeight": 638,
+    "scrollTop": 309.6000061035156
+  },
+  "voicePausesAndResumes": true,
+  "errors": []
+}

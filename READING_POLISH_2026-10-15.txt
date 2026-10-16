@@ -1,0 +1,23 @@
+Close alignment, projection containment and repeating book
+
+Changes
+- Reading close button keeps the same right gutter throughout expansion and reversal; only its existing vertical adjustment remains.
+- Reflection silhouettes are uniformly fitted inside their panes, with padding for heads and feet. Body and scanner share a clip from the exact pane path. Approved silhouette geometry and the central hero are unchanged.
+- Book repeats its approved 14-second scene after a 2-second closed hold. Closed geometry is not redrawn during the hold. Offscreen/background pauses and reduced-motion still presentation remain supported.
+
+Validation
+- Lint and typecheck passed; web export succeeded.
+- Four palette book checks: closure, frozen closed hold, another full opening, chest pulse (~1.55x), pause during the second cycle, reduced motion; no browser errors.
+- Eight insert checks across four palettes: repeat/pause; reflection body bounds inside pane fill and matching clipping at multiple animation phases. Projection screenshots inspected.
+- Final static application browser QA: 320x568, 393x852, 768x1024. Close x remained respectively 260, 329, 548 in initial, intermediate, expanded and restored states.
+- Book reopened in the actual reading screen and stopped after scrolling away. Wheel, released touch both ways, overlay controls, menus, short first step/task progression/return, four themes and close passed; no page errors.
+- Native visuals/physical devices not tested.
+
+Release
+- Public Site version 34, source 515a3583c3a95cb7dd02901d887910bc4eb3af48.
+- Cache cebf799e8f9c7bf47958e163; 63 assets verified.
+- Archive 88 files, SHA256 9e07dbf48b3b18c2d9bc2bed870e1d38eebeb81ac582c682b51ae456b816da14.
+- Source helper pushed; Windows packaging fallback used official prepare-site-build.cjs and verified native tar extraction from that clean source commit.
+- Deployment appgdep_6ad0875ecd588191a7a8b62e87d04c64 succeeded.
+- https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice
+- Parent checkout's unrelated work preserved; no parent commit/push.

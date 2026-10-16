@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <title>Убрать оформление</title>
+  <g stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.5 17 7.5 4 11.25 13.75M4.23 12.5h6.54"/>
+    <path d="m11 17.75 6.25-6.25a.7.7 0 0 1 1 0l3.5 3.5a.7.7 0 0 1 0 1l-4.25 4.25h-4L11 17.75Z"/>
+    <path d="m14.25 14.5 4.5 4.5M17.5 20.25H22"/>
+  </g>
+</svg>

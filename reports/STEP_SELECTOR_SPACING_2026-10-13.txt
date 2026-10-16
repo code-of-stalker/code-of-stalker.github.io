@@ -1,0 +1,37 @@
+Step selector spacing — 2026-10-13
+
+Changed both native and web task selectors, plus the embedded introduction and
+cooldown selector. Removed viewport-dependent distribution between rows.
+Adjacent labels now have 20 CSS/layout pixels of separation (16px row padding
+plus 4px gap). The frame follows measured content height and the measured
+intrinsic header. Fixed corners, notch dimensions and 0.25px outlines are kept.
+The available viewport remains a maximum height; short screens scroll.
+Opening waits for the content measurement so the full-height frame is not shown.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- Expo web export and Site preparation: passed.
+- Isolated Chrome mobile layout checks: passed, zero page errors.
+- 393x1200 and 393x1000: equal menu height; list content 294px, no overflow.
+- 320x1000: fitted labels remain single-line and >=12px; natural list 255px.
+- 393x360: list viewport 169px, scroll content 294px; step 7 reachable.
+- 393x1400 intro and cooldown: list 324px, bounded 20px gaps, no empty space.
+- Intro fitted frame 358px; header toggles close the menu.
+- Screenshots reviewed: tall-menu.png and intro-tall.png under .local-preview/step-spacing.
+- Archive verified against the pushed Site source: 83 files, SHA-256 checked.
+- Physical iOS and native device behavior have not been tested in this turn.
+
+Publication:
+Site project: appgprj_6acce501d4988191938370d0410d080b
+Version: 18
+Commit: d5bb736644ef5f9c7fd34a3f80e7f3dccc889c0e
+Cache snapshot: 75941bc1ea4883a769946efb
+Deployment: appgdep_6ace35ef65808191bff2ccc8b3be3633
+Status: succeeded
+Updated: 2026-10-13T13:45:40.924670+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+
+The Sites workflow committed, pushed and verified the source, then its Windows
+packaging launch failed. The official prepare-site-build.cjs fallback produced
+the archive from that clean committed source. Native saving and deployment succeeded.

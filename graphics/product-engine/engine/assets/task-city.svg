@@ -1,0 +1,38 @@
+<g class="task-city" stroke-linecap="round" stroke-linejoin="round">
+  <g class="task-city-buildings" stroke="var(--book-line)" stroke-width=".58">
+    <g class="building building-left-low">
+      <path d="M28 76H52V141H28Z" fill="var(--book-paper)"/><path d="M52 76L58 70V141H52Z" fill="var(--book-edge)"/>
+      <path d="M28 76L34 70H58L52 76Z" fill="var(--book-cover)"/>
+    </g>
+    <g class="building building-left-high">
+      <path d="M54 43H87V141H54Z" fill="var(--book-paper)"/><path d="M87 43L94 37V141H87Z" fill="var(--book-edge)"/>
+      <path d="M54 43L61 37H94L87 43Z" fill="var(--book-cover)"/>
+    </g>
+    <g class="building building-left-mid">
+      <path d="M91 65H112V141H91Z" fill="var(--book-paper)"/><path d="M112 65L119 59V141H112Z" fill="var(--book-edge)"/>
+      <path d="M91 65L98 59H119L112 65Z" fill="var(--book-cover)"/>
+    </g>
+    <g class="building building-right-mid">
+      <path d="M178 54H205V141H178Z" fill="var(--book-paper)"/><path d="M205 54L212 48V141H205Z" fill="var(--book-edge)"/>
+      <path d="M178 54L185 48H212L205 54Z" fill="var(--book-cover)"/>
+    </g>
+    <g class="building building-right-high">
+      <path d="M211 31H239V141H211Z" fill="var(--book-paper)"/><path d="M239 31L246 24V141H239Z" fill="var(--book-edge)"/>
+      <path d="M211 31L218 24H246L239 31Z" fill="var(--book-cover)"/>
+    </g>
+    <g class="building building-right-low">
+      <path d="M245 86H263V141H245Z" fill="var(--book-paper)"/><path d="M263 86L269 80V141H263Z" fill="var(--book-edge)"/>
+      <path d="M245 86L251 80H269L263 86Z" fill="var(--book-cover)"/>
+    </g>
+  </g>
+  <g class="task-city-windows" fill="none" stroke="var(--book-ink)" stroke-width=".55">
+    <path d="M34 87H45M34 97H45M34 107H45M62 55H69M75 55H81M62 67H69M75 67H81M62 79H69M75 79H81M62 91H69M75 91H81M62 103H69M75 103H81M97 76H105M97 87H105"/>
+    <path d="M185 66H197M185 78H197M185 90H197M218 44H224M230 44H235M218 57H224M230 57H235M218 70H224M230 70H235M218 83H224M230 83H235M250 99H258M250 109H258"/>
+  </g>
+  <path class="task-city-street" d="M20 141H270" fill="none" stroke="var(--book-bright)" stroke-width=".55"/>
+  <g class="task-city-lamp" fill="none" stroke="var(--book-line)" stroke-width=".5">
+    <path d="M126 141V62M126 66H113V71M122 141H130M126 60Q131 56 136 60"/>
+    <ellipse cx="113" cy="73" rx="5" ry="2" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".4"/>
+  </g>
+  <g class="task-city-cast"><use href="#task-book-city-people"/></g>
+</g>

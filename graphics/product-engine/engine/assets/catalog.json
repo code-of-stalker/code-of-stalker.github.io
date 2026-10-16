@@ -1,0 +1,112 @@
+[
+  {
+    "kind": "cells",
+    "sourceSha256": "42c9b5a320f3ce06bf586e963b8447d7dcd5a6ae7283d0ddc303a85b332c6523",
+    "vectors": 51,
+    "runtime": "Rust/wgpu",
+    "duration": 12,
+    "fields": 36,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS"
+  },
+  {
+    "kind": "diary",
+    "sourceSha256": "44b9fe6546148cc91945ee6350aa2defce56ab5404d7748131d70fd628b789cb",
+    "vectors": 51,
+    "runtime": "Rust/wgpu",
+    "duration": 35,
+    "fields": 51,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS"
+  },
+  {
+    "kind": "basic",
+    "sourceSha256": "2f4860d07bfc4303319310672304c991351f79c7f91332190843255fe7b93046",
+    "vectors": 20,
+    "runtime": "Rust/wgpu",
+    "duration": 8,
+    "fields": 7,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS"
+  },
+  {
+    "kind": "voice",
+    "sourceSha256": "48c7595e6c7546d0fd2a17ed793e65802b8f94e9bd253a7773226e9d1e56d366",
+    "vectors": 109,
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "guidance",
+    "duration": 10.999999999999998,
+    "sourceSha256": "7dcee3ec34d4887f8248ccf2de6b32a5298fda0d90de87237b699702a01bb04d",
+    "vectors": 35,
+    "fields": 33,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "parallel",
+    "duration": 11,
+    "sourceSha256": "c393344b2f91fc469b130fe463f2539d15051d31be95796768b29d72aa017202",
+    "vectors": 160,
+    "fields": 308,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "intensive",
+    "duration": 12,
+    "sourceSha256": "342341cd015976f52720d57493d00df5f1ab65130863ad3d4d1fd295f04635d8",
+    "vectors": 119,
+    "fields": 107,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "insight",
+    "duration": 13.2,
+    "sourceSha256": "122bc691e075a9a047ed8b70ffea0333d0546541b5a9a9e090cc92f8e88de134",
+    "vectors": 185,
+    "fields": 190,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "attention",
+    "sourceSha256": "03cb8301793fe4b329d028188b90722ca46b2a579310c6cee16be79545d8d406",
+    "fields": 11,
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "comparison",
+    "sourceSha256": "c998ece6d7d53e316f54df7206c67cf1d8e63671f5b6039a385721d9a52da1da",
+    "fields": 8,
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "crowd",
+    "sourceSha256": "0d21bc17f4c7b5b46243303a5c06ae8b577c39244f099fe6f5b9f18494e9b00f",
+    "fields": 4,
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "gallery",
+    "sourceSha256": "cb14002f7ca81fff2867e1a890205a66e1910d6f039eeeb1c3280bec56b88305",
+    "image": "gallery.webp",
+    "note": "Original supplied raster artwork; immutable atlas, motion and shader rendered by Rust/wgpu",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "mirror",
+    "sourceSha256": "4ca2be34c766affba7f83a1899748192761e82c1d9fad728a32835f708341078",
+    "image": "mirror.webp",
+    "note": "Original supplied raster artwork; immutable atlas, motion and shader rendered by Rust/wgpu",
+    "runtime": "Rust/wgpu"
+  },
+  {
+    "kind": "distance",
+    "sourceSha256": "f746a02d8233be916d7b287125740c3e74ce1533b9e0b9f7d79b97840a02f1c4",
+    "vectors": 49,
+    "runtime": "Rust/wgpu",
+    "duration": 10,
+    "fields": 28,
+    "interpolation": "Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS"
+  }
+]

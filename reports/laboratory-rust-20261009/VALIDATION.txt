@@ -1,0 +1,46 @@
+Laboratory Rust glass experiment — 2026-10-09
+
+Implemented
+- Browser renderer: Rust -> WASM, wgpu 30.0.1; WebGPU or forced WebGL2.
+- Original Laboratory GLSL translated/validated by Naga 30.0.1 at build time.
+- Same static input image, preset and panel geometry for the Three.js reference and Rust.
+- Maximum pixel ratio 2, cached blur, touch/reveal/pulse motion, one active renderer.
+- 20-second comparison with 2-second warmup, nearest-rank p95 and slow-frame share.
+- Comparison results export as JSON. No analytics or upload endpoint.
+- Source in experiments/laboratory-rust-glass and in Laboratory/experiments/rust-glass.
+- Laboratory button opens /rust-glass/index.html in a separate tab. Existing engines remain.
+
+Passed
+- Naga glass and blur validation, release wasm32 build, wasm-bindgen generation.
+- 2 Rust motion tests and 3 JavaScript tests (uniforms, blur normalization, frame statistics).
+- Experiment TypeScript and ESLint.
+- Watcher root npm run typecheck and npm run lint.
+- Laboratory npm run build, including tsc -b; Vite reports existing large-chunk warnings.
+- Chrome: Three.js, Rust BrowserWebGpu and forced Rust Gl initialize/draw without console errors.
+- Rust WebGL2 reacts to density change 2 -> 1.5 (807 x 1009 render target for the observed panel).
+- Both measurement cycles reached the result table, including start from a paused frame.
+- Narrow viewport DOM: width 360, scrollWidth 360, stage width 328, canvas 652 x 816 at density 2.
+- Integrated Laboratory navigation opens the experiment's index.html.
+- HTTPS phone URL loads the Rust WebGPU module successfully in desktop Chrome.
+
+Limitations / not confirmed
+- No new real-device measurements on Tecno or iPad this turn.
+- Desktop browser occlusion caused 1 Hz scheduling in some measurements. These samples are
+  not evidence for or against a Rust speedup; they only verified the measurement workflow.
+- Same shader equations and visual inspection do not prove pixel-identical output across GPUs.
+- Static background, one panel; moving images, video and several simultaneous panels untested.
+- No native Android embedding, no complete Laboratory migration, no automatic quality controller.
+- No claim of lower battery consumption, thermal load or faster rendering on Tecno yet.
+
+Running previews
+- Laboratory: http://127.0.0.1:7474/
+- Comparison: http://127.0.0.1:7488/
+- Temporary phone link: https://comparable-theft-provide-existed.trycloudflare.com/
+  Link needs this computer and its experiment server/tunnel to keep running.
+- Only the compiled experiment dist is exposed by this temporary tunnel.
+
+Phone check
+Open the HTTPS link on Tecno. Check appearance, reveal and drag in both modes.
+Run each 20-second measurement at density 2 without leaving the page or changing settings.
+Repeat in reverse order after the phone cools down. If needed enable Rust via WebGL2.
+Send the resulting table or downloaded JSON; no account, password or Matrix data is needed.

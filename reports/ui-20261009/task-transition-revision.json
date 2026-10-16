@@ -1,0 +1,350 @@
+{
+  "measurementBundle": "entry-14a6475dcca2892378e15cc99acb8abd.js",
+  "finalBundle": "entry-d9b0b8368049102244468b1df0c366e2.js",
+  "finalBundleDifference": "Covered voice effects pause without changing the media-session active flag or geometry.",
+  "forward": {
+    "before": [
+      {
+        "box": {
+          "height": 656.2000122070312,
+          "width": 323.4679870605469,
+          "x": 25.866003036499023,
+          "y": 87.9000015258789
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 246.49717712402344,
+              "width": 323.4679870605469,
+              "x": 25.866003036499023,
+              "y": 382.00787353515625
+            },
+            "title": "Сравнение образов"
+          }
+        ],
+        "id": "task-panel-1-current",
+        "opacity": "1",
+        "transform": "matrix(0.965, 0, 0, 0.965, 0, 0)"
+      },
+      {
+        "box": {
+          "height": 680,
+          "width": 335.20001220703125,
+          "x": 20,
+          "y": 76
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "0",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 335,
+              "width": 335.20001220703125,
+              "x": 20,
+              "y": 318
+            },
+            "title": "Наблюдающий"
+          }
+        ],
+        "id": "task-panel-2-prepared",
+        "opacity": "0",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
+      }
+    ],
+    "atSwitch": [
+      {
+        "box": {
+          "height": 656.2000122070312,
+          "width": 323.4679870605469,
+          "x": 25.866003036499023,
+          "y": 87.9000015258789
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 246.49717712402344,
+              "width": 323.4679870605469,
+              "x": 25.866003036499023,
+              "y": 382.00787353515625
+            },
+            "title": "Сравнение образов"
+          }
+        ],
+        "id": "task-panel-1-leaving",
+        "opacity": "1",
+        "transform": "matrix(0.965, 0, 0, 0.965, 0, 0)"
+      },
+      {
+        "box": {
+          "height": 680,
+          "width": 335.20001220703125,
+          "x": 20,
+          "y": 76
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "0",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 335,
+              "width": 335.20001220703125,
+              "x": 20,
+              "y": 318
+            },
+            "title": "Наблюдающий"
+          }
+        ],
+        "id": "task-panel-2-current",
+        "opacity": "0",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
+      }
+    ]
+  },
+  "reverse": {
+    "before": [
+      {
+        "box": {
+          "height": 428.4599609375,
+          "width": 277.9200134277344,
+          "x": 21.040002822875977,
+          "y": 79.7699966430664
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 277.9200134277344,
+              "width": 277.9200134277344,
+              "x": 21.040002822875977,
+              "y": 199.42999267578125
+            },
+            "title": "Наблюдающий"
+          }
+        ],
+        "id": "task-panel-2-current",
+        "opacity": "1",
+        "transform": "matrix(0.965, 0, 0, 0.965, 0, 0)"
+      },
+      {
+        "box": {
+          "height": 444,
+          "width": 288,
+          "x": 16,
+          "y": 72
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "0",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 219.6000061035156,
+              "width": 288,
+              "x": 16,
+              "y": 287.20001220703125
+            },
+            "title": "Среди людей"
+          }
+        ],
+        "id": "task-panel-3-prepared",
+        "opacity": "0",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
+      }
+    ],
+    "atSwitch": [
+      {
+        "box": {
+          "height": 428.4599609375,
+          "width": 277.9200134277344,
+          "x": 21.040002822875977,
+          "y": 79.7699966430664
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 277.9200134277344,
+              "width": 277.9200134277344,
+              "x": 21.040002822875977,
+              "y": 199.42999267578125
+            },
+            "title": "Наблюдающий"
+          }
+        ],
+        "id": "task-panel-2-leaving",
+        "opacity": "0.959643",
+        "transform": "matrix(0.965, 0, 0, 0.965, 0, 0)"
+      },
+      {
+        "box": {
+          "height": 444,
+          "width": 288,
+          "x": 16,
+          "y": 72
+        },
+        "frames": [
+          {
+            "opacities": [
+              "1",
+              "1",
+              "0",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "rect": {
+              "height": 219.6000061035156,
+              "width": 288,
+              "x": 16,
+              "y": 247.1999969482422
+            },
+            "title": "Сравнение образов"
+          }
+        ],
+        "id": "task-panel-1-current",
+        "opacity": "1",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
+      }
+    ]
+  },
+  "menus": {
+    "start375": {
+      "glass": [
+        {
+          "height": 1,
+          "width": 1
+        }
+      ],
+      "height": 452,
+      "opacity": "0",
+      "transform": "matrix(1, 0, 0, 1, 0, 422.92)",
+      "transition": "opacity 0.36s cubic-bezier(0.22, 0.8, 0.2, 1), transform 0.36s cubic-bezier(0.22, 0.8, 0.2, 1)",
+      "width": 335,
+      "x": 20,
+      "y": 762.9201049804688
+    },
+    "end375": {
+      "glass": [
+        {
+          "height": 452,
+          "width": 335
+        }
+      ],
+      "height": 452,
+      "opacity": "1",
+      "transform": "matrix(1, 0, 0, 1, 0, 0)",
+      "transition": "opacity 0.36s cubic-bezier(0.22, 0.8, 0.2, 1), transform 0.36s cubic-bezier(0.22, 0.8, 0.2, 1)",
+      "width": 335,
+      "x": 20,
+      "y": 340
+    },
+    "second320": {
+      "menu": {
+        "height": 386,
+        "width": 288,
+        "x": 16,
+        "y": 166
+      },
+      "panelOpacity": "1",
+      "question": {
+        "bottom": 154,
+        "height": 82,
+        "y": 72
+      }
+    },
+    "third320": {
+      "gap": 12,
+      "list": {
+        "height": 231,
+        "total": 231
+      },
+      "menu": {
+        "height": 301,
+        "width": 288,
+        "y": 251
+      },
+      "menuFrames": 1,
+      "question": {
+        "bottom": 239,
+        "height": 167,
+        "y": 72
+      }
+    },
+    "voice320": {
+      "gap": 54,
+      "menu": {
+        "height": 333,
+        "width": 288,
+        "y": 219
+      },
+      "question": {
+        "bottom": 165,
+        "height": 16,
+        "y": 149
+      }
+    }
+  }
+}

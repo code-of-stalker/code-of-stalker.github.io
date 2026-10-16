@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="130" viewBox="0 0 288 130" fill="none" stroke="#E7E100" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" role="img" aria-labelledby="watcher-archive-dark-title">
+  <title id="watcher-archive-dark-title">Архив моментов — иллюстрация Дневника</title>
+  <desc>Три слоя памяти с отпечатком голоса на верхнем носителе. Статичная векторная иллюстрация с прозрачным фоном.</desc>
+  <defs>
+    <linearGradient id="watcher-archive-dark-surface" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#E7E100" stop-opacity=".13" />
+      <stop offset=".65" stop-color="#E7E100" stop-opacity=".01" />
+      <stop offset="1" stop-color="#E7E100" stop-opacity=".08" />
+    </linearGradient>
+    <radialGradient id="watcher-archive-dark-halo">
+      <stop stop-color="#E7E100" stop-opacity=".13" />
+      <stop offset="1" stop-color="#E7E100" stop-opacity="0" />
+    </radialGradient>
+    <filter id="watcher-archive-dark-glow" x="-100%" y="-100%" width="300%" height="300%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="2.6" />
+    </filter>
+  </defs>
+  <ellipse cx="148" cy="78" rx="82" ry="46" fill="url(#watcher-archive-dark-halo)" stroke="none" />
+  <g opacity="0.24" stroke-width="0.8">
+    <path d="M64 95L145 123 232 94M66 99V91M230 98V90M145 127V121" />
+    <path d="M71 38H87M79 34V42M225 42H238M231.5 36V48" />
+    <path d="M68 61H56V80H43M44 77V83" />
+  </g>
+  <g>
+    <g transform="translate(0 38)">
+      <path d="M84 45L151 24 212 46V54L145 76 84 53Z" opacity="0.5" fill="#0A0C05" />
+      <path d="M84 45L151 24 212 46 145 68Z" opacity="0.5" fill="#0A0C05" />
+      <path d="M145 68V76M92 53L135 68M154 68L203 52" opacity="0.24" />
+      <path d="M95 52L135 65" opacity="0.5" />
+      <path d="M107 56L110 57M115 59L118 60M123 62L126 63" opacity="0.5" stroke-width="0.8" />
+    </g>
+    <g transform="translate(0 19)">
+      <path d="M84 45L151 24 212 46V54L145 76 84 53Z" opacity="0.5" fill="#0A0C05" />
+      <path d="M84 45L151 24 212 46 145 68Z" opacity="0.5" fill="#0A0C05" />
+      <path d="M145 68V76M92 53L135 68M154 68L203 52" opacity="0.24" />
+      <path d="M95 52L135 65" opacity="0.5" />
+      <path d="M103 55L106 56M111 58L114 59M119 61L122 62" opacity="0.5" stroke-width="0.8" />
+    </g>
+    <g>
+      <path d="M84 45L151 24 212 46V54L145 76 84 53Z" fill="#0A0C05" />
+      <path d="M84 45L151 24 212 46 145 68Z" fill="#0A0C05" />
+      <path fill="url(#watcher-archive-dark-surface)" stroke="none" d="M84 45L151 24 212 46 145 68Z" />
+      <path d="M145 68V76M92 53L135 68M154 68L203 52" opacity="0.5" />
+      <path d="M110 43L148 31 184 44 146 56Z" opacity="0.24" />
+      <path d="M110 43L148 31 184 44 146 56Z" fill="#E7E100" fill-opacity="0.07" stroke="none" />
+      <g transform="matrix(1 .34 1 -.32 119 44)">
+        <g stroke="#E7E100" stroke-width="3" filter="url(#watcher-archive-dark-glow)" opacity="0.45">
+          <path d="M5 -5V5M11 -8V8M17 -10V10M23 -5V5M29 -7V7" />
+        </g>
+        <path d="M0 -2V2M5 -5V5M11 -8V8M17 -10V10M23 -5V5M29 -7V7M34 -2V2" />
+      </g>
+      <path d="M84 45L151 24 212 46 145 68Z" stroke="#FFF7BA" stroke-dasharray="20 350" />
+      <path d="M95 52L135 65" opacity="0.5" />
+      <circle cx="202" cy="53" r="1.3" fill="#E7E100" stroke="none" />
+      <path d="M103 55L106 56M111 58L114 59M119 61L122 62" opacity="0.5" stroke-width="0.8" />
+    </g>
+  </g>
+  <path d="M225 61V87H247" opacity="0.5" stroke-dasharray="5 85" />
+  <path d="M246 84H252V90H246Z" opacity="0.24" />
+</svg>

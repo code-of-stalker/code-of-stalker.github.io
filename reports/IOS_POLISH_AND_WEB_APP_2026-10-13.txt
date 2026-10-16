@@ -1,0 +1,33 @@
+Task labels, recording alignment/list lifecycle, and installed web app setup — 2026-10-13
+
+Changes:
+- Fit long step labels and full step-panel titles to one line using loaded-font metrics and actual width. Font size never falls below 12. At the floor, tighten tracking when necessary. Restore normal size/tracking when more width is available. Native text uses automatic fitting with a minimum scale.
+- Center both the recording hint and time-limit line on their shared metadata axis, including the compact voice layout.
+- After successful deletion of the final answer, close the recording list. Keep the list visible while other answers remain; failed deletions retain it.
+- Add a stable root-scoped web app manifest (id '/', start_url '/', scope '/', display 'standalone'), Apple web-app tags and existing application icon. Include manifest/icon in the versioned graphics cache. Preparation is deterministic and idempotent.
+
+Cause/evidence for iOS report:
+The previous exported HTML had no web-app manifest or Apple web-app metadata. Product routes use Expo Router and stay on the same origin/document. The reported browser controls are consistent with iOS treating subsequent navigation as outside the installed app's navigation scope; exact iPhone behavior has not been reproduced on physical hardware. Explicit root scope and standalone metadata remove the missing configuration. An existing installation may retain its old configuration. Preserve a local diary backup before removing/reinstalling an installed web app.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- 15 web-cache/update tests: passed (includes manifest idempotency, all internal routes in scope, cached manifest/icon, no diary/audio mutations, update rollback).
+- Browser QA: all seven labels fit at widths 320/375/393/430, minimum 12px, full text visible; sizing/tracking recover when widening.
+- Centering verified at 393x652, 320x568 and 393x480.
+- Two actual synthetic audio recordings: deletion of first keeps the list, deletion of final closes it and restores capture UI.
+- Internal Home→Diary and Home→Architecture navigation keeps document, origin and browser surface. No page errors.
+- Chrome manifest parser: no errors; scope covers the root origin.
+- Physical iOS Home Screen installation and native app were not tested.
+
+Evidence: .local-preview/ios-polish/qa.json, single-line-steps.png, manifest.mjs.
+Cache: 5cdb6e82b04936935a98c893; 58 assets; 35,245,204 bytes.
+
+Published version 17: succeeded 2026-10-13T13:22:35.453264Z.
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Source HEAD: 22c93fd71483c3fce66bfa5c7f8ea0e2bdbb19ab (clean Site checkout, source helper verified remote).
+Saved version: appgprj_6acce501d4988191938370d0410d080b~appgver_1a6273cf7e3081918e1dd50aff02a05b
+Deployment: appgdep_6ace308635ac819183e385088bb35269
+Verified archive: .local-preview/sites-watcher/watcher-deploy-v17.tar.gz, 83 files.
+Archive SHA-256: 2b7aaee4440bfeccb377b41fa34570282ddc2ed85dae88f333f37c9e13cd5c3d.
+Live production Chrome manifest parser also passed: manifest loaded from the published domain with no errors, scope is the full site root.

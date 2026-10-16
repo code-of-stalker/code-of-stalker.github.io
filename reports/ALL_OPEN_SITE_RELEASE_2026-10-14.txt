@@ -1,0 +1,39 @@
+Missing «Всё открыто» on the hosted Settings screen — resolved
+
+Root cause: the earlier switch/book/inline-animation changes had only been
+implemented and tested on the local development server. The hosted Site still
+served version 28 without the switch, even in a fresh browser profile.
+This was not reproduced as a service-worker/cache update defect. No cache code
+was changed and no user browser data was cleared.
+
+Published version 29 to the existing public Site; audience and origin preserved.
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site/settings
+Project: appgprj_6acce501d4988191938370d0410d080b
+Version ID: appgprj_6acce501d4988191938370d0410d080b~appgver_562f4b9ad160819184f912e056970d92
+Deployment: appgdep_6acfd9c1a0048191adcbc148482f2b73 — succeeded
+Pushed Site source: 6fcf13dbebf226096abcffac796ce24339fbd3fd
+Old cache: 1f33a3740e534cd68c50aed5
+New cache: b0ba2b9a43fa0c48e9fdabd7
+
+Validation:
+- All 15 cache/update regression tests passed.
+- Lint, TypeScript and fresh Expo web export passed.
+- All 63 precache assets verified against byte counts and SHA-256.
+- Exact static release browser checks passed: toggle persistence, second-step
+  opening/selector, disabling access, and explicit cooldown preview.
+- Kept an isolated browser tab on the OLD live Site throughout publication.
+  The app's existing periodic update logic installed the new worker and reloaded
+  the old settings screen automatically, without manual reload/update/clearing.
+- New toggle visible; direct second-step entry includes reflections, single hero
+  and book. Astral preference and a saved test diary note survived the update.
+- New settings and enabled preference also work offline. Zero pageerror events.
+- Evidence: .local-preview/book-projection/live-update-checks.json,
+  live-updated-settings-offline.png, live-updated-step.png.
+- Physical mobile devices were not tested.
+
+Packaging: Site source helper successfully pushed the source, but its Bash
+packager failed on Windows. Used the same official prepare-site-build.cjs,
+native tar, and extracted-file/source hash verification; 88 files matched.
+Archive: .local-preview/sites-watcher/watcher-all-open-20261014.tar.gz
+SHA-256: a552a9f99926bf2d3dcce018eb0076a0235c68ca8a5ee3909afdc9e83fd3b58d
+The Expo parent checkout was not committed or pushed.

@@ -1,0 +1,15 @@
+{
+  "src/components/architecture/ArchitectureControls.tsx": "8266d43fb5dc5c2ff43e0b57f654625409803e63ef29c4f595e419862230a596",
+  "src/components/architecture/ArchitectureCover.tsx": "2ea7e90a758e95bead0cc8c37208b5295abe7564caff28afdb0b11a7a74e0d44",
+  "src/components/architecture/architectureExport.ts": "6533d3c587d30adfc692c167a204f4bd83c800b494e441d35eaf1bb94bbe425c",
+  "src/components/architecture/ArchitectureParallelControls.tsx": "89cf2744d9f63791d95ceaa41e624cf00a56b57f2891134c635c4a8d0b9e9569",
+  "src/components/architecture/architectureSettings.ts": "33e733bb744501022eea852b37529eb049c22c3650c854fbc2501c4a4dbc2a5d",
+  "src/components/architecture/parallel.test.tsx": "302eb4768fd5370effb24d6d970b13813422e7196cc34bf30bae3d790e13444d",
+  "src/components/architecture/ParallelCover.tsx": "f2a7747a47a963d2f7fc7405f44e1475f475ae756ce594fd1c9dff1197754146",
+  "src/components/architecture/parallelGeometry.ts": "aabb04eb63420df86c61751c6f054d8bdced06fbd5d232d8f0a29da0cde7fc7b",
+  "src/components/architecture/parallelRenderer.ts": "fd8c493cf8033032d363ebaf7eb3183e46f14adcd01be682556e51e22f6b8122",
+  "src/components/architecture/parallelSettings.ts": "7ea06b296595defc6b6050434b70de006b25b98674ed6bbe9ca57219e80a437b",
+  "src/components/workbench/ComponentsWorkspace.tsx": "336e871f46f84844036cd5714c1720f6463c1898c7886eab87e94b82dadd2529",
+  "src/components/workbench/HomeComponentsPreview.tsx": "1f2d8a8ab721e7dec16111466eab4bb4de0350148e3bbdcc91dfa8ebe58d4a3a",
+  "src/components/workbench/HomeSectionPreview.tsx": "ddaf7d43b5647fb6f129102089b2b56e68d4e923ab0ade42b8e006107a7d1acd"
+}

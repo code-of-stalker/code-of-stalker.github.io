@@ -1,0 +1,68 @@
+Web themes and updated Architecture — 2026-10-10
+
+Preview: https://furnished-teddy-earl-webmasters.trycloudflare.com/home
+
+Implemented
+- Step 2 in Light uses the full-color sand gallery from the user's reference.
+  The approved transparent portrait source is a texture atlas, not a video or
+  static substitute. Portrait motion, refraction, hero light, particles,
+  orbits and matrix movement continue in Rust.
+- Neutral theme is enabled and persisted. Its blue/cream palette follows the
+  previously developed Laconic theme. Gallery secondary colors are subdued;
+  cream remains a local light accent instead of filling the whole figure.
+- Scrolling content under fixed headers fades at the viewport edge, including
+  the Settings audio-check section. Web uses a CSS alpha mask updated by a
+  passive scroll listener without React renders. The native adapter uses an
+  Animated gradient; no native-device visual acceptance is claimed here.
+- Light icon buttons retain the Rust glass surface and get a 0.10 px SVG
+  contour in the theme accent. There is no added GPU glass pass for the outline.
+- Architecture Basic, Intensive and Guidance layouts follow the updated Figma
+  states, with their exact panel/action contours, notes icon, text and arrow.
+  Live Rust animations replace static illustrations. Guidance uses the
+  Laboratory double helix named "parallel", not its separate "guidance" junction.
+- Web Tektur Medium and SemiBold are explicit instances of the bundled variable
+  font (wdth 100, weights 500/600). This fixes WebKit builds which ignore its
+  variable weight. Glyphs, spacing and responsive sizing are preserved.
+  Native continues using the original variable font. Original OFL is retained.
+
+Rendering and quality
+- Palette changes preserve scene IDs, dimensions, draw counters, animation
+  clocks, geometry and existing pipelines. Atlas textures/bind groups are cached;
+  an unvisited theme's gallery atlas is uploaded only when needed.
+- Sand gallery bypasses universal orange duotone recoloring. Neutral coloring
+  stays in the existing final presentation shader without another render pass.
+- Automatic quality and its glass-first policy were not modified. Glass and
+  vector densities remain independent; glass reaches 1 before animation density
+  falls. Vector default remains 2.5 and the minimum remains 1.5.
+
+Validation
+- TypeScript: tsc --noEmit passed.
+- Expo: lint and final web export passed.
+- Rust: 61 core tests passed; affected source formatting passed; release WASM
+  compiled. All affected WGSL and generated GLSL paths passed Naga validation.
+- WASM Clippy passed with the existing non-blocking warnings (31 library and
+  2 build-script warnings). Dependencies/toolchain pins were not changed.
+- Motion regression suite: 51 tests passed. Font-loading regression: 2 passed.
+- Browser QA: Chrome WebGPU (8 layout states), Chrome WebGL2 (3), Windows WebKit
+  WebGL2 (3). Sand/neutral galleries advance; theme selection survives reload;
+  light glass and the scroll fade are present. No page errors or failed requests.
+- Additional final font/layout QA: 5 layouts each in Chrome and WebKit across
+  widths 320/375/768. Regular < Medium < SemiBold raster coverage confirmed in
+  both engines; correct families selected; no horizontal page overflow.
+- Public JavaScript and WASM return HTTP 200 and exactly match the final local
+  build hashes in .local-preview/theme/final-public.json.
+- Physical iPad/Safari WebGPU and Android visual acceptance or performance were
+  not measured in this run. Desktop WebKit is not evidence of device frame rate.
+
+Sources and evidence
+Figma file b5l8kCQuSr5EKf658lq1JZ: Basic 1130:41572, Intensive 1201:693,
+Guidance 1204:882, within the user's page 1130:41188.
+Sand texture: gallery-sand-transparent-v4.webp from the earlier theme preview;
+SHA256 954bf2c7051e6e7beddfe544a798035ebd770b99cd5acfd83420c8a4ff023e52.
+Reproduction tools: scripts/product-art/prepare-level-theme-sources.mjs,
+scripts/product-art/prepare-tektur-web.py (fontTools 4.63.0, build tool only),
+graphics/product-engine/prepare-raster-assets.py.
+Technical checks and screenshots: .local-preview/theme/.
+Expo Font SDK 57: https://docs.expo.dev/versions/v57.0.0/sdk/font/
+Pinned wgpu API: https://docs.rs/wgpu/30.0.1/wgpu/struct.Texture.html
+Font instances: https://fonttools.readthedocs.io/en/latest/varLib/instancer.html

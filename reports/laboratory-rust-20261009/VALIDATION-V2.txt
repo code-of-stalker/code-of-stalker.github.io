@@ -1,0 +1,72 @@
+Laboratory Rust glass — moving-scene workload v2 — 2026-10-09
+
+CORRECTION AFTER TECNO FEEDBACK
+The user reported that Observer did not play in either engine. Investigation found
+that a new dangerouslySetInnerHTML object on each React render replaced the SVG when
+metrics updated, restarting its animation about every 700ms. Prior render and pause
+checks did not validate sustained motion. The v2 benchmark is not proof of full SVG
+animation load. Fixed in v3 with stable SVG content and live transform/node monitoring.
+Keep the records below as historical checks; use VALIDATION-V3.txt for the correction.
+
+Scope delivered
+- Default scene: original Laboratory Matrix rain behind the glass, with the existing
+  AttentionAwareness SVG animation (Наблюдающий) inside the panel.
+- Three selectable workloads: static glass, glass + rain, glass + rain + Observer.
+- Same Canvas2D rain implementation, deterministic seed/preset, SVG, geometry and
+  density for the Three.js reference and Rust renderer. Default/max density: 2.
+- Rain updates at up to 30 fps. Both engines upload newly painted source frames and
+  invalidate their two-pass background blur. Rust uses the external-canvas copy API;
+  no per-frame getImageData readback was introduced.
+- Only one glass engine is alive at a time. Pause and hidden-tab handling also pause
+  the SVG. Measurement restarts the scene and records the workload and rain update rate.
+- Export schemaVersion 2, benchmark rain-observer-v2, file laboratory-rust-comparison-v2.json.
+- Rain and SVG were reused as browser components, not rewritten in Rust. This is a
+  comparison of the glass engines under the same additional scene load.
+
+Passed in this update
+- Release wasm32 build and wasm-bindgen generation; Naga glass/blur shader validation.
+- 2 Rust motion tests, 5 JavaScript checks, experiment TypeScript and ESLint.
+- Watcher root npm run lint and npm run typecheck.
+- Vite production build. Informational bundle-size warning remains in this isolated
+  comparison page, which contains both reference renderer and the original SVG asset.
+- Desktop Chrome: live source renders with Three.js WebGL2, Rust WebGPU and forced Rust
+  WebGL2. No console errors observed in those modes. The reference shader emitted its
+  existing potentially-uninitialized-variable compiler warning.
+- Rust WebGL2 source resizing at density 2 -> 1 -> 2, including narrow viewport.
+- Narrow viewport: document clientWidth/scrollWidth 360/360; stage outer size 328 x 410;
+  at density 2 render target 652 x 816. SVG fits within the panel content at 241.55 x 176.10.
+- Pause changes the SVG play state to paused and suspends displayed metrics.
+- Rust full-scene measurement completed and JSON download parsed successfully with scene,
+  rain preset, source dimensions, density, motion preference and nonzero sourceUpdates.
+- Reference full-scene measurement also reached the result table. The differing desktop
+  and mobile viewport sizes correctly triggered the comparison-conditions warning.
+- Workload selection switched between full scene, rain only and static; final preview
+  was reset to the full scene, density 2, Current engine. Temporary viewport override removed.
+- Updated experiment installed in Laboratory public/rust-glass and experiments/rust-glass.
+  The integrated HTML and bundled font return HTTP 200; installed WASM hash matches dist:
+  89F913BBDD00ECC4A7FEBAC621D916BCDE4B6D259AF4036ED08758767D9EAFD0.
+- HTTPS phone preview loaded the new bundle and Rust backends successfully in Chrome.
+
+Evidence
+- rain-observer-mobile.jpg: narrow viewport, Rust WebGL2, paused for a clear scene image.
+- desktop-v2-workflow-only.json: downloaded report used to validate the export schema.
+  Desktop occlusion throttled requestAnimationFrame to around 1 Hz for parts of this
+  sample. It is workflow evidence ONLY, not a renderer performance comparison.
+- The user's earlier v1 Tecno report used a static source at density 1; its FPS must
+  not be compared directly with this new density-2 animated workload.
+
+Still requires real-device validation
+- New measurements on Tecno with the full scene, identical settings and visible tab.
+- Visual approval on Tecno/iPad, thermals, sustained responsiveness and battery impact.
+- No claim of a Rust speedup, no native Android integration and no complete Laboratory
+  port. Several simultaneous panels and video are outside this bounded experiment.
+
+Preview
+https://comparable-theft-provide-existed.trycloudflare.com/
+Laboratory integration: http://127.0.0.1:7474/rust-glass/index.html
+The temporary HTTPS preview requires this computer, server 7488 and its tunnel running.
+
+Phone procedure
+Refresh to see EXPERIMENT 02 / Стекло · живая сцена. Keep the default full workload and
+density 2. Measure Current, then Rust for 20 seconds each without leaving the page.
+Download the v2 JSON. Prefer another pair in reverse order after the phone cools down.

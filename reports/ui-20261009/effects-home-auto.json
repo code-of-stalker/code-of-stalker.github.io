@@ -1,0 +1,343 @@
+{
+  "measured": "UI requestAnimationFrame cadence; no GPU timings",
+  "screen": "/home",
+  "level": "balanced",
+  "reason": "Новый экран: сбалансированное качество",
+  "reference": null,
+  "cadence": {
+    "p95": 13.900000000001455,
+    "missedShare": 0.47337278106508873,
+    "refreshMs": 16.666666666666668,
+    "samples": 89,
+    "active": true
+  },
+  "frames": [
+    {
+      "label": "Матричный дождь"
+    },
+    {
+      "label": "Ощути себя",
+      "metrics": {
+        "density": 1.5,
+        "buffer": [
+          502,
+          459
+        ],
+        "source": [
+          502,
+          459
+        ],
+        "blur": [
+          0,
+          0
+        ],
+        "draws": 13,
+        "blurUpdates": 0,
+        "sourceUpdates": 2,
+        "contourUpdates": 1,
+        "idle": true
+      }
+    },
+    {
+      "label": "Архив моментов",
+      "metrics": {
+        "density": 1.5,
+        "buffer": [
+          502,
+          459
+        ],
+        "source": [
+          502,
+          459
+        ],
+        "blur": [
+          0,
+          0
+        ],
+        "draws": 15,
+        "blurUpdates": 0,
+        "sourceUpdates": 1,
+        "contourUpdates": 1,
+        "idle": true
+      }
+    }
+  ],
+  "trace": [
+    {
+      "at": 27948,
+      "screen": "/settings",
+      "cadence": null,
+      "level": "balanced"
+    },
+    {
+      "at": 28951,
+      "screen": "/settings",
+      "cadence": null,
+      "level": "balanced"
+    },
+    {
+      "at": 30520,
+      "screen": "/home",
+      "cadence": null,
+      "level": "balanced"
+    },
+    {
+      "at": 32039,
+      "screen": "/home",
+      "cadence": null,
+      "level": "balanced"
+    },
+    {
+      "at": 33256,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 34259,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 35261,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 36264,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 37267,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 38269,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 39272,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 40275,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 41277,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 42280,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 43283,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 44285,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 45288,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 46291,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 47293,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 48296,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 49299,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 50301,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 51304,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 52307,
+      "screen": "/home",
+      "cadence": {
+        "p95": 899.8000000000029,
+        "missedShare": 0.8846153846153846,
+        "refreshMs": 16.666666666666668,
+        "samples": 12,
+        "active": true
+      },
+      "level": "balanced"
+    },
+    {
+      "at": 53310,
+      "screen": "/home",
+      "cadence": {
+        "p95": 13.900000000001455,
+        "missedShare": 0.47337278106508873,
+        "refreshMs": 16.666666666666668,
+        "samples": 89,
+        "active": true
+      },
+      "level": "balanced"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "kind": "reflections",
+    "duration": 14.6,
+    "sourceSha256": "9cc8cb1406f9f897b8d1e8f9dea9e3c5a386f6f0c81288ec73f18ff3c2c1e7fd",
+    "svgBytes": 75545,
+    "full": {
+      "fields": 73,
+      "knots": 11647,
+      "bytes": 179562
+    },
+    "soft": {
+      "fields": 78,
+      "knots": 11615,
+      "bytes": 179353
+    }
+  },
+  {
+    "kind": "single-hero",
+    "duration": 14,
+    "sourceSha256": "50241cbada0fe23721ade162ffa0bae4d6e3e7f0b264d9e2e6f2300ed12be1c2",
+    "svgBytes": 82780,
+    "full": {
+      "fields": 150,
+      "knots": 14092,
+      "bytes": 578615
+    },
+    "soft": {
+      "fields": 155,
+      "knots": 14016,
+      "bytes": 578982
+    }
+  },
+  {
+    "kind": "identity-imprints",
+    "duration": 16,
+    "sourceSha256": "05840bfa9787f22d55080feecb2ef1c0eb444eb64d021ddc8fcf5c48b191412e",
+    "svgBytes": 32331,
+    "full": {
+      "fields": 26,
+      "knots": 7180,
+      "bytes": 112286
+    },
+    "soft": {
+      "fields": 26,
+      "knots": 6606,
+      "bytes": 105398
+    }
+  },
+  {
+    "kind": "lived-paths",
+    "duration": 16,
+    "sourceSha256": "b40e6ccdb6687a71a2380cd4769ec5d79dd27cc4fabc07feccd1527a2627f296",
+    "svgBytes": 86076,
+    "full": {
+      "fields": 6,
+      "knots": 48,
+      "bytes": 1119
+    },
+    "soft": {
+      "fields": 6,
+      "knots": 48,
+      "bytes": 1119
+    }
+  },
+  {
+    "kind": "dream-world",
+    "duration": 26,
+    "sourceSha256": "685eb3da0497f8b80b69b847537adf9a3d987ce1bf6276462db83e516f8957b9",
+    "svgBytes": 125292,
+    "full": {
+      "fields": 35,
+      "knots": 8973,
+      "bytes": 199625
+    },
+    "soft": {
+      "fields": 35,
+      "knots": 8963,
+      "bytes": 199505
+    }
+  },
+  {
+    "kind": "dream-wake",
+    "duration": 18,
+    "sourceSha256": "e67c6013111573ad17bfb61c76994c211948dc3f3b4f6ecbedff25b426da1346",
+    "svgBytes": 134014,
+    "full": {
+      "fields": 41,
+      "knots": 10279,
+      "bytes": 7358103
+    },
+    "soft": {
+      "fields": 41,
+      "knots": 9548,
+      "bytes": 5969223
+    }
+  },
+  {
+    "kind": "dream-inward",
+    "duration": 24,
+    "sourceSha256": "b3ab80fa36e952d6b53e5a4e5f8d70fb866306856844415533248fc550bbad47",
+    "svgBytes": 255892,
+    "full": {
+      "fields": 471,
+      "knots": 37022,
+      "bytes": 671482
+    },
+    "soft": {
+      "fields": 471,
+      "knots": 36662,
+      "bytes": 669290
+    }
+  },
+  {
+    "kind": "dreamer",
+    "duration": 24,
+    "sourceSha256": "36559c3704afc4f8c508e389fa56b7dff1ecce1f3cbc97379f440edd38daa24f",
+    "svgBytes": 99484,
+    "full": {
+      "fields": 26,
+      "knots": 9505,
+      "bytes": 1606071
+    },
+    "soft": {
+      "fields": 26,
+      "knots": 9267,
+      "bytes": 1603215
+    }
+  },
+  {
+    "kind": "book",
+    "duration": 16,
+    "sourceSha256": "536dd715755f4348f5e87b2d910cdf11abf6906a354da8f216eb5826e55f2b08",
+    "svgBytes": 105904,
+    "full": {
+      "fields": 162,
+      "knots": 28781,
+      "bytes": 3301995
+    },
+    "soft": {
+      "fields": 162,
+      "knots": 8902,
+      "bytes": 3063447
+    }
+  }
+]

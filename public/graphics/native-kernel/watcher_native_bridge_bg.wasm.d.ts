@@ -1,0 +1,31 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_nativekernel_free: (a: number, b: number) => void;
+export const inflate_runtime: (a: number, b: number, c: number) => void;
+export const nativekernel_active: (a: number, b: number) => void;
+export const nativekernel_configure_reading_focus: (a: number, b: number, c: number, d: number) => void;
+export const nativekernel_create: () => number;
+export const nativekernel_drag_reading: (a: number, b: number, c: number, d: number) => void;
+export const nativekernel_frame: (a: number, b: number, c: number) => void;
+export const nativekernel_frame_reading: (a: number, b: number, c: number) => void;
+export const nativekernel_frame_reading_focus: (a: number, b: number, c: number) => void;
+export const nativekernel_frame_text: (a: number, b: number, c: number) => void;
+export const nativekernel_insert: (a: number, b: number, c: number) => void;
+export const nativekernel_mapping: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+export const nativekernel_moving: (a: number) => number;
+export const nativekernel_observe_reading: (a: number, b: number, c: number, d: number) => void;
+export const nativekernel_reading_focus_geometry: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const nativekernel_register_reading: (a: number, b: number, c: number, d: number) => void;
+export const nativekernel_register_reading_focus: (a: number, b: number, c: number) => void;
+export const nativekernel_register_text: (a: number, b: number, c: number, d: number, e: number) => void;
+export const nativekernel_remove: (a: number, b: number) => void;
+export const nativekernel_set: (a: number, b: number, c: number) => void;
+export const nativekernel_stop: (a: number, b: number) => void;
+export const nativekernel_target: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+export const nativekernel_text_active: (a: number, b: number, c: number, d: number) => void;
+export const typography: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const __wbindgen_add_to_stack_pointer: (a: number) => number;
+export const __wbindgen_export: (a: number, b: number) => number;
+export const __wbindgen_export2: (a: number, b: number, c: number) => void;
+export const __wbindgen_export3: (a: number, b: number, c: number, d: number) => number;

@@ -1,0 +1,65 @@
+External microphone capture — 2026-10-14
+
+Reported by user: Android Chrome/PWA with an OTG wireless microphone receiver.
+Recording started but the saved file was silent; Telegram recorded successfully.
+The exact cause on that physical phone/receiver is not confirmed remotely.
+
+Previous web implementation requested the browser-selected source without a
+device ID, with echoCancellation/noiseSuppression enabled. Diary and architecture
+tasks share useObservationRecorder, so the same capture behavior affected both.
+
+Changes:
+- Added a browser-only microphone input chooser in Settings; selection persists
+  in the existing encrypted settings. The optional field is backwards compatible.
+- Refresh the browser-exposed input list on devicechange and after permission.
+- Automatic mode prefers available inputs labelled USB/BT/external/headset.
+- Explicit choices use deviceId.exact. A failed/disconnected choice is not
+  silently replaced with the phone input; readback mismatch is reported.
+- Request unprocessed input; do not force sample rate or channel count. A
+  compatibility retry preserves the chosen device ID and relaxes processing only.
+- Re-enumerate after permission when external devices were initially hidden.
+- Cancelled/late streams are stopped; the analyser is not connected to output.
+- Warn after 3.5 seconds of no detected samples and in the review of a silent
+  recording. Missing/suspended metering does not cause a false silence warning.
+- On track ending, stop capture and retain the already-recorded partial draft.
+- Warnings do not automatically delete audio or prohibit saving a draft.
+- Native recording adapters are unchanged; this fix targets the reported web use.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- 14 routing/lifecycle/signal regression checks plus 22 encrypted storage/backup
+  checks: all 36 passed with Node --experimental-transform-types.
+- Browser tests used genuine Chrome getUserMedia/MediaRecorder/AudioContext with
+  synthetic input identities and controlled WAV audio; this is not physical OTG QA.
+- Tone recording: 4.2 seconds, 34,316 bytes; decoded RMS 0.25754 (audible signal).
+- Silence recording: 4.2 seconds, 1,276 bytes; decoded RMS about 2e-34; capture and
+  review warnings appeared. All tracks were released after stopping.
+- Selected USB input survived a page reload. Device removal updated the settings.
+- Track ending produced a reviewable/savable partial recording.
+- Zero browser page errors; Settings screenshot visually reviewed.
+- Evidence: .local-preview/microphone-otg/qa.json and microphone-settings.png.
+- Initial storage test run lacked Node's transform-types flag; the corrected
+  invocation passed all checks. No package/runtime upgrades were made.
+- Physical Android/OTG confirmation remains for the user on the updated version.
+
+Documentation consulted:
+https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
+https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+https://www.w3.org/TR/mediacapture-streams/
+https://raw.githubusercontent.com/chromium/chromium/main/media/audio/android/audio_manager_android.cc
+https://docs.expo.dev/versions/v57.0.0/sdk/audio/
+
+Publication:
+Project: appgprj_6acce501d4988191938370d0410d080b
+Version: 22
+Commit: 7b605c46680166230c8032fe3a6b082f6b7aaaca
+Cache snapshot: 2bee5e44f54b191a9c9840b0
+Deployment: appgdep_6acf6a82221881918aef4343dc1cc70b
+Status: succeeded
+Updated: 2026-10-14T11:42:13.256769+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+
+Source helper pushed and verified the clean source before its Windows packaging
+launch failed. Official prepare-site-build.cjs produced the fallback archive;
+all 88 files matched the source. Native save and deployment succeeded.

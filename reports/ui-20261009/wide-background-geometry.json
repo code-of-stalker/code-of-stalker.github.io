@@ -1,0 +1,14 @@
+{
+  "overflow": false,
+  "rain": [
+    {
+      "height": 900,
+      "width": 480,
+      "x": 360
+    }
+  ],
+  "viewport": {
+    "height": 900,
+    "width": 1200
+  }
+}

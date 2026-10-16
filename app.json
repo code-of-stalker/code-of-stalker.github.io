@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/branding/architecture-eye-32.png"
     },
     "plugins": [
       "expo-router",
@@ -54,7 +54,9 @@
           "enableBackgroundPlayback": false
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font",
+      "expo-image"
     ],
     "extra": {
       "router": {},

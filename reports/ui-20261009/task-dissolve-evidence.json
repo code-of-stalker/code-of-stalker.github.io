@@ -1,0 +1,74 @@
+{
+  "durationInCodeMs": 1800,
+  "secondEarly": [
+    {
+      "opacities": [
+        "1",
+        "1",
+        "1"
+      ],
+      "title": "Сравнение образов"
+    },
+    {
+      "opacities": [
+        "1",
+        "1",
+        "0"
+      ],
+      "title": "Наблюдающий"
+    }
+  ],
+  "secondLate": [
+    {
+      "opacity": "1",
+      "title": "Наблюдающий"
+    }
+  ],
+  "thirdEarly": {
+    "frames": [
+      {
+        "opacity": "1",
+        "title": "Наблюдающий"
+      },
+      {
+        "opacity": "0",
+        "title": "Среди людей"
+      }
+    ],
+    "header": [
+      {
+        "label": "Назад",
+        "opacity": "1",
+        "y": 20
+      },
+      {
+        "label": "Закрыть",
+        "opacity": "1",
+        "y": 20
+      },
+      {
+        "label": "Выбрать шаг",
+        "opacity": "1",
+        "y": 766
+      }
+    ]
+  },
+  "thirdLate": [
+    {
+      "opacity": "1",
+      "title": "Среди людей"
+    }
+  ],
+  "firstEarly": [
+    {
+      "opacity": "0",
+      "title": "Сравнение образов"
+    }
+  ],
+  "firstLate": [
+    {
+      "opacity": "1",
+      "title": "Сравнение образов"
+    }
+  ]
+}

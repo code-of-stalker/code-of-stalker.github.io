@@ -1,0 +1,23 @@
+Diary glass correction, 2026-10-11
+
+The preceding Diary glass change added unwanted frames and replaced existing button styles. This correction supersedes that presentation.
+
+- Restored native Pressable and existing ProductButton/Panel components. Removed the custom DiaryPressable, DiaryButton and DiaryPanel replacements.
+- Date label, filter icon, architecture toggle row, bookmark, question expansion, text actions, delete icon, volume and seek actions retain their original unframed presentation.
+- Glass is an explicit, noninteractive material under existing framed surfaces. DiaryGlass draws no additional SVG outline and adds no content wrapper or new control.
+- Existing report gradient, eye/input outlines, sorting, send/voice frames and playback frame are preserved. Opaque SVG fills are made transparent where necessary; outlines and glyphs remain.
+- Restored original modal primary/outline/ghost buttons, typography and circular capture-button appearance.
+- Retained Diary-only rain opacity 0.32 and aligned 44px/48px composer height.
+
+Verification: TypeScript and Expo lint passed. Chrome interaction/layout checks passed at 320x568, 375x812 and 768x1024 in three themes, with zero page errors. Explicitly verified that previously unframed controls have no glass/frame underlay, existing framed controls have a glass surface, composer stays aligned, filtering/navigation/toggle/draft protection still work. Reviewed dark and light mobile screenshots against the original layout.
+
+Preview: https://slowly-criteria-spanking-fighting.trycloudflare.com/diary
+Public JS/WASM checked HTTP 200, identical to current export. Rust WASM unchanged.
+JS SHA-256: e162c60ac982ccf6ba99bc0f62aab51af089ce21ddb398271edbb8f996d34903
+
+Evidence:
+.local-preview/panel-fixes/chrome-diary-glass-corrected-qa.json
+.local-preview/panel-fixes/diary-glass-corrected-public.json
+
+Final fresh WebKit check passed at 375x812 with zero page errors: no added frames on bare controls, aligned composer, filter open/close and original calendar/toggle sizing.
+.local-preview/panel-fixes/webkit-diary-glass-corrected-final.json

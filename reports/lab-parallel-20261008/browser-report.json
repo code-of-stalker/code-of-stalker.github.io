@@ -1,0 +1,19 @@
+{
+  "card": {
+    "width": 288,
+    "height": 200
+  },
+  "persistence": "junction and parallel remain independent through switching, reload, reset and JSON import",
+  "geometryAndModes": {
+    "frames": 378,
+    "finalPositionsStable": true,
+    "startsWithoutLight": true
+  },
+  "touch": "hold starts, release continues, single pass keeps the calm final frame",
+  "reducedMotion": 0.94,
+  "mobile": [
+    390,
+    320
+  ],
+  "errors": []
+}

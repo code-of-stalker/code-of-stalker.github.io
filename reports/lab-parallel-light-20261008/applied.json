@@ -1,0 +1,7 @@
+{
+  "src/components/architecture/ArchitectureParallelControls.tsx": "77cd2b7db8cd46be589de55f0349ddf75a68c699c60c584fe7428971ca107340",
+  "src/components/architecture/parallel.test.tsx": "1727e257e08cb5f04d448af47c8d4e83f8d00dcf92974e0d3a4f90a0f2714058",
+  "src/components/architecture/parallelGeometry.ts": "a0dd1317f865f2ad577a829e2b3e1e819e1ad4804d6aaecf8c96ec7ff80bdd98",
+  "src/components/architecture/parallelRenderer.ts": "8558e15137ca6c2901615ebdbe09085f4c73559a75f8c9d8a21fcab6f57aadf1",
+  "src/components/architecture/parallelSettings.ts": "5263ed7d9d9fbae435951b6e278ddb77ac80e6624b955effc0050d7802fbc896"
+}

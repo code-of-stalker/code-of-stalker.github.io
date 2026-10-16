@@ -1,0 +1,33 @@
+Selected transition: Сканирование — 2026-10-11
+
+The user selected proposal 3. It is now used in the product for first-step intro -> task.
+
+Implementation
+- PracticeEntryTransition retains the outgoing intro while the incoming task is scanned into view.
+- The task subtree remains mounted at completion and across questions. The fixed task header, scroller and illustrations retain their identities.
+- The web mask and unmasked glow use the same existing Rust ScanProfile through panel_reveal/ScanLight. They share exact progress rather than separate timers or movement curves.
+- Theme accent supplies the scan color. Existing effects quality settings and decoder visibility/completion gating are retained.
+- Navigation is locked during entry, then restored. Back returns through task explanations to the intro, and entering again starts a fresh scan.
+- The native adapter uses translated clipping layers with a native-driven reveal, without stretching frames. Native runtime/device validation was not performed.
+- The isolated /transitions comparison remains available and initially selects Scanning.
+
+Validation
+- TypeScript, Expo lint and final web export passed.
+- Existing relevant regression suite: 32 tests passed.
+- Chrome and WebKit: dark 375x1500, light 768x1024, neutral 320x568.
+- Mask and glow progress equality verified during entry; no lingering glow or mask after completion.
+- Task DOM retained after scanning, header retained during question changes.
+- Swipe back, returning to intro, repeat entry, and system reduced motion passed.
+- Chrome used actual CDP touch input; WebKit used synthetic DOM touch events.
+- Intermediate and completed frames visually inspected. Physical iPad/Android measurements remain separate.
+- No Rust source or WASM binary changes in this selection task; the existing engine's scanner was reused.
+
+Evidence
+.local-preview/panel-fixes/practice-scan-chrome.json
+.local-preview/panel-fixes/practice-scan-webkit.json
+.local-preview/panel-fixes/practice-scan-public.json
+.local-preview/panel-fixes/practice-scan-export.log
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com/practice
+Public JS and WASM matched the local export. Entry: entry-1157ea70420914f804b5db7a6401035c.js

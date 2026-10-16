@@ -19,16 +19,16 @@ export type PreparedVoice = {
   waveform: number[];
 };
 
-export function validateVoiceDraft(draft: VoiceDraft) {
+export function validateVoiceDraft(draft: VoiceDraft, limitSeconds = VOICE_LIMIT_SECONDS) {
   if (!draft.uri.startsWith('file:///') || !draft.uri.endsWith('.m4a') ||
-      !Number.isInteger(draft.durationMs) || draft.durationMs < 800 || draft.durationMs > (VOICE_LIMIT_SECONDS + 1) * 1000 ||
+      !Number.isInteger(draft.durationMs) || draft.durationMs < 800 || draft.durationMs > (limitSeconds + 1) * 1000 ||
       draft.waveform.length > 120 || draft.waveform.some((value) => !Number.isFinite(value) || value < 0 || value > 1)) {
-    throw new AudioProbeError('Запись не подходит для теста. Запиши фразу от 1 до 15 секунд.');
+    throw new AudioProbeError(`Запиши фразу от 1 до ${limitSeconds} секунд.`);
   }
 }
 
-export function validateVoiceBytes(bytes: Uint8Array) {
-  if (bytes.length < 32 || bytes.length > VOICE_MAX_BYTES ||
+export function validateVoiceBytes(bytes: Uint8Array, maxBytes = VOICE_MAX_BYTES) {
+  if (bytes.length < 32 || bytes.length > maxBytes ||
       String.fromCharCode(...bytes.subarray(4, 8)) !== 'ftyp') {
     throw new AudioProbeError('Не удалось получить короткую запись в формате M4A. Запиши фразу ещё раз.');
   }

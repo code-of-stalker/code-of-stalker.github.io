@@ -1,0 +1,37 @@
+{
+  "sources": {
+    "basicAndIntensive": "C:/Users/qtas5/.codex/visualizations/2026/10/08/01a11b44-4ab7-7a62-8c08-e66ecc7e19ae/architecture-focus.html",
+    "guidance": "C:\\Users\\qtas5\\Documents\\Codex\\2026-10-02\\new-chat\\watcher-matrix-check\\scripts\\product-art\\src\\laboratory\\components\\architecture\\parallelRenderer.ts",
+    "guidancePreset": "C:\\Users\\qtas5\\Documents\\Codex\\2026-10-02\\new-chat\\watcher-matrix-check\\assets\\product\\motion\\laboratory-architecture.json"
+  },
+  "format": "Static SVG frames, transparent canvas, inline vector styling, no embedded raster images",
+  "files": [
+    {
+      "kind": "basic",
+      "file": "01-basic.svg",
+      "title": "Базовый",
+      "phase": 0.44,
+      "width": 218,
+      "height": 150,
+      "bytes": 10393
+    },
+    {
+      "kind": "intensive",
+      "file": "02-intensive.svg",
+      "title": "Интенсив",
+      "phase": 0.7,
+      "width": 288,
+      "height": 160,
+      "bytes": 12087
+    },
+    {
+      "kind": "guidance",
+      "file": "03-guidance.svg",
+      "title": "Водительство от проводника · Параллельный путь",
+      "phase": 0.42,
+      "width": 288,
+      "height": 160,
+      "bytes": 44513
+    }
+  ]
+}

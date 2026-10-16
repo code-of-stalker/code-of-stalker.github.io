@@ -1,0 +1,51 @@
+Second step: book and projected hero
+
+Integrated the approved frontal book animation after the last paragraph in the
+unlocked second-step reading panel. It is not inserted into the cooldown screen.
+The existing panel geometry, header, text and top gallery are unchanged.
+
+The chest light gains 55% halo intensity with a gentle 18% spread just before the
+hero fades. The original 14-second opening / projection / closing sequence is
+preserved. The scene runs once per mounted step and holds the closed book.
+
+All four palettes are mapped explicitly from ProductTheme: Iskra (dark), Dune
+(light), Silence (neutral), Astral (violet). Neutral keeps warm local light,
+quieter rays and no particles. Palette changes update CSS tokens over the existing
+bridge, preserving elapsed time. The native document is stable across themes.
+
+The scene starts when enough of it is inside ScrollGate's measured viewport.
+Offscreen, backgrounded and unfocused views pause without advancing the clock.
+It does not capture touches. Reduced motion shows a static open-book composition.
+There is no active animation-frame loop after completion or while paused.
+
+Implementation:
+- assets/product/motion/book-projection-approved.html: editable approved source.
+- scripts/product-art/build-book-projection.mjs: extracts just SVG/geometry;
+  excludes preview text, panel, controls and embedded fonts.
+- scripts/product-art/src/book-projection-runtime.js: product lifecycle bridge.
+- src/features/product/motion/bookProjection.generated.ts: 76 KB offline scene.
+- src/features/product/motion/bookProjection.ts: palette and visibility policy.
+- Art adapters / html.ts / types.ts: route book to existing local SVG hosts.
+- PracticeIntroScreen.tsx: second-step placement and measured scroll visibility.
+
+Validation:
+- npm run typecheck: passed.
+- npm run lint: passed.
+- .local-preview/book-projection/check-scene.mjs: all four palettes passed;
+  measured pulse ratio 1.5501, pause/resume, closed hold, palette update without
+  clock reset, and reduced-motion state.
+- Browser integration evidence: .local-preview/book-projection/app-*-320.png.
+  Real playback and scroll/pause/close checked in each theme at 320 x 568.
+- Corrected integration harness passed all four themes with zero page errors:
+  .local-preview/book-projection/app-checks.json. Measured artwork 264 x 188.83
+  CSS pixels inside the 288px panel; no horizontal overflow. Also captured 393px.
+- Android/iOS physical-device rendering/performance have not been measured.
+
+The first browser QA used Playwright serviceWorkers:block, which injects a
+service-worker probe that throws in sandboxed frames. The corrected harness
+keeps the normal context instead; no sandbox permission was relaxed.
+The development Settings screen also logs an existing unrelated text-node warning
+in MicrophoneSettings.web.tsx. This task does not edit that component.
+
+Local development preview: http://127.0.0.1:8093
+No Git commit, remote push or public deployment was performed.

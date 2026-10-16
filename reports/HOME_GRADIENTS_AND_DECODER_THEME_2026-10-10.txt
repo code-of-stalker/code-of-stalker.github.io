@@ -1,0 +1,42 @@
+Home gradients and decoder theme — 2026-10-10
+
+Implemented
+- Home architecture and diary titles use the two supplied gradient SVGs separately.
+- Original SVG files are preserved in assets/product/home-gradients. Both copies
+  match the supplied files byte for byte. Runtime adaptation changes stop color
+  to the current background and fits the measured text block; endpoints, stops,
+  opacity and viewport are preserved, including the diary's 46px viewport over
+  its 82px rectangle. No gradient extends above the title block.
+- Light theme: accent #FF6600, secondary text/muted/faint/border #BE4C00,
+  background #FAE18F. Modal backdrop derives from the secondary accent.
+  Existing dark ink on filled orange buttons remains for their contrast.
+- Decoder scrambling glyphs, active glyph and its glow now follow the palette,
+  together with the previously themed final text, scan line and terminal.
+  Updates only replace theme CSS; renderer resources and motion are untouched.
+- Decoder still waits for reading/scrolling before its first reveal.
+
+Validation
+- TypeScript: npx tsc --noEmit passed.
+- Lint: npx expo lint passed.
+- Expo SDK57 web export passed.
+- Chrome WebGPU and desktop WebKit WebGL2: all three themes passed.
+- Each backend checked both gradients at 320, 375 and 768px (18 layouts total).
+  Checks run after the complete panel reveal, not while the card is masked.
+- Actual Rust-driven scrambling phase checked: 26 glyphs; waiting state has
+  no active/unlocked glyphs; active/unlocked colors and glow match each theme.
+  Final state has two lines and no unlocked glyphs. No browser errors.
+- Screenshots directly reviewed for dark/light/neutral Home, tablet Home,
+  animated light/neutral decoder and animated WebKit light decoder.
+- No new measurement or physical iPad/Android verification in this change.
+
+Evidence
+.local-preview/panel-fixes/gradient-decoder-webgpu.json
+.local-preview/panel-fixes/gradient-decoder-webkit.json
+.local-preview/panel-fixes/gradient-decoder-public.json
+.local-preview/panel-fixes/gradient-decoder-qa.mjs
+
+Existing preview verified HTTP200 and byte-identical to local export:
+https://furnished-teddy-earl-webmasters.trycloudflare.com/home
+JS entry: entry-8bde58d0d0241325dc40fba4b72c68b6.js
+JS SHA256: 874788b4a66cadf7f20d587f183cfb4eb61d6efc24dd2818b6945d02575c039f
+Unchanged WASM SHA256: 163bc9917bcb8d613f5eb59d61acefda64468e94ff5b074b0279aea3d06573b2

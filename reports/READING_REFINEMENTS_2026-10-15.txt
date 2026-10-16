@@ -1,0 +1,26 @@
+Watcher reading refinements — 2026-10-15
+
+Requested behavior:
+- Keep the article and inline art pinned inside the initial panel until the autonomous zoom starts.
+- Make the first-step closing text animation visible and repeating.
+- Put the approved book / hero projection on the Home Architecture card at step 2.
+- Smooth the word Одному without scaling its trailing space or reflowing its line.
+
+Implementation:
+All motion computation remains Rust. Shared reading_layout holds the preview frame while physical scrolling is counterbalanced; threshold crossing starts the existing autonomous morph. Shared motion_kernel repeats the final glow every 5.6 seconds. Word breathing has a symmetric rise/fall, a rest, a 10 percent maximum, and a separate stable space. TextTimeline updates the word transform without overwriting its static presentation. Home receives numeric progress, selects book at step 2, and fits the complete scene through a uniform Rust viewBox. Existing SVG mask coordinate systems, panel contours, palettes and book timeline are preserved.
+
+Validation:
+- Rust engine: 82 tests passed. Native motion bridge: 15 tests passed.
+- Rust formatting, native/WASM compilation, shader validation, WASM Clippy, TypeScript and Expo lint passed. Clippy retains existing warnings.
+- Browser regression at 393x852, 320x568, 908x668: preview panel/text pinning; autonomous zoom and reverse; initial notched and expanded rectangular menus; 12px menu gap; stable trigger; looping final glow; separate word scale reaching 1.1; reduced motion; no horizontal overflow; no page errors.
+- Final Home composition checked at all three sizes; full projection opacity reaches 1.
+- Book card full cycle repeats, pauses offscreen without accumulating wall time, and resumes. Four palettes rendered without errors.
+- Offline native adapter rendered book, waking scene and glass; native text/reading commands passed. iOS and Android exports passed with the final embedded Rust runtime.
+- Physical iOS/Android hardware was not tested.
+
+Evidence:
+.local-preview/book-projection/reading-refinements-checks.json
+.local-preview/book-projection/home-book-fit-checks.json
+.local-preview/book-projection/home-book-cycle-checks.json
+.local-preview/book-projection/native-rust-document-checks.json
+.local-preview/sites-watcher/reading-refinements-archive-verification.json

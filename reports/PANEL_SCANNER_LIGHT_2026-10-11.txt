@@ -1,0 +1,51 @@
+Panel scanner light — 2026-10-11
+
+Cause and correction
+- The preceding change restored the soft content mask but did not connect
+  its separate light layer. At the leading scan edge the content mask alpha
+  is zero, so a light inside that masked layer is suppressed.
+- Home cards, GlassHost panels and level cards now have an independent light
+  sibling. Content and light share the Laboratory scan front and Rust clock;
+  only content receives the reveal mask. The light is clipped to the panel's
+  supplied cut-corner contour, including flipped level frames.
+- Bright 2.5px core with a soft 12px halo; strength 0.8, softness 0.2,
+  existing two-second duration. Finishing or reduced motion clears the light.
+- Theme accent: dark #F5DD07, light #FF6600, neutral #8EB8BA.
+- Native reveal includes a matching themed moving strip. No new dependency,
+  GPU device, renderer, backdrop blur or frame loop was added.
+- Level light clipping uses percentage coordinates from the original SVG;
+  accordion height changes do not cause new React layout updates per frame.
+- Quality settings, resources, animation scenarios and material pins unchanged.
+
+Validation
+- Rust core: 66 tests passed, including the leading-edge masking regression
+  and completion/reduced-motion/invalid-input light clearing.
+- Rust formatting and WASM Clippy passed; existing warnings remain.
+- Release WASM and all shader validations passed.
+- TypeScript, Expo lint and final SDK57 web export passed. The first build
+  stopped on a native JSX delimiter typo; it was fixed before the final checks.
+- Chrome WebGPU + desktop WebKit WebGL2: all three themes; Home and level
+  panels. Actual animated light gradients, independent/unmasked parent,
+  cut contours, matching panel dimensions and complete light removal checked.
+  Screenshots of visible scan phases reviewed directly. No browser errors.
+- Chrome actual recording review: light visible; volume 0/50/100, mute,
+  smooth re-record, encrypted save and audio cleanup still passed.
+- Physical iPad/Android and native visual acceptance remain separate; no new
+  device FPS measurement was performed.
+
+Evidence
+.local-preview/panel-fixes/scanner-light-qa.mjs
+.local-preview/panel-fixes/webgpu-scanner-light.json
+.local-preview/panel-fixes/webkit-scanner-light.json
+.local-preview/panel-fixes/webgpu-audio-motion.json
+.local-preview/panel-fixes/webgpu-audio-review-scanner.png
+.local-preview/panel-fixes/scanner-light-build.log
+.local-preview/panel-fixes/scanner-light-clippy.log
+.local-preview/panel-fixes/scanner-light-export.log
+.local-preview/panel-fixes/scanner-light-public.json
+
+Existing preview: HTTP200 and identical to the final local JS and WASM bytes.
+https://furnished-teddy-earl-webmasters.trycloudflare.com/home
+JS: entry-6fabeece402a856569ad51e53608eaf7.js
+JS SHA256: 84eb76c4cbac2cec353c7fef83730e1e7c0d13334a86ffc200e26737ba874101
+WASM SHA256: a6b4c6f78d6e4aecfc682504ad4783642b5fd6e57289cf5ad0f9de8073adcf93

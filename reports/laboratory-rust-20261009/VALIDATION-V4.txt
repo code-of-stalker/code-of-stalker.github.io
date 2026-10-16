@@ -1,0 +1,94 @@
+Laboratory Rust comparison — sustained performance investigation — 2026-10-09
+
+Device evidence supplied by the user
+- tecno-v3-full-scene.json is the unchanged supplied Experiment 03 report.
+- SHA256 74833CBB4940DEB66D4858C23DEDD3E1D16AF9FA2A8F0C13415612D6DD7D85AA.
+- Both rows use 326 x 408 CSS pixels, density 2, blur 21, the same settings and workload.
+- Current: 12.4652 FPS, p50 67.4ms, p95 134.9ms, CPU call 20.2432ms.
+- Rust WebGPU / Rgba16Float: 17.0637 FPS, p50 44.8ms, p95 134.5ms, CPU call 13.8793ms.
+- Rust average +36.89%; CPU call -31.44%. Both remain too choppy for the desired UI.
+- Observer: 20/19 transform changes, zero replaced nodes. Original v2 playback defect
+  is corrected. No inference that the user was testing a stale version.
+- The report has no time series and cannot prove or explain the reported FPS decline
+  after 10-15s, nor prove a thermal, driver, memory-leak or GPU-queue cause.
+
+Confirmed implementation findings
+- v3 live FPS summarized approximately 0.7s; the button restarted the scene and used
+  a 2s warmup / 20s average. Different animation phases/windows were being compared.
+- The first collected interval could straddle the warmup boundary.
+- The source/glass clock capped each delta at 100ms; the browser SVG used wall time.
+  Slow frames could therefore change their phase relationship and prolong reveal.
+- Rust release was configured opt-level="s". Two intermediate texture views were
+  created again for each refreshed blur. Neither observation proves the reported drop.
+- The heavy glass shader is still the Laboratory shader translated to WGSL. Rain
+  and SVG are still browser components. This is a renderer/backend comparison, not
+  an isolated JavaScript-versus-Rust language benchmark. GPU timing is not available.
+
+Changes in Experiment 04
+- Live FPS uses a rolling 5s interval and is suppressed if scene visibility is under
+  80%. Full-run measurements still cancel on hidden tabs, resize, offscreen scenes,
+  settings/engine changes or pause. Touch interaction is ignored during a run.
+- 60s controlled run: 15s warmup + 45s sustained result. All 60s are exported in twelve
+  5s buckets, including warmup. Earlier repeated runs are retained (up to twelve).
+- CPU preparation of the rain and submission of rendering commands are separate.
+  They do not measure asynchronous GPU execution, browser composition or SVG paint.
+- Intervals are paired with preceding CPU work. Slow intervals are not clipped;
+  boundary-crossing intervals are assigned by their start and actual bounds are saved.
+- Glass timing now uses active wall time; background/pause time remains excluded.
+  Original rain simulation keeps its own original 100ms delta cap in both renderers.
+- Rust reuses horizontal/vertical attachment views until texture resize. No shader,
+  artwork, density or quality reduction. Release uses opt-level=3, LTO/codegen unchanged.
+- Sparse Rust snapshots record WASM allocated bytes, application texture/view creation
+  counts, uploads, blur passes, submissions and surface skips. These do not measure
+  total browser/GPU memory or prove the absence of a leak. No GPU fences/readbacks added.
+- Schema 4 / rain-observer-v4 / sustained-v4 / laboratory-rust-comparison-v4.json.
+- Prior v3 preview preserved locally in experiment/.cache/experiment03/dist.
+
+Automated checks passed
+- Root npm run lint and npm run typecheck.
+- Experiment TypeScript and ESLint, 12 JS tests, 2 Rust tests.
+- GLSL-to-WGSL translation/validation and release wasm32 build.
+- Vite production build; informational large-bundle warning remains.
+- New tests cover the warmup boundary, retaining stalls, five-second slowdown traces,
+  empty buckets, preceding-frame attribution, and active-time behavior after a stall.
+- WASM SHA256 1E61D393A4532D4F4B93B510D993289CA04B92030B121FAA7FD58533883A9232;
+  2,895,912 bytes. Device benefit from opt-level/view caching is not yet established.
+
+Primary references checked
+- https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level
+  Higher optimization settings do not guarantee better device performance.
+- https://webgpufundamentals.org/webgpu/lessons/webgpu-timing.html
+  CPU submission duration differs from GPU execution; GPU timing needs separate queries.
+
+Browser checks and remaining validation
+- Current completed a full run with twelve buckets, 44.9346s sustained duration and
+  confirmed Observer motion without replacement; desktop-v4-current-validation.json.
+- Rust WebGPU completed a full 60.166s run, 45.1064s sustained window, twelve buckets,
+  39 Observer transform changes and zero replacements; desktop-v4-webgpu-validation.json.
+  Across 13 snapshots WASM stayed 1,703,936 bytes; textures created stayed 5, cached blur
+  attachment views created stayed 4; zero surface skips. This is only desktop evidence.
+- Forced Rust WebGL2 completed a 60.8966s run, 45.8233s sustained window, twelve buckets,
+  39 transform changes and zero replacements. WASM stayed 3,080,192 bytes, texture and
+  blur attachment view creation counts stayed 5/4, surface skips zero across 13 samples.
+  Combined Rust export: desktop-v4-rust-backends-validation.json. Both paths had no
+  captured console errors. The per-window result table opens and shows all twelve rows.
+- Scrolling to the download/settings hides live FPS and shows the visibility explanation.
+- Starting another run and navigating down to its results cancels it with the expected
+  offscreen notice; no partial result is added. Controls become available again.
+- Final production bundle index-CH0THGzE.js; Laboratory and standalone preview return
+  HTTP 200 and reference that bundle. HTTPS preview was loaded and exercised in Chrome.
+- Desktop browser is intermittently occluded/throttled near 1Hz. Its FPS is not evidence
+  of performance on Tecno or a comparison of renderers.
+- A minute of testing cannot by itself establish thermal stability. Device evidence
+  received after the initial browser checks is recorded below.
+
+Follow-up device evidence received
+- The user supplied a valid Tecno v4 Current/WebGPU pair. Preserved unchanged as
+  tecno-v4-full-scene.json; detailed analysis is in TECNO-V4-ANALYSIS.txt.
+- Identical conditions within the pair, density 2 and blur 6. Sustained FPS 13.7847
+  versus 18.9396 (+37.40%); p95 unchanged at 123.4ms. Repeated dips recover within
+  the minute; monitored WASM memory and texture/view counts remain constant.
+- Critical limit: the first resource sample already has 409 submitted Rust frames.
+  The measurement restarts the scene, not the engine. Startup degradation observed
+  before clicking Measure may be missing, so it must not be declared resolved.
+- Forced Rust WebGL2 device results and long-session thermal behavior remain unmeasured.

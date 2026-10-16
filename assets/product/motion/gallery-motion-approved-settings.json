@@ -1,0 +1,21 @@
+{
+  "source": "portraits-v3",
+  "canvas": { "width": 288, "height": 206, "unit": "css-px", "fit": "contain" },
+  "settings": {
+    "movement": 1,
+    "speed": 0.45,
+    "light": 2,
+    "depth": 1.4,
+    "orbits": true,
+    "flow": true,
+    "orbitSpeed": 0.7,
+    "frameLight": 1.1,
+    "distortion": 1.1,
+    "matrixStrength": 0.4,
+    "matrixSpeed": 0.65,
+    "matrixDensity": 0.6,
+    "playing": true
+  },
+  "respectReducedMotion": true,
+  "previewControlsOutsideCanvas": true
+}

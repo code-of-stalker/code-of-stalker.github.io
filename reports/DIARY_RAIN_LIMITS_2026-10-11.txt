@@ -1,0 +1,45 @@
+Diary Matrix rain and recording limits — 2026-10-11
+
+Changes
+- Diary reuses the Home/Levels MatrixBackdrop and existing Rust rain renderer.
+  Theme palette and shared automatic graphics quality remain connected.
+  Route focus and AppState pause the background; it never intercepts input.
+- Assignment recordings: 180 seconds; Diary observations and dynamics reports:
+  900 seconds. Both web and native product recorder adapters use these limits.
+- Timers use recorder configuration; assignment caption displays 3 minutes.
+- Audio file caps increased to 4 MiB / 24 MiB for assignments / Diary, providing
+  headroom above 64 kbit/s recordings for encoder/container variations.
+- Old encrypted records, authenticated metadata and progress remain compatible.
+  Separate Matrix diagnostic recorder defaults remain unchanged.
+
+Validation
+- npm run typecheck: passed.
+- npm run lint -- --no-cache: passed; final changed screen also passed ESLint.
+- 92 Node regression tests passed. Includes accelerated 180/900-second capture
+  and automatic stop, native capture configuration, encrypted save/reopen above
+  old byte limits, legacy records, bookmarks and unchanged progress.
+- Production Expo web export: passed. A sandbox EPERM during an intermediate
+  export was resolved by rerunning with permission to write export assets.
+- Chrome WebGPU: animated rain in all three themes, input/save interaction,
+  15:00 Diary timer, synthetic microphone capture/review/save, 3-minute caption.
+- WebKit WebGL2: animated rain in all three themes, text save, layout and
+  assignment caption. First launch hit the previously observed WASM callback
+  Unreachable error; a fresh full run passed with zero page errors. Retained
+  the first-launch report rather than discarding this limitation.
+- No physical iPad/Android microphone or 15-minute wall-clock session was run.
+  Rust sources/WASM were not changed. Long duration was tested with simulated
+  elapsed time and encrypted audio storage fixtures.
+
+Evidence
+.local-preview/panel-fixes/diary-limits-tests.log
+.local-preview/panel-fixes/chrome-diary-limits-qa.json
+.local-preview/panel-fixes/webkit-diary-limits-qa.json
+.local-preview/panel-fixes/webkit-diary-limits-first-launch.json
+.local-preview/panel-fixes/diary-limits-export.log
+.local-preview/panel-fixes/diary-limits-public.json
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com/diary
+Public assets match the final local production export byte-for-byte (HTTP 200).
+JS SHA256: 6ceb451696e89edd7d51ede769a511ca153535a643278cd1ecdf6edbc052022c
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1

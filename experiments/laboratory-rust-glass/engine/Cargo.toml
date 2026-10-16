@@ -1,0 +1,23 @@
+[package]
+name = "laboratory-glass"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[build-dependencies]
+lyon_tessellation = "=1.0.22"
+svgtypes = "=0.16.1"
+roxmltree = "=0.21.1"
+tiny-skia = "=0.12.0"
+ttf-parser = "=0.25.1"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "=30.0.1", default-features = false, features = ["webgpu", "webgl", "wgsl"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement", "console"] }
+bytemuck = "1"

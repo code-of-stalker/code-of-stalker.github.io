@@ -1,0 +1,26 @@
+<g class="task-open-book" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Thick hard covers project beyond the leaves; the hinge stays visible at the centre. -->
+  <path class="book-cover-shadow" d="M144 166C104 142 62 140 21 148L15 189Q79 179 142 199L144 202Q209 179 273 189L267 148C226 140 184 142 144 166Z" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width="1"/>
+  <path class="book-cover-edge" d="M15 189L20 194Q83 182 143 203L144 202Q79 179 15 189ZM273 189L268 194Q205 182 145 203L144 202Q209 179 273 189Z" fill="var(--book-edge)" stroke="var(--book-bright)" stroke-width=".55"/>
+  <path class="book-left-board" d="M21 148Q81 136 144 166L144 195Q85 175 19 187Z" fill="var(--book-edge)" stroke="var(--book-line)" stroke-width=".7"/>
+  <path class="book-right-board" d="M267 148Q207 136 144 166L144 195Q203 175 269 187Z" fill="var(--book-edge)" stroke="var(--book-line)" stroke-width=".7"/>
+  <!-- The leaf block has several visible edges, not ruled notebook pages. -->
+  <path class="book-left-block" d="M144 165Q96 138 27 143L25 181Q84 172 144 192Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".7"/>
+  <path class="book-right-block" d="M144 165Q192 138 261 143L263 181Q204 172 144 192Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".7"/>
+  <path d="M26 179Q86 170 144 190M262 179Q202 170 144 190" fill="none" stroke="var(--book-line)" stroke-width=".4"/>
+  <path class="book-left-page" d="M144 163Q96 135 30 140L29 174Q84 166 144 185Z" fill="var(--book-cover)" stroke="var(--book-bright)" stroke-width=".65"/>
+  <path class="book-right-page" d="M144 163Q192 135 258 140L259 174Q204 166 144 185Z" fill="var(--book-cover)" stroke="var(--book-bright)" stroke-width=".65"/>
+  <path d="M144 163Q96 135 30 140L29 174Q84 166 144 185Z M144 163Q192 135 258 140L259 174Q204 166 144 185Z" fill="var(--book-light)" fill-opacity=".075"/>
+  <path class="book-inner-fold" d="M144 163Q139 174 144 185Q149 174 144 163" fill="none" stroke="var(--book-light)" stroke-width=".55"/>
+  <path d="M30 140Q92 135 144 165M258 140Q196 135 144 165" fill="none" stroke="var(--book-dim)" stroke-width=".42"/>
+  <!-- Small blocks of print are intentionally broken up like book typography. -->
+  <g class="book-print" fill="none" stroke="var(--book-dim)" stroke-width=".34" opacity=".75">
+    <path d="M44 148Q74 145 104 153M42 153Q75 150 115 160M42 158Q66 156 92 163M103 164Q116 167 129 175"/>
+    <path d="M184 153Q213 145 243 148M171 160Q207 150 245 153M196 163Q220 156 244 158M160 175Q174 167 187 164"/>
+  </g>
+  <path class="book-spine" d="M143 184Q141 193 144 201Q147 193 145 184" fill="none" stroke="var(--book-bright)" stroke-width=".65"/>
+  <path d="M19 187Q84 175 144 196Q204 175 269 187" fill="none" stroke="var(--book-light)" stroke-width=".42"/>
+  <!-- Embossed cover corners and short spine bands give the object a bound volume. -->
+  <path d="M23 182L22 188L29 187M265 182L266 188L259 187M26 189L31 186M262 189L257 186M139 196L143 198M145 198L149 196" fill="none" stroke="var(--book-bright)" stroke-width=".48"/>
+  <path d="M31 185Q76 178 113 190M257 185Q212 178 175 190" fill="none" stroke="var(--book-dim)" stroke-width=".32"/>
+</g>

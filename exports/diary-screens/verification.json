@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "file": "01-unsaved-text.svg",
+      "width": 480,
+      "height": 272,
+      "bytes": 35535,
+      "vector": true,
+      "rendered": true
+    },
+    {
+      "file": "02-new-voice-observation.svg",
+      "width": 480,
+      "height": 502,
+      "bytes": 101640,
+      "vector": true,
+      "rendered": true
+    },
+    {
+      "file": "03-dynamics-report.svg",
+      "width": 480,
+      "height": 463,
+      "bytes": 111920,
+      "vector": true,
+      "rendered": true
+    },
+    {
+      "file": "04-observation-text-editor.svg",
+      "width": 640,
+      "height": 608,
+      "bytes": 49840,
+      "vector": true,
+      "rendered": true
+    }
+  ],
+  "passed": true
+}

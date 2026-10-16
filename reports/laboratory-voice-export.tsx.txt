@@ -1,0 +1,1191 @@
+/**
+ * Prince Laboratory · voice component 288 × 260.
+ * Save as PrinceVoice.tsx in a React project. Import: { PrinceVoice }.
+ * voicePreset contains your settings. Styles and behavior are included below.
+ * Supply the Disket Mono / Tektur fonts from your project.
+ * onTake returns a Blob; recordings are not uploaded or saved automatically.
+ * Use VoicePlayback and samplePlayback for audio-driven preview.
+ * The circular backing has its own blur and fill; glassLinked links it to glassMaterial.
+ * onLock can trigger a Matrix wave on the host background.
+ * PrinceVoiceScene supplies a 320 × 568 canvas with waves beyond the component.
+ */
+import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
+
+export const voicePreset: { version: number; kind: string; width: number; height: number; language: 'ru' | 'en'; appearance: VoiceAppearance; sensitivity: VoiceBands; glass: VoiceGlassMaterial } = {
+  "version": 1,
+  "kind": "prince-voice",
+  "width": 288,
+  "height": 260,
+  "language": "ru",
+  "appearance": {
+    "styleMode": "resonance",
+    "inputIcon": "lips",
+    "color": "#E7E100",
+    "lightColor": "#E7E100",
+    "glow": 0.75,
+    "lineWidth": 1,
+    "idleSpeed": 0.65,
+    "reactionSize": 2,
+    "responseSpeed": 0.2,
+    "waveStrength": 0.25,
+    "waveSpeed": 1,
+    "fillStrength": 0.04,
+    "lockDistance": 96,
+    "lockBurst": true,
+    "fillRing": true,
+    "spinRing": false,
+    "sphereRing": true,
+    "outerContour": true,
+    "glassEnabled": true,
+    "wavesAfterFill": true,
+    "wavesAcrossScreen": true,
+    "waveColor": "#E7E100",
+    "waveGlow": 0.1,
+    "waveFade": 2.2,
+    "meshEnabled": true,
+    "meshRings": 6,
+    "meshRadius": 76,
+    "meshResponse": 1,
+    "meshSpeed": 1.95,
+    "meshVoiceSpeed": 3.6,
+    "meshOpacity": 1,
+    "meshLineWidth": 0.25,
+    "meshColor": "#E7E100",
+    "glassLinked": false,
+    "glassBlur": 2,
+    "glassOpacity": 0.5,
+    "glassColor": "#000000",
+    "assemblySmoothness": 0.27,
+    "contourLength": 40,
+    "contourResponse": 7,
+    "ringsScale": 1.14,
+    "coreEnabled": true,
+    "coreColor": "#FFF59A",
+    "coreResponse": 7,
+    "coreInertia": 0.05,
+    "coreDamping": 1.6,
+    "corePulse": 1,
+    "corePulseSpeed": 1.2,
+    "coreFlow": 1.8,
+    "coreTurbulence": 0,
+    "coreSpread": 0.85,
+    "meshFillEnabled": true,
+    "meshFillOpacity": 1,
+    "meshEmission": 3
+  },
+  "sensitivity": {
+    "low": 7,
+    "mid": 7,
+    "high": 7
+  },
+  "glass": {
+    "backgroundBlur": 14,
+    "fillColor": "#000000",
+    "fillOpacity": 0.7,
+    "highlightColor": "#FFF59A",
+    "highlightStrength": 0.02
+  }
+}
+const voiceStyles = ".voice-recorder { --vr-energy:0; --vr-arc-visibility:0; --vr-line:1; --vr-glow:.85; --vr-color:#e7e100; --vr-light:#fff59a; width:100%; height:100%; max-width:288px; max-height:260px; overflow:visible; display:grid; grid-template-rows:minmax(0,1fr) 66px; color:var(--vr-color); font-family:'Disket Mono',monospace; user-select:none; }\n.vr-button { position:relative; display:block; width:100%; height:100%; min-height:0; padding:0; border:0; color:inherit; background:transparent; cursor:pointer; touch-action:none; -webkit-touch-callout:none; }\n.vr-button:disabled { cursor:default; opacity:1; }\n.vr-button:focus-visible { outline:1px solid #fff59a; outline-offset:-5px; }\n.vr-visual { position:absolute; inset:12px 0 0; display:block; pointer-events:none; }\n.vr-art { position:relative; display:block; width:100%; height:100%; overflow:visible; }\n.voice-wave-field { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; z-index:1; }\n.vr-glass { position:absolute; display:block; border-radius:50%; overflow:hidden; pointer-events:none;\n  background:color-mix(in srgb,var(--vr-glass-fill) var(--vr-glass-opacity),transparent);\n  backdrop-filter:blur(var(--vr-glass-blur)); -webkit-backdrop-filter:blur(var(--vr-glass-blur));\n  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--vr-glass-light) var(--vr-glass-shine),transparent); }\n.vr-glow { stroke:var(--vr-light); opacity:calc((.25 + var(--vr-energy)*.75)*var(--vr-glow)); }\n.vr-low-motion>circle { stroke-width:calc(1.15px * var(--vr-line)); }\n.vr-low-motion>circle:first-child { stroke-width:calc(.55px * var(--vr-line)); }\n.vr-low-motion>.vr-glow { stroke-width:calc(1.7px * var(--vr-line)); }\n.vr-fill-arc { opacity:var(--vr-arc-visibility); }\n.vr-fill-arc.vr-glow { opacity:calc(var(--vr-arc-visibility) * (.25 + var(--vr-energy)*.75)*var(--vr-glow)); }\n.vr-mid-motion>circle { stroke-width:calc(.7px * var(--vr-line)); }\n.vr-high-motion { stroke-width:calc(.9px * var(--vr-line)); }\n.vr-sphere-motion { stroke-width:calc(.75px * var(--vr-line)); }\n.vr-sphere-motion>.vr-glow { stroke-width:calc(1.2px * var(--vr-line)); }\n.vr-mic,.vr-speaker { stroke-width:calc(.85px * var(--vr-line)); }\n.vr-speaker { display:none; }\n.voice-recorder[data-source='playback'] .vr-speaker { display:block; }\n.voice-recorder[data-source='playback'] .vr-mic { display:none; }\n.voice-recorder[data-state='recording'] .vr-side-marks { display:none; }\n.vr-stop { display:none; }\n.voice-recorder[data-locked='true'][data-state='recording'] .vr-stop { display:block; }\n.voice-recorder[data-locked='true'][data-state='recording'] .vr-mic { display:none; }\n.vr-lock { position:absolute; top:0; left:50%; width:24px; height:34px; margin-left:-12px; display:block; opacity:0; color:inherit; transition:opacity .18s ease-out; pointer-events:none; }\n.vr-lock>svg { display:block; width:100%; height:100%; overflow:visible; }\n.vr-lock::before { content:''; position:absolute; inset:-10px -12px; border-radius:50%; background:radial-gradient(ellipse,#030402f5 20%,#030402d9 40%,#03040280 56%,transparent 75%); filter:blur(2px); }\n.vr-lock>svg { position:relative; }\n.voice-recorder[data-state='recording'] .vr-lock,.voice-recorder[data-state='requesting'] .vr-lock { opacity:1; }\n.vr-time { display:flex; align-items:center; justify-content:center; gap:6px; font:400 10px/14px 'Disket Mono',monospace; letter-spacing:1.5px; color:inherit; opacity:.7; }\n.vr-live-dot { width:4px; height:4px; background:currentColor; opacity:.25; }\n.voice-recorder[data-state='recording'] .vr-time,.voice-recorder[data-source='playback'] .vr-time { opacity:1; color:var(--vr-light); }\n.voice-recorder[data-state='recording'] .vr-live-dot,.voice-recorder[data-source='playback'] .vr-live-dot { opacity:1; box-shadow:0 0 7px var(--vr-color); }\n.vr-footer { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:14px; gap:12px; }\n.vr-hint { max-width:100%; min-height:13px; padding:0 6px; text-align:center; font:400 10px/13px 'Disket Mono',monospace; letter-spacing:.5px; }\n.voice-recorder[data-state='error'] .vr-hint { color:var(--vr-light); font-size:8px; line-height:10px; letter-spacing:0; }\n.voice-recorder[data-state='error'] .vr-footer { padding-top:6px; gap:6px; }\n@media(prefers-reduced-motion:reduce) { .voice-recorder * { transition:none!important; } }\n"
+
+// spectrum
+export type VoiceBands = { low: number; mid: number; high: number }
+/** Optional mid-band detail. Hosts supplying only the three bands remain compatible. */
+export type VoiceSpectrum = VoiceBands & { contour?: ArrayLike<number> }
+export const voiceContourBands = 20
+export const silentBands: VoiceBands = { low: 0, mid: 0, high: 0 }
+export const voiceBandRanges = { low: [80, 300], mid: [300, 2400], high: [2400, 10000] } as const
+export const clampLevel = (value: number) => Math.max(0, Math.min(1, value))
+
+/** Mean spectral power, normalized per band so a wider band isn't louder by itself. */
+export function measureVoiceBands(db: Float32Array, sampleRate: number, fftSize: number): VoiceBands {
+  const result = { ...silentBands }
+  for (const key of Object.keys(voiceBandRanges) as (keyof VoiceBands)[]) {
+    const [from, to] = voiceBandRanges[key]
+    const start = Math.max(1, Math.ceil(from * fftSize / sampleRate))
+    const end = Math.min(db.length, Math.ceil(to * fftSize / sampleRate))
+    let power = 0, peak = 0
+    for (let i = start; i < end; i++) {
+      const amplitude = Number.isFinite(db[i]) ? 10 ** (db[i] / 20) : 0
+      power += amplitude * amplitude; peak = Math.max(peak, amplitude)
+    }
+    const energy = end > start ? .7 * Math.sqrt(power / (end - start)) + .3 * peak : 0
+    result[key] = clampLevel(Math.max(0, energy - .0018) * ({ low: 16, mid: 22, high: 35 }[key]))
+  }
+  return result
+}
+
+/** Keep headroom for the contour instead of clipping every loud syllable to one. */
+export function measureVoiceSpectrum(db: Float32Array, sampleRate: number, fftSize: number,
+  contour = new Float32Array(voiceContourBands)): VoiceSpectrum {
+  const [from, to] = voiceBandRanges.mid
+  for (let band = 0; band < voiceContourBands; band++) {
+    const start = Math.max(1, Math.ceil(from * (to / from) ** (band / voiceContourBands) * fftSize / sampleRate))
+    const end = Math.min(db.length, Math.ceil(from * (to / from) ** ((band + 1) / voiceContourBands) * fftSize / sampleRate))
+    let power = 0, peak = 0
+    for (let i = start; i < end; i++) {
+      const amplitude = Number.isFinite(db[i]) ? 10 ** (Math.min(0, db[i]) / 20) : 0
+      power += amplitude * amplitude; peak = Math.max(peak, amplitude)
+    }
+    const energy = end > start ? .7 * Math.sqrt(power / (end - start)) + .3 * peak : 0
+    contour[band] = Math.max(0, energy - .0018) * 18
+  }
+  return { ...measureVoiceBands(db, sampleRate, fftSize), contour }
+}
+
+/** Soft compression leaves room for changes above the old hard ceiling. */
+export function voiceContourEnergy(level: number, gain: number) {
+  const signal = Number.isFinite(level) ? Math.max(0, level) : 0
+  return Math.atan(signal * Math.max(0, gain) * 1.6) * 2 / Math.PI
+}
+
+export function followContourLevel(previous: number, target: number, dt: number) {
+  return previous + (target - previous) * (1 - Math.exp(-Math.min(.1, dt) / (target > previous ? .025 : .09)))
+}
+
+export function followLevel(previous: number, target: number, dt: number) {
+  return previous + (target - previous) * (1 - Math.exp(-Math.min(.1, dt) / (target > previous ? .045 : .19)))
+}
+
+export function formatVoiceTime(seconds: number) {
+  const total = Math.max(0, Math.floor(seconds))
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+// appearance
+export type VoiceAppearance = {
+  styleMode: 'orbit' | 'resonance' | 'plasma'; inputIcon: 'microphone' | 'lips'
+  color: string; lightColor: string; glow: number; lineWidth: number; idleSpeed: number
+  reactionSize: number; responseSpeed: number; waveStrength: number; waveSpeed: number; fillStrength: number
+  lockDistance: number; lockBurst: boolean
+  fillRing: boolean; spinRing: boolean; sphereRing: boolean; outerContour: boolean; glassEnabled: boolean
+  wavesAfterFill: boolean; wavesAcrossScreen: boolean
+  waveColor: string; waveGlow: number; waveFade: number
+  meshEnabled: boolean; meshRings: number; meshRadius: number; meshResponse: number
+  meshSpeed: number; meshVoiceSpeed: number; meshOpacity: number; meshLineWidth: number; meshColor: string
+  glassLinked: boolean; glassBlur: number; glassOpacity: number; glassColor: string
+  assemblySmoothness: number; contourLength: number; contourResponse: number; ringsScale: number
+  coreEnabled: boolean; coreColor: string; coreResponse: number; coreInertia: number; coreDamping: number
+  corePulse: number; corePulseSpeed: number; coreFlow: number; coreTurbulence: number; coreSpread: number
+  meshFillEnabled: boolean; meshFillOpacity: number; meshEmission: number
+}
+export const defaultVoiceAppearance: VoiceAppearance = {
+  styleMode: 'resonance', inputIcon: 'lips',
+  color: '#E7E100', lightColor: '#E7E100', glow: .75, lineWidth: 1, idleSpeed: .65,
+  reactionSize: 2, responseSpeed: .2, waveStrength: .25, waveSpeed: 1, fillStrength: .04, lockDistance: 96, lockBurst: true,
+  fillRing: true, spinRing: false, sphereRing: true, outerContour: true, glassEnabled: true,
+  wavesAfterFill: true, wavesAcrossScreen: true,
+  waveColor: '#E7E100', waveGlow: .1, waveFade: 2.2,
+  meshEnabled: true, meshRings: 6, meshRadius: 76, meshResponse: 1,
+  meshSpeed: 1.95, meshVoiceSpeed: 3.6, meshOpacity: 1, meshLineWidth: .25, meshColor: '#E7E100',
+  glassLinked: false, glassBlur: 2, glassOpacity: .5, glassColor: '#000000',
+  assemblySmoothness: .27, contourLength: 40, contourResponse: 7, ringsScale: 1.14,
+  coreEnabled: true, coreColor: '#FFF59A', coreResponse: 7, coreInertia: .05, coreDamping: 1.6,
+  corePulse: 1, corePulseSpeed: 1.2, coreFlow: 1.8, coreTurbulence: 0, coreSpread: .85,
+  meshFillEnabled: true, meshFillOpacity: 1, meshEmission: 3,
+}
+export const voiceStyleBounds = {
+  glow: [0, 2, .05], lineWidth: [.5, 2, .05], idleSpeed: [0, 2, .05], reactionSize: [.3, 2, .05],
+  waveStrength: [0, 2, .05], waveSpeed: [.4, 2, .05], fillStrength: [0, 1, .005], lockDistance: [48, 160, 4],
+  responseSpeed: [.1, 2, .05],
+  waveGlow: [0, 3, .05], waveFade: [.25, 4, .05],
+  meshRings: [4, 24, 1], meshRadius: [60, 97, 1], meshResponse: [0, 7, .1],
+  meshSpeed: [0, 3, .05], meshVoiceSpeed: [0, 7, .1], meshOpacity: [0, 1, .01], meshLineWidth: [.25, 1.5, .05],
+  glassBlur: [0, 80, .5], glassOpacity: [0, 1, .01],
+  assemblySmoothness: [.06, .6, .01], contourLength: [8, 64, 1], contourResponse: [.25, 7, .05], ringsScale: [.25, 2.5, .01],
+  coreResponse: [0, 7, .1], coreInertia: [.05, 1.5, .01], coreDamping: [.4, 1.6, .05],
+  corePulse: [0, 1, .05], corePulseSpeed: [.1, 4, .1], coreFlow: [0, 3, .05], coreTurbulence: [0, 1, .05], coreSpread: [.5, 1.3, .05],
+  meshFillOpacity: [0, 1, .01], meshEmission: [0, 3, .05],
+} as const
+export type VoiceStyleNumber = keyof typeof voiceStyleBounds
+// Apply the approved preset once; later edits persist here. Keep v1 untouched.
+export const VOICE_PREFERENCES_KEY = 'prince-voice-style-v2'
+export const VOICE_DEFAULTS_REVISION = '2026-10-06-approved'
+export const defaultVoiceSensitivity: VoiceBands = { low: 7, mid: 7, high: 7 }
+
+export function normalizeVoicePreferences(raw: unknown): { appearance: VoiceAppearance; sensitivity: VoiceBands } {
+  const appearance = { ...defaultVoiceAppearance }, sensitivity = { ...defaultVoiceSensitivity }
+  if (!raw || typeof raw !== 'object') return { appearance, sensitivity }
+  const value = raw as { appearance?: Partial<VoiceAppearance>; sensitivity?: Partial<VoiceBands> }
+  for (const key of Object.keys(voiceStyleBounds) as VoiceStyleNumber[]) {
+    const n = value.appearance?.[key], [min, max] = voiceStyleBounds[key]
+    if (typeof n === 'number' && Number.isFinite(n)) appearance[key] = Math.max(min, Math.min(max, n))
+  }
+  appearance.meshRings = Math.round(appearance.meshRings)
+  if (['orbit', 'resonance', 'plasma'].includes(value.appearance?.styleMode ?? '')) appearance.styleMode = value.appearance!.styleMode!
+  if (value.appearance?.inputIcon === 'lips' || value.appearance?.inputIcon === 'microphone') appearance.inputIcon = value.appearance.inputIcon
+  for (const key of ['color', 'lightColor', 'glassColor', 'waveColor', 'meshColor', 'coreColor'] as const) if (/^#[0-9a-f]{6}$/i.test(value.appearance?.[key] ?? '')) appearance[key] = value.appearance![key]!.toUpperCase()
+  for (const key of ['lockBurst', 'fillRing', 'spinRing', 'sphereRing', 'outerContour', 'glassEnabled', 'wavesAfterFill', 'wavesAcrossScreen', 'glassLinked', 'meshEnabled', 'coreEnabled', 'meshFillEnabled'] as const) {
+    if (typeof value.appearance?.[key] === 'boolean') appearance[key] = value.appearance[key]
+  }
+  for (const key of ['low', 'mid', 'high'] as const) {
+    const n = value.sensitivity?.[key]
+    if (typeof n === 'number' && Number.isFinite(n)) sensitivity[key] = Math.max(0, Math.min(7, n))
+  }
+  return { appearance, sensitivity }
+}
+
+export const voiceStylePresets = {
+  orbit: { title: 'Орбита', description: 'Свет скользит по пересекающимся орбитам.' },
+  resonance: { title: 'Резонанс', description: 'Световые кольца расходятся от центра.' },
+  plasma: { title: 'Плазма', description: 'Свет течёт по изгибающимся замкнутым линиям.' },
+} satisfies Record<VoiceAppearance['styleMode'], { title: string; description: string }>
+
+export function applyVoiceStyle(value: VoiceAppearance, styleMode: VoiceAppearance['styleMode']): VoiceAppearance {
+  return { ...value, styleMode }
+}
+
+export function lockGestureProgress(startY: number, currentY: number, scale: number, distance: number) {
+  return Math.max(0, Math.min(1, (startY - currentY) / (Math.max(.1, scale) * distance)))
+}
+
+export function lockVisual(progress: number) {
+  const p = Math.max(0, Math.min(1, progress))
+  return { arrowOpacity: 1 - Math.min(1, p / .32), lockOpacity: Math.max(0, Math.min(1, (p - .12) / .22)),
+    fill: Math.max(0, (p - .28) / .72), lift: Math.min(1, p / .6) * 10 }
+}
+
+// geometry
+export const voiceRadii = { spin: 52, orbit: 69, fill: 84, contour: 99, rayEnd: 113, glass: 114 } as const
+
+/** Every ray has a fixed root; only its tip grows, always away from the rings. */
+export function voiceContourSegment(index: number, level: number, clock: number, reacting: boolean,
+  style: Pick<VoiceAppearance, 'contourLength' | 'lineWidth'>) {
+  const angle = index * Math.PI / 20
+  const pattern = .5 + .3 * Math.sin(angle * 3 + clock * .8) + .2 * Math.sin(angle * 7 - clock * 1.1)
+  const drive = Math.max(0, Math.min(1, level)) ** 1.4
+  const local = drive * (.12 + .88 * pattern ** 1.3)
+  const maximum = Math.max(8, Math.min(64, style.contourLength))
+  const length = reacting ? 3 + (maximum - 3) * local : 3 + (1 + Math.sin(clock * .9 + index * .5))
+  const start = voiceRadii.contour, end = start + length
+  return { x1: 120 + Math.cos(angle) * start, y1: 105 + Math.sin(angle) * start,
+    x2: 120 + Math.cos(angle) * end, y2: 105 + Math.sin(angle) * end, length,
+    strokeWidth: style.lineWidth * (.65 + local * 2.8), opacity: reacting ? .3 + local * .7 : .44 }
+}
+
+/** Fixed framing: longer rays overflow instead of shrinking the sphere. */
+export function voiceArtworkViewport() {
+  return { x: 0, y: 0, width: 240, height: 220, viewBox: '0 0 240 220' }
+}
+
+export function voiceRingsTransform(scale: number) {
+  return `translate(120 105) scale(${scale}) translate(-120 -105)`
+}
+
+/** Audio-to-arc threshold is 30% lower. Apply once, before smoothing. */
+export function voiceArcTarget(level: number, reactionSize: number) {
+  return voiceRingFill(level / .7, reactionSize)
+}
+
+/** Two equal luminous arcs, always exactly opposite each other on pathLength=100. */
+export function voiceRingFill(level: number, reactionSize: number) {
+  const fill = Math.min(1, Math.max(0, level * Math.max(1, reactionSize)))
+  // Complete the last fraction of a pixel instead of approaching closure forever.
+  return fill >= .99 ? 1 : fill
+}
+export function voiceArcDashes(level: number, reactionSize: number) {
+  const amount = voiceRingFill(level, reactionSize)
+  const length = 50 * amount
+  return `${length} ${50 - length}`
+}
+
+/** A real rotating 3D circle, projected into the component's 240×220 SVG. */
+export function sphereRingPaths(angle: number) {
+  const radius = voiceRadii.orbit, segments = 80
+  const tilt = .46 + Math.sin(angle * .67) * .18, turn = angle + .55
+  const roll = Math.sin(angle * .43) * .45
+  const sinT = Math.sin(tilt), cosT = Math.cos(tilt), sinY = Math.sin(turn), cosY = Math.cos(turn)
+  const sinR = Math.sin(roll), cosR = Math.cos(roll)
+  const project = (t: number) => {
+    const x = Math.cos(t) * radius, y = Math.sin(t) * radius
+    const y1 = y * cosT, z1 = y * sinT
+    const x2 = x * cosY + z1 * sinY, z = -x * sinY + z1 * cosY
+    return { x: 120 + x2 * cosR - y1 * sinR, y: 105 + x2 * sinR + y1 * cosR, z }
+  }
+  const point = ({ x, y }: { x: number; y: number }) => `${x.toFixed(2)} ${y.toFixed(2)}`
+  let front = '', back = '', previous = project(0), lastSide: boolean | undefined
+  for (let i = 1; i <= segments; i++) {
+    const next = project(i * Math.PI * 2 / segments), isFront = (previous.z + next.z) >= 0
+    const segment = `${isFront !== lastSide ? `M${point(previous)}` : ''}L${point(next)}`
+    if (isFront) front += segment; else back += segment
+    lastSide = isFront; previous = next
+  }
+  return { front, back }
+}
+
+/** Maps the circular glass onto the same object-fit:contain geometry as the SVG. */
+export function voiceGlassBounds(width: number, height: number, viewport = voiceArtworkViewport(), ringsScale = 1) {
+  const scale = Math.max(0, Math.min(width / viewport.width, height / viewport.height))
+  const diameter = voiceRadii.glass * 2 * scale * ringsScale
+  const centerY = height / 2 + (105 - viewport.y - viewport.height / 2) * scale
+  return { width: diameter, height: diameter, left: (width - diameter) / 2, top: centerY - diameter / 2 }
+}
+
+export function voiceWaveOrigin(box: { x: number; y: number; width: number; height: number }, style: Pick<VoiceAppearance, 'ringsScale'> = defaultVoiceAppearance) {
+  const bounds = voiceGlassBounds(box.width, Math.max(0, box.height - 78), voiceArtworkViewport(), style.ringsScale)
+  return { x: box.x + box.width / 2, y: box.y + 12 + bounds.top + bounds.height / 2, radius: bounds.width / 2 }
+}
+
+// mesh
+export const VOICE_MESH_MAX_RINGS = 24
+const meshSamples = Array.from({ length: 65 }, (_, i) => ({ c: Math.cos(i * Math.PI / 32), s: Math.sin(i * Math.PI / 32) }))
+const unit = (value: number) => Math.max(0, Math.min(1, value))
+
+/** Fixed-radius meridians and parallels. Volume reveals paths; it never scales the sphere. */
+export function voiceMeshFrame(angle: number, level: number, ringCount: number, radius: number) {
+  const count = Math.max(4, Math.min(VOICE_MESH_MAX_RINGS, Math.round(ringCount)))
+  const r = Math.max(60, Math.min(97, radius)), meridians = 1 + Math.floor(count / 2)
+  const yTurn = angle + .4, pitch = .32 + Math.sin(angle * .23) * .18, roll = .16
+  const sy = Math.sin(yTurn), cy = Math.cos(yTurn), sp = Math.sin(pitch), cp = Math.cos(pitch)
+  const sr = Math.sin(roll), cr = Math.cos(roll)
+  const project = (x: number, y: number, z: number) => {
+    const x1 = x * cy + z * sy, z1 = -x * sy + z * cy
+    const y1 = y * cp - z1 * sp, depth = y * sp + z1 * cp
+    return { x: 120 + x1 * cr - y1 * sr, y: 105 + x1 * sr + y1 * cr, z: depth }
+  }
+  const point = (p: { x: number; y: number }) => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`
+  return Array.from({ length: VOICE_MESH_MAX_RINGS }, (_, index) => {
+    const reveal = index === 0 ? 1 : index >= count ? 0 : unit(unit(level) * (count - 1) - index + 1)
+    const opacity = reveal * reveal * (3 - 2 * reveal)
+    if (!opacity) return { front: '', back: '', opacity: 0 }
+    // Alternate a new meridian with a parallel to build an even grid progressively.
+    const longitude = index === 0 || index % 2 === 1
+    const ordinal = index === 0 ? 0 : longitude ? (index + 1) / 2 : index / 2
+    const turn = ordinal * Math.PI / meridians
+    const height = longitude ? 0 : ((ordinal / (Math.floor((count - 1) / 2) + 1)) * 1.6 - .8) * r
+    const circleRadius = Math.sqrt(r * r - height * height)
+    const points = meshSamples.map(({ c, s }) => longitude
+      ? project(r * c * Math.cos(turn), r * s, r * c * Math.sin(turn))
+      : project(circleRadius * c, height, circleRadius * s))
+    let front = '', back = '', lastSide: boolean | undefined
+    for (let i = 1; i < points.length; i++) {
+      const previous = points[i - 1], next = points[i], near = previous.z + next.z >= 0
+      const segment = `${near !== lastSide ? `M${point(previous)}` : ''}L${point(next)}`
+      if (near) front += segment; else back += segment
+      lastSide = near
+    }
+    return { front, back, opacity }
+  })
+}
+
+// physics
+export type VoiceSpring = { position: number; velocity: number }
+export const createVoiceSpring = (): VoiceSpring => ({ position: 0, velocity: 0 })
+
+/** A damped spring integrated in small steps, independent of display frame rate. */
+export function stepVoiceSpring(state: VoiceSpring, target: number, dt: number, inertia: number, damping = 1) {
+  const elapsed = Math.max(0, Math.min(.1, dt)), steps = Math.max(1, Math.ceil(elapsed / .0045))
+  const h = elapsed / steps, omega = 2 / Math.max(.05, inertia)
+  for (let i = 0; i < steps; i++) {
+    state.velocity += ((target - state.position) * omega * omega - 2 * damping * omega * state.velocity) * h
+    state.position += state.velocity * h
+    if (state.position < 0) { state.position = 0; state.velocity = Math.max(0, state.velocity) }
+    if (state.position > 1.4) { state.position = 1.4; state.velocity = Math.min(0, state.velocity) }
+  }
+  if (target === 0 && state.position < .0001 && Math.abs(state.velocity) < .0001) { state.position = 0; state.velocity = 0 }
+  return state.position
+}
+
+// light
+/** Moving caustics and pressure fronts: luminosity is always powered by the voice envelope. */
+export function voiceLightFrame(pressure: number, clock: number, style: VoiceAppearance, reduced = false) {
+  const energy = pressure < .001 || !style.coreEnabled ? 0 : clampLevel(pressure)
+  const phase = reduced ? 0 : clock * style.coreFlow
+  const beat = reduced ? 1 : 1 - style.corePulse * .5 + Math.sin(clock * style.corePulseSpeed * Math.PI * 2) * style.corePulse * .5
+  const intensity = clampLevel(energy * style.fillStrength * 4) * Math.max(.05, beat)
+  const radius = (45 + energy * 28) * style.coreSpread
+  const caustics = Array.from({ length: 3 }, (_, index) => {
+    if (!intensity) return { d: '', opacity: 0, dash: '100 0', offset: 0 }
+    const travel = (phase * .26 + index / 3) % 1
+    const base = style.styleMode === 'resonance' ? 18 + travel * 66 : 37 + index * 15
+    const ratio = style.styleMode === 'orbit' ? .34 + index * .17 : 1
+    const angle = style.styleMode === 'orbit' ? phase * .6 + index * .9 : phase * .22
+    const cos = Math.cos(angle), sin = Math.sin(angle)
+    const points = Array.from({ length: 73 }, (_, i) => {
+      const t = i * Math.PI / 36
+      const distortion = (Math.sin(t * 3 + phase * 1.4 + index) * .65 + Math.sin(t * 5 - phase * .8) * .35)
+        * style.coreTurbulence * energy * (style.styleMode === 'plasma' ? 17 : 4)
+      const r = Math.min(82, Math.max(10, (base + distortion) * style.coreSpread))
+      const x = Math.cos(t) * r, y = Math.sin(t) * r * ratio
+      return `${i ? 'L' : 'M'}${(120 + x * cos - y * sin).toFixed(2)} ${(105 + x * sin + y * cos).toFixed(2)}`
+    }).join('') + 'Z'
+    const fade = style.styleMode === 'resonance' ? Math.sin(travel * Math.PI) * (1 - travel * .65) : .5 + index * .15
+    return { d: points, opacity: intensity * fade, dash: style.styleMode === 'orbit' ? '32 14 7 47' : '100 0', offset: -phase * (9 + index * 3) }
+  })
+  return { intensity, radius, x: 120 + Math.sin(phase * .8) * energy * 12, y: 105 + Math.cos(phase * .63) * energy * 9, caustics }
+}
+
+// lightField
+export function VoiceLightField({ id, appearance: a }: { id: string; appearance: VoiceAppearance }) {
+  // Shade with opaque colors so 100% fill is actually opaque at full assembly.
+  const shade = (factor: number) => '#' + [1, 3, 5].map(start => Math.round(parseInt(a.meshColor.slice(start, start + 2), 16) * factor).toString(16).padStart(2, '0')).join('')
+  return <>
+    <defs>
+      <radialGradient id={`${id}-light-volume`}><stop stopColor={a.coreColor} stopOpacity=".28"/><stop offset=".55" stopColor={a.coreColor} stopOpacity=".12"/><stop offset="1" stopColor={a.coreColor} stopOpacity="0"/></radialGradient>
+      <radialGradient id={`${id}-mesh-volume`} cx="38%" cy="32%" r="70%"><stop stopColor={shade(.8)}/><stop offset=".6" stopColor={shade(.3)}/><stop offset="1" stopColor={shade(.7)}/></radialGradient>
+      <radialGradient id={`${id}-mesh-emission`}><stop offset=".64" stopColor={a.lightColor} stopOpacity="0"/><stop offset=".86" stopColor={a.lightColor} stopOpacity=".48"/><stop offset="1" stopColor={a.lightColor} stopOpacity="0"/></radialGradient>
+      <filter id={`${id}-caustic-glow`} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter>
+      <clipPath id={`${id}-light-bounds`}><circle cx="120" cy="105" r="83"/></clipPath>
+    </defs>
+    <circle className="vr-mesh-fill" cx="120" cy="105" r={a.meshRadius} fill={`url(#${id}-mesh-volume)`} opacity="0"/>
+    <circle className="vr-mesh-emission" cx="120" cy="105" r={Math.min(113, a.meshRadius + 15)} fill={`url(#${id}-mesh-emission)`} opacity="0"/>
+    <g className="vr-core-field" clipPath={`url(#${id}-light-bounds)`} display={a.coreEnabled ? undefined : 'none'}>
+      <circle className="vr-core-volume" cx="120" cy="105" r="60" fill={`url(#${id}-light-volume)`} opacity="0"/>
+      <g stroke={a.coreColor} strokeWidth="2.5" filter={`url(#${id}-caustic-glow)`}>{[0, 1, 2].map(i => <use key={i} href={`#${id}-caustic-${i}`}/>)}</g>
+      <g stroke={a.lightColor} strokeWidth=".7" fill="none">{[0, 1, 2].map(i => <path key={i} id={`${id}-caustic-${i}`} className="vr-caustic" pathLength="100" opacity="0"/>)}</g>
+    </g>
+  </>
+}
+
+// icons
+export const voiceIconPaths = {
+  microphone: 'M115 97a5 5 0 0 1 10 0v9a5 5 0 0 1-10 0ZM111 103v3a9 9 0 0 0 18 0v-3M120 115v6M116 121h8',
+  lips: 'M105 105c5-2 9-9 15-5 6-4 10 3 15 5-4 5-8 10-15 10s-11-5-15-10ZM105 105c6 2 10-2 15 0 5-2 9 2 15 0M110 105c3 2 7 3 10 3s7-1 10-3',
+  speaker: 'M108 100h6l8-6v22l-8-6h-6ZM127 99a9 9 0 0 1 0 12M130 95a15 15 0 0 1 0 20',
+} as const
+
+export function VoiceGlyph({ kind, className }: { kind: keyof typeof voiceIconPaths; className?: string }) {
+  return <g className={className} stroke="currentColor" strokeWidth=".85" strokeLinecap="round" strokeLinejoin="round" fill="none"><path d={voiceIconPaths[kind]}/></g>
+}
+
+// voiceCopy
+/** Kept independent of the laboratory so the exported recorder only requires React. */
+export const voiceEnglishCopy: Record<string, string> = {
+  'Доступ к микрофону…': 'Microphone access…', 'Сохраняю запись…': 'Saving recording…',
+  'Нажми, чтобы закончить': 'Press to finish', 'Вверх — закрепить': 'Slide up to lock',
+  'Слушаем твою запись': 'Playing your recording', 'Зажми и говори': 'Hold and speak',
+  'Закончить запись': 'Finish recording',
+  'Записать голос. Удерживай и проведи вверх, чтобы закрепить. С клавиатуры: Enter — начать или остановить.': 'Record your voice. Hold and slide up to lock. Keyboard: Enter to start or stop.',
+  'Разреши микрофон и зажми ещё раз': 'Allow microphone access, then hold again',
+  'Разреши доступ к микрофону в настройках сайта и попробуй снова.': 'Allow microphone access in the site settings and try again.',
+  'Микрофон не найден. Подключи его и попробуй снова.': 'No microphone found. Connect one and try again.',
+  'Не удалось открыть микрофон. Проверь, доступен ли он другим приложениям.': 'Unable to open the microphone. Check whether another app is using it.',
+  'Не удалось начать запись. Попробуй ещё раз.': 'Unable to start recording. Try again.',
+  'Для микрофона открой лабораторию через HTTPS или localhost.': 'Open the laboratory over HTTPS or localhost to use the microphone.',
+  'Этот браузер не поддерживает запись. Открой лабораторию в актуальном браузере.': 'This browser does not support recording. Open the laboratory in an up-to-date browser.',
+  'Запись прервалась. Попробуй ещё раз.': 'Recording was interrupted. Try again.',
+}
+
+export function translateVoiceText(language: 'ru' | 'en', source: string) {
+  return language === 'en' ? voiceEnglishCopy[source] ?? source : source
+}
+
+// capture
+export type CaptureState = 'idle' | 'requesting' | 'recording' | 'stopping' | 'error'
+export type VoiceTake = { blob: Blob; seconds: number; mimeType: string }
+type Callbacks = { onState: (state: CaptureState, error?: string) => void; onTake: (take: VoiceTake) => void }
+export type CaptureDependencies = {
+  getStream: () => Promise<MediaStream>
+  createContext: () => AudioContext
+  createRecorder: (stream: MediaStream) => MediaRecorder
+  now: () => number
+}
+
+function microphoneError(error: unknown) {
+  const name = error instanceof Error ? error.name : ''
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Разреши доступ к микрофону в настройках сайта и попробуй снова.'
+  if (name === 'NotFoundError') return 'Микрофон не найден. Подключи его и попробуй снова.'
+  if (name === 'NotReadableError') return 'Не удалось открыть микрофон. Проверь, доступен ли он другим приложениям.'
+  return error instanceof Error ? error.message : 'Не удалось начать запись. Попробуй ещё раз.'
+}
+
+const browserDependencies: CaptureDependencies = {
+  getStream: () => {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Для микрофона открой лабораторию через HTTPS или localhost.')
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }, video: false })
+  },
+  createContext: () => new AudioContext(),
+  createRecorder: stream => {
+    if (typeof MediaRecorder === 'undefined') throw new Error('Этот браузер не поддерживает запись. Открой лабораторию в актуальном браузере.')
+    const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'].find(type => MediaRecorder.isTypeSupported(type))
+    return new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+  },
+  now: () => performance.now(),
+}
+
+/** Owns the mic for one explicit gesture. No network upload or speaker monitoring. */
+export class VoiceCapture {
+  state: CaptureState = 'idle'
+  private generation = 0
+  private disposed = false
+  private stream: MediaStream | null = null
+  private context: AudioContext | null = null
+  private recorder: MediaRecorder | null = null
+  private source: MediaStreamAudioSourceNode | null = null
+  private analyser: AnalyserNode | null = null
+  private bins: Float32Array<ArrayBuffer> | null = null
+  private contour = new Float32Array(voiceContourBands)
+  private startedAt = 0
+  constructor(private callbacks: Callbacks, private dependencies = browserDependencies) {}
+
+  get seconds() { return this.state === 'recording' ? (this.dependencies.now() - this.startedAt) / 1000 : 0 }
+  private publish(state: CaptureState, error?: string) { this.state = state; if (!this.disposed) this.callbacks.onState(state, error) }
+  private closeInputs() {
+    this.source?.disconnect(); this.source = null; this.analyser = null; this.bins = null
+    this.stream?.getTracks().forEach(track => { track.onended = null; track.stop() }); this.stream = null
+    const context = this.context; this.context = null
+    if (context && context.state !== 'closed') void context.close().catch(() => {})
+  }
+
+  async start() {
+    if (this.disposed || !['idle', 'error'].includes(this.state)) return false
+    const generation = ++this.generation
+    this.publish('requesting')
+    let stream: MediaStream | null = null
+    let context: AudioContext | null = null
+    try {
+      // Resume during the trusted user gesture, before awaiting microphone permission.
+      context = this.dependencies.createContext(); this.context = context
+      const resumed = context.resume()
+      // Handle the promise immediately even when the permission dialog stays open.
+      const resumeResult = resumed.then(() => null, error => error)
+      stream = await this.dependencies.getStream()
+      if (this.disposed || generation !== this.generation) {
+        stream.getTracks().forEach(track => track.stop())
+        if (context.state !== 'closed') void context.close().catch(() => {})
+        return false
+      }
+      // Track the stream before awaiting resume: a release must stop the mic even
+      // while the browser is still waking the audio graph.
+      this.stream = stream
+      const resumeError = await resumeResult
+      if (this.disposed || generation !== this.generation) return false
+      if (resumeError) throw resumeError
+      this.source = context.createMediaStreamSource(stream)
+      this.analyser = context.createAnalyser()
+      this.analyser.fftSize = 2048; this.analyser.smoothingTimeConstant = .35
+      this.bins = new Float32Array(this.analyser.frequencyBinCount)
+      this.source.connect(this.analyser) // Never connect the microphone to speakers.
+      const recorder = this.dependencies.createRecorder(stream)
+      this.recorder = recorder
+      const chunks: Blob[] = []
+      let duration: number | null = null
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
+      recorder.onstop = () => {
+        if (this.disposed || generation !== this.generation) return
+        this.recorder = null; this.closeInputs()
+        const mimeType = recorder.mimeType || chunks[0]?.type || 'audio/webm'
+        const blob = new Blob(chunks, { type: mimeType })
+        const seconds = duration ?? (this.dependencies.now() - this.startedAt) / 1000
+        this.stopDuration = null
+        this.publish('idle')
+        if (blob.size && seconds > .08) this.callbacks.onTake({ blob, seconds, mimeType })
+      }
+      recorder.onerror = () => {
+        if (generation !== this.generation || this.disposed) return
+        ++this.generation; this.closeInputs(); this.recorder = null
+        if (recorder.state !== 'inactive') recorder.stop()
+        this.publish('error', 'Запись прервалась. Попробуй ещё раз.')
+      }
+      // Cache duration at stop request; async stop events must not inflate the timer.
+      this.stopDuration = seconds => { duration = seconds }
+      stream.getAudioTracks().forEach(track => { track.onended = () => this.stop() })
+      recorder.start(250)
+      this.startedAt = this.dependencies.now()
+      this.publish('recording')
+      return true
+    } catch (error) {
+      if (generation !== this.generation || this.disposed) return false
+      ++this.generation
+      const recorder = this.recorder; this.recorder = null
+      if (recorder && recorder.state !== 'inactive') recorder.stop()
+      this.closeInputs(); this.stopDuration = null
+      this.publish('error', microphoneError(error)); return false
+    }
+  }
+
+  private stopDuration: ((seconds: number) => void) | null = null
+  stop() {
+    if (this.state === 'requesting') {
+      ++this.generation; this.closeInputs(); this.publish('idle'); return
+    }
+    if (this.state !== 'recording' || !this.recorder) return
+    this.stopDuration?.(this.seconds); this.stopDuration = null
+    this.publish('stopping')
+    const recorder = this.recorder
+    if (recorder.state !== 'inactive') recorder.stop()
+    this.closeInputs()
+  }
+  sample(): VoiceSpectrum {
+    if (!this.analyser || !this.bins || !this.context || this.state !== 'recording') return silentBands
+    this.analyser.getFloatFrequencyData(this.bins)
+    return measureVoiceSpectrum(this.bins, this.context.sampleRate, this.analyser.fftSize, this.contour)
+  }
+  handleVisibility(hidden: boolean, locked: boolean) {
+    // A locked recording is explicitly hands-free, including in another tab.
+    // Unfinished holds and pending permissions must never start recording unseen.
+    if (hidden) { if (!locked || this.state !== 'recording') this.stop() }
+    else void this.resumeAnalysis()
+  }
+  async resumeAnalysis() {
+    const context = this.context
+    if (!context || this.state !== 'recording' || context.state === 'closed') return false
+    try { if (context.state !== 'running') await context.resume(); return this.context === context && this.state === 'recording' }
+    catch { return false }
+  }
+  dispose() {
+    this.disposed = true; ++this.generation
+    if (this.recorder?.state !== 'inactive') this.recorder?.stop()
+    this.recorder = null; this.stopDuration = null; this.closeInputs(); this.state = 'idle'
+  }
+}
+
+// playback
+export type PlaybackFrame = { playing: boolean; seconds: number; bands: VoiceSpectrum }
+const idleFrame: PlaybackFrame = { playing: false, seconds: 0, bands: silentBands }
+
+/** One reusable media graph. An HTML audio element must never be connected twice. */
+export class VoicePlayback {
+  private context: AudioContext | null = null
+  private analyser: AnalyserNode | null = null
+  private output: GainNode | null = null
+  private speakersMuted = false
+  private bins: Float32Array<ArrayBuffer> | null = null
+  private contour = new Float32Array(voiceContourBands)
+  private sources = new Map<HTMLMediaElement, MediaElementAudioSourceNode>()
+  private current: HTMLMediaElement | null = null
+  private generation = 0
+  private disposed = false
+  constructor(private createContext = () => new AudioContext()) {}
+
+  async listenTo(element: HTMLMediaElement) {
+    if (this.disposed) return false
+    const generation = ++this.generation
+    if (!this.context) {
+      this.context = this.createContext()
+      this.analyser = this.context.createAnalyser()
+      this.analyser.fftSize = 2048; this.analyser.smoothingTimeConstant = .35
+      this.bins = new Float32Array(this.analyser.frequencyBinCount)
+      // Mute AFTER analysis: silent playback must keep the same spectrum and clock.
+      this.output = this.context.createGain()
+      this.output.gain.value = this.speakersMuted ? 0 : 1
+      this.analyser.connect(this.output)
+      this.output.connect(this.context.destination)
+    }
+    const previous = this.current
+    this.current = element
+    if (previous && previous !== element) previous.pause()
+    if (!this.sources.has(element)) {
+      const source = this.context.createMediaElementSource(element)
+      source.connect(this.analyser!); this.sources.set(element, source)
+    }
+    await this.context.resume()
+    return !this.disposed && generation === this.generation && this.current === element
+  }
+  setMuted(muted: boolean) {
+    this.speakersMuted = muted
+    if (!this.output || !this.context) return
+    const gain = this.output.gain, now = this.context.currentTime
+    gain.cancelScheduledValues(now)
+    gain.setTargetAtTime(muted ? 0 : 1, now, .008)
+    gain.setValueAtTime(muted ? 0 : 1, now + .06)
+  }
+  sample(): PlaybackFrame {
+    if (!this.current || this.current.paused || this.current.ended || !this.context || !this.analyser || !this.bins) return idleFrame
+    this.analyser.getFloatFrequencyData(this.bins)
+    return { playing: true, seconds: this.current.currentTime, bands: measureVoiceSpectrum(this.bins, this.context.sampleRate, this.analyser.fftSize, this.contour) }
+  }
+  paused(element: HTMLMediaElement) {
+    // A queued pause/ended event from the previous loop must not detach a player
+    // that has already started its next pass.
+    if (this.current !== element || (!element.paused && !element.ended)) return false
+    ++this.generation; this.current = null; return true
+  }
+  async repeatEnded(element: HTMLMediaElement, allowed: () => boolean) {
+    if (this.disposed || !allowed() || (this.current && this.current !== element)) return false
+    // Some recorded media reaches `ended` even with native loop enabled.
+    // Reuse its existing source node and preserve the speaker gain.
+    this.current = element
+    element.currentTime = 0
+    await element.play()
+    if (this.disposed || !allowed() || this.current !== element) { element.pause(); return false }
+    return true
+  }
+  async resumeAnalysis() {
+    const context = this.context, current = this.current
+    if (this.disposed || !context || !current || current.paused || current.ended || context.state === 'closed') return false
+    try { if (context.state !== 'running') await context.resume(); return !this.disposed && this.current === current && !current.paused }
+    catch { return false }
+  }
+  pause() {
+    const current = this.current; ++this.generation; this.current = null; current?.pause()
+  }
+  remove(element: HTMLMediaElement) {
+    if (this.current === element) this.pause()
+    this.sources.get(element)?.disconnect(); this.sources.delete(element)
+  }
+  dispose() {
+    this.disposed = true; this.pause()
+    this.sources.forEach(source => source.disconnect()); this.sources.clear(); this.analyser?.disconnect(); this.output?.disconnect()
+    const context = this.context; this.context = null; this.analyser = null; this.output = null; this.bins = null
+    if (context && context.state !== 'closed') void context.close().catch(() => {})
+  }
+}
+
+// glass
+/** The linked material values; geometry stays circular regardless of the glass editor's shape. */
+export type VoiceGlassMaterial = {
+  backgroundBlur: number; fillColor: string; fillOpacity: number
+  highlightColor: string; highlightStrength: number
+}
+
+export function resolveVoiceGlassMaterial(appearance: VoiceAppearance, linked?: VoiceGlassMaterial): VoiceGlassMaterial {
+  if (appearance.glassLinked && linked) return linked
+  return { backgroundBlur: appearance.glassBlur, fillOpacity: appearance.glassOpacity, fillColor: appearance.glassColor,
+    highlightColor: appearance.lightColor, highlightStrength: .025 * appearance.glow }
+}
+
+export function VoiceGlassBacking({ material, viewport = voiceArtworkViewport(), scale = 1 }: { material: VoiceGlassMaterial; viewport?: ReturnType<typeof voiceArtworkViewport>; scale?: number }) {
+  const glass = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const element = glass.current, plane = element?.parentElement
+    if (!element || !plane) return
+    const place = (width: number, height: number) => {
+      const bounds = voiceGlassBounds(width, height, viewport, scale)
+      for (const key of ['width', 'height', 'left', 'top'] as const) element.style[key] = `${bounds[key]}px`
+    }
+    place(plane.clientWidth, plane.clientHeight)
+    const observer = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect; place(width, height)
+    })
+    observer.observe(plane)
+    return () => observer.disconnect()
+  }, [viewport.x, viewport.y, viewport.width, viewport.height, scale])
+  return <span ref={glass} className="vr-glass" aria-hidden="true" style={{
+    '--vr-glass-blur': `${Math.max(0, material.backgroundBlur)}px`,
+    '--vr-glass-fill': material.fillColor,
+    '--vr-glass-opacity': `${Math.max(0, Math.min(1, material.fillOpacity)) * 100}%`,
+    '--vr-glass-light': material.highlightColor,
+    '--vr-glass-shine': `${Math.min(.25, Math.max(0, material.highlightStrength)) * 100}%`,
+  } as CSSProperties}/>
+}
+
+// waveLogic
+export type VoiceWaveEvent = { strength: number }
+export type VoiceWaveOrigin = { x: number; y: number; radius: number }
+export type TravelingVoiceWave = VoiceWaveOrigin & { endRadius: number; progress: number; duration: number; strength: number }
+
+export function canEmitVoiceWave(reacting: boolean, energy: number, fill: number, fillRing: boolean, afterFill: boolean, strength: number) {
+  return reacting && energy > .12 && strength > 0 && (!afterFill || (fillRing && fill === 1))
+}
+
+export function createTravelingVoiceWave(origin: VoiceWaveOrigin, width: number, height: number, strength: number): TravelingVoiceWave {
+  const endRadius = Math.max(...[[0, 0], [width, 0], [0, height], [width, height]].map(([x, y]) => Math.hypot(origin.x - x, origin.y - y))) + 16
+  return { ...origin, endRadius, progress: 0, duration: Math.max(1.45, (endRadius - origin.radius) / 150), strength }
+}
+
+/** Fade is independent of propagation: higher values extinguish the trail sooner. */
+export function voiceWaveOpacity(progress: number, strength: number, intensity: number, fade = 1) {
+  const p = Math.max(0, Math.min(1, progress)), fadeIn = Math.sin(Math.min(1, p / .06) * Math.PI / 2)
+  return Math.min(1, fadeIn * (1 - p) ** (2 * fade) * strength * intensity * .65)
+}
+
+export function travelingVoiceWaveFrame(wave: TravelingVoiceWave, dt: number, speed: number, strength: number, fade = 1) {
+  wave.progress = Math.min(1, wave.progress + Math.max(0, dt) * speed / wave.duration)
+  const p = wave.progress
+  return { radius: wave.radius + (wave.endRadius - wave.radius) * p,
+    opacity: voiceWaveOpacity(p, wave.strength, strength, fade) }
+}
+
+// waveField
+export type VoiceWaveFieldHandle = { emit: (wave: VoiceWaveEvent) => void }
+
+/** The host-sized wave layer has no hit area and runs only while a wave is visible. */
+export function VoiceWaveField({ controller, active, origin, appearance, width = 320, height = 568 }: {
+  controller: Ref<VoiceWaveFieldHandle>; active: boolean; origin: VoiceWaveOrigin
+  appearance: VoiceAppearance; width?: number; height?: number
+}) {
+  const root = useRef<SVGSVGElement>(null)
+  const id = `voice-waves-${useId().replace(/[^a-z0-9-]/gi, '')}`
+  const emit = useRef<(event: VoiceWaveEvent) => void>(() => {})
+  const live = useRef({ origin, appearance, width, height })
+  live.current = { origin, appearance, width, height }
+  useImperativeHandle(controller, () => ({ emit: event => emit.current(event) }), [])
+  useEffect(() => {
+    const nodes = Array.from(root.current?.querySelectorAll<SVGCircleElement>('circle') ?? [])
+    if (!active || !nodes.length) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const waves: (TravelingVoiceWave | undefined)[] = nodes.map(() => undefined)
+    let next = 0, frame = 0, previous = 0
+    const clear = () => { waves.fill(undefined); nodes.forEach(node => node.setAttribute('opacity', '0')) }
+    const draw = (now: number) => {
+      frame = 0
+      if (document.hidden || reduced.matches) { clear(); return }
+      const dt = Math.min(.05, Math.max(0, (now - previous) / 1000)); previous = now
+      const style = live.current.appearance
+      waves.forEach((wave, index) => {
+        if (!wave) return
+        const values = travelingVoiceWaveFrame(wave, dt, style.waveSpeed * style.responseSpeed, style.waveStrength, style.waveFade)
+        nodes[index].setAttribute('r', String(values.radius)); nodes[index].setAttribute('opacity', String(values.opacity))
+        if (wave.progress === 1) waves[index] = undefined
+      })
+      if (waves.some(Boolean)) frame = requestAnimationFrame(draw)
+    }
+    emit.current = event => {
+      if (document.hidden || reduced.matches || !live.current.appearance.wavesAcrossScreen) return
+      const index = next++ % nodes.length, { origin, width, height } = live.current
+      waves[index] = createTravelingVoiceWave(origin, width, height, event.strength)
+      nodes[index].setAttribute('cx', String(origin.x)); nodes[index].setAttribute('cy', String(origin.y))
+      nodes[index].setAttribute('r', String(origin.radius)); nodes[index].setAttribute('opacity', '0')
+      if (!frame) { previous = performance.now(); frame = requestAnimationFrame(draw) }
+    }
+    const hidden = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; clear() } }
+    document.addEventListener('visibilitychange', hidden)
+    return () => { document.removeEventListener('visibilitychange', hidden); emit.current = () => {}; cancelAnimationFrame(frame); clear() }
+  }, [active])
+  return <svg className="voice-wave-field" ref={root} viewBox={`0 0 ${width} ${height}`} fill="none" stroke={appearance.waveColor}
+    strokeWidth={.75 * appearance.lineWidth} aria-hidden="true">
+    <defs><filter id={`${id}-glow`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="1.8"/><feComponentTransfer><feFuncA type="linear" slope={appearance.waveGlow}/></feComponentTransfer></filter></defs>
+    <g filter={`url(#${id}-glow)`} strokeWidth={1.8 * appearance.lineWidth}>
+      {Array.from({ length: 8 }, (_, index) => <use key={index} href={`#${id}-${index}`}/>)}
+    </g>
+    {Array.from({ length: 8 }, (_, index) => <circle id={`${id}-${index}`} key={index} cx="0" cy="0" r="0" opacity="0"/>)}
+  </svg>
+}
+
+// motion
+export type VoiceFrame = { bands: VoiceSpectrum; seconds: number; source: 'mic' | 'playback' | 'idle' }
+export function mountVoiceMotion(root: HTMLElement, read: () => {
+  frame: VoiceFrame; sensitivity: VoiceBands; appearance: VoiceAppearance; lockProgress: number
+}, onLevels: (bands: VoiceBands, source: VoiceFrame['source']) => void, onWave?: (wave: VoiceWaveEvent) => void) {
+  const low = root.querySelector<SVGGElement>('.vr-low-motion')!, mid = root.querySelector<SVGGElement>('.vr-mid-motion')!
+  const high = root.querySelector<SVGGElement>('.vr-high-motion')!, timer = root.querySelector<HTMLElement>('.vr-time-value')!
+  const rays = Array.from(root.querySelectorAll<SVGLineElement>('.vr-ray'))
+  const contourLevels = new Float64Array(rays.length)
+  const arcs = Array.from(root.querySelectorAll<SVGCircleElement>('.vr-fill-arc'))
+  const sphereFront = Array.from(root.querySelectorAll<SVGPathElement>('.vr-sphere-front'))
+  const sphereBack = root.querySelector<SVGPathElement>('.vr-sphere-back')!
+  const meshFront = Array.from(root.querySelectorAll<SVGPathElement>('.vr-mesh-front'))
+  const meshBack = Array.from(root.querySelectorAll<SVGPathElement>('.vr-mesh-back'))
+  const meshFill = root.querySelector<SVGCircleElement>('.vr-mesh-fill')!, meshEmission = root.querySelector<SVGCircleElement>('.vr-mesh-emission')!
+  const coreVolume = root.querySelector<SVGCircleElement>('.vr-core-volume')!
+  const caustics = Array.from(root.querySelectorAll<SVGPathElement>('.vr-caustic'))
+  const waves = Array.from(root.querySelectorAll<SVGCircleElement>('.vr-wave'))
+  const arrow = root.querySelector<SVGGElement>('.vr-lock-arrow')!, lock = root.querySelector<SVGGElement>('.vr-lock-body')!
+  const paint = root.querySelector<SVGRectElement>('.vr-lock-fill')!
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+  const pulses = waves.map(() => ({ progress: 1, strength: 0 }))
+  const arcSpring = createVoiceSpring(), meshSpring = createVoiceSpring(), lightSpring = createVoiceSpring(), emissionSpring = createVoiceSpring()
+  let previous = performance.now(), phase = 0, clock = 0, frameId = 0, lastPulse = -10, pulseIndex = 0, previousEnergy = 0
+  let levels = { ...silentBands }, drawnLock = 0
+  let spin = 0, orbit = 0, meshAngle = 0
+  const draw = (now: number) => {
+    frameId = requestAnimationFrame(draw)
+    const dt = Math.min(.05, Math.max(0, (now - previous) / 1000)); previous = now
+    if (document.hidden) return
+    const { frame, sensitivity, appearance: style, lockProgress } = read()
+    const responseDt = dt * style.responseSpeed
+    clock += responseDt
+    if (!reduced.matches) phase += dt * style.idleSpeed
+    const motion = reduced.matches ? .12 : style.reactionSize
+    // Integrate the audio envelope and its springs on the same clock. Small
+    // substeps prevent different frame rates / slowdown settings from changing
+    // the fill trajectory through endpoint sampling of a fast-changing band.
+    const steps = Math.max(1, Math.ceil(responseDt / .0045)), stepDt = responseDt / steps
+    for (let i = 0; i < steps; i++) {
+      for (const key of ['low', 'mid', 'high'] as const) levels[key] = followLevel(levels[key], clampLevel(frame.bands[key] * sensitivity[key]), stepDt)
+      const drive = clampLevel(levels.mid * .75 + levels.low * .35 + levels.high * .15)
+      stepVoiceSpring(arcSpring, voiceArcTarget(levels.low, motion), stepDt, style.assemblySmoothness)
+      stepVoiceSpring(meshSpring, style.meshEnabled ? clampLevel(drive * style.meshResponse) : 0, stepDt, style.assemblySmoothness)
+      stepVoiceSpring(lightSpring, clampLevel((levels.low * .5 + levels.mid * .75 + levels.high * .15) * style.coreResponse), stepDt, style.coreInertia, style.coreDamping)
+    }
+    const energy = Math.max(levels.low, levels.mid, levels.high), reacting = frame.source !== 'idle'
+    const sphereDrive = clampLevel(levels.mid * .75 + levels.low * .35 + levels.high * .15)
+    const fill = voiceRingFill(arcSpring.position, 1), meshAmount = voiceRingFill(meshSpring.position, 1)
+    const light = voiceLightFrame(lightSpring.position, clock, style, reduced.matches)
+    coreVolume.setAttribute('cx', String(light.x)); coreVolume.setAttribute('cy', String(light.y))
+    coreVolume.setAttribute('r', String(light.radius)); coreVolume.setAttribute('opacity', String(light.intensity))
+    caustics.forEach((path, index) => {
+      const value = light.caustics[index]
+      path.setAttribute('d', value.d); path.setAttribute('opacity', String(value.opacity))
+      path.setAttribute('stroke-dasharray', value.dash); path.setAttribute('stroke-dashoffset', String(value.offset))
+    })
+    const complete = style.meshEnabled && style.meshFillEnabled && meshAmount === 1
+    const emission = stepVoiceSpring(emissionSpring, complete ? 1 : 0, responseDt, complete ? .2 : .4)
+    meshFill.setAttribute('opacity', String(style.meshEnabled && style.meshFillEnabled ? meshAmount * style.meshFillOpacity : 0))
+    meshEmission.setAttribute('opacity', String(style.meshEnabled && style.meshFillEnabled ? clampLevel(emission) * style.meshEmission / 3 : 0))
+    root.style.setProperty('--vr-mesh-charge', String(meshAmount))
+    // Integrate velocity instead of moving the angle directly with volume: no snaps
+    // or backwards wobble when a syllable ends. All three rings keep a fixed radius.
+    if (!reduced.matches) {
+      spin += dt * style.idleSpeed * 9 + responseDt * levels.mid * 175 * motion
+      orbit += dt * style.idleSpeed * .24 + responseDt * sphereDrive * 2.6 * motion
+      meshAngle += dt * style.meshSpeed * .24 + responseDt * sphereDrive * style.meshVoiceSpeed
+    }
+    low.setAttribute('transform', `rotate(${phase * 5 - 90} 120 105)`)
+    const dashes = voiceArcDashes(fill, 1)
+    arcs.forEach(arc => arc.setAttribute('stroke-dasharray', dashes))
+    // A tiny measured floor must not leave bright dots behind during silence.
+    root.style.setProperty('--vr-arc-visibility', String(clampLevel((fill - .005) / .07)))
+    mid.setAttribute('transform', `rotate(${-spin} 120 105)`)
+    if (style.sphereRing) {
+      const shape = sphereRingPaths(orbit)
+      sphereFront.forEach(path => path.setAttribute('d', shape.front))
+      sphereBack.setAttribute('d', shape.back)
+    }
+    if (style.meshEnabled) {
+      const mesh = voiceMeshFrame(meshAngle, meshAmount, style.meshRings, style.meshRadius)
+      meshFront.forEach((path, index) => { path.setAttribute('d', mesh[index].front); path.setAttribute('opacity', String(mesh[index].opacity)) })
+      meshBack.forEach((path, index) => { path.setAttribute('d', mesh[index].back); path.setAttribute('opacity', String(mesh[index].opacity * .28)) })
+    }
+    high.setAttribute('opacity', '1')
+    const contour = frame.bands.contour, contourGain = sensitivity.mid * style.contourResponse * motion
+    rays.forEach((ray, i) => {
+      const band = contour?.length ? i % contour.length : 0
+      const raw = !reacting ? 0 : contour?.length
+        ? contour[band] * .8 + (contour[(band + 1) % contour.length] + contour[(band + contour.length - 1) % contour.length]) * .1
+        : frame.bands.mid
+      // Read unclipped spectral detail directly. Neither the three-band meter's
+      // ceiling nor the slower sphere-assembly spring should flatten syllables.
+      const target = voiceContourEnergy(raw, contourGain)
+      contourLevels[i] = followContourLevel(contourLevels[i], target, responseDt)
+      const line = voiceContourSegment(i, contourLevels[i], reduced.matches ? 0 : clock, reacting, style)
+      for (const key of ['x1', 'y1', 'x2', 'y2'] as const) ray.setAttribute(key, String(line[key]))
+      ray.setAttribute('stroke-width', String(line.strokeWidth)); ray.setAttribute('opacity', String(line.opacity))
+    })
+    if (!reduced.matches && canEmitVoiceWave(reacting, energy, fill, style.fillRing, style.wavesAfterFill, style.waveStrength)
+      && clock - lastPulse > .25 && (energy - previousEnergy > .04 || clock - lastPulse > .68)) {
+      if (style.wavesAcrossScreen && onWave) onWave({ strength: energy })
+      else pulses[pulseIndex++ % pulses.length] = { progress: 0, strength: energy }
+      lastPulse = clock
+    }
+    waves.forEach((wave, index) => {
+      const pulse = pulses[index]
+      pulse.progress = Math.min(1, pulse.progress + responseDt * style.waveSpeed / 1.45)
+      const progress = pulse.progress
+      wave.setAttribute('r', String(voiceRadii.fill + progress * (voiceRadii.glass - voiceRadii.fill)))
+      wave.setAttribute('opacity', String(reduced.matches || (style.wavesAcrossScreen && onWave) ? 0 : voiceWaveOpacity(progress, pulse.strength, style.waveStrength, style.waveFade)))
+    })
+    previousEnergy = energy
+    root.style.setProperty('--vr-energy', String(energy))
+    root.dataset.source = frame.source
+    timer.textContent = formatVoiceTime(frame.seconds)
+    // Follow the finger smoothly. At the exact threshold, the fill is complete.
+    drawnLock = lockProgress === 1 || reduced.matches ? lockProgress : drawnLock + (lockProgress - drawnLock) * (1 - Math.exp(-dt / .025))
+    const gesture = lockVisual(drawnLock)
+    arrow.setAttribute('opacity', String(gesture.arrowOpacity))
+    arrow.setAttribute('transform', `translate(0 ${8 - gesture.lift})`)
+    lock.setAttribute('opacity', String(gesture.lockOpacity))
+    lock.setAttribute('transform', `translate(0 ${10 - gesture.lift})`)
+    paint.setAttribute('y', String(21 - gesture.fill * 11)); paint.setAttribute('height', String(gesture.fill * 11))
+    onLevels(levels, frame.source)
+  }
+  frameId = requestAnimationFrame(draw)
+  return () => { cancelAnimationFrame(frameId); onLevels(silentBands, 'idle') }
+}
+
+// recorder
+export type VoiceRecorderProps = {
+  language?: 'ru' | 'en'
+  active?: boolean
+  sensitivity?: VoiceBands
+  appearance?: VoiceAppearance
+  glassMaterial?: VoiceGlassMaterial
+  playbackActive?: boolean
+  samplePlayback?: () => PlaybackFrame | undefined
+  onLevels?: (bands: VoiceBands, source: VoiceFrame['source']) => void
+  onLock?: () => void
+  onWave?: (wave: VoiceWaveEvent) => void
+  onTake?: (take: VoiceTake) => void
+  onBusyChange?: (busy: boolean) => void
+}
+
+/** Fits a 288×260 slot; recording files and playback belong to the host screen. */
+export function VoiceRecorder({ language = 'ru', active = true, sensitivity = defaultVoiceSensitivity, appearance: savedAppearance = defaultVoiceAppearance, glassMaterial,
+  playbackActive = false, samplePlayback, onLevels, onLock, onWave, onTake, onBusyChange }: VoiceRecorderProps) {
+  const appearance = { ...defaultVoiceAppearance, ...savedAppearance }, initialOrbit = sphereRingPaths(0)
+  const t = (source: string) => translateVoiceText(language, source)
+  const viewport = voiceArtworkViewport(), ringsTransform = voiceRingsTransform(appearance.ringsScale)
+  const initialMesh = voiceMeshFrame(0, 0, appearance.meshRings, appearance.meshRadius)
+  const id = `voice-${useId().replace(/[^a-z0-9-]/gi, '')}`
+  const root = useRef<HTMLDivElement>(null)
+  const engine = useRef<VoiceCapture | null>(null)
+  const gesture = useRef<{ pointerId: number; startY: number; scale: number; locked: boolean } | null>(null)
+  const lockedRef = useRef(false), lockProgress = useRef(0), lockNotified = useRef(false)
+  const callbacks = useRef({ onTake, onBusyChange, sensitivity, appearance, samplePlayback, onLevels, onLock, onWave })
+  callbacks.current = { onTake, onBusyChange, sensitivity, appearance, samplePlayback, onLevels, onLock, onWave }
+  const [state, setState] = useState<CaptureState>('idle')
+  const [locked, setLocked] = useState(false), [error, setError] = useState('')
+  const [permissionHint, setPermissionHint] = useState(false)
+  function notifyLock() {
+    if (lockNotified.current || !lockedRef.current || engine.current?.state !== 'recording') return
+    lockNotified.current = true; callbacks.current.onLock?.()
+  }
+
+  useEffect(() => {
+    const capture = new VoiceCapture({
+      onState(next, message) {
+        setState(next); setError(message || '')
+        callbacks.current.onBusyChange?.(['requesting', 'recording', 'stopping'].includes(next))
+        if (next === 'idle' || next === 'error') { lockedRef.current = false; lockProgress.current = 0; setLocked(false) }
+        if (next === 'recording') notifyLock()
+      },
+      onTake(take) { callbacks.current.onTake?.(take) },
+    })
+    engine.current = capture
+    const visibility = () => {
+      if (document.hidden) gesture.current = null
+      capture.handleVisibility(document.hidden, lockedRef.current)
+    }
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      document.removeEventListener('visibilitychange', visibility)
+      capture.dispose(); engine.current = null; callbacks.current.onBusyChange?.(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!active) { gesture.current = null; engine.current?.stop() }
+  }, [active])
+
+  useEffect(() => {
+    const element = root.current
+    if (!element || !active) return
+    return mountVoiceMotion(element, () => {
+      const capture = engine.current, playback = callbacks.current.samplePlayback?.()
+      const frame: VoiceFrame = capture?.state === 'recording' ? { bands: capture.sample(), seconds: capture.seconds, source: 'mic' }
+        : playback?.playing ? { bands: playback.bands, seconds: playback.seconds, source: 'playback' }
+          : { bands: silentBands, seconds: 0, source: 'idle' }
+      const style = callbacks.current.appearance
+      return { frame, sensitivity: callbacks.current.sensitivity, appearance: { ...style, wavesAcrossScreen: style.wavesAcrossScreen && Boolean(callbacks.current.onWave) }, lockProgress: lockProgress.current }
+    }, (bands, source) => callbacks.current.onLevels?.(bands, source), wave => callbacks.current.onWave?.(wave))
+  }, [active])
+
+  function stop() { gesture.current = null; engine.current?.stop() }
+  function lockRecording() { lockedRef.current = true; lockProgress.current = 1; setLocked(true); notifyLock() }
+  function startKeyboard() {
+    if (!active || !engine.current) return
+    if (!['idle', 'error'].includes(engine.current.state)) { stop(); return }
+    lockNotified.current = false; lockRecording(); setPermissionHint(false)
+    void engine.current.start()
+  }
+  function cancelGesture() {
+    if (gesture.current && !gesture.current.locked) stop()
+    gesture.current = null
+  }
+  const label = state === 'requesting' ? 'Доступ к микрофону…' : state === 'stopping' ? 'Сохраняю запись…'
+    : state === 'recording' ? locked ? 'Нажми, чтобы закончить' : 'Вверх — закрепить' : playbackActive ? 'Слушаем твою запись' : 'Зажми и говори'
+
+  return <div className="voice-recorder" ref={root} data-state={state} data-locked={locked} data-active={active}
+    data-source={state === 'recording' ? 'mic' : playbackActive ? 'playback' : 'idle'} data-style={appearance.styleMode}
+    style={{ '--vr-color': appearance.color, '--vr-light': appearance.lightColor, '--vr-glow': appearance.glow, '--vr-line': appearance.lineWidth } as CSSProperties}>
+    <button type="button" className="vr-button" disabled={!active || state === 'stopping'}
+      aria-label={t(state === 'recording' ? 'Закончить запись' : 'Записать голос. Удерживай и проведи вверх, чтобы закрепить. С клавиатуры: Enter — начать или остановить.')}
+      aria-describedby={`${id}-hint`} aria-pressed={state === 'recording'}
+      onContextMenu={event => event.preventDefault()}
+      onPointerDown={event => {
+        if (!active || !event.isPrimary || event.button !== 0 || !engine.current) return
+        event.preventDefault(); setPermissionHint(false)
+        if (lockedRef.current && engine.current.state === 'recording') { stop(); return }
+        if (!['idle', 'error'].includes(engine.current.state)) return
+        lockNotified.current = false; lockProgress.current = 0
+        const scale = event.currentTarget.getBoundingClientRect().width / event.currentTarget.offsetWidth
+        gesture.current = { pointerId: event.pointerId, startY: event.clientY, scale, locked: false }
+        event.currentTarget.setPointerCapture(event.pointerId)
+        void engine.current.start()
+      }}
+      onPointerMove={event => {
+        const hold = gesture.current
+        if (!hold || hold.pointerId !== event.pointerId || hold.locked) return
+        lockProgress.current = lockGestureProgress(hold.startY, event.clientY, hold.scale, callbacks.current.appearance.lockDistance)
+        if (lockProgress.current === 1) { hold.locked = true; lockRecording() }
+      }}
+      onPointerUp={event => {
+        const hold = gesture.current
+        if (!hold || hold.pointerId !== event.pointerId) return
+        gesture.current = null
+        if (!hold.locked) {
+          if (engine.current?.state === 'requesting') setPermissionHint(true)
+          engine.current?.stop()
+        }
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+      }}
+      onPointerCancel={cancelGesture} onLostPointerCapture={cancelGesture}
+      onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (!event.repeat) startKeyboard() } }}
+      onKeyUp={event => { if (event.key === ' ') event.preventDefault() }}
+      onClick={event => { if (event.detail === 0) startKeyboard() }}>
+      <span className="vr-visual">
+      {appearance.glassEnabled && <VoiceGlassBacking viewport={viewport} scale={appearance.ringsScale} material={resolveVoiceGlassMaterial(appearance, glassMaterial)}/>}
+      <svg className="vr-art" viewBox={viewport.viewBox} fill="none" aria-hidden="true">
+        <defs>
+          <filter id={`${id}-halo`} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.8"/></filter>
+          <filter id={`${id}-wave-glow`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="1.8"/><feComponentTransfer><feFuncA type="linear" slope={appearance.waveGlow}/></feComponentTransfer></filter>
+        </defs>
+        <g className="vr-scaled-geometry" transform={ringsTransform}>
+        <VoiceLightField id={id} appearance={appearance}/>
+        <g className="vr-waves" stroke={appearance.waveColor} strokeWidth={.65 * appearance.lineWidth}>
+          <g filter={`url(#${id}-wave-glow)`} strokeWidth={1.8 * appearance.lineWidth}>{[0, 1, 2].map(index => <use key={index} href={`#${id}-wave-${index}`}/>)}</g>
+          {[0, 1, 2].map(index => <circle key={index} id={`${id}-wave-${index}`} className="vr-wave" cx="120" cy="105" r={voiceRadii.fill} opacity="0"/>)}</g>
+        <g className="vr-mesh" stroke={appearance.meshColor} strokeWidth={appearance.meshLineWidth} opacity={appearance.meshOpacity} display={appearance.meshEnabled ? undefined : 'none'}>
+          {initialMesh.map((ring, index) => <g key={index}>
+            <path className="vr-mesh-back" d={ring.back} opacity={ring.opacity * .28}/>
+            <path className="vr-mesh-front" d={ring.front} opacity={ring.opacity}/>
+          </g>)}
+        </g>
+        <g className="vr-low-motion" stroke="currentColor" display={appearance.fillRing ? undefined : 'none'}>
+          <circle cx="120" cy="105" r={voiceRadii.fill} strokeWidth=".55" opacity=".4"/>
+          <circle className="vr-glow vr-fill-arc" cx="120" cy="105" r={voiceRadii.fill} pathLength="100" strokeWidth="1.7" strokeDasharray="0 50" filter={`url(#${id}-halo)`}/>
+          <circle className="vr-fill-arc" cx="120" cy="105" r={voiceRadii.fill} pathLength="100" strokeWidth="1.15" strokeDasharray="0 50"/>
+        </g>
+        <g className="vr-mid-motion" stroke="currentColor" display={appearance.spinRing ? undefined : 'none'}>
+          <circle cx="120" cy="105" r={voiceRadii.spin} strokeWidth=".7" strokeDasharray="86 25 8 31" opacity=".7"/>
+        </g>
+        <g className="vr-high-motion" stroke="currentColor" strokeWidth="1" display={appearance.outerContour ? undefined : 'none'}>
+          {Array.from({ length: 40 }, (_, i) => { const a = i * Math.PI / 20; return <line key={i} data-angle={a} className="vr-ray" x1={120 + Math.cos(a) * voiceRadii.contour} y1={105 + Math.sin(a) * voiceRadii.contour} x2={120 + Math.cos(a) * (voiceRadii.contour + 3)} y2={105 + Math.sin(a) * (voiceRadii.contour + 3)}/> })}
+        </g>
+        <path className="vr-side-marks" d="M1 105H6M234 105H239" stroke="currentColor" strokeWidth=".65" opacity=".35"/>
+        </g>
+        <VoiceGlyph className="vr-mic" kind={appearance.inputIcon}/>
+        <VoiceGlyph className="vr-speaker" kind="speaker"/>
+        <rect className="vr-stop" x="113" y="98" width="14" height="14" fill="currentColor"/>
+        <g className="vr-sphere-motion" transform={ringsTransform} stroke="currentColor" display={appearance.sphereRing ? undefined : 'none'}>
+          <path className="vr-sphere-back" d={initialOrbit.back} opacity=".24"/>
+          <path className="vr-sphere-front vr-glow" d={initialOrbit.front} filter={`url(#${id}-halo)`}/>
+          <path className="vr-sphere-front" d={initialOrbit.front} opacity=".8"/>
+        </g>
+      </svg>
+      </span>
+      <span className="vr-lock" aria-hidden="true"><svg viewBox="0 0 24 34" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <g className="vr-lock-arrow"><path d="m7 13 5-5 5 5M12 8v13"/></g>
+        <g className="vr-lock-body" opacity="0"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5Z"/>
+          <rect className="vr-lock-fill" x="5" y="21" width="14" height="0" stroke="none" fill="currentColor"/>
+          <path className="vr-lock-keyhole" d="M12 14v3" stroke="#000" strokeWidth="1.5"/>
+        </g>
+      </svg></span>
+    </button>
+    <div className="vr-footer">
+      <span className="vr-time"><span className="vr-live-dot"/><span className="vr-time-value">00:00</span></span>
+      <span className="vr-hint" id={`${id}-hint`} aria-live="polite">{t(error || (permissionHint ? 'Разреши микрофон и зажми ещё раз' : label))}</span>
+    </div>
+  </div>
+}
+
+/** Set appearance.glassLinked and pass live glassMaterial to link the backing to a host editor. */
+export function PrinceVoice(props: VoiceRecorderProps) {
+  return <>
+    <style>{voiceStyles}</style>
+    <div style={{ width: voicePreset.width, height: voicePreset.height, maxWidth: '100%' }}>
+      <VoiceRecorder {...props}
+        language={props.language ?? voicePreset.language}
+        appearance={{ ...voicePreset.appearance, ...props.appearance }}
+        sensitivity={{ ...voicePreset.sensitivity, ...props.sensitivity }}
+        glassMaterial={props.glassMaterial ?? voicePreset.glass}/>
+    </div>
+  </>
+}
+
+/** Optional full-screen host. Pass a background as children, or use VoiceWaveField in your own screen. */
+export function PrinceVoiceScene({ children, x = 16, y = 224, width = 320, height = 568, ...props }:
+  VoiceRecorderProps & { children?: ReactNode; x?: number; y?: number; width?: number; height?: number }) {
+  const field = useRef<VoiceWaveFieldHandle>(null)
+  const appearance = { ...voicePreset.appearance, ...props.appearance }
+  return <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
+    {children}
+    <VoiceWaveField controller={field} active={props.active !== false && appearance.wavesAcrossScreen} appearance={appearance}
+      width={width} height={height} origin={voiceWaveOrigin({ x, y, width: 288, height: 260 }, appearance)}/>
+    <div style={{ position: 'absolute', left: x, top: y, width: 288, height: 260, zIndex: 2 }}>
+      <PrinceVoice {...props} appearance={appearance} onWave={wave => { field.current?.emit(wave); props.onWave?.(wave) }}/>
+    </div>
+  </div>
+}

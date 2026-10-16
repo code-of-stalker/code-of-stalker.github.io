@@ -1,0 +1,17 @@
+Settings update — 2026-10-12
+
+Removed the disabled System theme option. Theme order is Neutral, Dark, Light.
+Moved the existing second-step timer preview below Effects Diagnostics.
+Removed descriptions from 60/90/120 FPS radio choices; preserved the Smoothness explanation and behavior.
+
+Validation: npx expo lint, npx tsc --noEmit, web export passed.
+Browser checks passed at 320x568 and 375x812: theme order and selection, FPS selection, preview placement and navigation, no horizontal overflow or page errors.
+Reviewed neutral-theme screenshot. Physical-device visual acceptance remains separate.
+
+Updated existing Sites project appgprj_6acce501d4988191938370d0410d080b; preserved its currently public audience.
+Source commit: d3fcfa4a612b4d42a2efe65a885897a7522c0935
+Version: appgprj_6acce501d4988191938370d0410d080b~appgver_1daf97783b788191933fca6113840d4a
+Deployment: appgdep_6accf455783c8191af3d26db73c8a671 — succeeded
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Archive SHA256: b443e7bf9f437c7f4586da65bd32174d81c0ad802b787e02aab7b849944e7392
+Official static validator and archive/source hash verification passed (60 files). Used existing Windows packaging fallback after source-helper package command failed; verified the pushed commit through source-helper opening.

@@ -1,0 +1,8 @@
+export { MatrixRainRenderer } from './MatrixRainRenderer'
+export { MatrixPulseRenderer } from './MatrixPulseRenderer'
+export { defaultMatrixPulseSettings } from './matrixPulseSettings'
+export { parseProceduralBackground, serializeProceduralBackground, copyBackgroundPreset } from './backgroundSettings'
+export type { BackgroundInput, ProceduralBackgroundPreset } from './backgroundSettings'
+export type { MatrixPulseSettings } from './matrixPulseSettings'
+export { defaultMatrixRainSettings, makeBackgroundPreset, parseBackgroundPreset, serializeBackgroundPreset } from './matrixRainSettings'
+export type { BackgroundPreset, MatrixRainSettings } from './matrixRainSettings'

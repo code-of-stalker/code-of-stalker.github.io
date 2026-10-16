@@ -1,0 +1,30 @@
+Backup sheets and task layout — 2026-10-13
+
+Changes
+- Removed the word "отдельный" from the backup password instruction.
+- Removed the header close icon from Diary export and Settings export/restore. Cancel and backdrop dismissal remain available.
+- Task stages use the full available height. The step selector's bottom inset matches the top inset of Back: 16px at 320px width, 20px on regular phones, 32px in the wider layout.
+- Illustrations are centered in the flexible area between the text and the step selector, preserving the existing illustration sizes and motion.
+- The scroll cue shares the bottom row beside the selector and hides while the menu is expanded. It does not intercept touches.
+- Kept the previous scroll-fill correction, soft sheet edges, fixed contour corners, audio storage and backup format.
+
+Verification
+- TypeScript: npx tsc --noEmit — passed.
+- Lint: npx expo lint — passed.
+- Web export and Site preparation — passed.
+- Chrome: Diary export, Settings export and Settings restore contain no header close icon; Cancel closes each sheet. The password instruction no longer contains "отдельный".
+- Task sizes: 320x568, 375x812, 390x844, 600x900. Back and step-selector edge insets match exactly. No scroll overflow in any checked task.
+- All three task parts checked at 375x812 and 390x844; artwork midpoint differs from the text-to-selector midpoint by at most 1.5 layout pixels.
+- Step dropdown tested by real clicks at each size, including dismissal after reveal.
+- Page and console errors: none.
+- Visual evidence: .local-preview/diary-footer/qa.json and screenshots.
+- No physical Android/iOS measurements in this run; native layout adapters typechecked.
+- Graphics cache version: 9f567d5a5fbf4864543e7bf6. No audio or storage schema changes.
+
+Publication
+- Site version: 14.
+- Source commit: a4b821d9b6a244dc7ec87e7fb3100a2557f789fd. The workflow saved/pushed/verified the source before the Windows packager fallback.
+- Static archive: 81 files, 14752556 compressed bytes, verified against the committed distribution.
+- Archive SHA-256: ec37fa443f4502d68c0dadbe9d154e69a9db4d6817ab478eec25f3f27739f24d.
+- Native deployment appgdep_6ace1f6cae9c8191970bd375a479d337: succeeded at 2026-10-13T12:09:36Z.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site

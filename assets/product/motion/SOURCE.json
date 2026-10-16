@@ -1,0 +1,35 @@
+{
+  "capturedDate": "2026-10-08",
+  "laboratory": {
+    "path": "C:/Code Of Stalker/Liquid_Prnc_Glass-main",
+    "url": "http://127.0.0.1:7474/",
+    "codeLicense": "MIT; scripts/product-art/LABORATORY-LICENSE.txt",
+    "snapshot": "scripts/product-art/src/laboratory",
+    "architecturePreset": "laboratory-architecture.json (exported from the user's current browser state)",
+    "voicePreset": "laboratory-voice.json (voicePreset from the current browser TSX export in reports/laboratory-voice-export.tsx.txt; revision 2026-10-06-approved)",
+    "diaryPreset": "laboratory-diary.json (exported from the user's current browser state)",
+    "homePreset": "laboratory-home.json (current browser controls observed directly; no JSON export available)",
+    "gesture": "Native/browser adapter forwards short tap, hold at the saved delay (320 ms), parallax drag, and release. Saved architecture parallax 17.5, diary 18. Hold or drag does not navigate."
+  },
+  "heroes": {
+    "sourceDirectory": "C:/Users/qtas5/.codex/visualizations/2026/10/08/01a11b4d-2021-7fc2-9113-74d93afa3026",
+    "mirror": "matrix-mirror-approved-2026-10-08.fragment.html + matrix-mirror-approved-settings.json",
+    "gallery": "gallery-motion-approved-2026-10-08.fragment.html + gallery-motion-approved-settings.json",
+    "logicalCanvas": "288 x 206"
+  },
+  "basic": {
+    "source": "C:/Users/qtas5/.codex/visualizations/2026/10/08/01a11b44-4ab7-7a62-8c08-e66ecc7e19ae/architecture-focus.html",
+    "extracted": "art('basic') and animate(svg, app) basic branch",
+    "cycleSeconds": 8,
+    "glow": 0.75
+  },
+  "integration": {
+    "build": "node scripts/product-art/build.mjs",
+    "output": "src/features/product/motion/art.generated.ts",
+    "native": "Isolated local WebView artwork only; all screen controls, navigation, recording and Matrix calls stay native",
+    "web": "Isolated sandboxed local iframe, no remote scripts or assets",
+    "changes": "Hide laboratory frame and labels rendered by native screen; expose active and reduced-motion. Browser capture measures the original Laboratory 2048-point FFT (smoothing 0.35), three bands and 20 contour values at up to 30 Hz outside the iframe. Native capture still supplies metering amplitude. Hero masks and panel contour come from Figma. Illustration slots preserve aspect ratio at the available content width.",
+    "matrixInsight": "Original matrixMotion.ts sphere, two orbiting rings and two revealed circles. Radius scales with width in the product host; timing, lighting and glow retained.",
+    "deviceValidation": "New Android build needs react-native-webview and expo-blur; performance and native WebView/blur rendering still require Tecno verification."
+  }
+}

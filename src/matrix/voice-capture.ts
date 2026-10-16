@@ -33,11 +33,11 @@ export class VoiceCapture {
   private samples: number[] = [];
   private timer: ReturnType<typeof setInterval> | undefined;
 
-  constructor(private ports: CapturePorts) {}
+  constructor(private ports: CapturePorts, private limitSeconds = VOICE_LIMIT_SECONDS) {}
 
   restoreDraft(draft: VoiceDraft): boolean {
     if (this.disposed || this.job || this.state.phase !== 'idle') return false;
-    validateVoiceDraft(draft);
+    validateVoiceDraft(draft, this.limitSeconds);
     this.cancelled = false;
     this.uri = draft.uri;
     this.publish({ phase: 'ready', draft: { ...draft, waveform: [...draft.waveform] }, durationMs: draft.durationMs, error: '' });
@@ -46,7 +46,7 @@ export class VoiceCapture {
 
   replaceReadyDraft(draft: VoiceDraft): boolean {
     if (this.disposed || this.job || this.state.phase !== 'ready') return false;
-    validateVoiceDraft(draft);
+    validateVoiceDraft(draft, this.limitSeconds);
     const previous = this.state.draft?.uri;
     this.uri = draft.uri;
     this.publish({ draft: { ...draft, waveform: [...draft.waveform] }, durationMs: draft.durationMs });
@@ -88,7 +88,7 @@ export class VoiceCapture {
       await this.ports.recorder.prepareToRecordAsync();
       this.uri = this.ports.recorder.uri ?? undefined;
       if (!this.active()) { await this.finish(false); return; }
-      this.ports.recorder.record({ forDuration: VOICE_LIMIT_SECONDS });
+      this.ports.recorder.record({ forDuration: this.limitSeconds });
       this.started = Date.now();
       this.publish({ phase: 'recording' });
       this.timer = setInterval(() => this.poll(), 200);
@@ -104,9 +104,9 @@ export class VoiceCapture {
     try {
       if (!this.ports.foreground()) { void this.cancel(); return; }
       const status = this.ports.recorder.getStatus();
-      if (typeof status.metering === 'number' && this.samples.length < 120) this.samples.push(status.metering);
-      this.publish({ durationMs: Math.round(status.durationMillis || Math.min(Date.now() - this.started, VOICE_LIMIT_SECONDS * 1000)) });
-      if (!status.isRecording || this.state.durationMs >= VOICE_LIMIT_SECONDS * 1000) void this.stop();
+      if (typeof status.metering === 'number' && this.samples.length < this.limitSeconds * 5 + 5) this.samples.push(status.metering);
+      this.publish({ durationMs: Math.round(status.durationMillis || Math.min(Date.now() - this.started, this.limitSeconds * 1000)) });
+      if (!status.isRecording || this.state.durationMs >= this.limitSeconds * 1000) void this.stop();
     } catch { void this.cancel(); }
   }
 
@@ -129,14 +129,14 @@ export class VoiceCapture {
     let durationMs = this.state.durationMs;
     try {
       const status = this.ports.recorder.getStatus();
-      durationMs = Math.round(status.durationMillis || Math.min(Date.now() - this.started, VOICE_LIMIT_SECONDS * 1000));
+      durationMs = Math.round(status.durationMillis || Math.min(Date.now() - this.started, this.limitSeconds * 1000));
       if (status.isRecording || status.canRecord) await this.ports.recorder.stop();
       this.prepared = false;
       this.uri ??= this.ports.recorder.uri ?? undefined;
       await this.ports.mode(false);
       if (!keep || !this.active()) { this.ports.discard(this.uri); this.publish({ ...emptyCapture }); return; }
       const draft = { uri: this.uri ?? '', durationMs, waveform: voiceWaveform(this.samples) };
-      validateVoiceDraft(draft);
+      validateVoiceDraft(draft, this.limitSeconds);
       this.publish({ phase: 'ready', draft, durationMs, error: '' });
     } catch (error) {
       await this.cleanup();

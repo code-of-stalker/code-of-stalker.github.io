@@ -1,0 +1,32 @@
+Decoder scroll navigation — 2026-10-13
+
+Removed the decoder completion requirement from PracticeIntroScreen.canAdvance.
+Removed that screen's completion state, reset and callback. The decoder keeps
+its current visibility and animation behavior; scroll navigation becomes available
+after the text boundary while it is still revealing.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- Expo web export and Site preparation: passed.
+- Isolated Chrome browser, 393x652: real wheel input advanced to task 1 while
+  the decoder state was revealing before input and at the scanner transition.
+- Isolated Chrome browser, 320x568: touch input through CDP advanced to task 1
+  while the decoder state was revealing before input and at the transition.
+- Both checks reached the completed task reveal with zero page errors.
+- Evidence: .local-preview/decoder-scroll/qa.json.
+- Physical iOS and native devices were not tested in this turn.
+- Archive: all 83 files matched the pushed Site output and the target identity.
+
+Publication:
+Version: 19
+Commit: 31334c7be8bf7f9bdf683ee40dda4cc47fb405de
+Cache snapshot: 76c184403fd80c518f2805eb
+Deployment: appgdep_6ace47bbeb808191b528bd14de410ba1
+Status: succeeded
+Updated: 2026-10-13T15:01:40.133912+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+
+The source workflow pushed and verified the source, then its Windows packaging
+launch failed. The official prepare-site-build.cjs fallback produced the verified
+archive from that clean source. Native saving and deployment succeeded.

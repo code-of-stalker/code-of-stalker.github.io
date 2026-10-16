@@ -1,0 +1,64 @@
+SECOND-STEP PREVIEW AND RESPONSIVE TEXT — 2026-10-11
+
+Settings now exposes a button, "Второй шаг с таймером", in place of the
+"Открыто всё" switch. It opens /practice?preview=cooldown with a fresh 24-hour
+deadline in route parameters. Back/close returns to Settings. Opening Diary
+and returning retains the same deadline rather than restarting the countdown.
+
+Preview state belongs to the route and does not write progress, settings or
+recordings. The retired unlock flag remains readable in existing snapshots
+but no longer bypasses the normal timer. An unearned second step previously
+selected using that flag displays the first step in the normal flow, without
+rewriting the saved snapshot. Default recording metadata uses that same
+effective progress. Earned deadlines and saved answers are preserved.
+
+The cooldown uses the shared ProductText width breakpoint at 375px. Removed
+local caps on caption, body copy and countdown. Caption/date labels use the
+shared 8px base rather than a fixed 6px size. At wider screen widths:
+  Countdown: 40 -> 64px
+  Body copy: 10 -> 16px
+  Caption and opening date: 8 -> 12px
+  Title: 20 -> 24px
+Line heights follow the existing shared scale. Shorter screens retain the
+inner scroller and pinned diary action; panel contour anchors are unchanged.
+
+Changed files
+src/app/(product)/settings.tsx
+src/app/(product)/practice.tsx
+src/features/product/screens/SettingsScreen.tsx
+src/features/product/screens/PracticeCooldown.tsx
+src/features/product/state/ProductProvider.tsx
+
+Documentation
+Expo 57 versioned documentation, Expo Router navigation/URL parameter docs,
+Context7 and installed types were checked. No dependencies or Rust sources
+were changed. Graphics, themes, scanning and automatic effect quality remain
+on the existing implementations.
+
+Checks
+TypeScript: passed.
+Expo lint --no-cache: passed.
+Web export: passed.
+Chrome and WebKit: six layouts passed in each browser: dark 320x568,
+375x812, 768x1024, 375x568;
+light and neutral 375x812. Scrolling exposes the date on short screens;
+the diary action stays on screen. No horizontal text overflow or page errors.
+Real settings-button clicks, countdown updates, diary return, close/back,
+unchanged encrypted snapshots and legacy unlock settings passed.
+The browser profile and stored fixtures were isolated from user data.
+
+Evidence
+.local-preview/panel-fixes/cooldown-preview-qa.mjs
+.local-preview/panel-fixes/chrome-cooldown-preview.json
+.local-preview/panel-fixes/webkit-cooldown-preview.json
+.local-preview/panel-fixes/cooldown-preview-export.log
+.local-preview/panel-fixes/cooldown-preview-public.json
+PNG screenshots accompany the browser reports.
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com
+Public JS/WASM returned HTTP 200 and matched the local export byte for byte.
+JS SHA256: 7ea4dca58570a840c957b064af868be636a2a3f028ee94e48deb52679dbe5394
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1
+
+Physical-device and native-build validation were not performed in this task.

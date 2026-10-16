@@ -1,0 +1,50 @@
+Task scenes, reading spacing, full-width input, and step-three placeholder
+2026-10-16
+
+Scope
+- Rust head scanner replaces the forehead glow. Source silhouette boundaries were measured in Chrome; the feet now share the scene ground, and the scanner is restricted to the head.
+- Book protagonist remains the same detailed figure, grounded at y=143, without chest/forehead glow. City, forest and theatre have different supporting casts, perspectives, objects and lighting; scene changes stay Rust-owned.
+- Body supplement replaced with a seated, grounded observer and breath contours; the next supplement uses one tree and its lake reflection, falling leaf and water rings.
+- Author scene has a detailed hand/quill, book and emerging architecture. The pen tip and drawn line use exactly the same pure Rust curve instead of an approximate dash length.
+- Existing dream-world and inward scenes receive more top/bottom space. Lower dream captions follow the illustration. Final dreamer SVG framing and layout enlarge the sphere to almost the available workspace width.
+- Question progress retained only for questions. Post-question header says ДОПОЛНЕНИЕ.
+- Removed ЗАВЕРШИТЬ ШАГ. Final overscroll atomically saves step-two completion and step=3. Third step is an explicit ГОЛОС КАК МОСТ placeholder, with diary access, back and step selection. No third-step content is invented.
+- Web side gutters feed the existing active ScrollGate input model. The 480px content cap stays. Actual wheel/touch input uses the existing reading expansion, entry-tail, recording and modal guards. Ordinary ProductScroll screens were already full-width.
+
+Verified backup before broad art edits
+.local-preview/backups/watcher-before-task-refinement-20261016T173557.zip
+437 files, 70,755,040 bytes; every file checked against embedded SHA256 manifest.
+
+Technical validation
+- Rust format, main and native-bridge WASM release builds passed.
+- 97 Rust engine and 21 native bridge tests passed; 12 shader validations passed.
+- WASM Clippy passed with existing unrelated warnings; no warnings reference step_two_tasks.
+- TypeScript noEmit and Expo lint passed.
+- 12 encrypted repository tests passed, including atomic step-three transition, required four answers, preserved first-step timestamps and idempotent completion.
+- Web export and cache preparation passed. Final cache d7e94aac2d264d6d428e8426; 66 assets.
+
+Browser validation (isolated Chrome, not a physical device)
+- Full 393x852 flow from both reading chapters, both tasks, four fake-device MediaRecorder captures and encrypted saves, three supplements, forward/reverse navigation and third-step reload resume passed. Browser errors: none.
+- 320x568 tasks/questions/supplements: zero horizontal overflow, no graphics errors.
+- 1280x900 and 1280x640: wheel in both side gutters, real CDP touch in left gutter, forward/reverse task transitions, 480px workspace cap passed. Final sphere canvas measured 368x338.55; inward illustration spacing 40px above / 36px below in paged reading.
+- Five actual Rust/wgpu GPU scenes rendered and screenshots reviewed at multiple times. Three environment phases, static reduced-motion and inactive suspension passed.
+- QA harness corrections: body locator narrowed to first (hidden SVG model can contain another body); overflowing-reader test uses 640px height because content fits 900px; helper added to wide test. These were test harness issues, not product failures.
+- During visual QA measured source geometry and corrected its foot anchor before final build; did not rely on assumed SVG height.
+
+Evidence
+.local-preview/scene-polish/build.txt, clippy.txt, storage-tests.txt
+.local-preview/scene-polish/checks.json, wide.json, narrow.json, scenes.json
+.local-preview/scene-polish/scenes-city.png, scenes-forest.png, book-theatre.png, scenes-reduced.png
+.local-preview/scene-polish/step-three.png, wide.png, narrow-1.png .. narrow-4.png
+
+Limits
+Native bridge/compiler checks do not establish physical iOS/Android/WebView performance. No physical device or external microphone test was performed. Artistic acceptance remains with the user.
+
+Publication verified
+- Existing public project appgprj_6acce501d4988191938370d0410d080b, audience preserved.
+- Source helper pushed and verified clean source before Windows packaging startup failed; used the official static preparation helper and hash-verified archive fallback. No force push and no approval rejection.
+- Source a8efe34f38de2d0180fc4465636e0e4fd0e3ab56.
+- 93 archive files and 66 cache assets verified. Archive SHA256 12c3f9972dc2475a4bcfcc9e41263b4dfbe95f62cb4a0a2e789f0199035c5f4c.
+- Saved version 63: appgprj_6acce501d4988191938370d0410d080b~appgver_1c5588f15dec8191a5339ff094c907f3.
+- Deployment appgdep_6ad22dfbc298819199facdd828e7e5e8 succeeded at 2026-10-16T14:01:06.634319+00:00.
+- https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice

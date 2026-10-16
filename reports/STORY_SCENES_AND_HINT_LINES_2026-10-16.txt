@@ -1,0 +1,36 @@
+Story scenes, hint underline and step-three return — 2026-10-16
+
+Changes
+- Book: three consistently authored casts. The same coat/satchel hero talks while walking through a city, helps a companion over a forest stone, and reads opposite another passenger in a train. No static front-facing hero overlays these scenes. Rust owns the 27-second scene cycle, gestures, moving train landscape and page turn.
+- Body: a detailed first-person palm replaces the previous seated figure. Existing Rust breath/pulse motion animates the new authored contours.
+- Tree: fuller crown with individual veined leaves, bark, roots, shore, birds and lake reflection. Rust owns leaf, water and reflection motion.
+- Author: redrawn pen grip and a continuous line through castle, mountain bridge and mirror room. The camera stops at each location; the hand fades away for the final mirror view. Reduced motion holds the final scene.
+- Hint links: measured per-line artwork with a 0.25 layout-pixel strip, using the shared Rust panel contour adapter. Native text decoration removed; link interaction and wrapping retained.
+- Third-step placeholder: backward scroll/pull returns to the final supplement of step two. Entry gesture guard and scroll cue match the existing navigation.
+- First reading illustrations: 64 pixels above and below; continuous illustrations enlarged to width * 136 / 288. The previously corrected text/illustration order remains intact. Economy pages use matching breathing room.
+
+Backup
+- .local-preview/backups/watcher-before-task-refinement-20261016T181723.zip
+- 444 files, 70,766,778 bytes. Individual archive files verified against embedded SHA-256 manifest before edits.
+
+Code validation
+- Rust format, Clippy, release WASM engine and native bridge builds completed.
+- 98 engine tests, 21 native-bridge tests and 12 shader validation tests passed.
+- New regression checks cover Author camera stops and continuous path joins, reduced-motion mirror pose, and distinct book scenes without the old front-facing hero.
+- TypeScript and Expo lint passed. Web export and Sites source preparation passed.
+
+Browser validation
+- Actual Rust/WASM render inspected at city/castle, forest/bridge, train/mirror transition and mirror hold. All four theme palettes render; reduced-motion model is stable.
+- The screenshot fixture originally retained old pixels in its atlas-copy canvas; corrected the fixture to clear like the production adapter. Repeated visual review confirms proper scene replacement.
+- Hint wrapping checked at 320, 393 and 908 pixels: native decoration off, fitted artwork height exactly 0.25 pixels. Hint dialog opens/closes through the real button.
+- Backward wheel and downward touch pull return from placeholder to final step-two supplement.
+- Mobile reading illustration height 155.36 pixels with measured 64-pixel margins.
+- No page or graphics errors in the browser checks.
+- Evidence: .local-preview/story-scenes/ui.json, scenes.json and corresponding screenshots.
+- No physical iPhone/Android testing or user visual acceptance claimed.
+
+Publication
+- Sites version 65 succeeded at 2026-10-16T14:39:34Z.
+- Source: 7f78cd470e2e30643d9ce729b26ff292538f2830; cache: d7c120528eb44b2b04bb3c40.
+- Source push and remote head verified by Sites workflow. Windows packaging completed through the official prepare-site-build helper; 66 cache assets and all 93 archive files verified.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice

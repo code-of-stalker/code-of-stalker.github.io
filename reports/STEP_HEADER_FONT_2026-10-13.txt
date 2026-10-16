@@ -1,0 +1,42 @@
+Step header font fitting — 2026-10-13
+
+Observed the reported small font in the current exported application.
+StepPanel.title used intrinsic text width (flexShrink only). The fitted-font
+ResizeObserver measured that text width, so shrinking could reduce the next
+measurement again. At 393px the short title reached 12px even though 16px fit.
+After returning to 525px it remained 12px. The original 16px text needed about
+227px; the header had substantially more available width.
+
+Changed only StepPanel.title to flex:1, minWidth:0. Font fitting now measures
+the available row width after padding, gap and chevron. Source typography,
+minimum size, contour geometry and measured header behavior stay in place.
+
+Current font rules:
+- Viewport width >=375px: preferred size 16px.
+- Viewport width <375px: fitted titles start at their 12px minimum.
+- Long labels shrink to fit, with a 12px floor; tracking may tighten at the floor.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- Expo export and Site preparation: passed.
+- Isolated Chrome resize sequence 525 ->393 ->375 ->320 ->525: sizes
+  16 ->16 ->16 ->12 ->16px. Tracking stayed 2.2px for the short title.
+- Menu title opens and closes the selector; zero page errors.
+- Evidence: .local-preview/font-header/qa.json and corrected-393.png.
+- Corrected screenshot visually reviewed.
+- Physical iOS and native devices were not tested in this turn.
+- Archive: all 83 files matched the pushed Site output and the target identity.
+
+Publication:
+Version: 20
+Commit: b0ea9f528f5e06f93ee631a2916c6905c1dd57a3
+Cache snapshot: 566e5a1c77ac2deabad5acd1
+Deployment: appgdep_6ace49cd14488191a638a24aafcf58cf
+Status: succeeded
+Updated: 2026-10-13T15:10:28.720643+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+
+Source helper pushed and verified the clean source before its Windows packaging
+launch failed. The official prepare-site-build.cjs fallback produced the verified
+archive. Native saving and deployment succeeded.

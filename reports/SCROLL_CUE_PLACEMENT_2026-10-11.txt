@@ -1,0 +1,46 @@
+Scroll transition cue placement — 2026-10-11
+
+Problem
+The embedded recording screen drew its absolute-bottom cue inside the content
+area, above the separate step selector. This overlaid the saved-answer action.
+
+Changes
+- Embedded recording sends its cue state to the shared task shell. Only the
+  shell draws the cue, below the persistent step selector.
+- Both standalone and embedded tasks reserve a 32px bottom inset independent
+  of cue visibility. The selector-to-caption gap is 11px at all checked sizes.
+- Standalone bottom padding explicitly overrides ProductScreen's inline gutter.
+- The step-menu closing overlay now belongs to the task's stacking context;
+  the selector's footer is above it, making menu buttons directly clickable.
+- Existing progress spring, fades, scroll gating, four question cells and
+  popup gesture blockers are retained. Rust graphics and quality settings were
+  not changed; the exported WASM hash is unchanged.
+
+Validation
+- TypeScript: npx tsc --noEmit passed.
+- Expo lint passed.
+- Expo web export passed.
+- Chrome: actual synthetic-microphone recording/save and saved-answer scroll
+  navigation passed. Cue never intersects Add Answer or the step selector.
+- Chrome: standalone and embedded layouts at 320x568, 375x812, 768x1024 and
+  375x1500 passed; light/neutral saved-answer layouts also passed.
+- Chrome and WebKit: all three explanation layouts and all four embedded
+  viewport sizes passed. Menus close through ordinary clicks, hide the cue
+  while open, and restore it after deliberate scrolling.
+- WebKit forced WebGL2: standalone and embedded backward-cue layouts passed;
+  no microphone capture was tested in WebKit. Neither browser run substitutes
+  for new physical iPad/Android measurements.
+- No browser exceptions in either run.
+
+Evidence
+.local-preview/panel-fixes/chrome-scroll-cue-placement.json
+.local-preview/panel-fixes/webkit-scroll-cue-placement.json
+.local-preview/panel-fixes/chrome-scroll-cue-embedded-320x568.png
+.local-preview/panel-fixes/chrome-scroll-cue-embedded-375x812.png
+.local-preview/panel-fixes/scroll-cue-placement-public.json
+
+Public preview verified HTTP 200 and byte-identical assets:
+https://slowly-criteria-spanking-fighting.trycloudflare.com/practice
+JS: entry-9b47c1b34a88972cc08de504590e80cc.js
+SHA256: f8be50c7e5f67349453b7f9b74df316670246aa85f74bb854a761c1dc71dc4d7
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1

@@ -1,0 +1,73 @@
+{
+  "at375": {
+    "marquee": {
+      "bottom": 792,
+      "height": 24,
+      "left": 0,
+      "right": 375.2000122070313,
+      "top": 768,
+      "width": 375.2000122070313,
+      "x": 0,
+      "y": 768
+    },
+    "card": {
+      "bottom": 740.5,
+      "height": 306,
+      "left": 20,
+      "right": 355,
+      "top": 434.5,
+      "width": 335,
+      "x": 20,
+      "y": 434.5
+    },
+    "page": {
+      "scrollWidth": 375,
+      "width": 375
+    }
+  },
+  "at320": {
+    "marquee": {
+      "bottom": 548,
+      "height": 16,
+      "left": 0,
+      "right": 320,
+      "top": 532,
+      "width": 320,
+      "x": 0,
+      "y": 532
+    },
+    "card": {
+      "bottom": 504,
+      "height": 202,
+      "left": 16,
+      "right": 304,
+      "top": 302,
+      "width": 288,
+      "x": 16,
+      "y": 302
+    }
+  },
+  "at1200": {
+    "marquee": {
+      "bottom": 868,
+      "height": 24,
+      "left": 360,
+      "right": 840,
+      "top": 844,
+      "width": 480,
+      "x": 360,
+      "y": 844
+    },
+    "card": {
+      "bottom": 804.5,
+      "height": 320,
+      "left": 392,
+      "right": 808,
+      "top": 484.5,
+      "width": 416,
+      "x": 392,
+      "y": 484.5
+    }
+  },
+  "errors": []
+}

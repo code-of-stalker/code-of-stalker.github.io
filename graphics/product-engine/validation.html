@@ -1,0 +1,39 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Проверка подключённого Rust-ядра</title>
+<style>body{margin:0;background:#000;color:#e7e100;font:14px system-ui}header{padding:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}button,select,input{font:inherit}#stage{position:relative;width:min(480px,100vw);height:380px;margin:auto;background:#000}#model{position:absolute;inset:0;pointer-events:none}canvas{position:absolute;inset:0;width:100%;height:100%}pre{padding:12px;white-space:pre-wrap}label{display:flex;gap:8px;align-items:center}</style>
+<header>
+<label>Сцена <select id="kind"></select></label>
+<label>Плотность иллюстраций <select id="density"><option>1.50</option><option selected>2.00</option><option>2.50</option></select></label><span>Стекло: ×1,00</span>
+<label>Частота <select id="fps"><option selected>60</option><option>90</option><option>120</option></select></label>
+<button id="pause">Пауза</button><button id="voice">Голос</button><button id="lock">Замок</button><button id="recover">Восстановить GPU</button>
+<label>Уровень <input id="level" type="range" min="0" max="1" step=".05" value=".5"></label>
+</header><div id="stage"><div id="model"></div><canvas id="output"></canvas></div><pre id="status">Загрузка</pre>
+<script type="module">
+import init,{ProductRenderer} from '/graphics/pkg/watcher_graphics.js';
+const kinds=['distance','cells','diary','basic','guidance','parallel','intensive','comparison','attention','crowd','voice','insight','gallery','mirror','glass','rain'];
+const $=id=>document.getElementById(id), kindsControl=$('kind'), status=$('status');
+for(const kind of kinds){const option=document.createElement('option');option.value=option.textContent=kind;kindsControl.append(option)}
+await init({module_or_path:'/graphics/pkg/watcher_graphics_bg.wasm'});
+const forceGl=new URLSearchParams(location.search).get('backend')==='webgl2';
+let atlas=document.createElement('canvas'), renderer=await ProductRenderer.create(atlas,forceGl), id,paused=false,speech=false,locked=false,previous=0,posted=0;
+const context=$('output').getContext('2d'), host=$('model').attachShadow({mode:'open'});
+function size(){const r=$('stage').getBoundingClientRect();renderer.resize(id,r.width,r.height,`M0 0H${r.width-24}L${r.width} 24V${r.height-24}L${r.width-24} ${r.height}H0Z`,kindsControl.value==='glass');}
+function audio(){const value=Number($('level').value);renderer.vector_audio(id,value,value,value,new Float64Array(Array.from({length:32},(_,i)=>value*(.2+.8*Math.abs(Math.sin(i*.7))))),speech,locked?1:0,locked,false)}
+function select(){status.removeAttribute('data-kind');if(id!==undefined)renderer.remove(id);paused=false;$('pause').textContent='Пауза';
+ const kind=kindsControl.value,body=document.createElement('body'),root=document.createElement('div');body.dataset.kind=kind;body.style.cssText='margin:0;width:100%;height:100%;background:transparent';root.id='art';root.style.cssText='position:relative;width:100%;height:100%';body.append(root);host.replaceChildren(body);
+ id=kind==='glass'?renderer.add(true):kind==='rain'?renderer.add_rain():kind==='attention'?renderer.add_observer():['gallery','mirror'].includes(kind)?renderer.add_raster(kind):renderer.add_vector(root,kind,['distance','cells','diary','basic','guidance','parallel','intensive'].includes(kind));
+ renderer.quality(Number($('density').value),0,Number($('fps').value));size();renderer.active(id,true,false);renderer.vector_decoder(id,true);audio();status.textContent=kind+' · '+renderer.backend();
+}
+kindsControl.onchange=()=>{try{select()}catch(error){status.textContent='ОШИБКА '+String(error);status.dataset.error=String(error)}};
+for(const control of ['density','fps'])$(control).onchange=()=>renderer.quality(Number($('density').value),0,Number($('fps').value));
+$('pause').onclick=()=>{paused=!paused;renderer.active(id,!paused,false);$('pause').textContent=paused?'Продолжить':'Пауза'};
+$('voice').onclick=()=>{speech=!speech;audio()};$('lock').onclick=()=>{locked=!locked;audio()};$('level').oninput=audio;
+$('recover').onclick=async()=>{const nextCanvas=document.createElement('canvas'),next=await ProductRenderer.create(nextCanvas,forceGl),state=renderer.snapshot();renderer.dispose();next.restore(state);renderer=next;atlas=nextCanvas;};
+new ResizeObserver(size).observe($('stage'));
+$('stage').onpointerdown=e=>{const r=e.currentTarget.getBoundingClientRect();renderer.pointer(id,(e.clientX-r.x)/r.width,(e.clientY-r.y)/r.height,true);renderer.vector_interact(id,'hold-start',.5,.5)};
+$('stage').onpointerup=()=>{renderer.pointer(id,.5,.5,false);renderer.vector_interact(id,'release',.5,.5)};
+select();
+function frame(at){try{if(at-previous>=1000/Number($('fps').value)-.25){previous=at;if(renderer.frame(at)){const [x,y,w,h]=renderer.rect(id);if($('output').width!==w||$('output').height!==h){$('output').width=w;$('output').height=h}context.clearRect(0,0,w,h);context.drawImage(atlas,x,y,w,h,0,0,w,h)}
+ if(at-posted>500){posted=at;const metrics=Array.from(renderer.metrics(id));status.textContent=JSON.stringify({kind:kindsControl.value,backend:renderer.backend(),metrics,paused},null,2);status.dataset.draws=String(renderer.commits(id));status.dataset.kind=kindsControl.value;status.dataset.paused=String(paused);}}
+ }catch(error){status.textContent='ОШИБКА '+String(error);status.dataset.error=String(error);console.error(error);return}requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script></html>

@@ -1,0 +1,34 @@
+Diary and practice refinement — 2026-10-13
+
+Changes
+- Shared double-panel diary sheets fade overflowing scroll content at the edges. Frames, title and fixed footer remain outside the mask. Native sheets use non-interactive themed gradient overlays.
+- Diary information uses three short paragraphs about device-local storage, deletion and password-protected copies; the copy and acknowledgment buttons remain visible.
+- Information glyph is a 20px circle with a distinct filled dot and readable stem. Its outline is 0.75 layout pixels.
+- Reset removes the device optimization profile before the optimization gate remounts, including the native SecureStore adapter. The confirmation describes the new optimization run.
+- Removed microphone-test screens and settings. Recording still requests the normal microphone permission. The old stored settings field remains compatible with existing backups and has no recording effect.
+- Neutral insight connectors use the same accent color. The style is shared with native and legacy artwork; the GPU style snapshot is refreshed on insight theme changes.
+- Task explanation height follows measured text and illustration size. Removed the oversized minimum height and empty illustration spacing; recording layout stays unchanged.
+- Only the compact diary voice sphere hides the 40 outer audio-responsive rays. Tasks retain them.
+
+Verification
+- TypeScript: npx tsc --noEmit — passed.
+- Lint: npx expo lint — passed, no warnings.
+- Storage, backup encryption, optimization, hold and diary gestures: 49 tests passed.
+- Chrome browser QA: 320x568, 600x900 sheets; 390x844 and 375x812 tasks.
+- Filters tested at the top, middle and bottom of their scroll range. One scanner and two frames per sheet; no horizontal overflow.
+- Diary export encrypted/decrypted saved text and audio successfully.
+- Diary rays: all 40 hidden. Task rays: 40 present with visible opacity.
+- All three explanations fit 390x844; first explanation fits 375x812. Scroll overflow is zero. Gap between artwork bounds and step button: 10.5px.
+- Reset tested in an isolated browser profile: the old device result is removed and optimization opens again.
+- Browser page errors and console errors: none.
+- Visual evidence: .local-preview/diary-refine/qa.json and screenshots.
+- Native adapters typechecked; physical Android/iOS behavior was not measured in this run.
+- Rust engine binaries and audio/cache storage formats were not changed. New graphics cache version: c3bc9a90a973c278edde2242.
+
+Publication
+- Site version: 13.
+- Source commit: d9aa68cf02fe9dc4e363ed9c82279e3f749cf93b; source helper verified the remote branch and clean checkout before packaging.
+- Windows static packaging fallback: 81 files; all extracted hashes match the staged build and committed Site distribution.
+- Archive SHA-256: 01d86a5ac5fee8377421c26ce4bde21187488125f135e1c566451ea4e156f5be.
+- Native deployment appgdep_6ace188689ac819194fe0e9f970c8da3: succeeded at 2026-10-13T11:40:11Z.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site

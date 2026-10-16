@@ -1,0 +1,54 @@
+Decoder, back swipe and transition proposals — 2026-10-11
+
+Subsequent selection: the user chose Сканирование. It is now integrated in the product;
+see PRACTICE_SCAN_ENTRY_2026-10-11.txt. The original proposal-stage notes below are historical.
+
+Implemented in the product
+- Decoder visibility now depends on its visible area and stable layout, not on a mandatory first scroll. Tall screens start it immediately when it is already in view; offscreen decoders still wait.
+- The renderer publishes actual decoder completion. Rust vector, Rust SVG and legacy/WebView adapters forward it to the practice flow. No guessed completion timer.
+- Intro advance remains blocked until decoding finishes. A touch already in progress or ongoing wheel momentum cannot turn into advance when decoding completes; a fresh deliberate gesture is required.
+- Fixed the task-to-intro deadlock: the task no longer waits for an exit callback from an unmounted intro frame. Both the back button and the back swipe return correctly.
+- Horizontal swipe follows the finger, shows an arrow and release cue, animates cancellation, then animates the return. Ordinary question buttons can yield to a swipe. Recording gestures, sliders and editable fields keep their own gesture handling.
+- Web feedback runs on the shared Rust effects clock. Existing quality settings and theme colors are retained. System reduced motion suppresses page displacement/scaling.
+
+Three isolated interactive proposals
+- /transitions: 1 / Погружение, 2 / Слои, 3 / Сканирование.
+- Replay, pause/resume and 0.5x speed; responsive preview using the actual artwork and theme.
+- Panel morph changes contour bounds without stretching corner cuts.
+- No progress writes; these proposals do not replace the production entry transition until the user selects one.
+
+Technical checks
+- TypeScript: passed.
+- Expo lint: passed.
+- Web export: passed.
+- Back-swipe, scroll-gate, glass/decoder and Rust adapter regression tests: 32 passed.
+- Rust formatting: passed. WASM Clippy completed with the existing 31 warnings.
+- Rust core tests: 71 passed. GLSL conversion, 10 WGSL shaders and WASM release build passed.
+- The combined Rust build log contains an initial TS/React-compiler lint failure in the new feedback ref naming. The ref was corrected; separate final typecheck, lint and export passed.
+
+Browser validation
+- Chrome actual touch input: partial-swipe cancellation, full edge swipe, task-to-intro, recording question-to-explanation and explanation-to-previous explanation.
+- 375x1500: onscreen decoder starts without any scroll. 375x812: offscreen decoder waits.
+- Repeated wheel events through decoding completion do not accidentally advance; fresh input does.
+- Rust vector, Rust SVG and legacy completion adapters checked.
+- All three proposals: enter, pause, resume, final state; dark, light and neutral theme checks.
+- WebKit decoder/back tests use synthetic DOM touch events. They are not evidence of physical iPad edge-gesture behavior.
+- Final mobile visual inspection and system-reduced-motion check passed.
+- Physical iPad/Android and native APK validation were not performed in this turn.
+
+Evidence
+.local-preview/panel-fixes/decoder-swipe-qa.json
+.local-preview/panel-fixes/webkit-decoder-adapters.json
+.local-preview/panel-fixes/chrome-decoder-adapters.json
+.local-preview/panel-fixes/decoder-swipe-final.json
+.local-preview/panel-fixes/decoder-swipe-public.json
+.local-preview/panel-fixes/decoder-swipe-export.log
+.local-preview/panel-fixes/decoder-swipe-clippy.log
+.local-preview/panel-fixes/decoder-swipe-rust-build.log
+
+Preview verified HTTP 200
+https://slowly-criteria-spanking-fighting.trycloudflare.com/transitions
+https://slowly-criteria-spanking-fighting.trycloudflare.com/practice
+Public JS and WASM hashes matched the current local export.
+JS entry: entry-a96524d55c67a768eb492b009b816013.js
+WASM SHA-256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1

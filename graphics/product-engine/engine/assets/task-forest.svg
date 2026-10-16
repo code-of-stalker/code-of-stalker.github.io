@@ -1,0 +1,25 @@
+<g class="task-forest" opacity="0" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M22 141Q65 101 107 135Q165 111 205 131Q237 109 268 140M20 122Q60 92 93 104M184 105Q229 77 268 112" fill="none" stroke="var(--book-dim)" stroke-width=".45"/>
+  <!-- Trunks are behind the opaque crowns, so branches emerge from the foliage. -->
+  <g class="task-tree-trunks" fill="var(--book-edge)" stroke="var(--book-line)" stroke-width=".55">
+    <path d="M39 99H47V141H39Z"/><path d="M84 91H92V141H84Z"/>
+    <path d="M214 101H222V141H214Z"/><path d="M253 110H261V141H253Z"/>
+  </g>
+  <g class="task-tree-crowns" fill="var(--book-paper)" stroke="var(--book-line)" stroke-width=".65">
+    <path d="M43 54L24 83H35L18 110H37L23 130H62L50 110H68L50 82H61Z"/>
+    <path d="M88 30L68 64H79L60 95H79L65 120H111L96 95H116L98 64H109Z"/>
+    <path d="M218 36L196 69H207L189 102H208L194 126H242L228 102H248L230 69H241Z"/>
+    <path d="M257 78L242 104H250L235 128H278L264 104H272Z"/>
+  </g>
+  <g class="task-tree-branches" fill="none" stroke="var(--book-dim)" stroke-width=".36">
+    <path d="M43 77L37 84M43 88L55 101M43 102L31 116M43 114L53 124"/>
+    <path d="M88 53L77 70M88 73L104 91M88 89L72 108M88 111L96 123"/>
+    <path d="M218 57L208 74M218 77L235 98M218 98L203 117M218 114L230 126"/>
+    <path d="M257 100L249 112M257 115L269 125"/>
+  </g>
+  <path d="M34 43Q41 37 48 43M49 51Q55 45 61 51M164 54Q172 47 179 54M182 44Q189 37 196 44" fill="none" stroke="var(--book-ink)" stroke-width=".55"/>
+  <path class="task-forest-trail" d="M22 141H268" fill="none" stroke="var(--book-bright)" stroke-width=".45"/>
+  <path class="task-forest-rock" d="M152 140L155 129L159 127H167L173 132L176 141Z" fill="var(--book-cover)" stroke="var(--book-line)" stroke-width=".45"/>
+  <path d="M156 130L163 134L171 132M163 134L160 141" fill="none" stroke="var(--book-dim)" stroke-width=".3"/>
+  <g class="task-forest-cast"><use href="#task-book-forest-people"/></g>
+</g>

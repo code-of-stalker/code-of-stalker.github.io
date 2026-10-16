@@ -1,0 +1,11 @@
+{
+  "hold": "starts the sequence without navigation; one pass holds the final frame",
+  "tap": "opens the Guidance preview with the matching title",
+  "pause": "resumes from the same point",
+  "inactive": "suspends when another Laboratory section is active",
+  "mobile": [
+    390,
+    320
+  ],
+  "errors": []
+}

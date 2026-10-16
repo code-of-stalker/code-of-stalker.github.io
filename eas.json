@@ -14,10 +14,30 @@
         }
       }
     },
+    "product": {
+      "extends": "development",
+      "env": {
+        "APP_VARIANT": "product"
+      }
+    },
     "recovery": {
       "extends": "development",
       "env": {
         "APP_VARIANT": "recovery"
+      }
+    },
+    "standalone": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "standalone"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease --no-parallel --max-workers 1",
+        "env": {
+          "GRADLE_OPTS": "-Dorg.gradle.jvmargs=\"-Xmx2g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 -Dorg.gradle.daemon=false"
+        }
       }
     }
   }

@@ -1,0 +1,31 @@
+{
+  "liveGrowth": {
+    "startingBloom": 3.4179,
+    "finalBloom": 5.0596
+  },
+  "joins": {
+    "checked": 126,
+    "samples": [
+      {
+        "brightness": 0.2,
+        "rail": 0.0569,
+        "exit": 0.0569,
+        "horizon": 0.036
+      },
+      {
+        "brightness": 1,
+        "rail": 0.2844,
+        "exit": 0.2844,
+        "horizon": 0.18
+      },
+      {
+        "brightness": 1.8,
+        "rail": 0.5118,
+        "exit": 0.5118,
+        "horizon": 0.324
+      }
+    ]
+  },
+  "persistence": "enabled state and gain survive reload and export",
+  "errors": []
+}

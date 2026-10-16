@@ -1,0 +1,75 @@
+Volume, panel scanner and Architecture motion — 2026-10-10
+
+Implemented
+- Recording review: the speaker opens a 0–100% volume slider and a separate
+  mute control. The control fits the existing empty space, without moving the
+  save/re-record buttons. Colors come from the current theme.
+- Web playback owns its media element and a MediaElementSource -> GainNode ->
+  destination graph. Gain is adjusted with a 15ms smoothing time constant.
+  Playback creates/resumes its context in the play gesture. Native playback
+  uses the documented Expo Audio SDK57 volume setter, also on source replacement.
+  A prefixed AudioContext is supported; without Web Audio the media setter is
+  retained as a compatibility fallback, rather than preventing playback.
+- URI changes, re-record, saving and unmount pause media, disconnect gain and
+  close the owned context. Backgrounding and leaving the screen pause playback.
+- Re-record: review fades out over the existing 250ms modal transition; the
+  voice scene returns over 360ms without remounting. The outgoing review retains
+  its draft waveform/duration instead of flashing an empty draft.
+- Glass scanner explicitly replays on route re-entry. Quality/resolution
+  changes do not replay it. Level panels use the same Laboratory soft scanner
+  mask, driven by the shared Rust clock, without another GPU glass pass.
+- Level expansion/reversal animates content height, opacity and offset over
+  460ms. The title row height also interpolates. Closed contents unmount after
+  their exit finishes. Transition endpoints are exact, including zero height.
+- Guidance keeps the approved parallel spiral. The original 288x156 scene gets
+  a 24-unit upper viewport allowance; CSS size/position compensate to retain
+  the original artwork scale and location. Once expanded, the body no longer
+  clips its upper halo. It remains clipped during the height transition.
+- Levels header starts transparent. After actual scroll (>1px) its background
+  fades in; returning to the top fades it out. Only threshold changes update
+  React state; scroll frames do not cause repeated React renders.
+- Level fill uses the original cut-corner SVG contour at its authored opacity.
+  Rectangular CSS fill removed. Borders remain 0.25 / selected level 0.75.
+- Themes, motion scenario and independent automatic glass/vector quality
+  settings are preserved. No dependencies or version pins changed.
+
+Technical validation
+- Expo SDK57 TypeScript, lint and web export passed.
+- Rust formatting and WASM-target Clippy passed (existing warnings retained).
+- Rust core: 64 tests passed, including interrupted accordion height reversal.
+- State/quality/navigation: 71 tests passed.
+- Audio/recorder/gesture: 17 tests passed.
+- GLSL conversion and all 10 WGSL shaders validated; release WASM built.
+
+Browser validation
+- Chrome WebGPU and desktop WebKit WebGL2: scanner intermediate masks on Home,
+  level panels and Home return; intermediate expansion heights; shaped fill;
+  top-transparent / scrolled-filled / back-at-top header; no browser errors.
+- Both backends: inspected the actual upper spiral-light phase, including its
+  rounded halo and expanded-body overflow. Screenshots reviewed directly.
+- Chrome: actual recording -> playback -> volume 0 / 50 / 100%, mute/unmute,
+  animated re-record -> recording -> encrypted save. Measured GainNode value
+  0.5 at 50%, while media volume remains 1 (no double attenuation).
+- Also passed with only the prefixed AudioContext constructor exposed.
+  Playback contexts are closed after save/re-record, and media are paused.
+- Re-record samples show review opacity continuously 1 -> 0 and voice opacity
+  0.08 -> 1, rather than immediate removal/replacement.
+- Desktop Windows WebKit lacks the microphone/Web Audio facilities required
+  by the full recording test; that scenario is not a physical Safari result.
+  No physical iPad, Android, native build or FPS measurements in this change.
+
+Evidence
+.local-preview/panel-fixes/volume-level-motion-qa.mjs
+.local-preview/panel-fixes/webgpu-levels-motion.json
+.local-preview/panel-fixes/webkit-levels-motion.json
+.local-preview/panel-fixes/webgpu-audio-motion.json
+.local-preview/panel-fixes/webgpu-audio-prefixed-motion.json
+.local-preview/panel-fixes/build-current.log
+.local-preview/panel-fixes/clippy-current.log
+.local-preview/panel-fixes/volume-level-motion-public.json
+
+Existing preview is HTTP200 and byte-identical to the current local export:
+https://furnished-teddy-earl-webmasters.trycloudflare.com/home
+JS: entry-f78f4586f0bf0241564281e4db4f1c8a.js
+JS SHA256: 5612488f8873c735f14a6cac145fc061be57890d1c38ca5a2d36952e94496d34
+WASM SHA256: 8c11ea1bad10958010a1b4508d62bc97f5cea4adcd160387354f738af57c8589

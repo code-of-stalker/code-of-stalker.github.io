@@ -1,0 +1,22 @@
+Approved dream hero poses — 2026-10-15
+
+Master: approved-poses-flat.png
+Sleeping vector: sleeping.svg
+Waking vector: seated.svg
+
+Approved composition: sleeping on the left; seated on the right.
+The waking animation starts seated, including every loop. No rising rig.
+Flat solid ink, no contour glow, gradients, blur or shadow in the character asset.
+Opaque silhouette fill prevents dream memories showing through the figure.
+The separate head light remains a narrative element, placed toward the crown/back of the skull.
+
+Image preparation: built-in image_gen editing tool.
+Final prompt:
+Precise edit of the supplied approved two-pose illustration. Preserve EXACT same anatomy, faces, poses, composition, dimensions, bed and pillow and blanket lines. LEFT sleeping man lying in bed, RIGHT same man sitting upright with his hands resting on his lap. ONLY remove all halo/glow/bloom around the yellow contour lines. Make all existing contour lines sharp flat solid yellow (#e8db55) on pure solid black, no gradients, no illumination, no shadows, no glow anywhere. Maintain the existing variable line width and sparse tapered anatomical accents. Do not redraw or redesign the anatomy, do not add detail, do not change poses or camera. No labels or text. This is the clean flat line artwork master to use in a mobile application.
+
+Vector conversion: Potrace 2.1.8 (offline authoring utility, not an application dependency).
+blackOnWhite=false, threshold=115, turdSize=3, optTolerance=0.12.
+Source dimensions 1942 x 809; split at x=980, right artwork translated by -990.
+Retained compound ink paths and opaque silhouette underlay. No runtime bitmap or filter.
+The source SVGs are embedded into dreamCinema.generated.ts by:
+node scripts/product-art/build-step-two-inserts.mjs

@@ -1,0 +1,52 @@
+Diary controls and storage verification — 2026-10-11
+
+Storage claim verified against implementation and tests
+- Web: AES-GCM 256-bit non-extractable CryptoKey, randomized 12-byte IVs,
+  authenticated state/audio metadata and 128-bit tags. Encrypted text/state
+  and audio blobs are in IndexedDB. The CryptoKey is in that same browser
+  profile: this is local encryption, not a separate password lock or backup.
+- Native adapter encrypts saved state/audio through expo-crypto and keeps
+  its key in SecureStore. Playback temporarily decrypts audio for the player.
+- 22 repository/web/native-adapter tests passed. Browser test context verified
+  AES-GCM, key length 256, extractable=false and encrypted state contents.
+  Native tests use adapters/mocks; no physical device security audit is claimed.
+- Diary information sheet now explains the web key/password limitation.
+
+UI changes
+- Eye opens Architecture, using the same selected-step destination as Home.
+  Existing progress is preserved; an unsaved text draft retains its leave guard.
+- Listen-later remains accessible through its own bookmark button beside the
+  architecture-answer row. It never navigates out of Diary.
+- Extracted existing Settings toggle into ProductToggle. Settings remains
+  36x20; Diary uses the Figma compact 27x15 size within a 40px clickable row.
+  On/off both use the approved cut-corner thumb; outline remains 0.25px.
+- Reused the approved Laboratory voiceIconPaths.lips through a shared source
+  module for product controls and Laboratory authoring. No new mouth drawing.
+- Calendar retains its 24x24 slot and cannot shrink. Six almost-zero-length
+  source segments were replaced by circles in the same positions/radius;
+  Chrome had omitted those segments while WebKit rendered them. Uses direct
+  palette colors instead of image tint masking. Updated asset and themed source.
+- Rust source, binary, rain, quality policy and voice durations are unchanged.
+
+Checks
+- TypeScript, Expo lint and final touched-file ESLint passed.
+- Production web export passed; public JS and WASM match local bytes (HTTP200).
+- Chrome: full navigation, collection, saved toggle, date filter, text-draft
+  guard and selected-step checks passed without page errors; dark/light/neutral
+  screenshots at 320/375/768 widths; explicit six-circle/calendar geometry check.
+- WebKit: all navigation and geometry checks passed, but the long repeated-reload
+  run logged 6 previously observed WASM callback Unreachable errors. Its overall
+  report is therefore NOT a clean pass. Retained separately from final fresh
+  page icon inspection; do not treat screenshots as physical iPad validation.
+
+Evidence
+.local-preview/panel-fixes/diary-controls-storage.log
+.local-preview/panel-fixes/chrome-diary-controls-qa.json
+.local-preview/panel-fixes/webkit-diary-controls-qa.json
+.local-preview/panel-fixes/webkit-diary-controls-final.json
+.local-preview/panel-fixes/diary-controls-public.json
+
+Preview
+https://slowly-criteria-spanking-fighting.trycloudflare.com/diary
+JS SHA256: 6ccd107000f7d6602a06daf32b8dbe350ee9313691aff1180f6f8dc6c4a39e76
+WASM SHA256: 0492f7454e9dad700c3ec998a171f392f8b368ccd9c4afb85ef153a5e535c1f1

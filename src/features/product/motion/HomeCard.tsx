@@ -1,0 +1,57 @@
+import { Image } from 'expo-image';
+import { useMemo } from 'react';
+import type { PropsWithChildren } from 'react';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { Art } from './Art';
+import type { ArtKind } from './types';
+import { homeGlassShape } from './glassShape';
+import { NativePanelReveal, usePanelReveal } from './PanelReveal';
+import { useThemeColors } from '../ProductTheme';
+import { GlassOutline } from './GlassOutline';
+import { homeTitleGradient } from './homeTitleGradient';
+import type { HomeTitleGradient } from './homeTitleGradient';
+import { ScanLight } from './ScanLight';
+import { PanelArtwork } from './PanelArtwork';
+import { usePanelSize } from './usePanelSize';
+
+export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { kind: ArtKind; onPress(): void; accessibilityLabel: string; reducedMotion?: boolean } }>) {
+  const colors = useThemeColors();
+  const { width } = useWindowDimensions();
+  const { ref, report, progress, initialStyle } = usePanelReveal(true, !!artwork.reducedMotion);
+  const {size,onLayout}=usePanelSize({width:288,height:200},ref);
+  const glass = useMemo(() => homeGlassShape(width, size.width, size.height), [width, size]);
+  const fillClip = Platform.OS === 'web' ? { clipPath: `path('${glass.path}')` } as ViewStyle : undefined;
+  const themedMask = useMemo(() => ({ uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}" viewBox="0 0 ${size.width} ${size.height}"><path fill="${colors.background}" fill-rule="evenodd" d="M0 0H${size.width}V${size.height}H0Z ${glass.path}"/></svg>`)}` }), [colors.background, size, glass.path]);
+  return <View style={styles.card}><View ref={ref} style={[styles.card, initialStyle]} onLayout={onLayout}>
+    {/* Clip every interior layer together; cut corners reveal the moving backdrop. */}
+    <View testID="home-card-fill" style={[StyleSheet.absoluteFill, fillClip]}>
+      <View style={StyleSheet.absoluteFill}><Art {...artwork} height={size.height} width={size.width} glass={glass} presentation="card" onRevealProgress={report} /></View>
+      {children}
+    </View>
+    {Platform.OS !== 'web' && <PanelArtwork source={themedMask} style={styles.mask} />}
+    {Platform.OS === 'web' ? <svg aria-hidden focusable="false" data-home-frame
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 4, pointerEvents: 'none' }}>
+      {/* The border stays outside the fill clip, including on short desktop cards. */}
+      <path d={glass.path} fill="none" stroke={colors.accent} strokeWidth={0.25} vectorEffect="non-scaling-stroke" />
+    </svg> : <GlassOutline width={size.width} height={size.height} path={glass.path} />}
+    <NativePanelReveal progress={progress} height={size.height} />
+  </View><ScanLight path={glass.path}/></View>;
+}
+
+// The shade begins at the text block and continues to the bottom of the card.
+export function HomeCardCopy({ children, inset, gradient, style }: PropsWithChildren<{
+  inset: number; gradient: HomeTitleGradient; style?: StyleProp<ViewStyle>;
+}>) {
+  const colors = useThemeColors();
+  const shade = useMemo(() => homeTitleGradient(gradient, colors), [gradient, colors]);
+  return <View pointerEvents="none" style={[styles.copy, { bottom: 0, paddingBottom: inset, paddingLeft: inset - 1, paddingRight: inset + 23 }, style]}>
+    <Image pointerEvents="none" source={shade} style={StyleSheet.absoluteFill} contentFit="fill" />
+    {children}
+  </View>;
+}
+const styles = StyleSheet.create({
+  card: { flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: 'transparent' },
+  copy: { position: 'absolute', left: 1, right: 1, gap: 4, zIndex: 2 },
+  mask: { ...StyleSheet.absoluteFill, zIndex: 3 },
+});

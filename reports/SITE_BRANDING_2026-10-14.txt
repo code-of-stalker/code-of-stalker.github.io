@@ -1,0 +1,45 @@
+Site branding — 2026-10-14
+
+User-selected title: Код Сталкера.
+Icon: exact architecturePath eye-in-cell glyph from the application's icon system,
+rendered against the neutral background with the neutral teal accent.
+Preview: isolated frame of the second-step gallery rendered by the existing
+ProductRenderer in palette 2, without product UI. Output JPEG is 1200x858.
+
+Updated:
+- Sites display metadata title.
+- HTML document title, Open Graph site/title/image, Twitter title/image/card.
+- Apple web-app title and 180px touch icon.
+- PWA name/short_name and 192/512px icons.
+- Browser favicon via Expo configuration and the explicit 32px HTML link.
+- Content-addressed image URLs and graphics cache membership.
+- Stable PWA id, start URL, scope and standalone display are preserved.
+
+Validation:
+- npx tsc --noEmit: passed.
+- npx expo lint: passed.
+- npm run test:web-cache: all 15 passed, including audio exclusion and safe updates.
+- Expo web export and Site preparation: passed.
+- Icon and clean preview visually reviewed.
+- Local and production crawler checks with JavaScript disabled: passed.
+- Exact title and all Open Graph/Twitter fields present in the served HTML.
+- All five image assets return 200 with correct MIME types and dimensions.
+- Served images match source SHA-256 and the cache manifest byte for byte.
+- Evidence: .local-preview/site-branding/qa.json and qa-live.json.
+- The first immediate production check saw the previous shell during deployment
+  propagation; subsequent probes and the complete production check saw the new shell.
+- Physical iOS installation and Telegram's own cached preview were not tested.
+
+Publication:
+Project: appgprj_6acce501d4988191938370d0410d080b
+Version: 21
+Commit: 300732f48fd2540d8de0e8ccda53d8d20be4ac5a
+Cache snapshot: 3f20e245b9e1aae53e5c9042
+Deployment: appgdep_6acf622d24848191bf4fcef885bba924
+Status: succeeded
+Updated: 2026-10-14T11:06:37.874367+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+
+Source helper pushed and verified the clean source before its Windows packaging
+launch failed. Official prepare-site-build.cjs produced the fallback archive;
+all 88 files were verified. Native save/deployment and live checks succeeded.

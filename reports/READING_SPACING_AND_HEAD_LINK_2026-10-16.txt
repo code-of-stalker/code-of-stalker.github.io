@@ -1,0 +1,25 @@
+Reading spacing and head link — 2026-10-16
+
+Changes
+- Restored dream emphasis and conclusion before their illustrations in continuous and Economy reading. Content wording is unchanged.
+- Continuous reflections / single-hero: 36 layout pixels above and below.
+- Continuous dream theatre: 64 above / 64 below. Sleeping scene: 24 above / 60 below.
+- Economy reflections / single-hero: 56 above / 48 below; theatre: 64 / 64.
+- Preserved the enlarged final dreamer sphere.
+- Rust discernment dotted arc now runs from the first head (87,52) to the second head (201,52), with matching animated flow geometry.
+
+Validation
+- TypeScript and Expo lint passed.
+- Rust format check passed; Clippy completed with pre-existing warnings outside the changed scene.
+- 97 engine tests and 21 native bridge tests passed; shader validation and both release WASM builds passed.
+- Continuous browser reading at 908x668 and 393x852: emphasis before the sleeper, measured scene margins, retained sphere size, no horizontal overflow or graphics errors.
+- Economy reading at 320x568: emphasis before the illustration, theatre padding 64/64, no horizontal overflow.
+- Actual Rust/WASM head scene: dotted endpoints verified; screenshot inspected; reduced-motion output stable.
+- Screenshots and browser measurements: .local-preview/reading-spacing/.
+- No physical iOS / Android device validation performed in this change.
+
+Publication
+- Sites version 64 succeeded at 2026-10-16T14:13:43Z.
+- Source: 6e91bae23a78003dddc2e4cf3302469c205a3b24; cache: c2aec233c6b8ab7ea39cf002.
+- Verified 66 cache assets / 93 archive files. Windows packaging used the official prepare-site-build helper after source push verification.
+- URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site/practice

@@ -1,0 +1,56 @@
+Shared panel scan and locked step 2 — 2026-10-13
+
+Changes
+- Panel scan: 1.5 seconds instead of 2 seconds, in the material preset,
+  regenerated Rust material and native/legacy artwork. Contact pulse unchanged.
+- RecordingReview has one parent scan over header, gap and body. A shared-scan
+  context disables independent reveal masks and lights in its GlassHost children.
+  Glass, fitted contours, content, volume space and actions remain independent.
+- The same parent scan is used by diary report/unsaved panels, text editor and
+  the architecture answer-recordings header/body. Existing step panels already
+  have one continuous fitted contour and one GlassHost scan.
+- Locked step 2: neutral saturation is 100%, avoiding recoloring the actual
+  #0D1520 background. A themed gradient is composited after blur at the hero
+  edges. It does not cover foreground controls or change illustration motion.
+- Optimization action now says "ОСТАВИТЬ НАСТРОЙКИ ПО УМОЛЧАНИЮ" and explains
+  balanced quality with smoothness disabled. The existing safe profile is retained.
+
+Validation
+- TypeScript and Expo lint passed after the application edits.
+- Glass/contour regression suite: 13 passed, including the new 1.5-second timing.
+- Rust: 72 tests passed, shaders validated, release WASM built, formatting and
+  WASM Clippy passed. Existing Clippy/dead-code warnings were not changed.
+- Chrome WebGPU: 320x568, 390x844 and 600x900. Before/after locked-step screenshots
+  reviewed. The earlier blue rectangular background edge is no longer visible.
+- Recording review, report and text editor: exactly one unmasked scanner light,
+  one parent content mask, full group dimensions, no child GlassHost masks.
+  Actual scan durations approximately 1.5 seconds; the light and mask clear.
+- Real synthetic microphone recording, encrypted voice save, editor round trip,
+  repeated sheet opening and volume expansion without height changes passed.
+- Existing level contours and mobile layout reviewed. No browser page errors.
+- An initial repeat-opening check missed its sample window during cold graphics
+  startup. After waiting for graphics readiness, all four scan checks passed.
+- WebKit check could not start because its browser executable is unavailable.
+  No physical Safari/iOS/Android visual or performance claim is made.
+
+Evidence
+.local-preview/optimization-scan-step2/before.json
+.local-preview/optimization-scan-step2/after.json
+.local-preview/optimization-scan-step2/before-neutral-cooldown-600.png
+.local-preview/optimization-scan-step2/after-neutral-cooldown-600.png
+.local-preview/optimization-scan-step2/after-recording-review-scanning.png
+.local-preview/optimization-scan-step2/after-defaults-320.png
+
+Publication preparation
+Existing project appgprj_6acce501d4988191938370d0410d080b, public audience retained.
+Cache version 0d559d4755c54bcfa6cbcdcb; 56 assets; 34847594 bytes.
+Cache routing/update code unchanged; this release refreshes static asset hashes.
+Audio storage is not part of the deployment archive.
+
+Publication completed
+Version 11, deployment appgdep_6acdffa705bc8191ab6aa78855954904, status succeeded.
+Commit 3cf5b35c0c7f56d66cb7272f888a53522d651527, normal push verified by Sites helper.
+The Windows package subprocess failed after source verification. The fallback
+prepared the same static source; all 81 archive files were compared by SHA-256.
+Native Sites save and deployment succeeded with the original public audience.
+https://watcher-observation-qtas5.cold-breezy.chatgpt.site

@@ -1,0 +1,8 @@
+[package]
+name = "laboratory-shader-compiler"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+naga = { version = "30", features = ["glsl-in", "wgsl-in", "wgsl-out"] }

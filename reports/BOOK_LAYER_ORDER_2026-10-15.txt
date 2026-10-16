@@ -1,0 +1,52 @@
+Book painter order repair — 2026-10-15
+
+Problem
+The approved authoring scene dynamically reorders book surfaces by camera depth.
+The migration compiler sampled geometry and opacity attributes but discarded DOM
+reordering. The GPU retained the closed-book primitive order, so the front cover
+occluded the open left pages.
+
+Change
+- The offline reading compiler records sibling painter ranks alongside motion.
+- Rust samples those categorical ranks without interpolation and changes the
+  retained primitive order only when the authored stack changes.
+- Ordering is local to sibling groups. Backdrop, book and projected hero keep
+  their outer scene order; page detail and edge paths stay with their surface.
+- Only the book data was regenerated. The compiler retains other catalog entries.
+  Approved geometry, timing, themes, Economy cadence and visibility are preserved.
+- The shared Rust GPU implementation serves both inline artwork and Home cards.
+
+Validation
+- 92 engine suite tests plus the additional compiled-book asset regression passed
+  (93 distinct engine tests). Native kernel suite: 20 passed.
+- Formatting, WASM release build, shader checks, typecheck and lint passed.
+  WASM Clippy passed with existing warnings.
+- Compared authored SVG order to Rust ranks at 12 phases spanning opening,
+  open hold, closure and the following loop, in both artwork/card compositions.
+- An opaque colour probe tested actual GPU occlusion: all 2,753 interior page
+  samples match the authored top page rather than the red underlying cover.
+- Browser screenshots inspected for open and closing poses and four palettes.
+- Product export in Economy: book page rank 7 is above cover rank 2 inside
+  step two at 6.1354 seconds and on Home at 5.6384 seconds; no browser errors.
+- Offline native graphics document rendered book pixels and one ready signal
+  without runtime errors. No physical mobile-device or human approval claim.
+- Exact export cache: 0d8016f01191c5d584495a20, 66 asset hashes verified.
+
+Evidence
+.local-preview/book-projection/book-painter-order-checks.json
+.local-preview/book-projection/book-stack-product-checks.json
+.local-preview/book-projection/book-layer-phase-5.png
+.local-preview/book-projection/book-layer-phase-12.7.png
+.local-preview/book-projection/book-stack-practice.png
+.local-preview/book-projection/book-stack-home.png
+
+Publication
+Site version: 59
+Commit: 61fc4963afb7aa01b9618f018bfd0b586ee069c3
+Version: appgprj_6acce501d4988191938370d0410d080b~appgver_541fdef6d8bc8191b86b8c39b85c87f1
+Deployment: appgdep_6ad129ee4ba081919194eb978c6e2219
+Native result: succeeded at 2026-10-15T19:31:26.676272+00:00
+URL: https://watcher-observation-qtas5.cold-breezy.chatgpt.site
+Windows source helper pushed the exact commit but its packaging command failed.
+Static fallback verified 93 files and 66 cache assets, then native save/deploy
+accepted the pushed source and exact archive. Existing public audience preserved.

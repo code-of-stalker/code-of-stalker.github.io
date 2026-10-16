@@ -1,0 +1,7 @@
+{
+  "name": "watcher-product-art-build",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": { "vite": "8.0.16", "react": "19.2.3", "react-dom": "19.2.3" }
+}

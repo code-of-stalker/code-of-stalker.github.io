@@ -1,0 +1,31 @@
+Home card fill follows the fitted contour — 2026-10-11
+
+Request: the Home card fill was rectangular instead of following its cut corners.
+
+Change: src/features/product/motion/HomeCard.tsx wraps the glass, animated
+illustration, title gradient and copy in one clipped interior. Its path is the
+same measured homeGlassShape used by the outline and glass distance field.
+The web corner-cover SVG is removed: cut corners now reveal the live backdrop
+instead of painting opaque rectangles in the theme's background color.
+The 0.25px outline and scanner light remain separate from the interior clip.
+Authored corner offsets, width breakpoints, motion and quality settings are
+unchanged. The native fallback is retained; no Rust or dependency changes.
+
+Checks:
+- TypeScript and Expo lint passed; web export completed.
+- Existing glass/renderer regression checks: 15 passed.
+- Chrome/WebGPU: 21 cases passed (three themes, seven viewport sizes).
+  Pixel samples outside both right corner cuts show the contrasting backdrop;
+  interior samples retain the theme fill. Clip and outline coordinates match,
+  including fractional panel heights. Taps outside cuts do not activate the
+  card; interior taps still navigate to Architecture.
+- Desktop WebKit/WebGL2: the same 21 pixel, contour and navigation cases
+  passed in all three themes, without page errors.
+- Browser screenshots reviewed in light and neutral themes.
+- Public preview returns the current JS entry and unchanged WASM, matching
+  local SHA-256 hashes; verification: home-fill-public.json in panel-fixes.
+
+Evidence: .local-preview/panel-fixes/home-fill-qa.mjs,
+webgpu-home-fill.json, webkit-home-fill.json, home-fill-export.log,
+home-fill-public.json.
+Desktop browser checks are separate from real iPad/Android visual acceptance.

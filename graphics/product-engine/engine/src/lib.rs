@@ -1,0 +1,62 @@
+pub mod atlas;
+pub mod clock;
+pub mod contour;
+pub mod cover_motion;
+pub mod decoder;
+pub mod gesture;
+pub mod inertial_progress;
+pub mod insight_motion;
+pub mod level_contour;
+pub mod mesh_cache;
+pub mod motion;
+pub mod motion_kernel;
+pub mod paint_order;
+pub mod palette;
+pub mod panel_geometry;
+pub mod quality;
+#[cfg(test)]
+mod raster_asset_tests;
+pub mod reading_curves;
+pub mod reading_focus;
+pub mod reading_layout;
+#[cfg(target_arch = "wasm32")]
+mod renderer;
+pub mod scan_profile;
+pub mod scene_model;
+pub mod step_two_tasks;
+pub mod svg_reference;
+pub mod timeline;
+pub mod tracks;
+pub mod uploads;
+pub mod vector_geometry;
+pub mod voice;
+#[cfg(target_arch = "wasm32")]
+pub use renderer::*;
+#[cfg(target_arch = "wasm32")]
+mod svg_motion;
+#[cfg(target_arch = "wasm32")]
+pub use svg_motion::*;
+#[cfg(target_arch = "wasm32")]
+mod element_motion;
+#[cfg(target_arch = "wasm32")]
+mod text_motion;
+#[cfg(target_arch = "wasm32")]
+pub use element_motion::*;
+#[cfg(target_arch = "wasm32")]
+pub use text_motion::*;
+#[cfg(target_arch = "wasm32")]
+mod panel_reveal;
+#[cfg(target_arch = "wasm32")]
+pub use panel_reveal::*;
+#[cfg(target_arch = "wasm32")]
+mod level_panel;
+#[cfg(target_arch = "wasm32")]
+pub use level_panel::*;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn graphics_diagnostics() {
+    std::panic::set_hook(Box::new(|problem| {
+        web_sys::console::error_1(&format!("Rust graphics panic: {problem}").into());
+    }));
+}

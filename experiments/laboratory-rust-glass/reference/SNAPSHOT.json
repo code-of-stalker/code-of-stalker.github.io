@@ -1,0 +1,14 @@
+{
+  "source": "C:\\Code Of Stalker\\Liquid_Prnc_Glass-main",
+  "copiedAt": "2026-10-09",
+  "shaderSha256": "0abce6e740bd4e45b8d3214d2918459fb5ef90ef54142fcd56b811229640463b",
+  "observerSha256": "03cb8301793fe4b329d028188b90722ca46b2a579310c6cee16be79545d8d406",
+  "changes": [
+    "Export fragment source for build-time GLSL-to-WGSL translation.",
+    "Expose interactive render, clock reset and finish-reveal preview for a shared RAF; glass equations preserved.",
+    "Expose canvas-frame invalidation matching the native rain/video update path.",
+    "AttentionAwareness SVG unchanged; component memoizes its innerHTML object. All v5 modes use the same larger illustration box, without foreground labels.",
+    "v5 rain uses bundled Noto JP fallback instead of OS fonts and uncapped active delta so slow frames do not change animation speed; seek added for visual QA.",
+    "Full Rust v5 uses GPU rain, tessellated original SVG paths, stencil occlusion, cached original-path glow and MSAA4. Main figures are not raster sprites."
+  ]
+}

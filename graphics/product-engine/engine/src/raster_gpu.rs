@@ -14,12 +14,13 @@ pub enum Kind {
     VoicePresence,
 }
 impl Kind {
-    /// Authored gallery and mask-colored mirror have separate palette paths.
+    /// Authored gallery, mask-colored mirror and the voice painting have
+    /// separate palette paths.
     pub fn presentation_role(self) -> f32 {
         match self {
             Self::Gallery => 1.,
             Self::Mirror => 2.,
-            Self::VoicePresence => 0.,
+            Self::VoicePresence => 3.,
         }
     }
 }

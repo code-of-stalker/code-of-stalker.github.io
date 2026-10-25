@@ -104,6 +104,8 @@ export class ProductRepository {
       if (next.progress.step !== 1) throw new Error('Завершение этого шага пока недоступно.');
       // A repeat save or completion click never restarts an earned cooldown.
       if (next.progress.completedAt !== null) return next;
+      // All-open preview moves on without answers and never earns completion.
+      if (next.settings.testUnlockAll) return next;
       const level = next.progress.selectedLevel ?? 'basic';
       const missing = [0, 1, 2, 3].filter(index => !next.observations.some(record =>
         record.level === level && record.step === 1 && record.questionIndex === index));
@@ -117,6 +119,11 @@ export class ProductRepository {
     return this.serial(async () => {
       const next = await this.current();
       if (next.progress.step === 3 && next.progress.secondStepCompletedAt) return next;
+      if (next.settings.testUnlockAll) {
+        if (next.progress.step === 3) return next;
+        next.progress = patchProgress(next.progress, { step: 3 });
+        return this.commit(next);
+      }
       if (next.progress.step !== 2 || next.progress.practiceStage !== 4) throw new Error('Сначала пройди задания второго шага.');
       const level = next.progress.selectedLevel ?? 'basic';
       const missing = [0, 1, 2, 3].filter(index => !next.observations.some(record =>

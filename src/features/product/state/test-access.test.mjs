@@ -75,6 +75,24 @@ test('leaving third-step preview restores the earned step and keeps its cooldown
   }
 });
 
+test('all-open mode finishes steps one and two without saved answers or earned completion', async () => {
+  const { store, read } = fixture();
+  await store.updateSettings({ testUnlockAll: true });
+  await store.completeFirstStep();
+  assert.equal(read().progress.completedAt, null); assert.equal(read().progress.availableAt, null);
+  await store.updateProgress({ step: 2 });
+  await store.completeSecondStep();
+  assert.equal(read().progress.step, 3);
+  assert.equal(read().progress.secondStepCompletedAt, undefined);
+  await store.updateSettings({ testUnlockAll: false });
+  assert.equal(read().progress.step, 1);
+});
+
+test('without all-open mode the answers are still required', async () => {
+  const { store } = fixture();
+  await assert.rejects(store.completeFirstStep(), /ответы на вопросы: 1, 2, 3, 4/);
+});
+
 test('earned third step remains accessible without preview access', () => {
   const progress = { ...model.defaultProgress, step: 3, secondStepCompletedAt: 1000 };
   assert.equal(model.accessibleProgress(progress, false), progress);

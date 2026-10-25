@@ -8,7 +8,7 @@ import type { ArtInteraction } from './gesture';
 export type DreamArtKind = 'dream-world' | 'dream-wake' | 'dream-inward' | 'dreamer';
 export type StepOneArtKind = 'identity-imprints' | 'lived-paths';
 export type StepThreeArtKind = 'thought-loop' | 'spoken-thought' | 'voice-origin' | 'breath-axis' | 'voice-unseal' | 'voice-witness';
-export type PracticeArtKind = 'practice-room' | 'practice-father' | 'practice-listening' | 'practice-trinity' | 'practice-thread' | 'home-shade';
+export type PracticeArtKind = 'practice-room' | 'practice-father' | 'practice-listening' | 'practice-trinity' | 'practice-awareness' | 'practice-thread' | 'home-shade';
 export type StepTwoTaskArtKind = 'hero-discernment' | 'life-book' | 'body-breath' | 'body-senses' | 'author-intention';
 export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind;
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
@@ -51,9 +51,10 @@ export const artLabels: Record<ArtKind, string> = {
   'home-shade': 'Мягкое затемнение под текстом',
   'practice-room': 'Человек на стуле произносит четыре фразы, комната постепенно проявляется',
   'practice-father': 'Взрослое я спокойно обращается к младшему я; отец и сын слышат друг друга',
-  'practice-listening': 'Звучание затихает и возвращается к центру слушания',
-  'practice-trinity': 'Три источника соединяются единым дыханием',
-  'practice-thread': 'Светящаяся нить проходит через матричный лабиринт к выходу',
+  'practice-listening': 'Голос уходит шумом и возвращается к груди Зовом; рамка наблюдения держит звучание',
+  'practice-trinity': 'Отец, Сын и Дух: дыхание соединяет форму с Абсолютом, разделение растворяется',
+  'practice-awareness': 'Голос касается Тени, и свет проходит сквозь неё; сцена и зрители растворяются',
+  'practice-thread': 'Светящаяся нить проходит через лабиринт мыслей к выходу на Свет',
   distance: 'Выставь дистанцию', cells: 'Ощути себя', diary: 'Архив моментов',
   basic: 'Базовый уровень', intensive: 'Синхронизация', guidance: 'Водительство', parallel: 'Параллельный путь',
   comparison: 'Сравнение образов', attention: 'Наблюдающий', crowd: 'Среди людей',

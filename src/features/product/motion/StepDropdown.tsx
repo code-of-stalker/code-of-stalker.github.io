@@ -44,7 +44,6 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
         : <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
           onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}>
           <View pointerEvents="none" style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.subtle, opacity: motion }]} />
           <Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />
         </Pressable>}
     </View>

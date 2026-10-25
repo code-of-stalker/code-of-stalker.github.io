@@ -35,7 +35,7 @@ export const stepThreePractice: readonly ReadingPage[] = [
     ],
   },
   {
-    id: 'practice-awareness', title: 'Голос — это не звук. Это Дыхание Осознавания.',
+    id: 'practice-awareness', art: 'practice-awareness', title: 'Голос — это не звук. Это Дыхание Осознавания.',
     paragraphs: [
       'Голос касается Тени в себе и позволяет Свету Осознанности пройти сквозь нее.',
       'Не нужны сцены.\nНе нужны слушатели.',

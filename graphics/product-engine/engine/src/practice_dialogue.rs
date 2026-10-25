@@ -31,7 +31,7 @@ fn time(seconds: f64, reduced: bool) -> f64 {
         seconds.max(0.).rem_euclid(PERIOD)
     }
 }
-fn text_path(text: &str, cx: f64, y: f64, size: f64) -> String {
+pub(crate) fn text_path(text: &str, cx: f64, y: f64, size: f64) -> String {
     let mut d = String::new();
     let advance = size * 0.715;
     let x = cx - text.chars().count() as f64 * advance / 2.;

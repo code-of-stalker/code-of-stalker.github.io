@@ -29,6 +29,7 @@ pub mod breath_axis;
 pub mod voice_unseal;
 pub mod voice_witness;
 pub mod voice_practice;
+pub mod practice_art;
 pub mod practice_dialogue;
 pub mod family_artwork;
 pub mod family_space;

@@ -3,6 +3,9 @@
 use std::fmt::Write;
 
 pub fn wrap(svg: &str, horizontal: f64, vertical: f64) -> String {
+    wrap_sized(svg, 320., 192., horizontal, vertical)
+}
+pub fn wrap_sized(svg: &str, width: f64, height: f64, horizontal: f64, vertical: f64) -> String {
     let Some(start) = svg.find('>') else {
         return svg.into();
     };
@@ -10,7 +13,7 @@ pub fn wrap(svg: &str, horizontal: f64, vertical: f64) -> String {
         return svg.into();
     };
     let mut defs = String::from("<defs>");
-    for (axis, length, feather) in [("x", 320., horizontal), ("y", 192., vertical)] {
+    for (axis, length, feather) in [("x", width, horizontal), ("y", height, vertical)] {
         let fraction = (feather / length).clamp(0.001, 0.45);
         let direction = if axis == "x" {
             "x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\""
@@ -38,7 +41,7 @@ pub fn wrap(svg: &str, horizontal: f64, vertical: f64) -> String {
                 "<stop offset=\"{offset:.6}\" stop-color=\"#fff\" stop-opacity=\"{alpha}\"/>"
             );
         }
-        let _ = write!(defs,"</linearGradient><mask id=\"scene-fade-{axis}\" x=\"0\" y=\"0\" width=\"320\" height=\"192\" maskUnits=\"userSpaceOnUse\" style=\"mask-type:alpha\"><rect width=\"320\" height=\"192\" fill=\"url(#scene-edge-{axis})\"/></mask>");
+        let _ = write!(defs,"</linearGradient><mask id=\"scene-fade-{axis}\" x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" maskUnits=\"userSpaceOnUse\" style=\"mask-type:alpha\"><rect width=\"{width}\" height=\"{height}\" fill=\"url(#scene-edge-{axis})\"/></mask>");
     }
     defs.push_str("</defs><g class=\"scene-soft-edges-x\" mask=\"url(#scene-fade-x)\"><g class=\"scene-soft-edges-y\" mask=\"url(#scene-fade-y)\">");
     format!(

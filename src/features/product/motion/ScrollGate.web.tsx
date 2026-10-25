@@ -10,7 +10,7 @@ import { useSwipeNavigationAllowed } from '../navigation/BackSwipeProvider';
 // so the tail of a completed pull cannot become a second transition.
 const wheelActivity = { current: -Infinity };
 
-export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, onRetreat, onViewportChange, fill, allowAdvance = true, resetKey, startAtEnd = false, guardEntryGesture = false, controllerRef, readingGesture, style, contentStyle, fadeTop = 0, fadeBottom = 0 }: ScrollGateProps) {
+export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, onRetreat, onViewportChange, fill, allowAdvance = true, resetKey, startAtEnd = false, initialOffset = 0, guardEntryGesture = false, controllerRef, readingGesture, style, contentStyle, fadeTop = 0, fadeBottom = 0 }: ScrollGateProps) {
   const inputBlock = useRef<((event: Event) => void) | null>(null);
   const viewport = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null);
   const scrollLocked = useRef(false);
@@ -25,7 +25,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
   }, [readingGesture]);
   const entryGuard = useRef(guardEntryGesture);
   const interacted = useRef(false), intent = useRef(1), origin = useRef(0);
-  const entry = useRef({ key: resetKey, end: startAtEnd });
+  const entry = useRef({ key: resetKey, end: startAtEnd, offset: initialOffset });
   const swipeAllowed = useSwipeNavigationAllowed();
   const canRetreat = !!onRetreat;
   const callbacks = useRef({ onReady, onProgress, onAdvance, onRetreat, onViewportChange, enabled });
@@ -88,10 +88,10 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     };
   }, [controllerRef, gate]);
   useLayoutEffect(() => {
-    if (entry.current.key !== resetKey) entry.current = { key: resetKey, end: false };
+    if (entry.current.key !== resetKey) entry.current = { key: resetKey, end: false, offset: 0 };
     interacted.current = false; intent.current = 1; gate.reset();
     viewport.current?.style.setProperty('--scroll-fade-top', '0px');
-    viewport.current?.scrollTo({ top: entry.current.end ? viewport.current.scrollHeight : 0, behavior: 'instant' }); callbacks.current.onReady(false);
+    viewport.current?.scrollTo({ top: entry.current.end ? viewport.current.scrollHeight : entry.current.offset, behavior: 'instant' }); callbacks.current.onReady(false);
   }, [resetKey, gate]);
   // Permission changes must not turn reading momentum or a held touch into navigation.
   useEffect(() => { gate.block(); interacted.current = false; callbacks.current.onReady(false); }, [enabled, allowAdvance, gate]);
@@ -103,6 +103,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
       // Content/font measurements can settle after mount. Keep the return edge
       // anchored until the user begins reading, then leave scrolling to them.
       if (entry.current.end) viewport.current.scrollTop = viewport.current.scrollHeight;
+      else if (entry.current.offset > 0 && !reading.current?.locked) viewport.current.scrollTop = entry.current.offset;
       // The mask belongs to the viewport, so the edge stays under the fixed
       // header. Updating a CSS value avoids a React render on every scroll.
       viewport.current.style.setProperty('--scroll-fade-top', `${Math.min(fadeTop, Math.max(0, viewport.current.scrollTop))}px`);
@@ -110,7 +111,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     }
     callbacks.current.onReady((!reading.current?.locked || !!reading.current?.atRest && intent.current < 0) && !scrollLocked.current && callbacks.current.enabled && swipeAllowed() && interacted.current && (intent.current > 0 ? atEnd() : !!callbacks.current.onRetreat && atStart()));
   }
-  function interact(delta: number) { if (Math.abs(delta) > 3) { entry.current.end = false; interacted.current = true; intent.current = Math.sign(delta); check(); } }
+  function interact(delta: number) { if (Math.abs(delta) > 3) { entry.current.end = false; entry.current.offset = 0; interacted.current = true; intent.current = Math.sign(delta); check(); } }
   useEffect(() => {
     const el = viewport.current, body = content.current;
     if (!el || !body) return;
@@ -126,7 +127,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
         if (entry.current.end && event.timeStamp - wheelActivity.current <= 180) { gate.wheel(event.deltaY, false, event.timeStamp, false); check(); return; }
         interact(event.deltaY); gate.wheel(event.deltaY, atEnd(), event.timeStamp, atStart());
   }
-  function inputStart(event: TouchEvent) { readingTouch.current = !!reading.current?.locked && !reading.current?.atRest; lastReadingTouch.current = event.touches[0]?.clientY ?? 0; entry.current.end = false; origin.current = lastReadingTouch.current; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) { entryGuard.current = false; gate.start(origin.current, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
+  function inputStart(event: TouchEvent) { readingTouch.current = !!reading.current?.locked && !reading.current?.atRest; lastReadingTouch.current = event.touches[0]?.clientY ?? 0; entry.current.end = false; entry.current.offset = 0; origin.current = lastReadingTouch.current; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) { entryGuard.current = false; gate.start(origin.current, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
   function inputMove(event: TouchEvent) { if (reading.current && (event.defaultPrevented || readingTouch.current)) { gate.block(); return; } if (!scrollLocked.current && enabled && swipeAllowed()) { const y = event.touches[0]?.clientY ?? origin.current; interact(origin.current - y); gate.move(y, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
   function inputEnd() { readingTouch.current = false; if (swipeAllowed()) gate.end(); else gate.block(); }
   function inputCancel() { readingTouch.current = false; gate.end(true); }

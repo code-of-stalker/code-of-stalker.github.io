@@ -32,6 +32,7 @@ import type { PracticeStage } from '../state/model';
 import { PracticeCooldown } from './PracticeCooldown';
 import { StepThreeScreen } from './StepThreeScreen';
 import { fonts } from '../theme';
+import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
 import { productSpacing, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
@@ -89,22 +90,28 @@ function ReadingArt({ kind, width, viewportHeight, active, reducedMotion, onMeas
     <Art kind={kind} height={Math.min(viewportHeight * .55, kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288))} active={active} reducedMotion={reducedMotion} />
   </View>;
 }
-export function PracticeIntroScreen(props: PracticeIntroScreenProps) { return props.step === 3 ? <StepThreeScreen {...props} /> : <PracticeSession key={props.step} {...props} />; }
+export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
+  const destination = useReadingDestination();
+  useEffect(() => () => clearReadingDestination(), []);
+  const key = `${props.step}-${destination?.step === props.step ? destination.revision : 0}`;
+  return props.step === 3 ? <StepThreeScreen key={key} {...props} /> : <PracticeSession key={key} {...props} />;
+}
 
 function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMotion = false, onBack, onClose, onLevels, onQuestions, onSelectStep, onPreviousStep, onDiary, renderQuestions, showQuestions = false, initialStage = 0, startAtEnd = false, onStageChange, onCompleteSecondStep }: PracticeIntroScreenProps) {
   const styles = useThemeStyles(createStyles);
   const { settings } = useProduct();
+  const request = useReadingDestination(), destination = request?.step === step ? request : null;
   // A temporary renderer downgrade must never replace the article mid-reading.
-  const pagedEconomy = settings.effectQuality === 'economy';
+  const pagedEconomy = settings.effectQuality === 'economy' || !!destination?.section;
   const focused = useIsFocused();
   const currentStep: 1 | 2 = step === 2 ? 2 : 1;
-  const [stage, setStage] = useState(() => step === 1 ? showQuestions ? 4 : initialStage : !testUnlockAll && (availableAt ?? 0) > Date.now() ? 0 : initialStage);
-  const [readingChapter, setReadingChapter] = useState<0 | 1>(0);
+  const [stage, setStage] = useState(() => destination?.stage ?? (step === 1 ? showQuestions ? 4 : initialStage : !testUnlockAll && (availableAt ?? 0) > Date.now() ? 0 : initialStage));
+  const [readingChapter, setReadingChapter] = useState<0 | 1>(destination?.chapter ?? 0);
   const [returnToDream, setReturnToDream] = useState(false);
   const stepTwoBack = useRef<(() => void) | null>(null);
   const registerStepTwoBack = useCallback((value: (() => void) | null) => { stepTwoBack.current = value; }, []);
   const questionStage = currentStep === 2 ? 3 : 4;
-  const [economyPage, setEconomyPage] = useState<ReadingPagePosition>({ index: 0, count: step === 1 ? 2 : 3 });
+  const [economyPage, setEconomyPage] = useState<ReadingPagePosition>({ index: destination?.page ?? 0, count: step === 1 ? 2 : 3 });
   const reportEconomyPage = useCallback((value: ReadingPagePosition) => setEconomyPage(previous => previous.index === value.index && previous.count === value.count ? previous : value), []);
   const [returnToBook, setReturnToBook] = useState(false);
   const chapterTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -255,10 +262,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
               reducedMotion={reducedMotion} active={!changing} onBack={onBack} onClose={onClose}
               onRetreat={retreat} onReady={setReady} onProgress={setProgress}
               onSelect={() => setSelectorOpen(value => !value)} onDiary={onDiary} /> : <ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
-                reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate} continued={readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
+                reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate} continued={!!destination?.section || readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
                 onViewportChange={value => { scrollWindow.current = value; checkReadingArtVisibility(); }}
                 hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: heroHeight }}>
-                  <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} height={heroHeight} active={active && !selectorOpen && !changing && focused} reducedMotion={reducedMotion} />
+                  <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} height={heroHeight} active={active && !changing && focused} reducedMotion={reducedMotion} />
                 </Reveal>}>
             {reading => motion.panel(<>
               <Reveal delay={160} reducedMotion={reducedMotion} style={styles.panelSpace}>
@@ -267,7 +274,8 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                   <ContentSwap value={readingChapter} fill dissolve duration={600} exitDuration={260} reducedMotion={reducedMotion} render={chapter => {
                     const current = chapter === readingChapter;
                     if (pagedEconomy) return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused && !selectorOpen} enabled={canNavigate}
-                      canAdvance={canAdvance} startAtEnd={chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook} reading={reading} width={insightWidth} viewportHeight={viewport.height} reducedMotion={reducedMotion}
+                      initialIndex={destination?.chapter === chapter ? destination.page : 0}
+                      canAdvance={canAdvance} startAtEnd={!destination?.section && (chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook)} reading={reading} width={insightWidth} viewportHeight={viewport.height} reducedMotion={reducedMotion}
                       onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight}
                       onAdvance={advance} onRetreat={retreat} onPageChange={reportEconomyPage} />;
                     return <ScrollGate enabled={current && canNavigate} allowAdvance={current && canAdvance} onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight} onAdvance={advance} onRetreat={retreat} fadeTop={24} fadeBottom={24}

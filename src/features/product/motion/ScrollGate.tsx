@@ -8,7 +8,7 @@ import { createScrollGate } from './scroll-gate-model';
 import type { ScrollGateProps } from './ScrollGate.types';
 import { useSwipeNavigationAllowed } from '../navigation/BackSwipeProvider';
 
-export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, onRetreat, onViewportChange, fill, allowAdvance = true, resetKey, startAtEnd = false, controllerRef, readingGesture, style, contentStyle, fadeTop = 0, fadeBottom = 0 }: ScrollGateProps) {
+export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, onRetreat, onViewportChange, fill, allowAdvance = true, resetKey, startAtEnd = false, initialOffset = 0, controllerRef, readingGesture, style, contentStyle, fadeTop = 0, fadeBottom = 0 }: ScrollGateProps) {
   const colors = useThemeColors(), [offset] = useState(() => new Animated.Value(0));
   const fade = useMemo(() => {
     const source = (height: number, bottom: boolean) => ({ uri: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1" height="${height}"><defs><linearGradient id="fade" x2="0" y2="1"><stop stop-color="${colors.background}" stop-opacity="${bottom ? 0 : 1}"/><stop offset="1" stop-color="${colors.background}" stop-opacity="${bottom ? 1 : 0}"/></linearGradient></defs><rect width="1" height="${height}" fill="url(#fade)"/></svg>`) });
@@ -21,7 +21,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const geometry = useRef({ height: 0, content: 0, y: 0 });
   const interacted = useRef(false), origin = useRef(0), intent = useRef(1);
-  const entry = useRef({ key: resetKey, end: startAtEnd });
+  const entry = useRef({ key: resetKey, end: startAtEnd, offset: initialOffset });
   const swipeAllowed = useSwipeNavigationAllowed();
   const canRetreat = !!onRetreat;
   const callbacks = useRef({ onReady, onProgress, onAdvance, onRetreat, onViewportChange, enabled });
@@ -39,7 +39,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     return () => { controllerRef.current = null; };
   }, [controllerRef, gate]);
   useEffect(() => {
-    if (entry.current.key !== resetKey) entry.current = { key: resetKey, end: false };
+    if (entry.current.key !== resetKey) entry.current = { key: resetKey, end: false, offset: 0 };
     interacted.current = false; intent.current = 1; geometry.current.y = 0;
     gate.reset(); offset.setValue(0); scroll.current?.scrollTo({ y: 0, animated: false }); callbacks.current.onReady(false);
     check();
@@ -50,8 +50,8 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
   function atStart() { return geometry.current.y < 3; }
   function check() {
     const g = geometry.current;
-    if (entry.current.end && g.height > 0 && g.content > 0) {
-      const y = Math.max(0, g.content - g.height);
+    if ((entry.current.end || entry.current.offset > 0) && g.height > 0 && g.content > 0) {
+      const y = entry.current.end ? Math.max(0, g.content - g.height) : Math.min(entry.current.offset, Math.max(0, g.content - g.height));
       if (Math.abs(y - g.y) > 0.1) { g.y = y; offset.setValue(y); scroll.current?.scrollTo({ y, animated: false }); }
     }
     callbacks.current.onViewportChange?.({ offset: geometry.current.y, height: geometry.current.height });
@@ -67,7 +67,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     onLayout={event => { geometry.current.height = event.nativeEvent.layout.height; check(); }}
     onContentSizeChange={(_, height) => { geometry.current.content = height; check(); }}
     onScroll={event => { if (readingGesture?.locked) { scroll.current?.scrollTo({ y: 0, animated: false }); return; } geometry.current.y = event.nativeEvent.contentOffset.y; offset.setValue(Math.max(0, geometry.current.y)); check(); }}
-    onTouchStart={event => { readingTouch.current = !!readingGesture?.locked && !readingGesture?.atRest; readingY.current = event.nativeEvent.pageY; entry.current.end = false; origin.current = event.nativeEvent.pageY; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) gate.start(origin.current, atEnd(), atStart()); else { gate.block(); interacted.current = false; check(); } }}
+    onTouchStart={event => { readingTouch.current = !!readingGesture?.locked && !readingGesture?.atRest; readingY.current = event.nativeEvent.pageY; entry.current.end = false; entry.current.offset = 0; origin.current = event.nativeEvent.pageY; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) gate.start(origin.current, atEnd(), atStart()); else { gate.block(); interacted.current = false; check(); } }}
     onTouchMove={event => { if (previewResponder.current) return; const y = event.nativeEvent.pageY, movement = readingY.current - y; readingY.current = y; if (readingGesture && (readingTouch.current || consumesReadingInput(readingGesture, movement, geometry.current.y < 1))) { readingTouch.current = true; if (enabled) readingGesture.onDrag(movement); gate.block(); return; } if (!scrollLocked.current && enabled && swipeAllowed()) { const delta = origin.current - y; if (Math.abs(delta) > 3) { interacted.current = true; intent.current = Math.sign(delta); check(); } gate.move(y, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }}
     onTouchEnd={() => { if (swipeAllowed()) gate.end(); else gate.block(); }}
     onTouchCancel={() => gate.end(true)}

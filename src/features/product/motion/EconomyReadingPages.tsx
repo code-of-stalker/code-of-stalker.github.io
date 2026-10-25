@@ -14,15 +14,16 @@ import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
 
 export type ReadingPagePosition = { index: number; count: number };
-export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
+export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
   step: 1 | 2 | 3; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
   endContent?: ReactNode;
+  initialIndex?: number; initialOffset?: number;
   reading: ReadingLayout; width: number; viewportHeight: number; reducedMotion: boolean;
   onReady(value: boolean): void; onProgress(value: number): void;
   onAdvance(): void; onRetreat(): void; onPageChange(value: ReadingPagePosition): void;
 }) {
   const pages = readingPages(step, chapter), colors = useThemeColors();
-  const [position, setPosition] = useState(() => ({ index: startAtEnd ? pages.length - 1 : 0, end: startAtEnd }));
+  const [position, setPosition] = useState(() => ({ index: startAtEnd ? pages.length - 1 : Math.min(initialIndex, pages.length - 1), end: startAtEnd, offset: initialOffset }));
   const [moving, setMoving] = useState(true), locked = useRef(true);
   const index = position.index;
   useLayoutEffect(() => { onPageChange({ index, count: pages.length }); }, [index, pages.length, onPageChange]);
@@ -33,18 +34,18 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
     if (next < 0) { onRetreat(); return; }
     if (next >= pages.length) { if (canAdvance) onAdvance(); return; }
     locked.current = true; setMoving(true); onReady(false); onProgress(0);
-    setPosition({ index: next, end: direction < 0 });
+    setPosition({ index: next, end: direction < 0, offset: 0 });
   }
   const textStyle = [styles.text, { fontSize: width >= 300 ? 20 : 18, lineHeight: width >= 300 ? 29 : 27 }];
   return <View testID="economy-reading-pages" style={styles.fill}>
     <ContentSwap value={index} fill reducedMotion={reducedMotion} duration={520} exitDuration={220} onComplete={finish}
       render={value => {
-        const page = pages[value], selected = value === index, playing = selected && active;
-        const wider = page.art === 'reflections' || page.art === 'single-hero' ? 1.25 : page.art === 'identity-imprints' ? 1.15 : 1;
-        const artWidth = Math.max(1, width - 16) * wider, artHeight = Math.min(viewportHeight * .55, step === 3 ? artWidth * (page.art === 'thought-loop' ? 210 / 288 : 192 / 320) : page.art === 'dreamer' ? artWidth * 0.92 : artWidth * (page.art === 'book' || page.art === 'dream-world' || page.art === 'dream-wake' ? 206 : page.art === 'cells' ? 156 : page.art === 'identity-imprints' || page.art === 'lived-paths' ? 176 : page.art.startsWith('dream') ? 136 : 104) / (page.art === 'reflections' || page.art === 'single-hero' || page.art === 'lived-paths' ? 248 : 288));
+        const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
+        const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
+        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? Math.min(viewportHeight * .55, step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : kind === 'practice-father' ? 240 / 320 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 0;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
-            startAtEnd={selected && position.end} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
+            startAtEnd={selected && position.end} initialOffset={selected ? position.offset : 0} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
             onAdvance={() => turn(1)} onRetreat={() => turn(-1)} fadeTop={20} fadeBottom={20}
             controllerRef={selected ? reading.controllerRef : undefined}
             readingGesture={selected && value === 0 ? reading.readingGesture : undefined}
@@ -54,16 +55,18 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.title}>{page.title}</ProductText>}
             <View testID="reading-page-copy" style={styles.copy}>
               {page.paragraphs.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
+              {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{text}</ProductText>)}
+              {page.after?.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
               {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{page.statement}</ProductText>}
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
             </View>
-            <View testID={`reading-page-art-${page.art}`} pointerEvents="none" style={[styles.art,
-              (page.art === 'reflections' || page.art === 'single-hero') && styles.heroArt,
-              page.art === 'dream-inward' && styles.stageArt,
+            {kind && <View testID={`reading-page-art-${kind}`} pointerEvents="none" style={[styles.art,
+              (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
+              kind === 'dream-inward' && styles.stageArt,
               { marginHorizontal: -reading.contentInset - 8 }]}>
-              <Art kind={page.art} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
-            </View>
+              <Art kind={kind} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+            </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}
           </ScrollGate>

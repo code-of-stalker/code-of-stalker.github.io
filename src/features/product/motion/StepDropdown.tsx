@@ -14,9 +14,56 @@ import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
 import { readingMenuPath, type ReadingMenuCutout } from './reading-menu-geometry';
 import { useProduct } from '../state/ProductProvider';
+import { Animated, Easing } from './RustAnimated';
+import { stepSections, type StepDestination } from '../stepSections';
+import { beginReadingNavigation, requestReadingDestination } from '../navigation/readingDestination';
 
 const lock = { uri: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M3 6V4Q3 1 6 1T9 4V6M1.5 6.5H10.5V13H1.5ZM6 9V10.5" stroke="#B69D4B" stroke-width=".75" stroke-linecap="round" stroke-linejoin="round"/></svg>')}` };
 const steps = [1, 2, 3, 4, 5, 6, 7] as const;
+const sectionsIcon = require('../../../../assets/product/step-sections.svg');
+
+function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, onToggle, onEnter, onSection, busy }: {
+  value: typeof steps[number]; current: number; disabled: boolean; expanded: boolean; inset: number; reducedMotion: boolean; busy: boolean;
+  onToggle(): void; onEnter(): void; onSection(destination: StepDestination): void;
+}) {
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  const [height, setHeight] = useState(0), [motion] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const animation = Animated.timing(motion, { toValue: expanded ? 1 : 0, duration: reducedMotion ? 0 : 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: false });
+    animation.start(); return () => animation.stop();
+  }, [expanded, reducedMotion, motion]);
+  const groups = value <= 3 && !disabled ? stepSections(value as 1 | 2 | 3) : [];
+  return <View>
+    <View style={[styles.option, value === current && { backgroundColor: colors.subtle }]}>
+      <Pressable accessibilityRole="button" accessibilityState={{ selected: value === current, disabled: disabled || busy }} disabled={disabled || busy}
+        accessibilityLabel={`Открыть шаг ${value}. ${productStepNames[value]}`} onPress={onEnter}
+        style={[styles.stepTitle, { paddingLeft: inset }]}>
+        <ProductText testID={`step-option-label-${value}`} fitToWidth variant="label" color={value === current ? colors.text : colors.muted} style={styles.optionText}>{`ШАГ ${value}. ${productStepNames[value]}`}</ProductText>
+      </Pressable>
+      {disabled ? <View style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}><Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" /></View>
+        : <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
+          onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}>
+          <View pointerEvents="none" style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.subtle, opacity: motion }]} />
+          <Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />
+        </Pressable>}
+    </View>
+    {!!groups.length && <Animated.View pointerEvents={expanded ? 'auto' : 'none'} accessibilityElementsHidden={!expanded} aria-hidden={!expanded}
+      importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'} style={{ height: motion.interpolate({ inputRange: [0, 1], outputRange: [0, height] }), overflow: 'hidden' }}>
+      <Animated.View onLayout={event => setHeight(event.nativeEvent.layout.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0, opacity: motion,
+        transform: [{ translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }], paddingHorizontal: inset + 10, paddingTop: 12, paddingBottom: 20 }}>
+        {groups.map(group => <View key={group.title} style={{ marginBottom: 12 }}>
+          <ProductText variant="label" color={colors.muted} style={styles.groupTitle}>{group.title}</ProductText>
+          {group.items.map((item, index) => <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={item.title} disabled={busy}
+            onPress={() => onSection(item.destination)} style={styles.sectionRow}>
+            <ProductText numberOfLines={1} color={colors.muted} style={styles.sectionNumber}>{String(index + 1).padStart(2, '0')}</ProductText>
+            <ProductText style={styles.sectionText}>{item.title}</ProductText>
+          </Pressable>)}
+        </View>)}
+      </Animated.View>
+    </Animated.View>}
+  </View>;
+}
 
 /** Replace the panel's body; the compact selector also uses a framed menu. */
 export function StepDropdown({ step, availableAt, testUnlockAll = false, reducedMotion, onClose, onSelect, inset = 12, embedded = false, headerless = false, frameSize, onNaturalHeight, cutout }: {
@@ -25,7 +72,18 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
   cutout?: ReadingMenuCutout;
 }) {
   const colors = useThemeColors();
-  const { progress } = useProduct();
+  const { progress, updateProgress } = useProduct();
+  const [expandedStep, setExpandedStep] = useState<number | null>(null), [navigating, setNavigating] = useState(false);
+  async function navigate(destination: StepDestination) {
+    if (navigating) return;
+    beginReadingNavigation();
+    setNavigating(true);
+    try {
+      await updateProgress({ step: destination.step, practiceStage: destination.stage, questionIndex: 0,
+        ...(destination.step === 3 ? { stepThreeReading: { chapter: destination.chapter, page: destination.page, offset: 0, paged: destination.section } } : {}) });
+      requestReadingDestination(destination); onSelect(destination.step);
+    } catch { setNavigating(false); }
+  }
   const styles = useThemeStyles(createStyles);
   const {ref,size:measuredSize,onLayout}=usePanelSize({width:288,height:314});
   const {ref:headerRef,size:headerSize,onLayout:onHeaderLayout}=usePanelSize({width:288,height:25});
@@ -54,13 +112,9 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
     contentContainerStyle={[styles.options, embedded && { paddingTop: 18, paddingBottom: inset }]} showsVerticalScrollIndicator={false}>
     {steps.map(value => {
       const disabled = value > 3 || value === 3 && !progress.secondStepCompletedAt && !testUnlockAll || value === 2 && availableAt === null && !testUnlockAll;
-      return <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: value === step, disabled }} disabled={disabled}
-        onPress={() => onSelect(value)} style={[styles.option, { paddingHorizontal: inset }, value === step && (Platform.OS === 'web'
-          ? { backgroundImage: `linear-gradient(90deg,${colors.subtle} 40%,${colors.background}19)` } as ViewStyle
-          : { backgroundColor: colors.subtle })]}>
-        <ProductText testID={`step-option-label-${value}`} fitToWidth variant="label" color={value === step ? colors.text : colors.muted} style={styles.optionText}>{`ШАГ ${value}. ${productStepNames[value]}`}</ProductText>
-        {disabled && <Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" />}
-      </Pressable>;
+      return <StepChoice key={value} value={value} current={step} disabled={disabled} expanded={expandedStep === value} inset={inset} reducedMotion={reducedMotion} busy={navigating}
+        onToggle={() => setExpandedStep(previous => previous === value ? null : value)} onSection={destination => { void navigate(destination); }}
+        onEnter={() => { if (value <= 3) void navigate({ step: value as 1 | 2 | 3, stage: 0, chapter: 0, page: 0, section: false }); }} />;
     })}
   </ScrollView>;
   const content = <View style={embedded ? styles.embedded : styles.overlay}>
@@ -91,7 +145,14 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   // Row padding contributes 16px between adjacent labels; the 4px gap caps
   // their visible separation at 20px, independently of screen height.
   options: { gap: 4 },
-  option: { minHeight: 32, paddingHorizontal: 8, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  option: { minHeight: 44, flexDirection: 'row', alignItems: 'stretch' },
+  stepTitle: { flex: 1, minWidth: 0, paddingVertical: 12, paddingRight: 8, justifyContent: 'center' },
+  sectionButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  sectionDivider: { position: 'absolute', left: 0, top: 13, bottom: 13, width: .25 },
+  groupTitle: { fontSize: 8, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 8 },
+  sectionRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  sectionNumber: { fontSize: 8, lineHeight: 13, width: 24, flexShrink: 0 },
+  sectionText: { fontSize: 10, lineHeight: 16, flex: 1, textTransform: 'uppercase', letterSpacing: .7 },
   optionText: { fontSize: 10, lineHeight: 14, letterSpacing: 2.2, flex: 1, minWidth: 0 },
   lock: { width: 12, height: 14, flexShrink: 0 },
 });

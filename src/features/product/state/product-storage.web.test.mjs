@@ -43,6 +43,18 @@ function indexedDbFixture() {
 const fresh = async () => (await import(`./storage.ts?webInstance=${instance++}`)).productStorage;
 const meta = { level: 'basic', step: 1, questionIndex: 0 };
 
+test('step three reading location survives reload, other steps and a return to the beginning', async () => {
+  indexedDbFixture(); const repo = await fresh();
+  const location = { chapter: 1, page: 2, offset: 187 };
+  await repo.updateProgress({ stepThreeReading: location });
+  await repo.updateProgress({ step: 2 });
+  const reopened = await fresh();
+  assert.deepEqual((await reopened.read()).progress.stepThreeReading, location);
+  await reopened.updateProgress({ stepThreeReading: { chapter: 0, page: 0, offset: 0 } });
+  assert.deepEqual((await (await fresh()).read()).progress.stepThreeReading, { chapter: 0, page: 0, offset: 0 });
+  await assert.rejects(reopened.updateProgress({ stepThreeReading: { chapter: 1, page: 99, offset: 0 } }));
+});
+
 test('web storage saves full-length assignment and diary files above the former byte limits', async () => {
   indexedDbFixture(); const repo = await fresh();
   for (const [durationMs, size, diary] of [[180000, 2 * 1024 * 1024, false], [900000, 9 * 1024 * 1024, true]]) {

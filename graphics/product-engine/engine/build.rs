@@ -295,13 +295,28 @@ fn prepare_spoken_glyphs(dest: &std::path::Path, face: &ttf_parser::Face<'_>) {
             self.add(0, &[]);
         }
     }
-    let mut output = String::from("pub fn glyph(c: char) -> &'static [(u8,[f64;6])] { match c {\n");
+    // These are exact font outline coordinates, not approximations of pi.
+    let mut output = String::from("#[allow(clippy::approx_constant)]\npub fn glyph(c: char) -> &'static [(u8,[f64;6])] { match c {\n");
     println!("cargo:rerun-if-changed=src/spoken_copy.rs");
     println!("cargo:rerun-if-changed=src/breath_bridge_copy.rs");
     let characters: std::collections::BTreeSet<char> = spoken_copy::PHRASES
         .iter()
         .chain(breath_bridge_copy::PHRASES.iter())
-        .chain(["БОЛЬ", "ВИНА", "МЫСЛЬ", "Я СЛЫШУ", "Я ВИЖУ", "Я ОСОЗНАЮ"].iter())
+        .chain(
+            [
+                "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789+-/",
+                "БОЛЬ",
+                "ВИНА",
+                "МЫСЛЬ",
+                "Я СЛЫШУ",
+                "Я ВИЖУ",
+                "Я ОСОЗНАЮ",
+                "ПРОГРАММА",
+                "Я РАЗРЕШАЮ СЕБЕ ГОВОРИТЬ ПРАВДУ. Я ЗВУЧУ. Я СЛЫШУ СВОЙ ГОЛОС. Я ЕСТЬ У СЕБЯ.",
+                "Я ЛЮБЛЮ ТЕБЯ. Я НИКОГДА НЕ ПОКИНУ ТЕБЯ. ПРОСТИ МЕНЯ. ВСЕ, ЧТО У МЕНЯ ЕСТЬ — ЭТО ТЫ.",
+            ]
+            .iter(),
+        )
         .flat_map(|s| s.chars())
         .filter(|c| !c.is_whitespace())
         .collect();

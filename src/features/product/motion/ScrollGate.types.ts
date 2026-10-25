@@ -9,6 +9,7 @@ export type ScrollGateProps = PropsWithChildren<{
   resetKey?: string | number;
   // Restore the entry edge on mount; subsequent resetKey changes start at the top.
   startAtEnd?: boolean;
+  initialOffset?: number;
   /** A replaced web reader consumes the outgoing wheel/touch tail until a fresh gesture. */
   guardEntryGesture?: boolean;
   controllerRef?: RefObject<ScrollGateController | null>;

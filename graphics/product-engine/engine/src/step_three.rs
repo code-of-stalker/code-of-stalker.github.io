@@ -35,7 +35,7 @@ impl Scene {
     }
 }
 pub fn contains(kind: &str) -> bool {
-    Scene::parse(kind).is_some()
+    Scene::parse(kind).is_some() || crate::voice_practice::contains(kind)
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct Update {
@@ -125,6 +125,7 @@ fn foot(out: &mut String, x: f64, y: f64, w: f64) {
     );
 }
 pub fn svg(kind: &str) -> Option<String> {
+    if let Some(svg) = crate::voice_practice::svg(kind) { return Some(svg); }
     if kind == "voice-witness" { return Some(crate::voice_witness::svg()); }
     if kind == "voice-unseal" { return Some(crate::voice_unseal::svg()); }
     if kind == "breath-axis" { return Some(crate::breath_axis::svg()); }
@@ -351,6 +352,7 @@ pub fn svg(kind: &str) -> Option<String> {
 
 /// The same frame model drives the web GPU and the embedded native renderer.
 pub fn frame(kind: &str, seconds: f64, reduced: bool) -> Vec<Update> {
+    if crate::voice_practice::contains(kind) { return crate::voice_practice::frame(kind, seconds, reduced); }
     if kind == "voice-witness" { return crate::voice_witness::frame(seconds, reduced); }
     if kind == "voice-unseal" { return crate::voice_unseal::frame(seconds, reduced); }
     if kind == "breath-axis" { return crate::breath_axis::frame(seconds, reduced); }

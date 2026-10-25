@@ -45,7 +45,7 @@ fn state(seconds: f64, reduced: bool) -> State {
     let speech = (0..COUNT)
         .map(|i| {
             let q = t - at(i);
-            ramp(q, 0., 0.22) * (1. - ramp(q, 1.05, 1.65)) * (0.72 + 0.28 * (q * 14.).sin().powi(2))
+            ramp(q, 0., 0.4) * (1. - ramp(q, 1.05, 1.85))
         })
         .sum::<f64>();
     State {
@@ -223,17 +223,18 @@ fn rupture(s: State, i: usize) -> Shape {
 // Speech is authored in scene pixels, so the cues survive a 320px card.
 // Each syllable travels away from the lips; pauses remain visually silent.
 fn utterance(s: State) -> Vec<Shape> {
-    let mouth = figure::mouth(s);
-    let tilt = 0.70 * (1. - s.release);
+    utterance_at(s, figure::mouth(s), 0.70 * (1. - s.release))
+}
+fn utterance_at(s: State, mouth: P, tilt: f64) -> Vec<Shape> {
     let (sn, cs) = tilt.sin_cos();
     let point = |x: f64, y: f64| (mouth.0 + x * cs - y * sn, mouth.1 + x * sn + y * cs);
-    let opening = s.speech * (1.2 + 3.8 * (s.t * 10.5).sin().powi(2));
+    let opening = s.speech * (1.0 + 0.35 * (s.t * 4.).sin());
     let lips = [
-        point(-7., 0.),
-        point(-3.8, -0.6),
-        point(0.8, 0.),
-        point(-1.7, opening),
-        point(-5.5, opening * 0.8),
+        point(-4., 0.),
+        point(-2., -0.25),
+        point(0.5, 0.),
+        point(-1., opening),
+        point(-3.5, opening * 0.6),
     ];
     let mut out = vec![Shape {
         d: curve(&lips, true),
@@ -241,10 +242,10 @@ fn utterance(s: State) -> Vec<Shape> {
         ink_fill: false,
         alpha: 0.72 + s.speech * 0.28,
         stroke: 1.,
-        width: 1.8,
+        width: 0.85,
     }];
-    for i in 0..4 {
-        let travel = (s.t * 1.2 + i as f64 / 4.).fract();
+    for i in 0..3 {
+        let travel = (s.t * 0.48 + i as f64 / 3.).fract();
         let distance = 12. + travel * 72.;
         let half = 5. + travel * 19.;
         let a = point(distance, -half);
@@ -255,7 +256,7 @@ fn utterance(s: State) -> Vec<Shape> {
             a.0, a.1, b.0, b.1, c.0, c.1
         );
         let envelope = ramp(travel, 0., 0.09) * (1. - ramp(travel, 0.55, 1.));
-        out.push(Shape::line(d, s.speech * envelope * 0.96, 2.6));
+        out.push(Shape::line(d, s.speech * envelope * 0.8, 1.7));
     }
     out
 }
@@ -265,6 +266,7 @@ fn shapes(s: State) -> Vec<Shape> {
         out.push(chain(s, i, true));
     }
     out.extend(figure::body_shapes(s));
+    out.extend(figure::hair(s));
     out.push(figure::eyes(s));
     out.extend(utterance(s));
     for i in 0..COUNT {
@@ -273,7 +275,23 @@ fn shapes(s: State) -> Vec<Shape> {
     }
     out
 }
-// The next scene reuses the approved anatomy, with its own calm standing pose.
+// The next scene has its own female observer, from the approved bridge artwork.
+const OBSERVER_ORIGIN: P = (330., 77.);
+const OBSERVER_SCALE: f64 = 0.30;
+fn observer_pose(seconds: f64) -> crate::breath_heroine::Pose {
+    crate::breath_heroine::Pose {
+        breath: (seconds * 1.25).sin() * 0.3,
+        time: seconds,
+        ..Default::default()
+    }
+}
+pub(crate) fn observer_mouth(seconds: f64) -> P {
+    let p = crate::breath_heroine::Rig::new(observer_pose(seconds)).point((560., 170.), 2);
+    (
+        OBSERVER_ORIGIN.0 + p.0 * OBSERVER_SCALE,
+        OBSERVER_ORIGIN.1 + p.1 * OBSERVER_SCALE,
+    )
+}
 fn observer_shapes(seconds: f64, speech: f64) -> Vec<Shape> {
     let s = State {
         t: seconds,
@@ -281,14 +299,41 @@ fn observer_shapes(seconds: f64, speech: f64) -> Vec<Shape> {
         speech,
         alpha: 1.,
     };
-    let mut out = figure::body_shapes(s);
-    out.push(figure::eyes(s));
-    out.extend(utterance(s));
+    let mut out: Vec<Shape> =
+        crate::breath_heroine::paths(observer_pose(seconds), OBSERVER_ORIGIN, OBSERVER_SCALE)
+            .into_iter()
+            .enumerate()
+            .map(|(i, d)| Shape {
+                d,
+                fill: true,
+                ink_fill: i % 2 == 1,
+                alpha: if i == 1 { 0.78 } else { 1. },
+                stroke: if i % 2 == 1 { 0.5 } else { 0. },
+                width: 0.45,
+            })
+            .collect();
+    out.extend(utterance_at(s, observer_mouth(seconds), 0.));
     out
 }
-pub(crate) fn observer_svg() -> String {
+// Body material and the complete contour have independent visibility contracts.
+pub(crate) fn observer_svg(material: bool) -> String {
     let mut out = String::new();
+    if material {
+        let d = observer_shapes(0., 0.)
+            .iter()
+            .take(6)
+            .step_by(2)
+            .map(|p| p.d.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        return format!(
+            r#"<path class="w-fill-body" d="{d}" fill="var(--book-cover)" fill-rule="nonzero"/><path class="w-material-body" d="{d}" fill="url(#w-body-material)" fill-rule="nonzero"/>"#
+        );
+    }
     for (i, p) in observer_shapes(0., 0.).iter().enumerate() {
+        if i < 6 && i % 2 == 0 {
+            continue;
+        }
         let fill = if p.ink_fill {
             "var(--book-ink)"
         } else if p.fill {
@@ -299,36 +344,59 @@ pub(crate) fn observer_svg() -> String {
         let _ = write!(
             out,
             r#"<path class="w-person-{i}" d="{}" fill="{fill}" fill-rule="evenodd" stroke="var(--book-ink)" stroke-width="{}" stroke-opacity="{}" opacity="{}" stroke-linecap="round" stroke-linejoin="round"/>"#,
-            p.d, p.width, p.stroke, p.alpha
+            p.d,
+            p.width,
+            if i < 6 { 0.2 } else { p.stroke },
+            if i < 6 { p.alpha * 0.28 } else { p.alpha }
         );
     }
     out
 }
 pub(crate) fn observer_frame(seconds: f64, speech: f64) -> Vec<Update> {
-    observer_shapes(seconds, speech)
-        .into_iter()
-        .enumerate()
-        .flat_map(|(i, p)| {
-            let selector = format!(".w-person-{i}");
-            [
-                Update {
-                    selector: selector.clone(),
-                    attribute: "d",
-                    value: p.d,
-                },
-                Update {
-                    selector: selector.clone(),
-                    attribute: "opacity",
-                    value: format!("{:.5}", p.alpha),
-                },
-                Update {
-                    selector,
-                    attribute: "stroke-opacity",
-                    value: format!("{:.5}", p.stroke),
-                },
-            ]
-        })
-        .collect()
+    let shapes = observer_shapes(seconds, speech);
+    let d = shapes
+        .iter()
+        .take(6)
+        .step_by(2)
+        .map(|p| p.d.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut out = vec![
+        Update {
+            selector: ".w-fill-body".into(),
+            attribute: "d",
+            value: d.clone(),
+        },
+        Update {
+            selector: ".w-material-body".into(),
+            attribute: "d",
+            value: d,
+        },
+    ];
+    out.extend(shapes.into_iter().enumerate().flat_map(|(i, p)| {
+        if i < 6 && i % 2 == 0 {
+            return vec![];
+        }
+        let selector = format!(".w-person-{i}");
+        vec![
+            Update {
+                selector: selector.clone(),
+                attribute: "d",
+                value: p.d,
+            },
+            Update {
+                selector: selector.clone(),
+                attribute: "opacity",
+                value: format!("{:.5}", if i < 6 { p.alpha * 0.28 } else { p.alpha }),
+            },
+            Update {
+                selector,
+                attribute: "stroke-opacity",
+                value: format!("{:.5}", if i < 6 { 0.2 } else { p.stroke }),
+            },
+        ]
+    }));
+    out
 }
 pub fn svg() -> String {
     let mut out = String::from(

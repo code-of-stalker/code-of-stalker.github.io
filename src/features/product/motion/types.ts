@@ -8,8 +8,9 @@ import type { ArtInteraction } from './gesture';
 export type DreamArtKind = 'dream-world' | 'dream-wake' | 'dream-inward' | 'dreamer';
 export type StepOneArtKind = 'identity-imprints' | 'lived-paths';
 export type StepThreeArtKind = 'thought-loop' | 'spoken-thought' | 'voice-origin' | 'breath-axis' | 'voice-unseal' | 'voice-witness';
+export type PracticeArtKind = 'practice-room' | 'practice-father' | 'practice-listening' | 'practice-trinity' | 'practice-thread' | 'home-shade';
 export type StepTwoTaskArtKind = 'hero-discernment' | 'life-book' | 'body-breath' | 'body-senses' | 'author-intention';
-export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind;
+export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind;
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
@@ -47,6 +48,12 @@ export type ArtProps = {
   style?: StyleProp<ViewStyle>;
 };
 export const artLabels: Record<ArtKind, string> = {
+  'home-shade': 'Мягкое затемнение под текстом',
+  'practice-room': 'Человек на стуле произносит четыре фразы, комната постепенно проявляется',
+  'practice-father': 'Взрослое я спокойно обращается к младшему я; отец и сын слышат друг друга',
+  'practice-listening': 'Звучание затихает и возвращается к центру слушания',
+  'practice-trinity': 'Три источника соединяются единым дыханием',
+  'practice-thread': 'Светящаяся нить проходит через матричный лабиринт к выходу',
   distance: 'Выставь дистанцию', cells: 'Ощути себя', diary: 'Архив моментов',
   basic: 'Базовый уровень', intensive: 'Синхронизация', guidance: 'Водительство', parallel: 'Параллельный путь',
   comparison: 'Сравнение образов', attention: 'Наблюдающий', crowd: 'Среди людей',

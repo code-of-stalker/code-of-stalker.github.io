@@ -322,6 +322,18 @@ impl SvgTimeline {
         }
         if self.card {
             let logical = 288. * self.height / self.width;
+            if self.kind == "thought-loop" {
+                // Keep the terminal centered above the home card copy. The
+                // authored geometry is scaled uniformly, including its depth.
+                let scale = ((logical - 48.) / 135.).clamp(0.62, 1.05);
+                if let Some(svg) = self.one("svg") {
+                    attr(&svg, "viewBox", format!("{} {} {} {}",
+                        144. - 144. / scale, 30. - 10. / scale,
+                        288. / scale, logical / scale));
+                    attr(&svg, "data-home-terminal-composition", "true");
+                }
+                return;
+            }
             if self.kind == "book" {
                 // Uniformly fit artwork to the full height, centered in the
                 // card. Keep authored mask coordinate systems intact.

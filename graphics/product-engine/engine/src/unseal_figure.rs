@@ -109,11 +109,7 @@ impl Rig {
         rig
     }
     fn trunk(&self, p: P) -> P {
-        // Open the lower jaw with the syllable, leaving the skull and neck fixed.
-        let jaw =
-            ease((p.1 - 211.) / 12.) * (1. - ease((p.1 - 239.) / 20.)) * ease((p.0 - 1258.) / 30.);
-        let articulation = self.s.speech * (2. + 6. * (self.s.t * 10.5).sin().powi(2));
-        let p = (p.0 + jaw * articulation * 0.13, p.1 + jaw * articulation);
+        // Speech belongs to the lips. The skull and jaw silhouette stay stable.
         let h = 1. - self.s.release;
         let mut q = rotate(
             p,
@@ -178,18 +174,13 @@ impl Rig {
         lerp(p2, p, ease((p.1 - 785.) / 45.))
     }
     fn point(&self, p: P, part: usize) -> P {
-        let mut q = match part {
+        match part {
             0 => self.arm(p, 1),
             1 => self.leg(p, 1),
             2 => self.leg(p, 0),
             3 => self.trunk(p),
             _ => self.arm(p, 0),
-        };
-        let h = 1. - self.s.release;
-        let distortion = h * h * ease((830. - p.1) / 180.);
-        q.0 += distortion
-            * (1.25 * (p.1 * 0.046 + self.s.t * 1.2).sin() + 0.45 * (p.1 * 0.12 - self.s.t).sin());
-        q
+        }
     }
     fn display(&self, p: P) -> P {
         (480. + (p.0 - 1274.) * SCALE, 505. + (p.1 - 860.) * SCALE)
@@ -297,20 +288,52 @@ pub(super) fn mouth(s: State) -> P {
 }
 pub(super) fn eyes(s: State) -> Shape {
     let r = Rig::new(s);
-    // A quiet almond-shaped eye in profile, attached to the head rig.
-    // No luminous eyeball: the upper lid carries the expression.
-    let points = [
-        (1290., 197.),
-        (1294., 194.8),
-        (1299., 196.8),
-        (1295., 199.),
-        (1290., 197.),
-    ];
+    // Relaxed eyelid; an enclosed bright pupil reads as a stare at card scale.
+    let points = [(1290., 196.), (1294., 197.4), (1298., 196.8)];
     let points: Vec<P> = points.iter().map(|&p| r.display(r.point(p, 3))).collect();
-    let mut d = super::curve(&points, false);
-    let pupil = r.display(r.point((1295.8, 196.5), 3));
-    let _ = write!(d, "M{:.3} {:.3}v1.15", pupil.0, pupil.1 - 0.5);
-    Shape::line(d, 0.94, 1.2)
+    Shape::line(super::curve(&points, false), 0.72, 0.9)
+}
+pub(super) fn hair(s: State) -> Vec<Shape> {
+    let r = Rig::new(s);
+    // Asymmetric swept volume, a broad forelock and a tapered nape.
+    // No concentric cap edge or texture made from individual strands.
+    let contour = [
+        (1241., 240.),
+        (1232., 226.),
+        (1223., 212.),
+        (1220., 193.),
+        (1225., 175.),
+        (1239., 161.),
+        (1255., 156.),
+        (1266., 148.),
+        (1280., 147.),
+        (1294., 154.),
+        (1304., 166.),
+        (1302., 172.),
+        (1288., 169.),
+        (1275., 176.),
+        (1266., 188.),
+        (1255., 194.),
+        (1251., 205.),
+        (1248., 211.),
+        (1243., 208.),
+        (1239., 215.),
+        (1244., 223.),
+    ];
+    let mapped: Vec<P> = contour.iter().map(|&p| r.display(r.point(p, 3))).collect();
+    let edge = [(1268., 158.), (1257., 169.), (1253., 182.)];
+    let edge: Vec<P> = edge.iter().map(|&p| r.display(r.point(p, 3))).collect();
+    vec![
+        Shape {
+            d: super::curve(&mapped, true),
+            fill: true,
+            ink_fill: false,
+            alpha: 1.,
+            stroke: 0.86,
+            width: 1.1,
+        },
+        Shape::line(super::curve(&edge, false), 0.25, 0.7),
+    ]
 }
 pub(super) fn chain_nodes(i: usize, s: State) -> Vec<P> {
     let r = Rig::new(s);
@@ -408,6 +431,25 @@ pub(super) fn loop_point(points: &[P], u: f64) -> P {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn speaking_does_not_warp_the_head_or_hair() {
+        for release in [0., 0.5, 1.] {
+            let quiet = State {
+                t: 3.,
+                release,
+                speech: 0.,
+                alpha: 1.,
+            };
+            let speaking = State {
+                speech: 1.,
+                ..quiet
+            };
+            for p in [(1260., 160.), (1295., 197.), (1310., 230.), (1240., 215.)] {
+                assert_eq!(Rig::new(quiet).point(p, 3), Rig::new(speaking).point(p, 3));
+            }
+            assert_eq!(hair(quiet)[0].d, hair(speaking)[0].d);
+        }
+    }
     #[test]
     fn approved_contour_is_a_real_trace() {
         assert_eq!(OUTLINES.len(), 10);

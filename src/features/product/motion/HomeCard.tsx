@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import type { PropsWithChildren } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -9,7 +8,6 @@ import { homeGlassShape } from './glassShape';
 import { NativePanelReveal, usePanelReveal } from './PanelReveal';
 import { useThemeColors } from '../ProductTheme';
 import { GlassOutline } from './GlassOutline';
-import { homeTitleGradient } from './homeTitleGradient';
 import type { HomeTitleGradient } from './homeTitleGradient';
 import { ScanLight } from './ScanLight';
 import { PanelArtwork } from './PanelArtwork';
@@ -43,15 +41,14 @@ export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { k
 export function HomeCardCopy({ children, inset, gradient, style }: PropsWithChildren<{
   inset: number; gradient: HomeTitleGradient; style?: StyleProp<ViewStyle>;
 }>) {
-  const colors = useThemeColors();
-  const shade = useMemo(() => homeTitleGradient(gradient, colors), [gradient, colors]);
-  return <View pointerEvents="none" style={[styles.copy, { bottom: 0, paddingBottom: inset, paddingLeft: inset - 1, paddingRight: inset + 23 }, style]}>
-    <Image pointerEvents="none" source={shade} style={StyleSheet.absoluteFill} contentFit="fill" />
+  const { size, onLayout, ref } = usePanelSize({ width: 260, height: 110 });
+  return <View ref={ref} onLayout={onLayout} pointerEvents="none" testID={`home-copy-${gradient}`} style={[styles.copy, { bottom: 6, paddingBottom: inset - 6, paddingLeft: inset - 6, paddingRight: Math.max(0, inset - 5) }, style]}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}><Art kind="home-shade" width={size.width} height={size.height} reducedMotion /></View>
     {children}
   </View>;
 }
 const styles = StyleSheet.create({
   card: { flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: 'transparent' },
-  copy: { position: 'absolute', left: 1, right: 1, gap: 4, zIndex: 2 },
+  copy: { position: 'absolute', left: 6, right: 28, gap: 4, zIndex: 2 },
   mask: { ...StyleSheet.absoluteFill, zIndex: 3 },
 });

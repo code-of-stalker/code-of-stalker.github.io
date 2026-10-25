@@ -15,12 +15,14 @@ export type ProductSettings = {
   lastBackupAt?: number;
 };
 export type PracticeStage = 0 | 1 | 2 | 3 | 4;
+export type StepThreeReading = { chapter: 0 | 1; page: number; offset: number; paged?: boolean };
 export type ProductProgress = {
   selectedLevel: ProductLevel | null;
   step: number;
   questionIndex: number;
   // Optional so encrypted snapshots and backups from earlier versions still open.
   practiceStage?: PracticeStage;
+  stepThreeReading?: StepThreeReading;
   secondStepCompletedAt?: number;
   completedAt: number | null;
   availableAt: number | null;
@@ -122,6 +124,10 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
       (progress.selectedLevel !== null && !validLevel(progress.selectedLevel)) ||
       !whole(progress.step, 1, 7) || !whole(progress.questionIndex, 0, 999) ||
       (progress.practiceStage !== undefined && !whole(progress.practiceStage, 0, 4)) ||
+      (progress.stepThreeReading !== undefined && (!progress.stepThreeReading ||
+        !whole(progress.stepThreeReading.chapter, 0, 1) || !whole(progress.stepThreeReading.page, 0, progress.stepThreeReading.chapter === 1 ? 6 : 5) ||
+        !whole(progress.stepThreeReading.offset, 0, 1000000) ||
+        progress.stepThreeReading.paged !== undefined && typeof progress.stepThreeReading.paged !== 'boolean')) ||
       (progress.secondStepCompletedAt !== undefined && !whole(progress.secondStepCompletedAt, 1)) ||
       (progress.completedAt !== null && !whole(progress.completedAt, 1)) ||
       (progress.availableAt !== null && !whole(progress.availableAt, 1)) || !Array.isArray(value.observations)) {

@@ -72,6 +72,12 @@ const fresh=async()=> (await import(`./storage.native.ts?instance=${sequence++}`
 const meta={level:'basic',step:1,questionIndex:0};
 const draft={uri:'file:///cache/capture.m4a',durationMs:2100,waveform:[0.1,0.7]};
 
+test('native encrypted progress reopens the exact third-step section', async () => {
+  setup(); const repo=await fresh(), location={chapter:1,page:2,offset:187};
+  await repo.updateProgress({stepThreeReading:location});
+  assert.deepEqual((await (await fresh()).read()).progress.stepThreeReading,location);
+});
+
 test('native storage saves and reopens a three-minute assignment above the old byte limit', async () => {
   const fixture = setup(), repo = await fresh();
   const bytes = new Uint8Array(2 * 1024 * 1024); bytes.set([102,116,121,112], 4); fixture.files.set(draft.uri, bytes);

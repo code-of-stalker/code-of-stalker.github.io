@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { prepareWebCache } from './prepare-web-cache.mjs';
+import { packageFamilyPreview } from '../graphics/product-engine/preview/voice-family/package.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const project = path.join(root, 'sites', 'watcher');
@@ -60,6 +61,7 @@ html = html.replace('<html lang="en">', '<html lang="ru">');
 await fs.writeFile(htmlPath, html);
 // Recompute after engine splitting and HTML changes: deployment has its own snapshot.
 const release = await prepareWebCache(output);
+await packageFamilyPreview(output);
 const reports = path.join(root, '.local-preview/sites-watcher');
 await fs.mkdir(reports, { recursive: true });
 await fs.writeFile(path.join(reports, 'engine-verification.json'), JSON.stringify({ originalBytes: binary.length, sha256: digest, parts, exactReconstruction: true, wasmValid: true }, null, 2));

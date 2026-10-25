@@ -42,7 +42,7 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
       </Pressable>
       {disabled ? <View style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}><Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" /></View>
         : <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
-          onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}>
+          onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }, Platform.OS === 'web' && { outlineWidth: 0 }]}>
           <View pointerEvents="none" style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
           <Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />
         </Pressable>}

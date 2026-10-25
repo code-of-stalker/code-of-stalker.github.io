@@ -2,8 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const name = 'Код Сталкера';
-const siteUrl = 'https://watcher-observation-qtas5.cold-breezy.chatgpt.site';
+const name = 'Code Of Stalker';
+// GitHub Pages sets WATCHER_SITE_URL; the ChatGPT Sites build keeps its own address.
+const siteUrl = (process.env.WATCHER_SITE_URL || 'https://watcher-observation-qtas5.cold-breezy.chatgpt.site').replace(/\/+$/, '');
 async function copyBrandAsset(root, filename, label) {
   const bytes = await fs.readFile(new URL(`../../assets/branding/${filename}`, import.meta.url));
   const digest = crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 12);

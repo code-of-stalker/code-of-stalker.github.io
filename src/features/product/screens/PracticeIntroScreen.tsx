@@ -30,7 +30,7 @@ import { useProduct } from '../state/ProductProvider';
 import type { ObservationNavigation } from './ObservationScreen';
 import type { PracticeStage } from '../state/model';
 import { PracticeCooldown } from './PracticeCooldown';
-import { StepThreePlaceholder } from './StepThreePlaceholder';
+import { StepThreeScreen } from './StepThreeScreen';
 import { fonts } from '../theme';
 import { productSpacing, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
@@ -89,7 +89,7 @@ function ReadingArt({ kind, width, viewportHeight, active, reducedMotion, onMeas
     <Art kind={kind} height={Math.min(viewportHeight * .55, kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288))} active={active} reducedMotion={reducedMotion} />
   </View>;
 }
-export function PracticeIntroScreen(props: PracticeIntroScreenProps) { return props.step === 3 ? <StepThreePlaceholder {...props} /> : <PracticeSession key={props.step} {...props} />; }
+export function PracticeIntroScreen(props: PracticeIntroScreenProps) { return props.step === 3 ? <StepThreeScreen {...props} /> : <PracticeSession key={props.step} {...props} />; }
 
 function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMotion = false, onBack, onClose, onLevels, onQuestions, onSelectStep, onPreviousStep, onDiary, renderQuestions, showQuestions = false, initialStage = 0, startAtEnd = false, onStageChange, onCompleteSecondStep }: PracticeIntroScreenProps) {
   const styles = useThemeStyles(createStyles);

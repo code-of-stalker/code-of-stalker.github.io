@@ -946,7 +946,7 @@ impl ProductRenderer {
                     s.orbs,
                 )?;
             }
-            if n.rain {
+            if n.rain || n.vector.as_ref().is_some_and(|v| v.has_surface_rain()) {
                 n.h_group = group(
                     &self.device,
                     &self.layout,
@@ -1026,6 +1026,7 @@ impl ProductRenderer {
         let kind = match kind {
             "gallery" => raster_gpu::Kind::Gallery,
             "mirror" => raster_gpu::Kind::Mirror,
+            "voice-presence" => raster_gpu::Kind::VoicePresence,
             _ => return Err(err("Unknown raster scene")),
         };
         let mut raster = raster_gpu::RasterGpu::new(
@@ -1075,6 +1076,17 @@ impl ProductRenderer {
         }
         let id = self.add(false);
         let n = self.nodes.get_mut(&id).unwrap();
+        if vector.has_surface_rain() {
+            n.h_group = group(
+                &self.device,
+                &self.layout,
+                &n.h,
+                &self.rain_atlas,
+                &self.rain_atlas,
+                &n.contour,
+                &self.sampler,
+            );
+        }
         n.vector = Some(vector);
         n.vector_motion = Some(motion);
         Ok(id)
@@ -1175,7 +1187,7 @@ impl ProductRenderer {
         if let Some(motion) = &mut n.vector_motion {
             motion.resize(w, h);
         }
-        if n.rain {
+        if n.rain || n.vector.as_ref().is_some_and(|v| v.has_surface_rain()) {
             n.h_group = group(
                 &self.device,
                 &self.layout,
@@ -1239,7 +1251,7 @@ impl ProductRenderer {
         if previous_cost != n.applied_quality.cost && n.orbs {
             n.background_dirty = true;
         }
-        if n.rain {
+        if n.rain || n.vector.as_ref().is_some_and(|v| v.has_surface_rain()) {
             n.h_group = group(
                 &self.device,
                 &self.layout,
@@ -1448,6 +1460,21 @@ impl ProductRenderer {
                     n.size,
                     n.applied_quality.cost,
                 )?;
+                if vector.has_surface_rain() {
+                    let mut params = [0f32; 512];
+                    params[0] = 360.;
+                    params[1] = 300.;
+                    params[2] = if n.reduced { 0. } else { time as f32 };
+                    params[15] = n.applied_quality.particle_fraction();
+                    self.queue
+                        .write_buffer(&n.h, 0, bytemuck::cast_slice(&params));
+                    vector.draw_surface_rain(
+                        &mut encoder,
+                        &self.rain_pipeline,
+                        &n.h_group,
+                        params[2],
+                    );
+                }
                 vector.draw(&mut encoder, &self.vector_library, &n.output_view);
                 n.draws += 1;
                 n.dirty = false;

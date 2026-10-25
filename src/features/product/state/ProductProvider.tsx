@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { PropsWithChildren } from 'react';
 import { AppState } from 'react-native';
-import { emptyProduct } from './model';
+import { accessibleProgress, emptyProduct } from './model';
 import type { DiaryCategory, Observation, ObservationDraft, ObservationMeta, ProductProgress, ProductSettings, ProductSnapshot } from './model';
 import { productStorage } from './storage';
 import type { BackupData } from './backup-model';
@@ -33,8 +33,7 @@ export type ProductContextValue = ProductSnapshot & {
 const ProductContext = createContext<ProductContextValue | null>(null);
 export function ProductProvider({ children }: PropsWithChildren) {
   const [snapshot, setSnapshot] = useState(emptyProduct);
-  const progress = useMemo(() => !snapshot.settings.testUnlockAll && snapshot.progress.step === 2 && snapshot.progress.availableAt === null
-    ? { ...snapshot.progress, step: 1, questionIndex: 0, practiceStage: 0 as const } : snapshot.progress, [snapshot.progress, snapshot.settings.testUnlockAll]);
+  const progress = useMemo(() => accessibleProgress(snapshot.progress, snapshot.settings.testUnlockAll), [snapshot.progress, snapshot.settings.testUnlockAll]);
   const [ready, setReady] = useState(false), [error, setError] = useState('');
   useEffect(() => { if (ready) return enableAutomaticStorageProtection(); }, [ready]);
   const [resetting, setResetting] = useState(false), [sessionRevision, setSessionRevision] = useState(0);

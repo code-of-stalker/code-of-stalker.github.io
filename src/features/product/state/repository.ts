@@ -1,4 +1,4 @@
-import { DIARY_LIMIT_SECONDS, emptyProduct, patchProgress, STEP_WAIT_MS, validateDiaryCategory, validateDiaryText, validateMeta, validateObservationDraft, validateSnapshot } from './model';
+import { accessibleProgress, DIARY_LIMIT_SECONDS, emptyProduct, patchProgress, STEP_WAIT_MS, validateDiaryCategory, validateDiaryText, validateMeta, validateObservationDraft, validateSnapshot } from './model';
 import type { AudioRecord, DiaryAudio, DiaryCategory, DiaryEntry, Observation, ObservationDraft, ObservationMeta, ProductProgress, ProductSettings, ProductSnapshot } from './model';
 import { trimTextRuns, validateTextRuns, type DiaryTextRun } from '../diary/text-format';
 import { BACKUP_MAX_BYTES, BACKUP_METADATA_MAX_BYTES, backupAudioRecords, mergeBackup, validateBackup } from './backup-model';
@@ -87,8 +87,8 @@ export class ProductRepository {
     return this.serial(async () => {
       const next = await this.current();
       // Restore the normal route; keep earned deadlines and test observations.
-      if (copy.testUnlockAll === false && next.settings.testUnlockAll && next.progress.step === 2 && next.progress.availableAt === null) {
-        next.progress = patchProgress(next.progress, { step: 1 });
+      if (copy.testUnlockAll === false && next.settings.testUnlockAll) {
+        next.progress = accessibleProgress(next.progress);
       }
       next.settings = { ...next.settings, ...copy };
       return this.commit(next);

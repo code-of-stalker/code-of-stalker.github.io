@@ -27,6 +27,7 @@ fn mask_alpha(xy:vec2<f32>,id:u32)->f32 {
 }
 @fragment fn vector_fs(v:VertexOut)->@location(0) vec4<f32>{
  let alpha=mask_alpha(v.mask0,v.mask_ids.x)*mask_alpha(v.mask1,v.mask_ids.y)*mask_alpha(v.mask2,v.mask_ids.z)*mask_alpha(v.mask3,v.mask_ids.w);var color=v.color;
+ if(v.gradient.w< -1.5){let uv=v.gradient.xy/v.gradient.z;return textureSampleLevel(layer_image,smooth_sampler,fract(uv),0.)*color.a*alpha;}
  if(v.gradient.w<-.5){return textureSampleLevel(layer_image,smooth_sampler,v.gradient.xy,0.)*color.a*alpha;}
  if(v.gradient.w>0.){
   var p=v.gradient.x;if(v.gradient.w>1.5){p=length(v.gradient.xy);}

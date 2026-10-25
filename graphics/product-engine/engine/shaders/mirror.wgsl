@@ -6,7 +6,16 @@ struct V{@builtin(position) position:vec4<f32>,@location(0) uv:vec2<f32>}
 @vertex fn mirror_vs(@builtin(vertex_index)i:u32)->V{let q=array<vec2<f32>,3>(vec2(-1.,-1.),vec2(3.,-1.),vec2(-1.,3.));var v:V;v.position=vec4(q[i],0.,1.);v.uv=vec2(q[i].x*.5+.5,.5-q[i].y*.5);return v;}
 // The shared Figma alpha mask is applied to the completed scene, including
 // particles and emission, rather than independently fading overlapping layers.
-@fragment fn fade_fs(v:V)->@location(0)vec4<f32>{let alpha=clamp(v.uv.y/.0648674,0.,1.)*clamp((1.-v.uv.y)/(1.-.893657),0.,1.);return vec4(0.,0.,0.,alpha);}
+@fragment fn fade_fs(v:V)->@location(0)vec4<f32>{
+ if(params.unused.z>.5){
+  // Only the outer 7% on each side fades; the approved central artwork stays opaque.
+  let sides=smoothstep(0.,.07,v.uv.x)*smoothstep(0.,.07,1.-v.uv.x);
+  let alpha=sides*smoothstep(0.,.10,v.uv.y)*smoothstep(0.,.10,1.-v.uv.y);
+  return vec4(0.,0.,0.,alpha);
+ }
+ let alpha=clamp(v.uv.y/.0648674,0.,1.)*clamp((1.-v.uv.y)/(1.-.893657),0.,1.);
+ return vec4(0.,0.,0.,alpha);
+}
 fn sample_rect(rect:vec4<f32>,p:vec2<f32>)->vec4<f32>{return textureSampleLevel(atlas,smooth_sampler,(rect.xy+clamp(p,vec2(0.),vec2(1.))*rect.zw)/params.size.xy,0.);}
 fn img(p:vec2<f32>)->vec3<f32>{return sample_rect(params.base,p/vec2(576.,410.)).rgb;}
 fn region(p:vec2<f32>,center:vec2<f32>,radius:vec2<f32>)->f32{return 1.-smoothstep(.25,1.18,length((p-center)/radius));}

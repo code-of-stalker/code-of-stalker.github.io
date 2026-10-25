@@ -23,6 +23,17 @@ pub mod reading_layout;
 mod renderer;
 pub mod scan_profile;
 pub mod scene_model;
+pub mod scene_edges;
+pub mod step_three;
+pub mod breath_axis;
+pub mod voice_unseal;
+pub mod voice_witness;
+pub mod breath_heroine;
+mod spoken_copy;
+pub mod spoken_thought;
+pub mod spoken_room;
+pub mod jugular_notch;
+pub mod thought_terminal;
 pub mod step_two_tasks;
 pub mod svg_reference;
 pub mod timeline;
@@ -30,6 +41,7 @@ pub mod tracks;
 pub mod uploads;
 pub mod vector_geometry;
 pub mod voice;
+pub mod voice_presence;
 #[cfg(target_arch = "wasm32")]
 pub use renderer::*;
 #[cfg(target_arch = "wasm32")]

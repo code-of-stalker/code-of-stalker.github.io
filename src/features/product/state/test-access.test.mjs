@@ -49,3 +49,33 @@ test('all-open mode and selected step survive a reload without earning completio
   assert.equal(snapshot.progress.completedAt, null);
   assert.equal(snapshot.progress.availableAt, null);
 });
+
+test('third-step preview survives reload without awarding either completion', async () => {
+  const { store, read } = fixture();
+  await store.updateSettings({ testUnlockAll: true });
+  await store.updateProgress({ selectedLevel: 'basic', step: 3 });
+  const reloaded = new repository.ProductRepository({ readState: async () => read() });
+  const snapshot = await reloaded.read();
+  assert.equal(model.accessibleProgress(snapshot.progress, snapshot.settings.testUnlockAll).step, 3);
+  assert.equal(snapshot.progress.completedAt, null);
+  assert.equal(snapshot.progress.secondStepCompletedAt, undefined);
+  assert.equal(snapshot.progress.availableAt, null);
+});
+
+test('leaving third-step preview restores the earned step and keeps its cooldown', async () => {
+  for (const availableAt of [null, Date.now() + 86400000]) {
+    const { store, read } = fixture();
+    await store.updateProgress({ availableAt });
+    await store.updateSettings({ testUnlockAll: true });
+    await store.updateProgress({ step: 3 });
+    await store.updateSettings({ testUnlockAll: false });
+    assert.equal(read().progress.step, availableAt === null ? 1 : 2);
+    assert.equal(read().progress.availableAt, availableAt);
+    assert.equal(read().progress.secondStepCompletedAt, undefined);
+  }
+});
+
+test('earned third step remains accessible without preview access', () => {
+  const progress = { ...model.defaultProgress, step: 3, secondStepCompletedAt: 1000 };
+  assert.equal(model.accessibleProgress(progress, false), progress);
+});

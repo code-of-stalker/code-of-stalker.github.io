@@ -11,6 +11,7 @@ mod mirror {
 pub enum Kind {
     Gallery,
     Mirror,
+    VoicePresence,
 }
 impl Kind {
     /// Authored gallery and mask-colored mirror have separate palette paths.
@@ -18,6 +19,7 @@ impl Kind {
         match self {
             Self::Gallery => 1.,
             Self::Mirror => 2.,
+            Self::VoicePresence => 0.,
         }
     }
 }
@@ -27,8 +29,9 @@ pub struct RasterLibrary {
     normal: wgpu::RenderPipeline,
     screen: wgpu::RenderPipeline,
     mirror: wgpu::RenderPipeline,
+    voice: wgpu::RenderPipeline,
     fade: wgpu::RenderPipeline,
-    assets: std::cell::RefCell<[Option<wgpu::Texture>; 3]>,
+    assets: std::cell::RefCell<[Option<wgpu::Texture>; 6]>,
 }
 impl RasterLibrary {
     fn atlas(
@@ -42,6 +45,7 @@ impl RasterLibrary {
             Kind::Gallery if palette == crate::palette::Palette::Light => 2,
             Kind::Gallery => 0,
             Kind::Mirror => 1,
+            Kind::VoicePresence => 3,
         };
         self.assets.borrow_mut()[at]
             .get_or_insert_with(|| {
@@ -49,11 +53,32 @@ impl RasterLibrary {
                     device,
                     queue,
                     match at {
+                        3 => include_bytes!("../assets/voice-presence.png"),
                         2 => include_bytes!("../assets/gallery-sand-atlas.png"),
                         1 => include_bytes!("../assets/mirror-atlas.png"),
                         _ => include_bytes!("../assets/gallery-atlas.png"),
                     },
                 )
+            })
+            .clone()
+    }
+    fn voice_layers(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
+        self.assets.borrow_mut()[4]
+            .get_or_insert_with(|| {
+                upload_rgba(
+                    device,
+                    queue,
+                    1536,
+                    1024,
+                    &crate::voice_presence::environment_layers(),
+                )
+            })
+            .clone()
+    }
+    fn voice_portrait(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
+        self.assets.borrow_mut()[5]
+            .get_or_insert_with(|| {
+                upload_image(device, queue, &crate::voice_presence::user_portrait())
             })
             .clone()
     }
@@ -83,6 +108,7 @@ impl RasterLibrary {
                 },
                 texture(1),
                 texture(2),
+                texture(4),
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -108,6 +134,12 @@ impl RasterLibrary {
         let wall = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("approved mirror shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shaders/mirror.wgsl"))),
+        });
+        let voice_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("approved voice presence"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../shaders/voice-presence.wgsl"
+            ))),
         });
         let attributes = wgpu::vertex_attr_array![0=>Float32x2,1=>Float32x2,2=>Float32x2,3=>Float32x4,4=>Float32x4,5=>Float32x4];
         let buffers = [Some(wgpu::VertexBufferLayout {
@@ -166,6 +198,7 @@ impl RasterLibrary {
             true,
         );
         let mirror = make(&wall, "mirror_vs", "mirror_fs", normal_blend, false);
+        let voice = make(&voice_shader, "voice_vs", "voice_fs", normal_blend, false);
         // Multiply destination RGB and alpha together, preserving premultiplication.
         // One final triangle in the existing pass; no extra texture or scene reset.
         let multiply_alpha = wgpu::BlendComponent {
@@ -189,8 +222,9 @@ impl RasterLibrary {
             normal,
             screen,
             mirror,
+            voice,
             fade,
-            assets: std::cell::RefCell::new([None, None, None]),
+            assets: std::cell::RefCell::new([None, None, None, None, None, None]),
         }
     }
 }
@@ -230,7 +264,23 @@ fn texture(device: &wgpu::Device, w: u32, h: u32, samples: u32) -> wgpu::Texture
 }
 fn upload(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8]) -> wgpu::Texture {
     let image = tiny_skia::Pixmap::decode_png(bytes).expect("validated supplied raster atlas");
-    let t = texture(device, image.width(), image.height(), 1);
+    upload_image(device, queue, &image)
+}
+fn upload_image(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    image: &tiny_skia::Pixmap,
+) -> wgpu::Texture {
+    upload_rgba(device, queue, image.width(), image.height(), image.data())
+}
+fn upload_rgba(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> wgpu::Texture {
+    let t = texture(device, width, height, 1);
     queue.write_texture(
         wgpu::TexelCopyTextureInfo {
             texture: &t,
@@ -238,15 +288,15 @@ fn upload(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8]) -> wgpu::Tex
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        image.data(),
+        rgba,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
-            bytes_per_row: Some(image.width() * 4),
-            rows_per_image: Some(image.height()),
+            bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
         },
         wgpu::Extent3d {
-            width: image.width(),
-            height: image.height(),
+            width,
+            height,
             depth_or_array_layers: 1,
         },
     );
@@ -464,7 +514,20 @@ impl RasterGpu {
             mapped_at_creation: false,
         });
         let av = atlas.create_view(&Default::default());
-        let gv = glyphs.create_view(&Default::default());
+        let gv = if matches!(kind, Kind::VoicePresence) {
+            library
+                .voice_layers(device, queue)
+                .create_view(&Default::default())
+        } else {
+            glyphs.create_view(&Default::default())
+        };
+        let pv = if matches!(kind, Kind::VoicePresence) {
+            library
+                .voice_portrait(device, queue)
+                .create_view(&Default::default())
+        } else {
+            av.clone()
+        };
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("reused raster atlas bindings"),
             layout: &library.layout,
@@ -484,6 +547,10 @@ impl RasterGpu {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&library.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&pv),
                 },
             ],
         });
@@ -560,6 +627,10 @@ impl RasterGpu {
                         binding: 3,
                         resource: wgpu::BindingResource::Sampler(&library.sampler),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::TextureView(&av),
+                    },
                 ],
             });
             group
@@ -585,6 +656,7 @@ impl RasterGpu {
                 * match self.kind {
                     Kind::Gallery => 0.45,
                     Kind::Mirror => 0.65,
+                    Kind::VoicePresence => 1.,
                 }
         };
         let mut values = [0f32; 32];
@@ -606,6 +678,7 @@ impl RasterGpu {
             match self.kind {
                 Kind::Gallery => [1487., 1058.],
                 Kind::Mirror => [576., 412.],
+                Kind::VoicePresence => crate::voice_presence::ARTWORK_SIZE,
             },
         );
         match self.kind {
@@ -620,6 +693,51 @@ impl RasterGpu {
                 values[16..20].copy_from_slice(&mirror::ENERGY);
                 values[24..28].copy_from_slice(&glitch(t));
                 self.mirror(&mut b, t, quality);
+            }
+            Kind::VoicePresence => {
+                // Apply the shared end-of-pass edge mask to the entire image,
+                // including departing code fragments and reduced-motion frames.
+                values[30] = 1.;
+                let frame = crate::voice_presence::frame(seconds, reduced);
+                values[0..4].copy_from_slice(&[
+                    frame.seconds,
+                    frame.breath,
+                    frame.voice,
+                    frame.motion,
+                ]);
+                values[8..12].copy_from_slice(&[
+                    frame.waves[0][0],
+                    frame.waves[0][1],
+                    frame.waves[1][0],
+                    frame.waves[1][1],
+                ]);
+                values[12..16].copy_from_slice(&[
+                    frame.waves[2][0],
+                    frame.waves[2][1],
+                    frame.restore,
+                    0.,
+                ]);
+                values[16] = frame.code_seconds;
+                for fragment in crate::voice_presence::fragments(frame, quality.cost > 1) {
+                    let c = fragment.rotation.cos() * fragment.scale;
+                    let s = fragment.rotation.sin() * fragment.scale;
+                    b.matrix = crate::vector_geometry::Matrix([
+                        c,
+                        s,
+                        -s,
+                        c,
+                        fragment.center[0],
+                        fragment.center[1],
+                    ]);
+                    b.sprite(
+                        [-24., -26., 48., 52.],
+                        fragment.source,
+                        fragment.opacity,
+                        true,
+                        9.,
+                    );
+                }
+                b.matrix = Default::default();
             }
         }
         queue.write_buffer(&self.params, 0, bytemuck::cast_slice(&values));
@@ -689,6 +807,10 @@ impl RasterGpu {
         pass.set_bind_group(0, &self.group, &[]);
         if matches!(self.kind, Kind::Mirror) {
             pass.set_pipeline(&library.mirror);
+            pass.draw(0..3, 0..1);
+        }
+        if matches!(self.kind, Kind::VoicePresence) {
+            pass.set_pipeline(&library.voice);
             pass.draw(0..3, 0..1);
         }
         pass.set_vertex_buffer(0, self.vertices.slice(..));

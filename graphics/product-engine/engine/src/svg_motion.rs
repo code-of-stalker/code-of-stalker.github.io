@@ -72,7 +72,7 @@ impl SvgTimeline {
     }
     pub fn create(root: Element, kind: &str, card: bool) -> Result<Self, JsValue> {
         let reading_assets = crate::reading_curves::assets(kind);
-        let task_svg = crate::step_two_tasks::svg(kind);
+        let task_svg = crate::step_two_tasks::svg(kind).or_else(|| crate::step_three::svg(kind));
         let (svg, source) = if let Some(svg) = task_svg.as_deref() {
             (svg, "<tracks duration=\"0\"></tracks>")
         } else if let Some(assets) = &reading_assets {
@@ -486,6 +486,14 @@ impl SvgTimeline {
     fn paint(&mut self, dt: f64) {
         let seconds = self.clock.elapsed;
         attr(&self.root, "data-rust-time", format!("{seconds:.5}"));
+        if crate::step_three::contains(&self.kind) {
+            for update in crate::step_three::frame(&self.kind, seconds, self.reduced) {
+                for node in self.all(&update.selector) {
+                    attr(&node, update.attribute, &update.value);
+                }
+            }
+            return;
+        }
         if crate::step_two_tasks::contains(&self.kind) {
             for update in crate::step_two_tasks::frame(&self.kind, seconds, self.reduced) {
                 for node in self.all(&update.selector) {

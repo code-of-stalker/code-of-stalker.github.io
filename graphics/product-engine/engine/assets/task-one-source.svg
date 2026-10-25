@@ -64,8 +64,18 @@
   </g>
   <clipPath id="task-lake"><path d="M27 139Q144 130 261 139L272 204H16Z"/></clipPath>
   <radialGradient id="task-canopy-light"><stop stop-color="var(--book-ink)" stop-opacity=".13"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient>
+  <linearGradient id="task-bottom-alpha" gradientUnits="userSpaceOnUse" x1="0" y1="160" x2="0" y2="205">
+    <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+    <stop offset=".25" stop-color="#fff" stop-opacity=".84375"/>
+    <stop offset=".5" stop-color="#fff" stop-opacity=".5"/>
+    <stop offset=".75" stop-color="#fff" stop-opacity=".15625"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="task-bottom-fade" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="0" y="0" width="288" height="210" style="mask-type:alpha">
+    <rect x="0" y="0" width="288" height="210" fill="url(#task-bottom-alpha)"/>
+  </mask>
 </defs>
-<g stroke-linecap="round" stroke-linejoin="round">
+<g stroke-linecap="round" stroke-linejoin="round" mask="url(#task-bottom-fade)">
   <ellipse cx="141" cy="55" rx="99" ry="54" fill="url(#task-canopy-light)"/>
   <g stroke="var(--book-dim)" stroke-width=".35" opacity=".8">
     <path d="M20 119L46 93L55 99L76 76L92 92L109 84M186 89L202 73L226 99L239 90L269 119M33 113L47 101L52 110L61 103L70 107M201 82L215 102L222 107L233 101L246 110"/>
@@ -89,6 +99,14 @@
     <ellipse class="task-water-2" cx="145" cy="156" rx="52" ry="7" stroke="var(--book-dim)" stroke-width=".3"/>
   </g>
   <g class="task-falling-leaf">
+    <path d="M0 0C-7-1-10-8-6-12C0-11 3-5 0 0Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".35"/>
+    <path d="M0 0L-5-10M-2-5L-6-6" stroke="var(--book-line)" stroke-width=".25"/>
+  </g>
+  <g class="task-falling-leaf-2" opacity="0">
+    <path d="M0 0C-7-1-10-8-6-12C0-11 3-5 0 0Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".35"/>
+    <path d="M0 0L-5-10M-2-5L-6-6" stroke="var(--book-line)" stroke-width=".25"/>
+  </g>
+  <g class="task-falling-leaf-3" opacity="0">
     <path d="M0 0C-7-1-10-8-6-12C0-11 3-5 0 0Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width=".35"/>
     <path d="M0 0L-5-10M-2-5L-6-6" stroke="var(--book-line)" stroke-width=".25"/>
   </g>

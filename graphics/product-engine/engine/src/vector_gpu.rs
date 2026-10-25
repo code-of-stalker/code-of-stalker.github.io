@@ -483,6 +483,8 @@ struct Primitive {
     fill: Rc<Mesh>,
     stroke: Rc<Mesh>,
     mask: Vec<(usize, usize)>,
+    matrix_uv: Option<[f32; 9]>,
+    matrix_uv_source: String,
 }
 pub struct VectorLibrary {
     pub layout: wgpu::BindGroupLayout,
@@ -566,6 +568,7 @@ pub struct VectorGpu {
     paint_orders: BTreeMap<usize, usize>,
     gradients: BTreeMap<String, Gradient>,
     gradient_texture: wgpu::Texture,
+    surface_rain: Option<wgpu::Texture>,
     masks: MaskCache,
     parameters: wgpu::Buffer,
     layers: BTreeMap<usize, FilterLayer>,
@@ -748,6 +751,12 @@ impl VectorGpu {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let surface_rain =
+            (!list(&svg, "[data-rust-matrix-uv]").is_empty()).then(|| texture(device, 720, 600, 1));
+        let image_view = surface_rain
+            .as_ref()
+            .unwrap_or(&gradient_texture)
+            .create_view(&Default::default());
         let gradient_view = gradient_texture.create_view(&Default::default());
         let mask_view = masks.texture.create_view(&Default::default());
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -772,7 +781,7 @@ impl VectorGpu {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&gradient_view),
+                    resource: wgpu::BindingResource::TextureView(&image_view),
                 },
             ],
         });
@@ -793,6 +802,7 @@ impl VectorGpu {
             paint_orders: BTreeMap::new(),
             gradients,
             gradient_texture,
+            surface_rain,
             masks,
             parameters,
             layers: BTreeMap::new(),
@@ -914,7 +924,20 @@ impl VectorGpu {
             )
             .map_err(error)?;
             self.meshes_built += 2;
+            let matrix_uv = if node.has_attribute("data-rust-matrix-uv") {
+                let values =
+                    crate::tracks::Value::parse(&attr(&node, "data-rust-matrix-uv")).numbers;
+                Some(
+                    values
+                        .try_into()
+                        .map_err(|_| error("Expected nine projective rain UV coefficients"))?,
+                )
+            } else {
+                None
+            };
             self.primitives.push(Primitive {
+                matrix_uv,
+                matrix_uv_source: attr(&node, "data-rust-matrix-uv"),
                 node,
                 ancestors,
                 source,
@@ -1087,6 +1110,19 @@ impl VectorGpu {
                 .mask
                 .iter()
                 .any(|(id, _)| self.masks.content_changed(*id, &self.gradients));
+            if primitive.matrix_uv.is_some() {
+                let uv = attr(&primitive.node, "data-rust-matrix-uv");
+                if uv != primitive.matrix_uv_source {
+                    primitive.matrix_uv = Some(
+                        crate::tracks::Value::parse(&uv)
+                            .numbers
+                            .try_into()
+                            .map_err(|_| error("Expected nine projective rain UV coefficients"))?,
+                    );
+                    primitive.matrix_uv_source = uv;
+                    paint_changed = true;
+                }
+            }
             let source = shape(&primitive.node);
             let stroke_width = primitive_property(primitive, &self.states, "stroke-width")
                 .trim_end_matches("px")
@@ -1106,7 +1142,11 @@ impl VectorGpu {
                 .unwrap_or(0.);
             let path_length = number(&primitive.node, "pathLength", 0.);
             let path_changed = source != primitive.source;
-            let fill_paint = primitive_property(primitive, &self.states, "fill");
+            let fill_paint = if primitive.matrix_uv.is_some() {
+                "#fff".to_owned()
+            } else {
+                primitive_property(primitive, &self.states, "fill")
+            };
             let stroke_paint = primitive_property(primitive, &self.states, "stroke");
             let spec = MeshSpec {
                 stroke: None,
@@ -1203,6 +1243,14 @@ impl VectorGpu {
                             q[1],
                             (g.row as f32 + 0.5) / self.gradient_texture.height() as f32,
                             if g.radial { 2. } else { 1. },
+                        ];
+                    }
+                    if let Some(m) = primitive.matrix_uv.filter(|_| !stroke) {
+                        grad = [
+                            m[0] * local[0] + m[1] * local[1] + m[2],
+                            m[3] * local[0] + m[4] * local[1] + m[5],
+                            m[6] * local[0] + m[7] * local[1] + m[8],
+                            -2.,
                         ];
                     }
                     data.extend([output[0] / width * 2. - 1., 1. - output[1] / height * 2.]);
@@ -1353,6 +1401,43 @@ impl VectorGpu {
         }
         Ok(())
     }
+    pub fn has_surface_rain(&self) -> bool {
+        self.surface_rain.is_some()
+    }
+    /// Same Laboratory shader, same atlas and preset. Only its canvas is
+    /// projected onto authored vector surfaces; no second rain implementation.
+    pub fn draw_surface_rain(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        pipeline: &wgpu::RenderPipeline,
+        group: &wgpu::BindGroup,
+        time: f32,
+    ) {
+        let Some(texture) = &self.surface_rain else {
+            return;
+        };
+        let _ = self
+            .svg
+            .set_attribute("data-rust-rain-time", &format!("{time:.4}"));
+        let view = texture.create_view(&Default::default());
+        let attachments = [Some(wgpu::RenderPassColorAttachment {
+            view: &view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                store: wgpu::StoreOp::Store,
+            },
+        })];
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Laboratory rain surface source"),
+            color_attachments: &attachments,
+            ..Default::default()
+        });
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, group, &[]);
+        pass.draw(0..6, 0..(360f32 / 11.).ceil() as u32 * 33);
+    }
     pub fn draw(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -1403,7 +1488,14 @@ impl VectorGpu {
                     .values()
                     .map(|l| l.size[0] as u64 * l.size[1] as u64 * 28)
                     .sum::<u64>();
-        [3 + self.layers.len() as u64 * 4, bytes]
+        [
+            3 + self.layers.len() as u64 * 4 + u64::from(self.surface_rain.is_some()),
+            bytes
+                + self
+                    .surface_rain
+                    .as_ref()
+                    .map_or(0, |t| t.width() as u64 * t.height() as u64 * 4),
+        ]
     }
     pub fn counters(&self) -> [u32; 3] {
         [
@@ -1424,6 +1516,9 @@ impl VectorGpu {
     pub fn dispose(&self) {
         for layer in self.layers.values() {
             layer.dispose();
+        }
+        if let Some(rain) = &self.surface_rain {
+            rain.destroy();
         }
         self.gradient_texture.destroy();
         self.masks.texture.destroy();

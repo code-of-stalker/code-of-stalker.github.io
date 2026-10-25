@@ -13,8 +13,8 @@ function tick(at){job=0;if(!props.active||document.hidden)return;try{
 }catch(error){send({type:'watcher-rust-error',message:String(error)});}}
 async function update(next){props={...props,...next};if(!renderer){if(loading||!props.kind)return;loading=true;try{
   renderer=await module.ProductRenderer.create(atlas,true);renderer.palette(props.theme||0);
-  const kind=props.kind;vector=!['glass','rain','attention','gallery','mirror'].includes(kind);
-  id=kind==='rain'?renderer.add_rain():kind==='attention'?renderer.add_observer():kind==='gallery'||kind==='mirror'?renderer.add_raster(kind):vector?renderer.add_vector(root,kind,props.presentation==='card'):renderer.add(props.scanOnMount!==false);
+  const kind=props.kind;vector=!['glass','rain','attention','gallery','mirror','voice-presence'].includes(kind);
+  id=kind==='rain'?renderer.add_rain():kind==='attention'?renderer.add_observer():['gallery','mirror','voice-presence'].includes(kind)?renderer.add_raster(kind):vector?renderer.add_vector(root,kind,props.presentation==='card'):renderer.add(props.scanOnMount!==false);
   direct=renderer.present_to(id,output);if(props.scanOnMount===false&&kind==='glass')renderer.active(id,true,true);
   const svg=root.querySelector('svg');if(svg)svg.style.visibility='hidden';
   const observer=new MutationObserver(()=>{const decoder=root.querySelector('.mx-decoder');if(decoder?.dataset.motionState==='settled'){send({type:'watcher-decoder-complete'});observer.disconnect();}});observer.observe(root,{subtree:true,attributes:true,attributeFilter:['data-motion-state']});

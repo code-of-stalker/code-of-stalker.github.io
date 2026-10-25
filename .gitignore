@@ -90,3 +90,9 @@ secrets.*.json
 
 # Rebuildable art-gallery previews
 /scripts/product-art/preview/
+
+# Local design studies and duplicate packaging intermediates
+/output/
+/assets/product/concepts/
+/assets/product/rust/graphics-runtime.unseal-next.html
+/graphics/product-engine/preview/

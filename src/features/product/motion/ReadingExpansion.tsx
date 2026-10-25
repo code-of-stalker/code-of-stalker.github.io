@@ -23,7 +23,7 @@ export type ReadingLayout = {
  * reserved space disappears as its controls become an overlay. Counter-insets
  * keep the text column fixed while the actual frame edges move.
  */
-export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewportHeight, reducedMotion, hero, children, onClose, onViewportChange, onExpandedChange, enabled, continued = false, paged = false }: {
+export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewportHeight, reducedMotion, hero, children, onClose, onViewportChange, onExpandedChange, enabled, continued = false, paged = false, onRetreat, onRetreatProgress, onRetreatReady }: {
   gutter: number; bottomInset: number; inset: number; heroHeight: number; viewportHeight: number; reducedMotion: boolean;
   hero(active: boolean): ReactNode; children(layout: ReadingLayout): ReactNode;
   onClose(): void; onViewportChange(window: Window): void;
@@ -32,6 +32,7 @@ export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewp
   /** Later reading chapters keep the opened shell without a second zoom runway. */
   continued?: boolean;
   paged?: boolean;
+  onRetreat?(): void; onRetreatProgress?(value: number): void; onRetreatReady?(value: boolean): void;
 }) {
   const controllerRef = useRef<ScrollGateController | null>(null);
   const { layout, drag, observe } = useReadingMotion([gutter, bottomInset, inset, heroHeight, viewportHeight, Number(reducedMotion), Number(continued), readingControlsTop, productIconSize.buttonHeight, productIconSize.height, Number(paged)], () => {});
@@ -48,7 +49,7 @@ export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewp
   if (!layout) return <View style={styles.scene} />;
   const [eased, distance, , side, bottom, contentInset, heroOpacity, heroY, panelTop, closeRight, closeTop, buttonTop, paddingTop, paddingBottom, minHeight] = layout;
   return <View testID="reading-expansion" style={[styles.scene, { marginTop: -gutter, marginHorizontal: -gutter, marginBottom: -bottomInset }]}>
-    <ReadingDragSurface enabled={enabled && !continued} onDrag={drag}>
+    <ReadingDragSurface enabled={enabled && !continued} onDrag={drag} retreat={onRetreat ? { atRest: eased === 0 && layout[16] === 0, onRetreat, onProgress: onRetreatProgress, onReady: onRetreatReady } : undefined}>
     <View testID="reading-hero" pointerEvents="none" style={{ position: 'absolute', top: gutter, left: gutter, right: gutter, height: heroHeight,
       opacity: heroOpacity,
       transform: [{ translateY: heroY }] }}>
@@ -57,7 +58,7 @@ export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewp
     </ReadingDragSurface>
     <View testID="reading-panel" style={{ position: 'absolute', top: panelTop, left: side, right: side, bottom }}>
       {children({ headerProgress: eased, runway: distance, contentInset, controllerRef,
-        readingGesture: continued ? undefined : { locked: eased < 1 || layout[16] === 1, onDrag: delta => { if (enabled) drag(delta); } },
+        readingGesture: continued ? undefined : { locked: eased < 1 || layout[16] === 1, atRest: !!onRetreat && eased === 0 && layout[16] === 0, onDrag: delta => { if (enabled) drag(delta); } },
         closeButton: { right: closeRight, top: closeTop, width: productIconSize.width, height: productIconSize.height },
         contentStyle: { paddingHorizontal: contentInset, paddingTop, paddingBottom, minHeight },
         onViewportChange: track })}

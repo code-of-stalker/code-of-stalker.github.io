@@ -16,6 +16,7 @@ fn card_inside(p:vec2<f32>,size:vec2<f32>,phase:f32)->bool{let i=u32(round((phas
   if(abs(local.y-middle)<52.&&card_inside(local,v.rect.zw,v.effect.w)){uv.x-=shift;}
  }
  var pixel=textureSampleLevel(atlas,smooth_sampler,uv/params.size.xy,0.);
+ if(kind>8.5&&kind<9.5){let local=(uv-v.rect.xy)/v.rect.zw;let feather=smoothstep(0.,.12,local.x)*smoothstep(0.,.12,1.-local.x)*smoothstep(0.,.10,local.y)*smoothstep(0.,.10,1.-local.y);pixel*=feather;}
  if((kind>2.5&&kind<4.5)||(kind>7.5&&kind<8.5)){let cell=textureSampleLevel(glyphs,smooth_sampler,v.uv/vec2(768.,144.),0.);let core=cell.r;let glow=cell.g;let a=clamp(core+glow*.6,0.,1.);var ink=vec3(1.,.875,.412);var halo=vec3(.92,.66,0.);if(params.size.w>.5){ink=vec3(1.,.4,0.);halo=vec3(1.,.64,.25);}pixel=vec4(clamp(ink*core+halo*glow*.6,vec3(0.),vec3(a)),a);}
  if(kind>3.5&&kind<5.5){let p=vec2(v.world.x/1487.,(v.world.y-632.)/412.);if(p.x>=0.&&p.x<=1.&&p.y>=0.&&p.y<=1.){pixel*=1.-sample_rect(params.floor_mask,p).a;}}
  if(kind>5.5&&kind<6.5){let mask=sample_rect(params.mask,v.world/vec2(576.,410.)).b;pixel*=mask;}

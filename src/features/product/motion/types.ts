@@ -7,8 +7,9 @@ import type { ArtInteraction } from './gesture';
 
 export type DreamArtKind = 'dream-world' | 'dream-wake' | 'dream-inward' | 'dreamer';
 export type StepOneArtKind = 'identity-imprints' | 'lived-paths';
+export type StepThreeArtKind = 'thought-loop' | 'spoken-thought' | 'voice-origin' | 'breath-axis' | 'voice-unseal' | 'voice-witness';
 export type StepTwoTaskArtKind = 'hero-discernment' | 'life-book' | 'body-breath' | 'body-senses' | 'author-intention';
-export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind;
+export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind;
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
@@ -50,6 +51,13 @@ export const artLabels: Record<ArtKind, string> = {
   basic: 'Базовый уровень', intensive: 'Синхронизация', guidance: 'Водительство', parallel: 'Параллельный путь',
   comparison: 'Сравнение образов', attention: 'Наблюдающий', crowd: 'Среди людей',
   gallery: 'Галерея образов', mirror: 'Перед матрицей образов', voice: 'Голос',
+  'voice-presence': 'Голос освобождает пространство матрицы',
+  'thought-loop': 'Замкнутый механизм мыслей',
+  'spoken-thought': 'Мысль становится отдельным звучанием',
+  'voice-origin': 'Источник голоса в яремной впадине',
+  'breath-axis': 'Вдох освобождает врата от цепей. Фразы «Я есть» и «Я знаю» создают платформы над матричной пропастью; человек проходит, и опоры растворяются позади.',
+  'voice-unseal': 'Звучание раскрывает запечатанную форму',
+  'voice-witness': 'Тот, кто слышит, и отдельная от него мысль',
   insight: 'Сфера и два круга', glass: 'Стеклянная поверхность', rain: 'Матричный дождь',
   book: 'Книга и проекция Главного Героя',
   reflections: 'Отражения и проекции', 'single-hero': 'Главный Герой всегда один',

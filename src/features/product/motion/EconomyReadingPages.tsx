@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useThemeColors } from '../ProductTheme';
 import { fonts } from '../theme';
@@ -13,8 +14,9 @@ import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
 
 export type ReadingPagePosition = { index: number; count: number };
-export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange }: {
-  step: 1 | 2; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
+export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
+  step: 1 | 2 | 3; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
+  endContent?: ReactNode;
   reading: ReadingLayout; width: number; viewportHeight: number; reducedMotion: boolean;
   onReady(value: boolean): void; onProgress(value: number): void;
   onAdvance(): void; onRetreat(): void; onPageChange(value: ReadingPagePosition): void;
@@ -39,7 +41,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       render={value => {
         const page = pages[value], selected = value === index, playing = selected && active;
         const wider = page.art === 'reflections' || page.art === 'single-hero' ? 1.25 : page.art === 'identity-imprints' ? 1.15 : 1;
-        const artWidth = Math.max(1, width - 16) * wider, artHeight = Math.min(viewportHeight * .55, page.art === 'dreamer' ? artWidth * 0.92 : artWidth * (page.art === 'book' || page.art === 'dream-world' || page.art === 'dream-wake' ? 206 : page.art === 'cells' ? 156 : page.art === 'identity-imprints' || page.art === 'lived-paths' ? 176 : page.art.startsWith('dream') ? 136 : 104) / (page.art === 'reflections' || page.art === 'single-hero' || page.art === 'lived-paths' ? 248 : 288));
+        const artWidth = Math.max(1, width - 16) * wider, artHeight = Math.min(viewportHeight * .55, step === 3 ? artWidth * (page.art === 'thought-loop' ? 210 / 288 : 192 / 320) : page.art === 'dreamer' ? artWidth * 0.92 : artWidth * (page.art === 'book' || page.art === 'dream-world' || page.art === 'dream-wake' ? 206 : page.art === 'cells' ? 156 : page.art === 'identity-imprints' || page.art === 'lived-paths' ? 176 : page.art.startsWith('dream') ? 136 : 104) / (page.art === 'reflections' || page.art === 'single-hero' || page.art === 'lived-paths' ? 248 : 288));
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
             startAtEnd={selected && position.end} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
@@ -48,10 +50,11 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             readingGesture={selected && value === 0 ? reading.readingGesture : undefined}
             onViewportChange={selected ? reading.onViewportChange : undefined}
             contentStyle={[reading.contentStyle, { paddingHorizontal: reading.contentInset + 8, paddingBottom: Math.max(Number(reading.contentStyle.paddingBottom), 28) }]}>
-            <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step === 1 ? '02' : '07'}</ProductText>
+            <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step === 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.title}>{page.title}</ProductText>}
             <View testID="reading-page-copy" style={styles.copy}>
               {page.paragraphs.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
+              {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{page.statement}</ProductText>}
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
             </View>
@@ -62,6 +65,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               <Art kind={page.art} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
             </View>
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
+            {value === pages.length - 1 && endContent}
           </ScrollGate>
         </View>;
       }} />

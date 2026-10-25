@@ -109,12 +109,16 @@ export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons;
   const styles = useThemeStyles(createStyles);
   const complete = icon === 'back' || icon === 'close';
   const note = useMemo(() => iconSource(notebookPath, colors.accent, 16), [colors.accent]);
+  // expo-image retains its decoded image and web SVG tint filter while this
+  // screen is hidden. Scope that presentation cache to the current palette,
+  // including the return to an untinted source; leave the button and GPU face alive.
+  const imageIdentity = icon + ':' + (colors.iconTint ?? 'source') + ':' + colors.accent;
   return <Pressable accessibilityRole="button" accessibilityLabel={iconLabels[icon]} onPress={onPress}
     style={styles.iconButton} hitSlop={2}>
     {icon === 'diary' ?
-      <Image source={icons.diary} tintColor={colors.iconTint} style={{ width: 42, height: 28 }} contentFit="contain" /> :
+      <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42, height: 28 }} contentFit="contain" /> :
       <GlassHost style={[styles.iconPanel, { alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
-        <Image source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: productIconSize.width, height: productIconSize.height } : icon === 'notes' ? { width: 16, height: 16 } : { width: 24, height: 24 }} contentFit="contain" />
+        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: productIconSize.width, height: productIconSize.height } : icon === 'notes' ? { width: 16, height: 16 } : { width: 24, height: 24 }} contentFit="contain" />
       </GlassHost>}
   </Pressable>;
 }

@@ -69,6 +69,14 @@ export function patchProgress(current: ProductProgress, patch: Partial<ProductPr
     patch.selectedLevel !== undefined && patch.selectedLevel !== current.selectedLevel;
   return { ...current, ...(changedExercise ? { practiceStage: 0 as const, questionIndex: 0 } : {}), ...patch };
 }
+/** Preview access never creates completion; turning it off restores an earned step. */
+export function accessibleProgress(progress: ProductProgress, testUnlockAll = false): ProductProgress {
+  if (testUnlockAll) return progress;
+  if (progress.step === 3 && !progress.secondStepCompletedAt) {
+    return patchProgress(progress, { step: progress.availableAt === null ? 1 : 2 });
+  }
+  return progress.step === 2 && progress.availableAt === null ? patchProgress(progress, { step: 1 }) : progress;
+}
 export function emptyProduct(): ProductSnapshot {
   return { version: 1, settings: { ...defaultSettings }, progress: { ...defaultProgress }, observations: [] };
 }

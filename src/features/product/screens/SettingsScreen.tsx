@@ -23,6 +23,7 @@ export type SettingsScreenProps = {
   onBack: () => void;
   onPreviewCooldown: () => void;
   onOpenSecondStep: () => void;
+  onOpenThirdStep: () => void;
   onReset: () => Promise<void>;
   resetting?: boolean;
 };
@@ -72,7 +73,7 @@ function ToggleRow({ label, detail, enabled, onToggle }: { label: string; detail
   );
 }
 
-export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onReset, resetting = false }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onReset, resetting = false }: SettingsScreenProps) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [confirmReset, setConfirmReset] = useState(false), [resetError, setResetError] = useState('');
@@ -130,7 +131,10 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
         <View style={styles.divider} />
         <ToggleRow label="Всё открыто" detail="ПРОСМОТР ГОТОВЫХ ШАГОВ БЕЗ ПРОХОЖДЕНИЯ И ОЖИДАНИЯ СУТОК. ПРОХОЖДЕНИЕ НЕ ЗАСЧИТЫВАЕТСЯ."
           enabled={settings.testUnlockAll ?? false} onToggle={() => onChange({ testUnlockAll: !settings.testUnlockAll })} />
-        {settings.testUnlockAll && <ProductButton label="ОТКРЫТЬ ВТОРОЙ ШАГ" kind="outline" onPress={onOpenSecondStep} />}
+        {settings.testUnlockAll && <>
+          <ProductButton label="ОТКРЫТЬ ВТОРОЙ ШАГ" kind="outline" onPress={onOpenSecondStep} />
+          <ProductButton label="ОТКРЫТЬ ТРЕТИЙ ШАГ" kind="outline" onPress={onOpenThirdStep} />
+        </>}
         <View style={styles.divider} />
         <Pressable accessibilityRole="button" accessibilityLabel="Второй шаг с таймером"
           accessibilityHint="Открыть тестовый экран ожидания второго шага" onPress={onPreviewCooldown} style={styles.toggleRow}>

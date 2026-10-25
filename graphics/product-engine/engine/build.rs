@@ -1,5 +1,9 @@
 //! Asset preparation is Rust at build time. No SVG parser, font rasterizer or
 //! tessellation runs in the animation loop; only original paths are used.
+#[path = "src/breath_bridge_copy.rs"]
+mod breath_bridge_copy;
+#[path = "src/spoken_copy.rs"]
+mod spoken_copy;
 use lyon_tessellation::{
     path::{math::point, Path},
     *,
@@ -258,6 +262,65 @@ fn prepare_observer(dest: &PathBuf) {
         .collect();
     fs::write(dest.join("observer.glow"), glow).unwrap();
 }
+// Vector speech uses the same font as the application, with no system fallback.
+// These control points are prepared once and morphed by the Rust scene clock.
+fn prepare_spoken_glyphs(dest: &std::path::Path, face: &ttf_parser::Face<'_>) {
+    struct Outline {
+        commands: Vec<(u8, [f64; 6])>,
+        units: f64,
+    }
+    impl Outline {
+        fn add(&mut self, kind: u8, points: &[f32]) {
+            let mut p = [0.; 6];
+            for (to, from) in p.iter_mut().zip(points) {
+                *to = *from as f64 / self.units;
+            }
+            self.commands.push((kind, p));
+        }
+    }
+    impl ttf_parser::OutlineBuilder for Outline {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.add(1, &[x, y]);
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.add(2, &[x, y]);
+        }
+        fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+            self.add(3, &[x1, y1, x, y]);
+        }
+        fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+            self.add(4, &[x1, y1, x2, y2, x, y]);
+        }
+        fn close(&mut self) {
+            self.add(0, &[]);
+        }
+    }
+    let mut output = String::from("pub fn glyph(c: char) -> &'static [(u8,[f64;6])] { match c {\n");
+    println!("cargo:rerun-if-changed=src/spoken_copy.rs");
+    println!("cargo:rerun-if-changed=src/breath_bridge_copy.rs");
+    let characters: std::collections::BTreeSet<char> = spoken_copy::PHRASES
+        .iter()
+        .chain(breath_bridge_copy::PHRASES.iter())
+        .chain(["БОЛЬ", "ВИНА", "МЫСЛЬ", "Я СЛЫШУ", "Я ВИЖУ", "Я ОСОЗНАЮ"].iter())
+        .flat_map(|s| s.chars())
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    for ch in characters {
+        let mut outline = Outline {
+            commands: Vec::new(),
+            units: face.units_per_em() as f64,
+        };
+        let glyph = face
+            .glyph_index(ch)
+            .expect("Bundled font must contain spoken Cyrillic");
+        face.outline_glyph(glyph, &mut outline)
+            .expect("Speech glyph has an outline");
+        output.push_str(&format!("{ch:?} => &{:?},\n", outline.commands));
+    }
+    output.push_str("_ => &[], } }\n");
+    fs::write(dest.join("spoken_glyphs.rs"), output).unwrap();
+}
+
 fn main() {
     let dest = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     println!("cargo:rerun-if-changed=assets/fonts");
@@ -266,6 +329,7 @@ fn main() {
     let disk = fs::read("assets/fonts/Disket-Mono-Regular.ttf").unwrap();
     let jp = fs::read("assets/fonts/NotoSansJP.ttf").unwrap();
     let disk = ttf_parser::Face::parse(&disk, 0).unwrap();
+    prepare_spoken_glyphs(&dest, &disk);
     let mut jp = ttf_parser::Face::parse(&jp, 0).unwrap();
     jp.set_variation(ttf_parser::Tag::from_bytes(b"wght"), 400.);
     let chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789";

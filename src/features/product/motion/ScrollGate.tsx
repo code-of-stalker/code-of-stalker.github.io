@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useThemeColors } from '../ProductTheme';
+import { consumesReadingInput } from './reading-boundary-input';
 import { createScrollGate } from './scroll-gate-model';
 import type { ScrollGateProps } from './ScrollGate.types';
 import { useSwipeNavigationAllowed } from '../navigation/BackSwipeProvider';
@@ -54,20 +55,20 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
       if (Math.abs(y - g.y) > 0.1) { g.y = y; offset.setValue(y); scroll.current?.scrollTo({ y, animated: false }); }
     }
     callbacks.current.onViewportChange?.({ offset: geometry.current.y, height: geometry.current.height });
-    callbacks.current.onReady(!readingGesture?.locked && !scrollLocked.current && callbacks.current.enabled && swipeAllowed() && interacted.current && (intent.current > 0 ? atEnd() : !!callbacks.current.onRetreat && atStart()));
+    callbacks.current.onReady((!readingGesture?.locked || !!readingGesture?.atRest && intent.current < 0) && !scrollLocked.current && callbacks.current.enabled && swipeAllowed() && interacted.current && (intent.current > 0 ? atEnd() : !!callbacks.current.onRetreat && atStart()));
   }
   return <View style={[{ flex: 1, minHeight: 0 }, style]}
-    onStartShouldSetResponder={() => !!readingGesture?.locked && enabled}
+    onStartShouldSetResponder={() => !!readingGesture?.locked && !readingGesture?.atRest && enabled}
     onResponderGrant={event => { previewResponder.current = true; readingY.current = event.nativeEvent.pageY; }}
     onResponderRelease={() => { previewResponder.current = false; }} onResponderTerminate={() => { previewResponder.current = false; }}
     onResponderMove={event => { const y = event.nativeEvent.pageY; if (enabled) readingGesture?.onDrag(readingY.current - y); readingY.current = y; }}>
     <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={[fill && { flexGrow: 1 }, contentStyle]} showsVerticalScrollIndicator={false}
-    bounces={false} overScrollMode="never" scrollEventThrottle={16} scrollEnabled={scrollEnabled && !readingGesture?.locked}
+    bounces={false} overScrollMode="never" scrollEventThrottle={16} scrollEnabled={scrollEnabled && (!readingGesture?.locked || !!readingGesture?.atRest)}
     onLayout={event => { geometry.current.height = event.nativeEvent.layout.height; check(); }}
     onContentSizeChange={(_, height) => { geometry.current.content = height; check(); }}
     onScroll={event => { if (readingGesture?.locked) { scroll.current?.scrollTo({ y: 0, animated: false }); return; } geometry.current.y = event.nativeEvent.contentOffset.y; offset.setValue(Math.max(0, geometry.current.y)); check(); }}
-    onTouchStart={event => { readingTouch.current = !!readingGesture?.locked; readingY.current = event.nativeEvent.pageY; entry.current.end = false; origin.current = event.nativeEvent.pageY; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) gate.start(origin.current, atEnd(), atStart()); else { gate.block(); interacted.current = false; check(); } }}
-    onTouchMove={event => { if (previewResponder.current) return; const y = event.nativeEvent.pageY, movement = readingY.current - y; readingY.current = y; if (readingGesture && (readingTouch.current || geometry.current.y < 1 && movement < 0)) { readingTouch.current = true; if (enabled) readingGesture.onDrag(movement); gate.block(); return; } if (!scrollLocked.current && enabled && swipeAllowed()) { const delta = origin.current - y; if (Math.abs(delta) > 3) { interacted.current = true; intent.current = Math.sign(delta); check(); } gate.move(y, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }}
+    onTouchStart={event => { readingTouch.current = !!readingGesture?.locked && !readingGesture?.atRest; readingY.current = event.nativeEvent.pageY; entry.current.end = false; origin.current = event.nativeEvent.pageY; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) gate.start(origin.current, atEnd(), atStart()); else { gate.block(); interacted.current = false; check(); } }}
+    onTouchMove={event => { if (previewResponder.current) return; const y = event.nativeEvent.pageY, movement = readingY.current - y; readingY.current = y; if (readingGesture && (readingTouch.current || consumesReadingInput(readingGesture, movement, geometry.current.y < 1))) { readingTouch.current = true; if (enabled) readingGesture.onDrag(movement); gate.block(); return; } if (!scrollLocked.current && enabled && swipeAllowed()) { const delta = origin.current - y; if (Math.abs(delta) > 3) { interacted.current = true; intent.current = Math.sign(delta); check(); } gate.move(y, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }}
     onTouchEnd={() => { if (swipeAllowed()) gate.end(); else gate.block(); }}
     onTouchCancel={() => gate.end(true)}
     accessibilityHint="Дочитайте содержимое и продолжите тянуть вверх, чтобы перейти дальше">

@@ -1,9 +1,10 @@
 import { stepDescriptions, stepTwoDream } from '../content';
 import type { ArtKind } from './types';
+import { stepThreeBlocks } from '../stepThreeContent';
 
 export type ReadingPage = {
   id: string; art: ArtKind; paragraphs: readonly string[];
-  title?: string; emphasis?: string; conclusion?: string; firstStepConclusion?: boolean;
+  title?: string; emphasis?: string; conclusion?: string; firstStepConclusion?: boolean; statement?: string;
 };
 const one = stepDescriptions[1].split('\n\n'), two = stepDescriptions[2].split('\n\n');
 const first: readonly ReadingPage[] = [
@@ -22,4 +23,5 @@ const dream: readonly ReadingPage[] = stepTwoDream.blocks.map((block, index) => 
   ...('conclusion' in block ? { conclusion: block.conclusion } : {}),
 }));
 /** Reading order and content are application data; motion stays in Rust. */
-export const readingPages = (step: 1 | 2, chapter: 0 | 1) => step === 1 ? first : chapter === 0 ? hero : dream;
+const voice: readonly ReadingPage[] = stepThreeBlocks.map(({ emphasis, ...block }) => ({ ...block, statement: emphasis }));
+export const readingPages = (step: 1 | 2 | 3, chapter: 0 | 1) => step === 3 ? voice : step === 1 ? first : chapter === 0 ? hero : dream;

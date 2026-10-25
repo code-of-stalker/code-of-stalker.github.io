@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useWideScrollInput } from './useWideScrollInput.web';
+import { consumesReadingInput } from './reading-boundary-input';
 import { createScrollGate } from './scroll-gate-model';
 import type { ScrollGateProps } from './ScrollGate.types';
 import { useSwipeNavigationAllowed } from '../navigation/BackSwipeProvider';
@@ -37,23 +38,23 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     const block = (event: Event) => {
       const input = reading.current;
       if (input) {
-        let delta = 0, consume = input.locked || readingTouch.current;
+        let delta = 0, consume = readingTouch.current;
         if (event.type === 'wheel') {
           const wheel = event as WheelEvent, state = readingWheel.current;
           const fresh = wheel.timeStamp - state.last > 180;
           state.last = wheel.timeStamp;
           if (fresh) state.hold = false;
           delta = wheel.deltaY * (wheel.deltaMode === 1 ? 16 : wheel.deltaMode === 2 ? el.clientHeight : 1);
-          consume ||= state.hold || delta < 0 && el.scrollTop < 1;
+          consume ||= state.hold || consumesReadingInput(input, delta, el.scrollTop < 1);
         } else if (event.type === 'touchmove') {
           const y = (event as TouchEvent).touches[0]?.clientY ?? lastReadingTouch.current;
           delta = lastReadingTouch.current - y; lastReadingTouch.current = y;
-          consume ||= delta < 0 && el.scrollTop < 1;
+          consume ||= consumesReadingInput(input, delta, el.scrollTop < 1);
           if (consume) readingTouch.current = true;
         } else if (event.type === 'keydown') {
           const key = (event as KeyboardEvent).key;
           delta = ['ArrowDown', 'PageDown', ' '].includes(key) ? 80 : ['ArrowUp', 'PageUp'].includes(key) ? -80 : 0;
-          consume = !!delta && (input.locked || delta < 0 && el.scrollTop < 1);
+          consume = !!delta && consumesReadingInput(input, delta, el.scrollTop < 1);
         }
         if (consume && delta) {
           event.preventDefault();
@@ -107,7 +108,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
       viewport.current.style.setProperty('--scroll-fade-top', `${Math.min(fadeTop, Math.max(0, viewport.current.scrollTop))}px`);
       callbacks.current.onViewportChange?.({ offset: viewport.current.scrollTop, height: viewport.current.clientHeight });
     }
-    callbacks.current.onReady(!reading.current?.locked && !scrollLocked.current && callbacks.current.enabled && swipeAllowed() && interacted.current && (intent.current > 0 ? atEnd() : !!callbacks.current.onRetreat && atStart()));
+    callbacks.current.onReady((!reading.current?.locked || !!reading.current?.atRest && intent.current < 0) && !scrollLocked.current && callbacks.current.enabled && swipeAllowed() && interacted.current && (intent.current > 0 ? atEnd() : !!callbacks.current.onRetreat && atStart()));
   }
   function interact(delta: number) { if (Math.abs(delta) > 3) { entry.current.end = false; interacted.current = true; intent.current = Math.sign(delta); check(); } }
   useEffect(() => {
@@ -118,14 +119,14 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Current callbacks are read only on resize/input.
   }, [enabled, fadeTop]);
   function inputWheel(event: WheelEvent) {
-        if (reading.current && event.defaultPrevented) { gate.block(); return; }
+        if (reading.current && event.defaultPrevented) { gate.block(); gate.wheel(event.deltaY, false, event.timeStamp, false); return; }
         if (entryGuard.current || scrollLocked.current || !enabled || !swipeAllowed()) { gate.block(); gate.wheel(event.deltaY, false, event.timeStamp, false); interacted.current = false; check(); return; }
         // A return lands at the end. The tail of the gesture that brought us
         // here must not release that edge before content has finished sizing.
         if (entry.current.end && event.timeStamp - wheelActivity.current <= 180) { gate.wheel(event.deltaY, false, event.timeStamp, false); check(); return; }
         interact(event.deltaY); gate.wheel(event.deltaY, atEnd(), event.timeStamp, atStart());
   }
-  function inputStart(event: TouchEvent) { readingTouch.current = !!reading.current?.locked; lastReadingTouch.current = event.touches[0]?.clientY ?? 0; entry.current.end = false; origin.current = lastReadingTouch.current; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) { entryGuard.current = false; gate.start(origin.current, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
+  function inputStart(event: TouchEvent) { readingTouch.current = !!reading.current?.locked && !reading.current?.atRest; lastReadingTouch.current = event.touches[0]?.clientY ?? 0; entry.current.end = false; origin.current = lastReadingTouch.current; if (!readingTouch.current && !scrollLocked.current && enabled && swipeAllowed()) { entryGuard.current = false; gate.start(origin.current, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
   function inputMove(event: TouchEvent) { if (reading.current && (event.defaultPrevented || readingTouch.current)) { gate.block(); return; } if (!scrollLocked.current && enabled && swipeAllowed()) { const y = event.touches[0]?.clientY ?? origin.current; interact(origin.current - y); gate.move(y, atEnd(), atStart()); } else { gate.block(); interacted.current = false; check(); } }
   function inputEnd() { readingTouch.current = false; if (swipeAllowed()) gate.end(); else gate.block(); }
   function inputCancel() { readingTouch.current = false; gate.end(true); }

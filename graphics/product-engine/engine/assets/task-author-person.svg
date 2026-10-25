@@ -1,0 +1,32 @@
+<!-- One adult figure, reused by the witness and its mirror image.
+     Feet at y=88; head/body ratio 1:7.3. All silhouettes are opaque. -->
+<defs>
+  <g id="task-author-person" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Relaxed arms, with the hands at the upper thigh. -->
+    <path d="M-8.4 21.8C-12 22.8-13.2 27.1-13.6 32L-14.4 43.5L-15.2 49.7C-15.6 52-15.2 54-14.1 54.5C-13.3 54.6-13.5 51.7-13 50.7L-12.7 53.2C-12 54-11.4 52.3-11.5 50.4L-11.7 47.8L-10.4 37L-8.1 28Z
+      M8.7 22.1C11.8 23.2 13 27.4 13.6 32L15.1 43.8L16.3 49.8C16.8 51.9 16.4 54 15.3 54.4C14.6 54.4 14.5 51.6 14 50.8L14 53.1C13.2 54 12.7 52.4 12.5 50.7L12.3 48L10.7 37L8.2 28Z"
+      fill="var(--book-cover)" stroke-width=".55"/>
+    <!-- Neck connects the jaw to the trapezius, not to the back of the head. -->
+    <path d="M-3.2 10.8L-3.1 16.7Q-4.7 19-8.4 20.7L-6 26H6.8L9 21Q4.8 18.9 4 16.7L3.8 10.6Z"
+      fill="var(--book-cover)" stroke-width=".55"/>
+    <path d="M-5.1 4C-5.3 .8-3.3-1.2 .3-1.3C3.4-1.4 5.3 .8 5.5 3.6L5.3 5.6L6.6 7.3Q6.8 7.9 5.4 8.3L5.1 10.5Q4.8 12.8 2.3 13.5L-.3 13.4Q-3.2 12.5-4.1 9.4C-6 9.1-6.3 6.8-5.1 6.1Z"
+      fill="var(--book-cover)" stroke-width=".6"/>
+    <path d="M-5.1 5.3Q-3.9 4.5-3.6 2.6C-.8 3.7 1.8 1.8 4.7 3.4M-4.5 6.8Q-3.2 6.4-3.8 8.5M2.6 5.8L4.1 6M3.7 10.4L5 10.2"
+      fill="none" stroke-width=".35"/>
+    <!-- A simple shirt follows the chest and waist, with only a few folds. -->
+    <path d="M-3.5 17.8Q.2 21.8 4.7 18L9 20.8C11.1 22.1 12.3 25.8 12.5 29.8L8.9 31.2L8.1 28.1L7.5 39.5L8.5 47.7Q.3 49.3-8.1 47.7L-7.1 39.5L-7.8 28.2L-8.7 31.1L-12.2 29.7C-12.1 25.9-10.7 22-8.4 20.7Z"
+      fill="var(--book-cover)" stroke-width=".6"/>
+    <path d="M-3.4 18.7Q.2 23.4 4.7 18.9M-5.5 27Q-.4 29.1 4.5 27.8M6.6 34.5L4.9 39M-6.5 40.8L-4.7 43M-7.8 46Q.4 47.5 8 46"
+      fill="none" stroke-width=".3"/>
+    <!-- Weight rests between the feet; knees, calves and ankles stay connected. -->
+    <path d="M-8 47.8Q.2 49.2 8.4 47.8L8.8 55.5L7.7 68.2L8.1 82.4L3.4 82.7L1.5 68.5L.1 56.1L-1.7 68.5L-3.5 82.7L-8.2 82.3L-7.7 68.2L-8.8 55.5Z"
+      fill="var(--book-cover)" stroke-width=".6"/>
+    <path d="M.1 50.5V56.1M-6 52.1L-4.3 54M6.4 52L4.6 54M-6.8 66.2L-4.4 67.4M4 67.4L6.7 66.4M-7.6 79.9L-3.3 80.2M3.2 80.2L7.6 80"
+      fill="none" stroke-width=".3"/>
+    <path d="M-8.2 82.3L-3.5 82.7L-2.8 85.5L-2.9 87.4Q-7.3 88.5-11.4 87.5Q-12 86-10.2 85.3ZM3.4 82.7L8.1 82.4L9.2 85L12 86Q13 87 11.7 87.8L3 87.5L2.9 85.5Z"
+      fill="var(--book-cover)" stroke-width=".55"/>
+  </g>
+  <clipPath id="task-author-mirror-aperture">
+    <path d="M161 53C161 36 192 36 192 53V118H161Z"/>
+  </clipPath>
+</defs>

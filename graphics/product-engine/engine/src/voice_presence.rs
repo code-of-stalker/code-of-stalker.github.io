@@ -13,6 +13,15 @@ pub fn user_portrait() -> tiny_skia::Pixmap {
     assert_eq!([portrait.width(), portrait.height()], [1536, 1024]);
     portrait
 }
+/// The same portrait in Art's light palette for Дюна (`prepare-sand-rasters.py`
+/// maps its colors through the dark and light paintings); the alpha is identical.
+pub fn user_portrait_sand() -> tiny_skia::Pixmap {
+    let portrait =
+        tiny_skia::Pixmap::decode_png(include_bytes!("../assets/voice-presence-sand-person.png"))
+            .expect("validated sand portrait PNG");
+    assert_eq!([portrait.width(), portrait.height()], [1536, 1024]);
+    portrait
+}
 /// Export compatibility: coverage now comes directly from the supplied PNG.
 pub fn portrait_matte() -> tiny_skia::Pixmap {
     user_portrait()
@@ -228,9 +237,17 @@ pub fn original_portrait_coverage() -> tiny_skia::Pixmap {
 /// environment RGB and registered portrait coverage A. This is deliberately
 /// raw channel data, not a premultiplied color image.
 pub fn environment_layers() -> Vec<u8> {
-    let background =
-        tiny_skia::Pixmap::decode_png(include_bytes!("../assets/voice-presence-environment.png"))
-            .expect("validated clean environment");
+    pack_environment(include_bytes!("../assets/voice-presence-environment.png"))
+}
+/// Дюна's quiet frame, drawn from Art's light painting. Unlike the generated
+/// dark plate it is registered in the artwork's own coordinates.
+pub fn environment_layers_sand() -> Vec<u8> {
+    pack_environment(include_bytes!(
+        "../assets/voice-presence-sand-environment.png"
+    ))
+}
+fn pack_environment(png: &[u8]) -> Vec<u8> {
+    let background = tiny_skia::Pixmap::decode_png(png).expect("validated clean environment");
     assert_eq!([background.width(), background.height()], [1536, 1024]);
     let matte = original_portrait_coverage();
     let mut pixels = background.data().to_vec();
@@ -247,6 +264,25 @@ pub fn environment_layers() -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn sand_layers_keep_the_portrait_coverage_and_light_air() {
+        let dark = super::user_portrait();
+        let sand = super::user_portrait_sand();
+        assert!(dark
+            .pixels()
+            .iter()
+            .zip(sand.pixels())
+            .all(|(a, b)| a.alpha() == b.alpha()));
+        let layers = super::environment_layers_sand();
+        assert_eq!(layers.len(), 1536 * 1024 * 4);
+        // Where the figure stood, the quiet frame is pale air: no dark moat.
+        for (x, y) in [(768, 300), (740, 500), (790, 600)] {
+            let at = (y * 1536 + x) * 4;
+            let [r, g, b] = [layers[at], layers[at + 1], layers[at + 2]];
+            assert!(r > 230 && g > 200 && b > 110, "{x},{y}: {r} {g} {b}");
+        }
+    }
+
     #[test]
     fn user_portrait_retains_every_supplied_alpha_value_without_legacy_clipping() {
         let portrait = super::user_portrait();

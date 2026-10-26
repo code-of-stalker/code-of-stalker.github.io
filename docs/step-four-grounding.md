@@ -167,3 +167,10 @@ generated binary during conflict resolution.
   stones umber and pale marble, the scanner a thin accent-ink line, the stage
   beams a warm veil. Vignettes and pulses are gentler so nothing washes out.
 
+- The product engine draws Art's light paintings of the Step 3 voice scene and
+  the Step 4 grounding hero in Дюна (`*-sand.png`, `Palette::is_light`). The
+  grounding painting reuses the measured glyph columns and coverage. For the
+  voice scene, `prepare-sand-rasters.py` maps the user-edited portrait into
+  the light palette (alpha unchanged) and derives a quiet light frame without
+  code, rings, voice or figure. Rings, waves, code rain and contact light are
+  drawn as amber ink; the light scenes fade into the page instead of black.

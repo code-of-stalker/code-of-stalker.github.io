@@ -8,8 +8,15 @@ pub const CODE_SECONDS: f64 = 48.0;
 /// The original PNG, foreground, architecture outside the bands and floor remain
 /// unchanged. This preparation runs once, never in the per-frame render loop.
 pub fn prepared_artwork() -> tiny_skia::Pixmap {
-    let source = tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero.png"))
-        .expect("validated grounding hero PNG");
+    prepare(include_bytes!("../assets/grounding-hero.png"))
+}
+/// Art's light painting for Дюна. It follows the dark composition, so the same
+/// measured glyph columns and registered coverage apply.
+pub fn prepared_sand_artwork() -> tiny_skia::Pixmap {
+    prepare(include_bytes!("../assets/grounding-hero-sand.png"))
+}
+fn prepare(png: &[u8]) -> tiny_skia::Pixmap {
+    let source = tiny_skia::Pixmap::decode_png(png).expect("validated grounding hero PNG");
     let mut prepared = source.clone();
     let matte = coverage();
     // Measured column centers and half widths in the 1536 x 1024 source.
@@ -246,6 +253,29 @@ mod tests {
             removed_energy > 500_000,
             "authored bright code was not removed"
         );
+    }
+
+    #[test]
+    fn sand_preparation_removes_the_ink_code_and_keeps_the_figure() {
+        let original =
+            tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero-sand.png"))
+                .unwrap();
+        assert_eq!([original.width(), original.height()], [1536, 1024]);
+        let prepared = prepared_sand_artwork();
+        let solid = coverage();
+        let mut lifted_ink = 0u64;
+        for y in 0..original.height() {
+            for x in 0..original.width() {
+                let a = original.pixel(x, y).unwrap();
+                let b = prepared.pixel(x, y).unwrap();
+                if y >= 570 || solid.pixel(x / 2, y / 2).unwrap().green() == 255 {
+                    assert_eq!(a, b, "immutable foreground or floor at {x},{y}");
+                }
+                // Orange glyphs on cream air: removing them restores blue.
+                lifted_ink += u64::from(b.blue().saturating_sub(a.blue()));
+            }
+        }
+        assert!(lifted_ink > 300_000, "painted code was not removed");
     }
 
     #[test]

@@ -19,6 +19,12 @@ struct Vertex { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f3
     return v;
 }
 
+// Дюна draws Art's light (sand) painting: light added to black air becomes ink.
+fn sand() -> bool { return params.size.w > .5; }
+fn ink(rgb: vec3<f32>, light: vec3<f32>, strength: f32) -> vec3<f32> {
+    let amount = clamp(dot(light, vec3(.2126, .7152, .0722)) * strength, 0., .85);
+    return mix(rgb, vec3(.80, .33, .03), amount);
+}
 fn hash(n: f32) -> f32 { return fract(sin(n * 127.1 + 37.7) * 43758.5453); }
 fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     let q = (p - center) / radius;
@@ -79,22 +85,27 @@ fn floor_wave(p: vec2<f32>, phase: vec2<f32>, detail: f32) -> vec3<f32> {
         // comes from the moving project atlas, including the far depth layer.
         var rain = matrix_rain(p, true);
         if (params.size.z < 2.5) { rain += matrix_rain(p, false); }
-        rgb += rain * 1.4 * background * smoothstep(0., .035, p.y);
+        let falling = rain * background * smoothstep(0., .035, p.y);
+        rgb = select(rgb + falling * 1.4, ink(rgb, falling, 2.4), sand());
 
         let flow_y = mix(.16, .84, params.flow.x);
         let light_band = exp(-pow((uv.y - flow_y) / .065, 2.)) * params.flow.y * matte.r;
         let chest = spot(uv, vec2(.485, .31), vec2(.105, .145));
-        rgb *= 1. + light_band * .70 + chest * params.motion.x * .16;
+        // The pale figure washes out under the full dark-scene light.
+        rgb *= 1. + (light_band * .70 + chest * params.motion.x * .16) * select(1., .35, sand());
         rgb += vec3(1., .77, .30) * (light_band * .065 + chest * params.motion.x * .025);
 
         let contacts = spot(p, vec2(.501, .856), vec2(.056, .025))
             + spot(p, vec2(.615, .827), vec2(.062, .026));
-        rgb += vec3(1., .83, .44) * contacts * params.motion.w * .20;
-        let detail = smoothstep(.025, .32, dot(rgb, vec3(.2126, .7152, .0722)));
+        let contact = vec3(1., .83, .44) * contacts * params.motion.w * .20;
+        rgb = select(rgb + contact, ink(rgb, contact, 1.2), sand());
+        let detail = select(smoothstep(.025, .32, dot(rgb, vec3(.2126, .7152, .0722))), 1., sand());
         let floor_only = environment * smoothstep(.56, .65, p.y);
-        rgb += (floor_wave(p, params.waves.xy, detail)
+        let waves = (floor_wave(p, params.waves.xy, detail)
              + floor_wave(p, params.waves.zw, detail)) * floor_only;
+        rgb = select(rgb + waves, ink(rgb, waves, 1.6), sand());
     }
     let horizontal = smoothstep(0., .055, p.x) * (1. - smoothstep(.945, 1., p.x));
-    return vec4(clamp(rgb, vec3(0.), vec3(1.)) * horizontal, 1.);
+    // The sand painting fades into the light page instead of into black.
+    return vec4(clamp(rgb, vec3(0.), vec3(1.)) * horizontal, select(1., horizontal, sand()));
 }

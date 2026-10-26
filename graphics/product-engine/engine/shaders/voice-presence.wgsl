@@ -17,13 +17,25 @@ struct Vertex { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f3
     v.uv=vec2(points[i].x*.5+.5,.5-points[i].y*.5);
     return v;
 }
+// Дюна draws Art's light (sand) painting: light added to black air becomes ink.
+fn sand()->bool{return params.size.w>.5;}
+// The generated dark plate is registered to the source's horizon; the sand
+// plate is derived in the artwork's own coordinates.
+fn plate_uv(p:vec2<f32>)->vec2<f32>{
+    return select(vec2(p.x,.66+(p.y-.70)*1.067),p,sand());
+}
+fn shine(rgb:vec3<f32>,light:vec3<f32>)->vec3<f32>{
+    if(!sand()){return rgb+light;}
+    let amount=clamp(dot(light,vec3(.2126,.7152,.0722))*1.6,0.,.9);
+    return mix(rgb,vec3(.86,.36,.03),amount);
+}
 fn art(p:vec2<f32>)->vec3<f32>{
     let source=textureSampleLevel(artwork,smooth_sampler,clamp(p,vec2(0.),vec2(1.)),0.).rgb;
     // Remove the portrait embedded in the OLD scene before layering the edited
     // PNG. This footprint never clips or multiplies the new portrait alpha.
     let old=textureSampleLevel(environment_layers,smooth_sampler,clamp(p,vec2(0.),vec2(1.)),0.).a;
     if(old<=0.){return source;}
-    let uv=vec2(p.x,.66+(p.y-.70)*1.067);
+    let uv=plate_uv(p);
     let plate=textureSampleLevel(environment_layers,smooth_sampler,clamp(uv,vec2(0.),vec2(1.)),0.).rgb;
     // Continue the authored environment through the old footprint. Filling it
     // with the quiet black plate made a dark moat around the new silhouette.
@@ -61,7 +73,7 @@ fn hero(p:vec2<f32>)->f32{
 }
 fn quiet_environment(p:vec2<f32>)->vec3<f32>{
     // Register the generated plate's horizon / ellipse center to the source.
-    let uv=vec2(p.x,.66+(p.y-.70)*1.067);
+    let uv=plate_uv(p);
     let generated=textureSampleLevel(environment_layers,smooth_sampler,clamp(uv,vec2(0.),vec2(1.)),0.).rgb;
     // The original lower floor has no glyphs: preserve its exact engraving,
     // material and reflection. The generated plate fills the former code wall.
@@ -153,25 +165,34 @@ fn with_portrait(background:vec3<f32>,p:vec2<f32>)->vec3<f32>{
     // the action. Suppress the static voice before inhale/after the release.
     // A weak trace keeps the approved halo readable between releases. The code
     // behind it still scrolls; no stationary horizontal band is cut into rain.
-    let ring_trace=authored*ring_zone*.13*(1.-clearing);
-    rgb+=ring_trace;
-    rgb*=1.-ribbon*(.89-.89*voice);
+    let trace=ring_zone*.13*(1.-clearing);
+    let quiet_voice=ribbon*(.89-.89*voice);
     let current=pow(.5+.5*cos(cycle*4.-p.y*12.+floor(p.x*61.)*1.73),8.);
-    rgb*=1.+rain_gate*(current*.25-.045)*(1.-clearing);
-    rgb*=1.+ribbon*voice*(.25+.27*sin(cycle*10.-travel*17.));
+    if(sand()){
+        // A pale page cannot darken or brighten into black air: the trace
+        // and the silent voice fade toward the painting and its quiet frame.
+        rgb=mix(rgb,authored,trace);
+        rgb=mix(rgb,quiet_frame,quiet_voice);
+        rgb*=1.+ribbon*voice*(.09+.09*sin(cycle*10.-travel*17.));
+    } else {
+        rgb+=authored*trace;
+        rgb*=1.-quiet_voice;
+        rgb*=1.+rain_gate*(current*.25-.045)*(1.-clearing);
+        rgb*=1.+ribbon*voice*(.25+.27*sin(cycle*10.-travel*17.));
+    }
 
     // The glow accumulates before speech, then visibly feeds the expanding wave.
     let throat=spot(p,vec2(.499,.274),vec2(.014,.021));
     let halo=spot(p,vec2(.499,.274),vec2(.060,.085));
     let charge=.68*breath+.45*voice;
     rgb+=pale*throat*.48*charge+gold*halo*.085*charge;
-    rgb+=ring_light(p,params.waves.x,params.waves.y);
-    rgb+=ring_light(p,params.waves.z,params.waves.w);
-    rgb+=ring_light(p,params.last_wave.x,params.last_wave.y);
+    rgb=shine(rgb,ring_light(p,params.waves.x,params.waves.y));
+    rgb=shine(rgb,ring_light(p,params.waves.z,params.waves.w));
+    rgb=shine(rgb,ring_light(p,params.last_wave.x,params.last_wave.y));
 
     // The departing field reaches the side curtains as a broad luminous seam.
     let front=exp(-pow((t-arrival-.42)/.33,2.))*(1.-restore);
-    rgb+=gold*backdrop*front*.07;
+    rgb=shine(rgb,gold*backdrop*front*.07);
 
     // The engraved floor is present in both states. Only the voice's reflected
     // light travels across it; no glyph strip survives at its horizon.
@@ -179,8 +200,8 @@ fn with_portrait(background:vec3<f32>,p:vec2<f32>)->vec3<f32>{
     let ground_distance=length(vec2(ground_q.x,ground_q.y/.15));
     let ground_wave=exp(-pow((ground_distance-params.waves.x)/.006,2.))
         *params.waves.y*floor_gate;
-    rgb+=gold*ground_wave*.28;
+    rgb=shine(rgb,gold*ground_wave*.28);
     let reflection=spot(p,vec2(.5,.923),vec2(.23,.13))*floor_gate;
-    rgb*=1.+reflection*(.28*voice+.10*breath);
+    rgb*=1.+reflection*(.28*voice+.10*breath)*select(1.,.3,sand());
     return vec4(with_portrait(rgb,q),1.);
 }

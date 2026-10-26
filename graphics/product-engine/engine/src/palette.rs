@@ -46,7 +46,9 @@ impl Palette {
             _ => Self::Dark,
         }
     }
-    /// Дюна, Мираж and Рассвет: illustrations print onto a light page.
+    /// Light themes (Дюна, Мираж, Рассвет) draw from Art's light (sand)
+    /// paintings: Дюна as painted, Мираж and Рассвет gradient-mapped. Dark
+    /// themes recolor only the dark originals.
     pub fn is_light(self) -> bool {
         matches!(self, Self::Light | Self::Mirage | Self::Dawn)
     }

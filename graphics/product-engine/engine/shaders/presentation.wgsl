@@ -19,10 +19,25 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     // Матрица shows the authored dark material in code green: a linear map
     // keeps premultiplied alpha, shading and white highlights (pale mint).
     // Mirror and its sprites arrive here uncolored in this theme.
-    // Мираж and Рассвет print the dark material on their paper: dim lines in
-    // the text ink (navy, plum), bright ones in the accent, white highlights
-    // in the detail color (lilac, copper). Black stays the page.
+    // Мираж and Рассвет print the dark vector material on their paper: dim
+    // lines in the text ink (navy, plum), bright ones in the accent, white
+    // highlights in the detail color (lilac, copper). Black stays the page.
     if (palette.mode.x > 4.5) {
+        let dawn = palette.mode.x > 5.5;
+        let text = select(vec3(38., 59., 107.), vec3(96., 51., 70.), dawn) / 255.;
+        let detail = select(vec3(155., 111., 171.), vec3(183., 122., 67.), dawn) / 255.;
+        // Gallery, voice and grounding rasters are Art's light (sand)
+        // paintings here: a gradient map, as in scene-palette's recolor.frag.
+        // Shadows in the text ink, the middle in the accent, the glow in the
+        // detail color and the brightest light becomes the page.
+        if (palette.mode.y > .5 && (palette.mode.y < 1.5 || palette.mode.y > 2.5)) {
+            let level = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)) / max(pixel.a, .0001), 0., 1.);
+            let soft = mix(detail, palette.paper.rgb, .35);
+            var mapped = mix(soft, palette.paper.rgb, (level - .72) / .28);
+            if (level < .4) { mapped = mix(text, palette.accent.rgb, level / .4); }
+            else if (level < .72) { mapped = mix(palette.accent.rgb, soft, (level - .4) / .32); }
+            return vec4(mapped * pixel.a, pixel.a);
+        }
         var energy = clamp(max(max(pixel.r, pixel.g), pixel.b), 0., pixel.a);
         var white = clamp(min(min(pixel.r, pixel.g), pixel.b), 0., pixel.a) / max(energy, .0001);
         if (palette.mode.y > 3.5) {
@@ -30,9 +45,6 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
             white = 0.;
         }
         let level = energy / max(pixel.a, .0001);
-        let dawn = palette.mode.x > 5.5;
-        let text = select(vec3(38., 59., 107.), vec3(96., 51., 70.), dawn) / 255.;
-        let detail = select(vec3(155., 111., 171.), vec3(183., 122., 67.), dawn) / 255.;
         var tint = mix(text, palette.accent.rgb, smoothstep(.25, .85, level));
         tint = mix(tint, detail, smoothstep(.5, .95, white) * .6);
         let ink = energy * .92;
@@ -53,6 +65,8 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     if (palette.mode.x < .5) { return pixel; }
     // Sand portraits are an authored RGBA asset, not a duotone of the original.
     if (palette.mode.x < 1.5 && palette.mode.y > .5 && palette.mode.y < 1.5) { return pixel; }
+    // So are Art's light paintings of the voice and grounding scenes in Дюна.
+    if (palette.mode.x > .5 && palette.mode.x < 1.5 && palette.mode.y > 2.5) { return pixel; }
     // The voice scene is a full-color gold painting. Max-channel duotone turned
     // all of it into saturated accent, so keep its shading via luminance,
     // compress the glows and use a muted accent with a soft highlight.

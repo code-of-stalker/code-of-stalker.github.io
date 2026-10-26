@@ -8,8 +8,9 @@ const browser = await chromium.launch({headless:true,executablePath:'C:/Program 
 try {
   const report=[];
   for(const [width,height,theme,reduced] of [[393,780,'dark',false],[320,568,'neutral',false],[1024,768,'violet',false],[393,780,'light',true]]) {
+    if(process.argv[3]==='reduced' && !reduced)continue;
     // Disposable browser profiles only; no actual diary or user's progress is touched.
-    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,serviceWorkers:'block'});
+    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,serviceWorkers:'block',reducedMotion:reduced?'reduce':'no-preference'});
     const page=await context.newPage(); const errors=[];
     page.on('pageerror',e=>errors.push(String(e)));
     await page.goto(base+'/practice');

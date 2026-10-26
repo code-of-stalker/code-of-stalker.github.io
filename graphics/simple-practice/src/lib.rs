@@ -445,16 +445,34 @@ pub fn compose(seconds: f32) -> Frame {
     }
 }
 
+/// The part of the authored 3:2 frame that a canvas shows, as x, y, width,
+/// height in scene pixels. A page shows all of it; a card covers its own
+/// shape and crops the frame around the middle instead of squeezing it.
+pub fn frame_rect(cover: bool, width: f32, height: f32) -> [f32; 4] {
+    let aspect = width / height;
+    if !cover || !aspect.is_finite() || aspect <= 0.0 {
+        return [0.0, 0.0, SIZE[0], SIZE[1]];
+    }
+    let full = SIZE[0] / SIZE[1];
+    if aspect < full {
+        let w = SIZE[1] * aspect;
+        [(SIZE[0] - w) * 0.5, 0.0, w, SIZE[1]]
+    } else {
+        let h = SIZE[0] / aspect;
+        [0.0, (SIZE[1] - h) * 0.5, SIZE[0], h]
+    }
+}
+
 /// Colors for the composite pass: the page, the ink of the room (red
 /// channel), the light of the person (green), the person's body (blue) and
-/// the haze of the bloom on light pages.
+/// the color light takes on light pages (where white would vanish).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
     pub paper: [f32; 3],
     pub room: [f32; 3],
     pub person: [f32; 3],
     pub body: [f32; 3],
-    pub haze: [f32; 3],
+    pub lamp: [f32; 3],
     pub light: bool,
 }
 const fn rgb(v: u32) -> [f32; 3] {
@@ -476,7 +494,7 @@ pub fn look(code: u32) -> Look {
         room: accent,
         person: mix(highlight, [1.0; 3], 0.25),
         body: mix(paper, [0.0; 3], 0.45),
-        haze: accent,
+        lamp: accent,
         light: false,
     };
     match palette {
@@ -488,7 +506,8 @@ pub fn look(code: u32) -> Look {
                 room: rgb(0xC9601E),
                 person: rgb(0x8E3A00),
                 body: mix(paper, rgb(0xFFF4D0), 0.35),
-                haze: mix(paper, rgb(0xBE4C00), 0.35),
+                // A warm lamp light: visible on sand, kept inside the body.
+                lamp: rgb(0xE8912E),
                 light: true,
             }
         }
@@ -499,7 +518,12 @@ pub fn look(code: u32) -> Look {
                 room: c.accent,
                 person: c.highlight,
                 body: mix(c.paper, [1.0; 3], 0.3),
-                haze: mix(c.paper, c.detail, 0.5),
+                // Мираж glows in its blue, Рассвет in its copper.
+                lamp: if palette == Palette::Dawn {
+                    c.detail
+                } else {
+                    c.accent
+                },
                 light: true,
             },
             Some(c) => dark(c.paper, c.accent, c.highlight),
@@ -645,6 +669,33 @@ mod tests {
             }
             previous = f;
         }
+    }
+
+    #[test]
+    fn a_card_crops_the_frame_without_squeezing_it() {
+        assert_eq!(
+            frame_rect(false, 300.0, 300.0),
+            [0.0, 0.0, SIZE[0], SIZE[1]]
+        );
+        assert_eq!(
+            frame_rect(true, 1536.0, 1024.0),
+            [0.0, 0.0, SIZE[0], SIZE[1]]
+        );
+        for (w, h) in [
+            (380.0, 338.0),
+            (650.0, 466.0),
+            (900.0, 300.0),
+            (200.0, 400.0),
+        ] {
+            let [x, y, fw, fh] = frame_rect(true, w, h);
+            assert!(close(fw / fh, w / h, 1e-4));
+            assert!(x >= 0.0 && y >= 0.0 && x + fw <= SIZE[0] + 0.01 && y + fh <= SIZE[1] + 0.01);
+            assert!(
+                close(x + fw * 0.5, SIZE[0] * 0.5, 0.01)
+                    && close(y + fh * 0.5, SIZE[1] * 0.5, 0.01)
+            );
+        }
+        assert_eq!(frame_rect(true, 0.0, 0.0), [0.0, 0.0, SIZE[0], SIZE[1]]);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
 //! from `compose` and the generators in `geometry`.
 use crate::geometry::{self, Mesh, Scene, SCATTER};
-use crate::{compose, look, Frame, Look, FIGURE, LOOP_SECONDS, SIZE, STILL};
+use crate::{compose, frame_rect, look, Frame, Look, FIGURE, LOOP_SECONDS, SIZE, STILL};
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
@@ -17,8 +17,6 @@ const WIDE: i32 = 4;
 const SPARE: i32 = 5;
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.1, 0.1, 0.12, 0.16];
-/// Authored px → clip.
-const VIEW: [f32; 4] = [2.0 / SIZE[0], -2.0 / SIZE[1], -1.0, 1.0];
 
 fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     let s = gl.create_shader(kind).ok_or("Cannot allocate shader")?;
@@ -178,6 +176,10 @@ pub struct SimplePractice {
     bytes: Vec<u8>,
     look: Look,
     soft_edges: bool,
+    cover: bool,
+    /// The shown part of the frame (scene pixels) and its clip transform.
+    rect: [f32; 4],
+    view: [f32; 4],
     backdrop: [f32; 3],
     elapsed: f32,
     last_time: Option<f64>,
@@ -224,13 +226,14 @@ impl SimplePractice {
                 "u_room",
                 "u_person",
                 "u_body",
-                "u_haze",
+                "u_lamp",
                 "u_backdrop",
                 "u_cone_a",
                 "u_cone_b",
                 "u_air",
                 "u_post",
                 "u_edges",
+                "u_frame",
             ],
         )?;
         let texture = image_texture(&gl, FIGURE_UNIT, &figure)?;
@@ -269,6 +272,9 @@ impl SimplePractice {
             bytes: Vec::with_capacity(40_000 * geometry::STRIDE * 4),
             look: look(0),
             soft_edges: false,
+            cover: false,
+            rect: [0.0, 0.0, SIZE[0], SIZE[1]],
+            view: [2.0 / SIZE[0], -2.0 / SIZE[1], -1.0, 1.0],
             backdrop: [0.0; 3],
             elapsed: 0.0,
             last_time: None,
@@ -329,6 +335,13 @@ impl SimplePractice {
     pub fn soft_edges(&mut self, enabled: bool) {
         if self.soft_edges != enabled {
             self.soft_edges = enabled;
+            self.draw();
+        }
+    }
+    /// Fill a card of any shape: crop the frame around its middle.
+    pub fn cover(&mut self, enabled: bool) {
+        if self.cover != enabled {
+            self.cover = enabled;
             self.draw();
         }
     }
@@ -409,7 +422,8 @@ impl SimplePractice {
     }
     fn begin(&self, pass: &Pass) {
         self.gl.use_program(Some(&pass.program));
-        self.gl.uniform4fv_with_f32_array(pass.at("u_view"), &VIEW);
+        self.gl
+            .uniform4fv_with_f32_array(pass.at("u_view"), &self.view);
     }
     fn draw_span(&self, (first, count): Span) {
         if count > 0 {
@@ -488,19 +502,17 @@ impl SimplePractice {
             return;
         }
         let f = compose(if self.reduced { STILL } else { self.elapsed });
+        let [x, y, w, h] = frame_rect(self.cover, width as f32, height as f32);
+        self.rect = [x, y, w, h];
+        self.view = [2.0 / w, -2.0 / h, -1.0 - 2.0 * x / w, 1.0 + 2.0 * y / h];
         let mut mesh = std::mem::take(&mut self.mesh);
         mesh.clear();
-        mesh.pixel = (SIZE[0] / width.max(1) as f32).max(0.5);
+        mesh.pixel = (w / width.max(1) as f32).max(0.5);
         let s = &self.scene;
         let quad = span(&mut mesh, |m| {
             // The screen in texture coordinates (GL rows start at the bottom).
             m.quad(
-                [
-                    [0.0, 0.0],
-                    [SIZE[0], 0.0],
-                    [SIZE[0], SIZE[1]],
-                    [0.0, SIZE[1]],
-                ],
+                [[x, y], [x + w, y], [x + w, y + h], [x, y + h]],
                 [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
                 [[0.0; 4]; 4],
                 [[0.0; 3]; 4],
@@ -613,8 +625,9 @@ impl SimplePractice {
         gl.uniform3fv_with_f32_array(c.at("u_room"), &l.room);
         gl.uniform3fv_with_f32_array(c.at("u_person"), &l.person);
         gl.uniform3fv_with_f32_array(c.at("u_body"), &l.body);
-        gl.uniform3fv_with_f32_array(c.at("u_haze"), &l.haze);
+        gl.uniform3fv_with_f32_array(c.at("u_lamp"), &l.lamp);
         gl.uniform3fv_with_f32_array(c.at("u_backdrop"), &self.backdrop);
+        gl.uniform4fv_with_f32_array(c.at("u_frame"), &self.rect);
         let cone = geometry::cone(&f.camera);
         gl.uniform4fv_with_f32_array(c.at("u_cone_a"), &cone[..4]);
         gl.uniform4fv_with_f32_array(c.at("u_cone_b"), &cone[4..]);

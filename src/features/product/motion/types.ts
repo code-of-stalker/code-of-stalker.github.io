@@ -8,15 +8,20 @@ import type { ArtInteraction } from './gesture';
 export type DreamArtKind = 'dream-world' | 'dream-wake' | 'dream-inward' | 'dreamer';
 export type StepOneArtKind = 'identity-imprints' | 'lived-paths';
 export type StepThreeArtKind = 'thought-loop' | 'spoken-thought' | 'voice-origin' | 'breath-axis' | 'voice-unseal' | 'voice-witness';
+export type StepFourArtKind = 'grounding-here' | 'grounding-drift' | 'grounding-trace' | 'grounding-contact' | 'grounding-voice' | 'grounding-persona' | 'grounding-signal' | 'grounding-presence';
 export type PracticeArtKind = 'practice-room' | 'practice-father' | 'practice-listening' | 'practice-trinity' | 'practice-awareness' | 'practice-thread' | 'home-shade';
 export type StepTwoTaskArtKind = 'hero-discernment' | 'life-book' | 'body-breath' | 'body-senses' | 'author-intention';
-export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind;
+export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'grounding-hero' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind | StepFourArtKind;
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
+/** Live Rust illustrations that replace a page's artwork in the browser. */
+export type WebScene = 'theatre-marionette' | 'world-in-glasses';
 export type ArtController = { interact(value: ArtInteraction): void };
 export type ArtProps = {
   kind: ArtKind;
+  /** Optional live Rust illustration in the browser; native keeps its current scene. */
+  webScene?: WebScene;
   glass?: GlassShape;
   scanOnMount?: boolean;
   onRevealProgress?(value: number): void;
@@ -48,6 +53,15 @@ export type ArtProps = {
   style?: StyleProp<ViewStyle>;
 };
 export const artLabels: Record<ArtKind, string> = {
+  'grounding-here': 'Сидящий человек у окна ощущает вес тела и опору ступней',
+  'grounding-hero': 'Световой человек сидит в матричном пространстве, обе ступни опираются на пол',
+  'grounding-drift': 'Над телом движется сеть мыслей, внимание возвращается к опоре',
+  'grounding-contact': 'Свет проходит через тело к ступням, плоскость пола становится ощутимой',
+  'grounding-voice': 'Голос рождается из дыхания, человек слышит собственное состояние',
+  'grounding-trace': 'Вывод разворачивается в цепочку: ощущение, образ, мысль, вывод',
+  'grounding-persona': 'Слои образа и установок отделяются от непрозрачного человеческого силуэта',
+  'grounding-signal': 'Тихий импульс проходит сквозь механизм мыслей',
+  'grounding-presence': 'Целостный силуэт стоит на земле, свет от опоры наполняет форму',
   'home-shade': 'Мягкое затемнение под текстом',
   'practice-room': 'Человек на стуле произносит четыре фразы, комната постепенно проявляется',
   'practice-father': 'Свет мальчика становится Отцом; каждая из четырёх фраз входит в него и снимает одно кольцо, и Отец светом возвращается в него',

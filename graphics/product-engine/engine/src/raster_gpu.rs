@@ -12,6 +12,7 @@ pub enum Kind {
     Gallery,
     Mirror,
     VoicePresence,
+    GroundingHero,
 }
 impl Kind {
     /// Authored gallery, mask-colored mirror and the voice painting have
@@ -21,6 +22,7 @@ impl Kind {
             Self::Gallery => 1.,
             Self::Mirror => 2.,
             Self::VoicePresence => 3.,
+            Self::GroundingHero => 4.,
         }
     }
 }
@@ -31,8 +33,9 @@ pub struct RasterLibrary {
     screen: wgpu::RenderPipeline,
     mirror: wgpu::RenderPipeline,
     voice: wgpu::RenderPipeline,
+    grounding: wgpu::RenderPipeline,
     fade: wgpu::RenderPipeline,
-    assets: std::cell::RefCell<[Option<wgpu::Texture>; 6]>,
+    assets: std::cell::RefCell<[Option<wgpu::Texture>; 8]>,
 }
 impl RasterLibrary {
     fn atlas(
@@ -47,9 +50,13 @@ impl RasterLibrary {
             Kind::Gallery => 0,
             Kind::Mirror => 1,
             Kind::VoicePresence => 3,
+            Kind::GroundingHero => 6,
         };
         self.assets.borrow_mut()[at]
             .get_or_insert_with(|| {
+                if at == 6 {
+                    return upload_image(device, queue, &crate::grounding_hero::prepared_artwork());
+                }
                 upload(
                     device,
                     queue,
@@ -81,6 +88,11 @@ impl RasterLibrary {
             .get_or_insert_with(|| {
                 upload_image(device, queue, &crate::voice_presence::user_portrait())
             })
+            .clone()
+    }
+    fn grounding_coverage(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
+        self.assets.borrow_mut()[7]
+            .get_or_insert_with(|| upload_image(device, queue, &crate::grounding_hero::coverage()))
             .clone()
     }
     pub fn new(device: &wgpu::Device) -> Self {
@@ -142,6 +154,12 @@ impl RasterLibrary {
                 "../shaders/voice-presence.wgsl"
             ))),
         });
+        let grounding_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("grounding hero artwork"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../shaders/grounding-hero.wgsl"
+            ))),
+        });
         let attributes = wgpu::vertex_attr_array![0=>Float32x2,1=>Float32x2,2=>Float32x2,3=>Float32x4,4=>Float32x4,5=>Float32x4];
         let buffers = [Some(wgpu::VertexBufferLayout {
             array_stride: 72,
@@ -200,6 +218,13 @@ impl RasterLibrary {
         );
         let mirror = make(&wall, "mirror_vs", "mirror_fs", normal_blend, false);
         let voice = make(&voice_shader, "voice_vs", "voice_fs", normal_blend, false);
+        let grounding = make(
+            &grounding_shader,
+            "grounding_vs",
+            "grounding_fs",
+            normal_blend,
+            false,
+        );
         // Multiply destination RGB and alpha together, preserving premultiplication.
         // One final triangle in the existing pass; no extra texture or scene reset.
         let multiply_alpha = wgpu::BlendComponent {
@@ -224,8 +249,9 @@ impl RasterLibrary {
             screen,
             mirror,
             voice,
+            grounding,
             fade,
-            assets: std::cell::RefCell::new([None, None, None, None, None, None]),
+            assets: std::cell::RefCell::new([None, None, None, None, None, None, None, None]),
         }
     }
 }
@@ -526,6 +552,10 @@ impl RasterGpu {
             library
                 .voice_portrait(device, queue)
                 .create_view(&Default::default())
+        } else if matches!(kind, Kind::GroundingHero) {
+            library
+                .grounding_coverage(device, queue)
+                .create_view(&Default::default())
         } else {
             av.clone()
         };
@@ -657,7 +687,7 @@ impl RasterGpu {
                 * match self.kind {
                     Kind::Gallery => 0.45,
                     Kind::Mirror => 0.65,
-                    Kind::VoicePresence => 1.,
+                    Kind::VoicePresence | Kind::GroundingHero => 1.,
                 }
         };
         let mut values = [0f32; 32];
@@ -680,9 +710,29 @@ impl RasterGpu {
                 Kind::Gallery => [1487., 1058.],
                 Kind::Mirror => [576., 412.],
                 Kind::VoicePresence => crate::voice_presence::ARTWORK_SIZE,
+                Kind::GroundingHero => [self.atlas.width() as f32, self.atlas.height() as f32],
             },
         );
         match self.kind {
+            Kind::GroundingHero => {
+                let frame = crate::grounding_hero::frame(seconds, reduced);
+                values[0..4].copy_from_slice(&[
+                    frame.breath,
+                    frame.code_phase,
+                    frame.motion,
+                    frame.contact,
+                ]);
+                values[8] = width;
+                values[9] = height;
+                values[12..14].copy_from_slice(&frame.flow);
+                values[16..20].copy_from_slice(&[
+                    frame.waves[0][0],
+                    frame.waves[0][1],
+                    frame.waves[1][0],
+                    frame.waves[1][1],
+                ]);
+                values[30] = 1.;
+            }
             Kind::Gallery => {
                 values[8..12].copy_from_slice(&gallery::BASE);
                 values[20..24].copy_from_slice(&gallery::FLOOR_MASK);
@@ -812,6 +862,10 @@ impl RasterGpu {
         }
         if matches!(self.kind, Kind::VoicePresence) {
             pass.set_pipeline(&library.voice);
+            pass.draw(0..3, 0..1);
+        }
+        if matches!(self.kind, Kind::GroundingHero) {
+            pass.set_pipeline(&library.grounding);
             pass.draw(0..3, 0..1);
         }
         pass.set_vertex_buffer(0, self.vertices.slice(..));

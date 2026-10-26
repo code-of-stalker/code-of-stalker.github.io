@@ -97,3 +97,23 @@ test('earned third step remains accessible without preview access', () => {
   const progress = { ...model.defaultProgress, step: 3, secondStepCompletedAt: 1000 };
   assert.equal(model.accessibleProgress(progress, false), progress);
 });
+
+test('step four preview does not unlock earned content and preserves both bookmarks', async () => {
+  const {store,read}=fixture();
+  await store.updateSettings({testUnlockAll:true});
+  await store.updateProgress({step:4,stepFourReading:{page:10,offset:20},stepThreeReading:{chapter:1,page:6,offset:0}});
+  assert.equal(model.accessibleProgress(read().progress,true).step,4);
+  await store.updateSettings({testUnlockAll:false});
+  assert.equal(read().progress.step,1);
+  assert.equal(read().progress.stepFourReading.page,10);
+  assert.equal(read().progress.stepThreeReading.page,6);
+  assert.equal(read().progress.fourthStepUnlocked,undefined);
+});
+test('normal fourth-step access follows the final third-step practice and remains earned', () => {
+  const progress={...model.defaultProgress,secondStepCompletedAt:1000,stepThreeReading:{chapter:1,page:5,offset:0}};
+  assert.equal(model.canOpenFourthStep(progress),false);
+  progress.stepThreeReading.page=6;
+  assert.equal(model.canOpenFourthStep(progress),true);
+  progress.fourthStepUnlocked=true; progress.stepThreeReading.page=0;
+  assert.equal(model.canOpenFourthStep(progress),true);
+});

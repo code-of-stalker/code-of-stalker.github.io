@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { PracticeIntroScreen } from '../../features/product/screens/PracticeIntroScreen';
 import { ObservationFlow } from '../../features/product/ObservationFlow';
 import { useProduct } from '../../features/product/state/ProductProvider';
-import { resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
+import { canOpenFourthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
 import { ProductText, ScreenTransition } from '../../features/product/ui';
+import { stepThreePractice } from '../../features/product/stepThreePractice';
 
 export default function Practice() {
   const { progress, settings, updateProgress, completeSecondStep, error } = useProduct();
@@ -26,7 +27,16 @@ export default function Practice() {
   async function previousStep() {
     setReturnToEnd(true);
     try {
-      await updateProgress({ step: !previewing && progress.step === 3 ? 2 : 1, questionIndex: 3, practiceStage: 4 });
+      await updateProgress({
+        step: !previewing && progress.step >= 3 ? progress.step - 1 : 1,
+        questionIndex: 3,
+        practiceStage: progress.step === 4 ? 0 : 4,
+        // A backwards boundary crossing enters the end of the previous step,
+        // independently of whichever Step 3 bookmark was saved before it.
+        ...(!previewing && progress.step === 4 ? {
+          stepThreeReading: { chapter: 1 as const, page: stepThreePractice.length - 1, offset: 0, paged: true },
+        } : {}),
+      });
       if (previewing) router.replace({ pathname: '/practice', params: { entry: 'end' } });
     } catch { /* The provider reports persistence errors. */ }
   }
@@ -45,7 +55,7 @@ export default function Practice() {
       onQuestions={step => { void questions(step); }} onSelectStep={step => {
         setReturnToEnd(false);
         if (previewing) { if (step === 1) void updateProgress({ step: 1 }).then(() => router.replace('/practice')).catch(() => {}); return; }
-        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
+        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll) || step === 4 && canOpenFourthStep(progress, settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
       }}
       onCompleteSecondStep={completeSecondStep}
       renderQuestions={previewing ? undefined : (active, onBack, registerNavigation, onQuestionHeight, effectsActive, onAnswered) => <ObservationFlow embedded active={active} onAnswered={onAnswered} effectsActive={effectsActive} startAtEnd={returnToEnd} onBack={() => { setReturnToEnd(false); onBack(); }} onNavigationReady={registerNavigation} onQuestionHeight={onQuestionHeight} />} />

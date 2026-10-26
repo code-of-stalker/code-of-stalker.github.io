@@ -16,7 +16,7 @@ import { readingPages } from './readingPages';
 
 export type ReadingPagePosition = { index: number; count: number };
 export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
-  step: 1 | 2 | 3; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
+  step: 1 | 2 | 3 | 4; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
   endContent?: ReactNode;
   initialIndex?: number; initialOffset?: number;
   reading: ReadingLayout; width: number; viewportHeight: number; reducedMotion: boolean;
@@ -43,7 +43,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
         const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
-        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? Math.min(viewportHeight * .55, step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 0;
+        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? Math.min(viewportHeight * .55, step === 4 ? artWidth * 2 / 3 : step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 0;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
             startAtEnd={selected && position.end} initialOffset={selected ? position.offset : 0} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
@@ -52,7 +52,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             readingGesture={selected && value === 0 ? reading.readingGesture : undefined}
             onViewportChange={selected ? reading.onViewportChange : undefined}
             contentStyle={[reading.contentStyle, { paddingHorizontal: reading.contentInset + 8, paddingBottom: Math.max(Number(reading.contentStyle.paddingBottom), 28) }]}>
-            <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step === 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
+            <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.title}>{page.title}</ProductText>}
             <View testID="reading-page-copy" style={styles.copy}>
               {page.paragraphs.map(text => <Paragraph key={text} text={text} style={textStyle} />)}
@@ -66,7 +66,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
               { marginHorizontal: -reading.contentInset - 8 }]}>
-              <Art kind={kind} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+              <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}

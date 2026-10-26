@@ -1,0 +1,7 @@
+Layer 5: 55 paths, 5926 segments
+Layer 4: 30 paths, 616 segments
+Layer 3: 30 paths, 763 segments
+Layer 2: 21 paths, 473 segments
+Layer 1: 24 paths, 612 segments
+Layer 0: 131 paths, 1574 segments
+Layer 0: 3 paths, 562 segments

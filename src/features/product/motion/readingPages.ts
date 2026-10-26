@@ -1,10 +1,11 @@
 import { stepDescriptions, stepTwoDream } from '../content';
-import type { ArtKind } from './types';
+import type { ArtKind, WebScene } from './types';
 import { stepThreeBlocks } from '../stepThreeContent';
 import { stepThreePractice } from '../stepThreePractice';
+import { stepFourPages } from '../stepFourContent';
 
 export type ReadingPage = {
-  id: string; art?: ArtKind; paragraphs: readonly string[];
+  id: string; art?: ArtKind; webScene?: WebScene; paragraphs: readonly string[];
   spoken?: readonly string[]; after?: readonly string[];
   title?: string; emphasis?: string; conclusion?: string; firstStepConclusion?: boolean; statement?: string;
 };
@@ -26,4 +27,4 @@ const dream: readonly ReadingPage[] = stepTwoDream.blocks.map((block, index) => 
 }));
 /** Reading order and content are application data; motion stays in Rust. */
 const voice: readonly ReadingPage[] = stepThreeBlocks.map(({ emphasis, ...block }) => ({ ...block, statement: emphasis }));
-export const readingPages = (step: 1 | 2 | 3, chapter: 0 | 1) => step === 3 ? chapter === 0 ? voice : stepThreePractice : step === 1 ? first : chapter === 0 ? hero : dream;
+export const readingPages = (step: 1 | 2 | 3 | 4, chapter: 0 | 1) => step === 4 ? stepFourPages : step === 3 ? chapter === 0 ? voice : stepThreePractice : step === 1 ? first : chapter === 0 ? hero : dream;

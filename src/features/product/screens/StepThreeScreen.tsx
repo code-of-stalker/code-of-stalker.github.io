@@ -57,7 +57,7 @@ function MeasuredArt({ kind, width, active, reducedMotion, topInset, onMeasure }
 }
 
 /** Uses the same Rust expansion, fitted panel and reading input gate as steps 1–2. */
-export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false }: PracticeIntroScreenProps) {
+export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false, startAtEnd = false }: PracticeIntroScreenProps) {
   const { settings } = useProduct(), focused = useIsFocused();
   const destination = useReadingDestination();
   const { initial, record, flush } = useStepThreeBookmark();
@@ -133,7 +133,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availab
                   const current = part === chapter, enabled = current && focused && !open && !changing;
                   if (paged || part === 1) return <EconomyReadingPages step={3} chapter={part} active={current && focused && !open} enabled={enabled}
                     initialIndex={entry.chapter === part ? entry.page : 0} initialOffset={entry.chapter === part ? entry.offset : 0}
-                    canAdvance={part === 0} startAtEnd={part === 0 && returnToReading}
+                    canAdvance={part === 0} startAtEnd={part === 0 && returnToReading || part === 1 && startAtEnd && entry.chapter === 1 && entry.page === stepThreePractice.length - 1}
                     reading={reading} width={width} viewportHeight={viewport.height} reducedMotion={reducedMotion}
                     onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => changeChapter(1)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}

@@ -13,7 +13,7 @@ use std::{
 };
 
 pub const PERIOD: f64 = 36.;
-/// The reduced-motion still: through the gate, the maze melted, the Light named.
+/// The reduced-motion still: through the gate, the maze melted into the Light.
 pub const REST: f64 = 31.;
 
 type Cell = (usize, usize);
@@ -962,11 +962,6 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     }
     c.end();
 
-    // The Light, named.
-    let named = bell(t, RISE.0 + 2., RISE.0 + 3., PERIOD - 2.4, PERIOD - 1.6);
-    c.fixed(|| ellipse((160., 42.), 125., 30.), r#"fill="url(#nt-smudge)""#, 0.55 * named);
-    let place_light = format!("translate(160 {:.2}) scale(1.25)", 30. + 2. * (1. - named));
-    c.words("СВЕТ", || word("СВЕТ", 0., 3.6, 10.), &fill(LIGHT), &place_light, named);
     soft_edges(c, "nt");
     c.end();
 }

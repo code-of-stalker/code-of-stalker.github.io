@@ -40,6 +40,16 @@ export default function Practice() {
       if (previewing) router.replace({ pathname: '/practice', params: { entry: 'end' } });
     } catch { /* The provider reports persistence errors. */ }
   }
+  async function nextStep() {
+    if (previewing || progress.step !== 3) return;
+    setReturnToEnd(false);
+    try {
+      // A forwards boundary crossing enters the start of Step 4, like the
+      // backwards one enters the end of Step 3.
+      await updateProgress({ step: 4, practiceStage: 0, questionIndex: 0, stepFourReading: { page: 0, offset: 0 },
+        ...(!settings.testUnlockAll ? { fourthStepUnlocked: true } : {}) });
+    } catch { /* The provider reports persistence errors. */ }
+  }
   return <ScreenTransition reducedMotion={settings.reducedMotion}>
     <PracticeIntroScreen key={previewing ? `cooldown-preview-${previewDeadline}` : 'practice'}
       step={previewing ? 2 : progress.step} availableAt={previewing ? previewDeadline : progress.availableAt}
@@ -52,6 +62,7 @@ export default function Practice() {
       onLevels={() => router.dismissTo('/levels')}
       onDiary={() => router.push('/diary')}
       onPreviousStep={() => { void previousStep(); }}
+      onNextStep={previewing ? undefined : () => { void nextStep(); }}
       onQuestions={step => { void questions(step); }} onSelectStep={step => {
         setReturnToEnd(false);
         if (previewing) { if (step === 1) void updateProgress({ step: 1 }).then(() => router.replace('/practice')).catch(() => {}); return; }

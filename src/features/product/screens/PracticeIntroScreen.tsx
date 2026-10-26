@@ -41,7 +41,7 @@ import { useWebUpdateBlock } from '../updates/webUpdateSafety';
 
 export type PracticeIntroScreenProps = {
   step: number; availableAt: number | null; testUnlockAll?: boolean; reducedMotion?: boolean;
-  onBack(): void; onClose(): void; onLevels(): void; onQuestions(step?: number): void; onSelectStep(step: number): void; onPreviousStep(): void; onDiary(): void;
+  onBack(): void; onClose(): void; onLevels(): void; onQuestions(step?: number): void; onSelectStep(step: number): void; onPreviousStep(): void; onNextStep?(): void; onDiary(): void;
   renderQuestions?: (active: boolean, onBack: () => void, registerNavigation: (actions: ObservationNavigation | null) => void, onQuestionHeight: (height: number) => void, effectsActive: boolean, onAnswered?: () => void) => ReactNode; showQuestions?: boolean;
   initialStage?: PracticeStage;
   startAtEnd?: boolean;

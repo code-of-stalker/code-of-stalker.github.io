@@ -57,7 +57,7 @@ function MeasuredArt({ kind, width, active, reducedMotion, topInset, onMeasure }
 }
 
 /** Uses the same Rust expansion, fitted panel and reading input gate as steps 1–2. */
-export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false, startAtEnd = false }: PracticeIntroScreenProps) {
+export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onClose, availableAt, testUnlockAll, reducedMotion = false, startAtEnd = false }: PracticeIntroScreenProps) {
   const { settings } = useProduct(), focused = useIsFocused();
   const destination = useReadingDestination();
   const { initial, record, flush } = useStepThreeBookmark();
@@ -101,6 +101,8 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availab
     restoringOffset.current = false;
   };
   const retreat = () => { if (chapter === 1) changeChapter(0); else onPreviousStep(); };
+  // Scrolling past the signature crosses into the start of Step 4.
+  const advance = (part: 0 | 1) => { if (part === 0) changeChapter(1); else if (onNextStep) { flush(); onNextStep(); } };
   const back = () => { if (open) setOpen(false); else retreat(); };
   useBackSwipe(back);
   useWebUpdateBlock(focused && (expanded || chapter === 1 || page.index > 0));
@@ -133,10 +135,10 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availab
                   const current = part === chapter, enabled = current && focused && !open && !changing;
                   if (paged || part === 1) return <EconomyReadingPages step={3} chapter={part} active={current && focused && !open} enabled={enabled}
                     initialIndex={entry.chapter === part ? entry.page : 0} initialOffset={entry.chapter === part ? entry.offset : 0}
-                    canAdvance={part === 0} startAtEnd={part === 0 && returnToReading || part === 1 && startAtEnd && entry.chapter === 1 && entry.page === stepThreePractice.length - 1}
+                    canAdvance={part === 0 || !!onNextStep} startAtEnd={part === 0 && returnToReading || part === 1 && startAtEnd && entry.chapter === 1 && entry.page === stepThreePractice.length - 1}
                     reading={reading} width={width} viewportHeight={viewport.height} reducedMotion={reducedMotion}
                     onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
-                    onAdvance={() => changeChapter(1)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}
+                    onAdvance={() => advance(part)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}
                     endContent={part === 1 ? <StepSignature active={current && focused && !open} reducedMotion={reducedMotion} /> : undefined} />;
                   return <ScrollGate enabled={enabled} allowAdvance={current} onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => changeChapter(1)} onRetreat={retreat} fadeTop={24} fadeBottom={24} startAtEnd={returnToReading} initialOffset={entry.chapter === part ? entry.offset : 0} guardEntryGesture={returnToReading}
@@ -155,8 +157,8 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availab
           </Reveal>}
         </ReadingExpansion>
       </View>
-      <ScrollCue visible={ready && !open && (more || chapter === 0 || progress < 0)} progress={progress} reducedMotion={reducedMotion}
-        label={progress < 0 ? chapter === 1 || paged && page.index > 0 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 2' : 'ПРОКРУТИ ДАЛЬШЕ'}
+      <ScrollCue visible={ready && !open && (more || chapter === 0 || !!onNextStep || progress < 0)} progress={progress} reducedMotion={reducedMotion}
+        label={progress < 0 ? chapter === 1 || paged && page.index > 0 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 2' : chapter === 1 && !more ? 'ПРОКРУТИ К ШАГУ 4' : 'ПРОКРУТИ ДАЛЬШЕ'}
         style={{ left: gutter + 28, right: gutter + 28 }} />
     </View>
   </ProductScreen>;

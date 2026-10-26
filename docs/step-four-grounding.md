@@ -144,7 +144,7 @@ generated binary during conflict resolution.
 - The three standalone web scenes of Step 4 (world in glasses, cloud drift,
   theatre marionette) follow the app theme. `graphics/scene-palette` renders
   each finished frame offscreen and recolors it with the product engine's
-  grounding mapping: Matrix yellow luminance in Искра, the sand duotone in Дюна,
+  grounding mapping: Matrix yellow luminance in Искра, a soft sepia print in Дюна,
   cool luminance ink in Тишина and Астрал. The page edges melt in after the
   recolor. Each scene exposes `palette(code)` with the `graphicsPalette` codes;
   other codes keep the original colors for previews and video export.

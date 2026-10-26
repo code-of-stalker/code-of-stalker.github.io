@@ -22,7 +22,7 @@ pub enum Palette {
     Original,
     /// Искра: Matrix yellow on black.
     Dark,
-    /// Дюна: orange on sand.
+    /// Дюна: a sepia print in brown ink on sand.
     Light,
     /// Тишина.
     Neutral,
@@ -58,12 +58,12 @@ impl Palette {
         }
     }
     /// The same values as `src/features/product/theme.ts` and the product
-    /// engine's `palette.rs`.
+    /// engine's `palette.rs`. Дюна's highlight is its brown text ink.
     pub fn colors(self) -> Option<Colors> {
         let (paper, accent, highlight) = match self {
             Self::Original => return None,
             Self::Dark => (rgb(0, 0, 0), rgb(245, 221, 7), rgb(245, 221, 7)),
-            Self::Light => (rgb(250, 225, 143), rgb(255, 102, 0), rgb(255, 102, 0)),
+            Self::Light => (rgb(250, 225, 143), rgb(255, 102, 0), rgb(190, 76, 0)),
             Self::Neutral => (rgb(13, 21, 32), rgb(134, 201, 199), rgb(214, 218, 210)),
             Self::Violet => (rgb(13, 20, 38), rgb(98, 150, 245), rgb(170, 150, 214)),
         };
@@ -90,8 +90,14 @@ impl Palette {
         match self {
             Self::Dark => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
             Self::Light => {
-                let energy = color[0].max(color[1]).max(color[2]).clamp(0.0, 1.0);
-                mix(paper, accent, energy)
+                let level = dot(color).clamp(0.0, 1.0);
+                let print = mix(paper, highlight, (1.0 - level).powf(1.8) * 0.42);
+                let t = ((level - 0.55) / 0.45).clamp(0.0, 1.0);
+                mix(
+                    print,
+                    mix(paper, accent, 0.5),
+                    t * t * (3.0 - 2.0 * t) * 0.35,
+                )
             }
             _ => {
                 let level = dot(color).clamp(0.0, 1.0);
@@ -124,8 +130,8 @@ mod tests {
     }
 
     #[test]
-    fn black_is_the_page_of_every_theme() {
-        for palette in THEMES {
+    fn black_is_the_page_of_every_dark_theme() {
+        for palette in [Palette::Dark, Palette::Neutral, Palette::Violet] {
             let paper = palette.colors().unwrap().paper;
             assert_eq!(palette.recolor([0.0; 3]), paper, "{palette:?}");
         }
@@ -139,9 +145,16 @@ mod tests {
     }
 
     #[test]
-    fn sand_turns_light_into_orange() {
+    fn sand_keeps_the_picture_light_and_never_floods_it_with_orange() {
+        let luma = |[r, g, b]: [f32; 3]| r * LUMA[0] + g * LUMA[1] + b * LUMA[2];
+        let paper = Palette::Light.colors().unwrap().paper;
+        let black = Palette::Light.recolor([0.0; 3]);
         let white = Palette::Light.recolor([1.0; 3]);
-        assert_eq!(white, Palette::Light.colors().unwrap().accent);
+        // Shadows are a brown tint of the page, not a dark block.
+        assert!(luma(black) > 0.55 && luma(black) < luma(paper));
+        // Light warms toward the accent at most halfway.
+        assert!(white[1] > 0.6 && white[2] > 0.25, "{white:?}");
+        assert!(luma(white) > luma(black));
     }
 
     #[test]

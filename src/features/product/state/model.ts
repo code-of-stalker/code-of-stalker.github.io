@@ -1,7 +1,7 @@
 import { validateTextRuns, type DiaryTextRun } from '../diary/text-format';
 export type ProductLevel = 'basic' | 'intensive' | 'guidance';
 export type ProductSettings = {
-  theme: 'system' | 'dark' | 'light' | 'neutral' | 'violet' | 'matrix';
+  theme: 'system' | 'dark' | 'light' | 'neutral' | 'violet' | 'matrix' | 'mirage' | 'dawn';
   startAt: 'home' | 'architecture' | 'diary';
   microphoneCheck: boolean;
   microphoneDeviceId?: string;
@@ -120,7 +120,7 @@ export function validateObservationDraft(draft: ObservationDraft, limitSeconds =
 export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
   const settings = value?.settings, progress = value?.progress;
   if (value?.version !== 1 || !settings || !progress ||
-      !['system', 'dark', 'light', 'neutral', 'violet', 'matrix'].includes(settings.theme) ||
+      !['system', 'dark', 'light', 'neutral', 'violet', 'matrix', 'mirage', 'dawn'].includes(settings.theme) ||
       !['home', 'architecture', 'diary'].includes(settings.startAt) ||
       typeof settings.microphoneCheck !== 'boolean' || typeof settings.reducedMotion !== 'boolean' ||
       (settings.microphoneDeviceId !== undefined && (typeof settings.microphoneDeviceId !== 'string' || settings.microphoneDeviceId.length > 1024)) ||

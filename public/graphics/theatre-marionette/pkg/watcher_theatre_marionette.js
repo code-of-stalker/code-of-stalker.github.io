@@ -1,5 +1,3 @@
-/* @ts-self-types="./watcher_theatre_marionette.d.ts" */
-
 export class Marionette {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;

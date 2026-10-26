@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { ProductProvider, useProduct } from '../../features/product/state/ProductProvider';
 import { ProductButton, ProductScreen, ProductText } from '../../features/product/ui';
 import { ProductThemeProvider, useThemeColors } from '../../features/product/ProductTheme';
+import { isLightTheme } from '../../features/product/theme';
 import { EffectsQualityProvider } from '../../features/product/motion/EffectsQuality';
 import { useProductFonts } from '../../features/product/useProductFonts';
 import { BackSwipeProvider } from '../../features/product/navigation/BackSwipeProvider';
@@ -23,7 +24,7 @@ function ProductStack() {
   if (!ready || (!loaded && !fontError)) return <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center' }}>
     <ActivityIndicator color={colors.accent} accessibilityLabel="Открываем приложение" />
   </View>;
-  return <><StatusBar style={colors.background === '#FAE18F' ? 'dark' : 'light'} /><DeviceOptimizationGate key={sessionRevision}><Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} /></DeviceOptimizationGate></>;
+  return <><StatusBar style={isLightTheme(colors) ? 'dark' : 'light'} /><DeviceOptimizationGate key={sessionRevision}><Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} /></DeviceOptimizationGate></>;
 }
 function ThemedProduct() {
   const { settings } = useProduct();

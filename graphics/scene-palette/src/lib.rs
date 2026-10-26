@@ -30,6 +30,10 @@ pub enum Palette {
     Violet,
     /// Матрица: code green on black.
     Matrix,
+    /// Мираж: a cobalt print on sand.
+    Mirage,
+    /// Рассвет: a wine print on peach.
+    Dawn,
 }
 
 /// Paper, accent and highlight of one theme.
@@ -41,7 +45,7 @@ pub struct Colors {
 
 impl Palette {
     /// The codes of the app's `graphicsPalette`: 0 dark, 1 light, 2 neutral,
-    /// 3 violet, 4 matrix. Any other code keeps the original colors.
+    /// 3 violet, 4 matrix, 5 mirage, 6 dawn. Any other code keeps the original colors.
     pub fn from_code(code: u32) -> Self {
         match code {
             0 => Self::Dark,
@@ -49,14 +53,23 @@ impl Palette {
             2 => Self::Neutral,
             3 => Self::Violet,
             4 => Self::Matrix,
+            5 => Self::Mirage,
+            6 => Self::Dawn,
             _ => Self::Original,
         }
+    }
+    /// Дюна, Мираж and Рассвет are light themes: their print mappings put the
+    /// picture on a light page. The other themes are dark and map from the
+    /// artwork's luminance onto a dark page.
+    pub fn is_light(self) -> bool {
+        matches!(self, Self::Light | Self::Mirage | Self::Dawn)
     }
     /// The mapping selector of `recolor.frag`.
     pub fn mode(self) -> f32 {
         match self {
             Self::Original | Self::Dark | Self::Matrix => 0.0,
             Self::Light => 1.0,
+            Self::Mirage | Self::Dawn => 3.0,
             Self::Neutral | Self::Violet => 2.0,
         }
     }
@@ -70,6 +83,8 @@ impl Palette {
             Self::Neutral => (rgb(13, 21, 32), rgb(134, 201, 199), rgb(214, 218, 210)),
             Self::Violet => (rgb(13, 20, 38), rgb(98, 150, 245), rgb(170, 150, 214)),
             Self::Matrix => (rgb(0, 0, 0), rgb(0, 255, 65), rgb(0, 255, 65)),
+            Self::Mirage => (rgb(241, 223, 184), rgb(46, 91, 213), rgb(38, 59, 107)),
+            Self::Dawn => (rgb(243, 216, 199), rgb(156, 56, 87), rgb(96, 51, 70)),
         };
         Some(Colors {
             paper,
@@ -93,6 +108,12 @@ impl Palette {
         };
         match self {
             Self::Dark | Self::Matrix => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
+            Self::Mirage | Self::Dawn => {
+                let level = dot(color).clamp(0.0, 1.0);
+                let t = ((level - 0.25) / 0.6).clamp(0.0, 1.0);
+                let tint = mix(highlight, accent, t * t * (3.0 - 2.0 * t));
+                mix(paper, tint, level * 0.92)
+            }
             Self::Light => {
                 let level = dot(color).clamp(0.0, 1.0);
                 let print = mix(paper, highlight, (1.0 - level).powf(1.8) * 0.42);
@@ -118,17 +139,19 @@ impl Palette {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const THEMES: [Palette; 5] = [
+    const THEMES: [Palette; 7] = [
         Palette::Dark,
         Palette::Light,
         Palette::Neutral,
         Palette::Violet,
         Palette::Matrix,
+        Palette::Mirage,
+        Palette::Dawn,
     ];
 
     #[test]
     fn codes_follow_the_app_and_unknown_codes_keep_the_artwork() {
-        assert_eq!(THEMES, [0, 1, 2, 3, 4].map(Palette::from_code));
+        assert_eq!(THEMES, [0, 1, 2, 3, 4, 5, 6].map(Palette::from_code));
         assert_eq!(Palette::from_code(255), Palette::Original);
         let gold = [0.93, 0.68, 0.12];
         assert_eq!(Palette::Original.recolor(gold), gold);
@@ -136,7 +159,12 @@ mod tests {
 
     #[test]
     fn black_is_the_page_of_every_dark_theme() {
-        for palette in [Palette::Dark, Palette::Neutral, Palette::Violet, Palette::Matrix] {
+        for palette in [
+            Palette::Dark,
+            Palette::Neutral,
+            Palette::Violet,
+            Palette::Matrix,
+        ] {
             let paper = palette.colors().unwrap().paper;
             assert_eq!(palette.recolor([0.0; 3]), paper, "{palette:?}");
         }
@@ -147,6 +175,12 @@ mod tests {
         let [r, g, b] = Palette::Dark.recolor([1.0, 0.78, 0.07]);
         assert!(r > g && g > b * 20.0);
         assert!((g / r - 221.0 / 245.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn light_and_dark_theme_kinds() {
+        let light: Vec<_> = THEMES.iter().filter(|p| p.is_light()).copied().collect();
+        assert_eq!(light, [Palette::Light, Palette::Mirage, Palette::Dawn]);
     }
 
     #[test]

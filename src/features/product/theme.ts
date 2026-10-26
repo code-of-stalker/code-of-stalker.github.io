@@ -43,4 +43,28 @@ export const matrixColors: ProductColors = {
   overlay: '#000000bb', track: '#00ff4133', subtle: '#00ff4119',
   iconTint: '#00FF41', onAccent: '#000000',
 };
+// Мираж: Art's sand page with cobalt controls, navy text and lilac details.
+export const mirageColors: ProductColors = {
+  background: '#F1DFB8', surface: '#EBD6A9', accent: '#2E5BD5', secondary: '#9B6FAB', text: '#263B6B',
+  muted: '#3E5288', faint: '#6E6A9C', border: '#5468B4', error: '#A42010',
+  overlay: '#263b6b55', track: '#2e5bd533', subtle: '#2e5bd519',
+  iconTint: '#2E5BD5', onAccent: '#F1DFB8',
+};
+// Рассвет: peach page, wine controls, plum text and copper details.
+export const dawnColors: ProductColors = {
+  background: '#F3D8C7', surface: '#EDCBB6', accent: '#9C3857', secondary: '#B77A43', text: '#603346',
+  muted: '#7A4559', faint: '#9A7068', border: '#A2546C', error: '#A42010',
+  overlay: '#60334655', track: '#9c385733', subtle: '#9c385719',
+  iconTint: '#9C3857', onAccent: '#F3D8C7',
+};
+/**
+ * THEME KINDS (developer note, never shown in the app).
+ * Light themes: Дюна (lightColors), Мираж (mirageColors), Рассвет (dawnColors).
+ *   Their illustrations are recolored programmatically for a light page
+ *   (Rust: Palette::is_light in product-engine palette.rs and scene-palette).
+ * Dark themes: Искра (colors), Тишина, Астрал, Матрица. Their illustrations
+ *   are recolored only from the authored dark (Искра) material.
+ */
+export const LIGHT_THEMES: readonly ProductColors[] = [lightColors, mirageColors, dawnColors];
+export const isLightTheme = (colors: ProductColors) => LIGHT_THEMES.includes(colors);
 export const fonts = { title: 'Tektur', body: 'DisketMono', bodyBold: 'DisketMonoBold' };

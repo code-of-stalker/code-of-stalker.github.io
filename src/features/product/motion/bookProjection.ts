@@ -1,11 +1,11 @@
 import { bookScript, bookSvg } from './bookProjection.generated';
-import { colors as darkColors, lightColors, matrixColors, neutralColors, violetColors, type ProductColors } from '../theme';
+import { colors as darkColors, isLightTheme, matrixColors, neutralColors, violetColors, type ProductColors } from '../theme';
 
 const blend = (a: string, b: string, amount: number) => '#' + [1, 3, 5].map(at =>
   Math.round(parseInt(a.slice(at, at + 2), 16) * (1 - amount) + parseInt(b.slice(at, at + 2), 16) * amount).toString(16).padStart(2, '0')).join('');
 
 export function bookProjectionPalette(colors: ProductColors) {
-  const light = colors === lightColors, soft = colors === neutralColors;
+  const light = isLightTheme(colors), soft = colors === neutralColors;
   return {
     name: light ? 'light' : soft ? 'neutral' : colors === violetColors ? 'violet' : colors === matrixColors ? 'matrix' : 'dark', soft,
     colors: {

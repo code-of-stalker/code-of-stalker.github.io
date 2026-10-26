@@ -9,7 +9,7 @@ import { stepDescriptions } from '../content';
 import { ObservationActionButton, ObservationIcon } from '../ObservationControls';
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
-import { neutralColors, violetColors } from '../theme';
+import { isLightTheme, neutralColors, violetColors } from '../theme';
 import { ProductIconButton, ProductText } from '../ui';
 import { Art } from '../motion/Art';
 import { useEffectQualityLevel } from '../motion/EffectsQuality';
@@ -59,7 +59,7 @@ export function PracticeCooldown({ title, time, deadline, now, heroHeight, gutte
       </BlurTargetView>
       {Platform.OS === 'web' ? <View testID="cooldown-backdrop-blur" style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.background}3b` }]} /> :
       <BlurView testID="cooldown-backdrop-blur" blurTarget={blurTarget} intensity={material.backgroundBlur * 5}
-        tint={colors.background === '#FAE18F' ? 'light' : 'dark'}
+        tint={isLightTheme(colors) ? 'light' : 'dark'}
         blurMethod={quality === 'economy' ? 'dimezisBlurViewSdk31Plus' : 'dimezisBlurView'}
         style={StyleSheet.absoluteFill} />}
       <Image testID="cooldown-hero-fade" pointerEvents="none" source={heroFade} contentFit="fill" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: heroHeight }} />

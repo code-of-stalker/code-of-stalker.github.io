@@ -2,7 +2,8 @@
 precision highp float;
 // The finished full-color frame of a scene.
 uniform sampler2D u_image;
-// x: mapping (0 luminance in the accent: Искра yellow, Матрица green, 1 sand sepia, 2 cool luminance ink),
+// x: mapping (0 luminance in the accent: Искра yellow, Матрица green,
+// 3 Мираж/Рассвет print: text ink to accent by level on the paper, 1 sand sepia, 2 cool luminance ink),
 // y: 1 when the edges melt into the page.
 uniform vec4 u_mode;
 uniform vec3 u_paper;
@@ -17,6 +18,11 @@ const vec3 LUMA = vec3(.2126, .7152, .0722);
 // graphics/product-engine/engine/shaders/presentation.wgsl.
 vec3 recolor(vec3 c) {
     if (u_mode.x < .5) return u_accent * clamp(dot(c, LUMA), 0., 1.);
+    if (u_mode.x > 2.5) {
+        float level = clamp(dot(c, LUMA), 0., 1.);
+        vec3 tint = mix(u_highlight, u_accent, smoothstep(.25, .85, level));
+        return mix(u_paper, tint, level * .92);
+    }
     if (u_mode.x < 1.5) {
         // Sand: a sepia print in the theme's brown ink, with the light warming
         // toward the accent. The max-channel duotone flooded it with orange.

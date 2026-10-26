@@ -1,11 +1,11 @@
-import { matrixColors, violetColors, type ProductColors } from '../theme';
+import { dawnColors, matrixColors, mirageColors, violetColors, type ProductColors } from '../theme';
 
 /** Native WebView and GPU fallback retain the same authored alpha masks. */
 export function legacyIllustrationTheme(colors?: ProductColors) {
   // Матрица: the same linear yellow-to-green map as presentation.wgsl, so
   // gold reads as code green and white highlights stay a pale mint.
   if (colors === matrixColors) return filter(MATRIX.map(row => [...row, 0, 0].join(' ')));
-  if (colors !== violetColors) return '';
+  if (colors !== violetColors && colors !== mirageColors && colors !== dawnColors) return '';
   const rgb = (hex: string) => hex.slice(1).match(/../g)!.map(channel => parseInt(channel, 16) / 255);
   const paper = rgb(colors.background), ink = rgb(colors.accent), secondary = rgb(colors.secondary ?? colors.accent);
   // White follows the main accent; red emission adds the secondary tint

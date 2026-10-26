@@ -1,5 +1,3 @@
-/* @ts-self-types="./watcher_world_in_glasses.d.ts" */
-
 export class WorldInGlasses {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;

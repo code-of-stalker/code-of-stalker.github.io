@@ -19,6 +19,25 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     // Матрица shows the authored dark material in code green: a linear map
     // keeps premultiplied alpha, shading and white highlights (pale mint).
     // Mirror and its sprites arrive here uncolored in this theme.
+    // Мираж and Рассвет print the dark material on their paper: dim lines in
+    // the text ink (navy, plum), bright ones in the accent, white highlights
+    // in the detail color (lilac, copper). Black stays the page.
+    if (palette.mode.x > 4.5) {
+        var energy = clamp(max(max(pixel.r, pixel.g), pixel.b), 0., pixel.a);
+        var white = clamp(min(min(pixel.r, pixel.g), pixel.b), 0., pixel.a) / max(energy, .0001);
+        if (palette.mode.y > 3.5) {
+            energy = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)), 0., pixel.a);
+            white = 0.;
+        }
+        let level = energy / max(pixel.a, .0001);
+        let dawn = palette.mode.x > 5.5;
+        let text = select(vec3(38., 59., 107.), vec3(96., 51., 70.), dawn) / 255.;
+        let detail = select(vec3(155., 111., 171.), vec3(183., 122., 67.), dawn) / 255.;
+        var tint = mix(text, palette.accent.rgb, smoothstep(.25, .85, level));
+        tint = mix(tint, detail, smoothstep(.5, .95, white) * .6);
+        let ink = energy * .92;
+        return vec4(palette.paper.rgb * (pixel.a - ink) + tint * ink, pixel.a);
+    }
     if (palette.mode.x > 3.5) {
         if (palette.mode.y > 3.5) {
             let energy = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)), 0., pixel.a);

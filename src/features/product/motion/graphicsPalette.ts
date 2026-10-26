@@ -1,7 +1,7 @@
-import { lightColors, matrixColors, neutralColors, violetColors } from '../theme';
+import { lightColors, matrixColors, mirageColors, dawnColors, neutralColors, violetColors } from '../theme';
 import type { ProductColors } from '../theme';
 // The graphics adapter subscribes once per shared session, never once per frame.
-export type GraphicsPalette = 0 | 1 | 2 | 3 | 4;
+export type GraphicsPalette = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 let palette: GraphicsPalette = 0;
 const listeners = new Set<(value: GraphicsPalette) => void>();
 export const graphicsPalette = {
@@ -11,4 +11,4 @@ export const graphicsPalette = {
 };
 /** The code ProductTheme publishes, for a component that already has its palette. */
 export const paletteCode = (colors: ProductColors): GraphicsPalette =>
-  colors === lightColors ? 1 : colors === neutralColors ? 2 : colors === violetColors ? 3 : colors === matrixColors ? 4 : 0;
+  colors === lightColors ? 1 : colors === neutralColors ? 2 : colors === violetColors ? 3 : colors === matrixColors ? 4 : colors === mirageColors ? 5 : colors === dawnColors ? 6 : 0;

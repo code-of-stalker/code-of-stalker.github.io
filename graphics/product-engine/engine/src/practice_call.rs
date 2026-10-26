@@ -18,9 +18,9 @@ pub const REST: f64 = 24.4;
 
 const HER: W = [-0.85, 0., 0.4];
 const HEIGHT: f64 = 1.68;
-/// Where the Observer stands once risen: behind her back, on our side of
-/// her, to the right; taller than her, never over her head.
-const WATCHER: W = [0.8, 0., -0.6];
+/// Where the Observer stands once risen: behind her back (she faces right),
+/// a little nearer us than she is; taller than her, never over her head.
+const WATCHER: W = [-1.8, 0., -0.1];
 const WATCHER_HEIGHT: f64 = 2.15;
 /// Spheres of the Observer's attention: how many at once, each one's life in
 /// seconds and how far it reaches, metres.
@@ -498,11 +498,11 @@ mod tests {
         }
         for t in [RISE.1, 14., MERGE.0] {
             let (feet, height) = watcher(t);
-            assert!(feet[2] < HER[2] - 0.8 && feet[0] > HER[0] + 1. && height > 1.2 * HEIGHT, "behind her, nearer us, to the right: {t}");
+            assert!(feet[2] < HER[2] - 0.3 && feet[0] < HER[0] - 0.7 && height > 1.2 * HEIGHT, "behind her back, nearer us: {t}");
             // Beside her, not over her: its head clears hers on screen.
             let cam = camera(t);
             let head = |feet: W, height: f64| heroine_world(feet, height, 1.).then(cam.plane(feet[2])).apply((468., 115.)).0;
-            assert!(head(feet, height) - head(HER, HEIGHT) > 14., "{t}");
+            assert!(head(HER, HEIGHT) - head(feet, height) > 14., "{t}");
         }
         assert!(RISE.1 <= GAZE.0 && GAZE.1 <= QUIET.0);
     }

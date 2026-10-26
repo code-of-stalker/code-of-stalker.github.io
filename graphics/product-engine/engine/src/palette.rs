@@ -24,6 +24,11 @@ impl Palette {
             _ => Self::Dark,
         }
     }
+    /// Light themes draw Art's light (sand) paintings as painted where he
+    /// supplied them; dark themes recolor only the dark originals.
+    pub fn is_light(self) -> bool {
+        matches!(self, Self::Light)
+    }
     pub fn write(self, params: &mut [f32; 512]) {
         params[OFFSET] = match self {
             Self::Dark => 0.,

@@ -23,6 +23,8 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     if (palette.mode.x < .5) { return pixel; }
     // Sand portraits are an authored RGBA asset, not a duotone of the original.
     if (palette.mode.x < 1.5 && palette.mode.y > .5 && palette.mode.y < 1.5) { return pixel; }
+    // So are Art's light paintings of the voice and grounding scenes in Дюна.
+    if (palette.mode.x > .5 && palette.mode.x < 1.5 && palette.mode.y > 2.5) { return pixel; }
     // The voice scene is a full-color gold painting. Max-channel duotone turned
     // all of it into saturated accent, so keep its shading via luminance,
     // compress the glows and use a muted accent with a soft highlight.

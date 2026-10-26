@@ -25,6 +25,10 @@ impl Kind {
             Self::GroundingHero => 4.,
         }
     }
+    /// Art painted light (sand) versions of these; the mirror is recolored.
+    pub fn has_sand(self) -> bool {
+        !matches!(self, Self::Mirror)
+    }
 }
 pub struct RasterLibrary {
     layout: wgpu::BindGroupLayout,
@@ -35,7 +39,9 @@ pub struct RasterLibrary {
     voice: wgpu::RenderPipeline,
     grounding: wgpu::RenderPipeline,
     fade: wgpu::RenderPipeline,
-    assets: std::cell::RefCell<[Option<wgpu::Texture>; 8]>,
+    /// 0-7 the dark sources and their layers; 2 and 8-11 Art's light (sand)
+    /// paintings, which light themes draw as painted.
+    assets: std::cell::RefCell<[Option<wgpu::Texture>; 12]>,
 }
 impl RasterLibrary {
     fn atlas(
@@ -45,11 +51,14 @@ impl RasterLibrary {
         kind: Kind,
         palette: crate::palette::Palette,
     ) -> wgpu::Texture {
+        let light = palette.is_light();
         let at = match kind {
-            Kind::Gallery if palette == crate::palette::Palette::Light => 2,
+            Kind::Gallery if light => 2,
             Kind::Gallery => 0,
             Kind::Mirror => 1,
+            Kind::VoicePresence if light => 8,
             Kind::VoicePresence => 3,
+            Kind::GroundingHero if light => 11,
             Kind::GroundingHero => 6,
         };
         self.assets.borrow_mut()[at]
@@ -57,10 +66,18 @@ impl RasterLibrary {
                 if at == 6 {
                     return upload_image(device, queue, &crate::grounding_hero::prepared_artwork());
                 }
+                if at == 11 {
+                    return upload_image(
+                        device,
+                        queue,
+                        &crate::grounding_hero::prepared_sand_artwork(),
+                    );
+                }
                 upload(
                     device,
                     queue,
                     match at {
+                        8 => include_bytes!("../assets/voice-presence-sand.png"),
                         3 => include_bytes!("../assets/voice-presence.png"),
                         2 => include_bytes!("../assets/gallery-sand-atlas.png"),
                         1 => include_bytes!("../assets/mirror-atlas.png"),
@@ -70,25 +87,96 @@ impl RasterLibrary {
             })
             .clone()
     }
-    fn voice_layers(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
-        self.assets.borrow_mut()[4]
+    fn voice_layers(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        palette: crate::palette::Palette,
+    ) -> wgpu::Texture {
+        let light = palette.is_light();
+        self.assets.borrow_mut()[if light { 9 } else { 4 }]
             .get_or_insert_with(|| {
-                upload_rgba(
-                    device,
-                    queue,
-                    1536,
-                    1024,
-                    &crate::voice_presence::environment_layers(),
-                )
+                let layers = if light {
+                    crate::voice_presence::environment_layers_sand()
+                } else {
+                    crate::voice_presence::environment_layers()
+                };
+                upload_rgba(device, queue, 1536, 1024, &layers)
             })
             .clone()
     }
-    fn voice_portrait(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
-        self.assets.borrow_mut()[5]
+    fn voice_portrait(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        palette: crate::palette::Palette,
+    ) -> wgpu::Texture {
+        let light = palette.is_light();
+        self.assets.borrow_mut()[if light { 10 } else { 5 }]
             .get_or_insert_with(|| {
-                upload_image(device, queue, &crate::voice_presence::user_portrait())
+                let portrait = if light {
+                    crate::voice_presence::user_portrait_sand()
+                } else {
+                    crate::voice_presence::user_portrait()
+                };
+                upload_image(device, queue, &portrait)
             })
             .clone()
+    }
+    /// The atlas of `kind` in `palette` and the bindings that sample it.
+    fn bindings(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        glyphs: &wgpu::Texture,
+        params: &wgpu::Buffer,
+        kind: Kind,
+        palette: crate::palette::Palette,
+    ) -> (wgpu::Texture, wgpu::BindGroup) {
+        let atlas = self.atlas(device, queue, kind, palette);
+        let av = atlas.create_view(&Default::default());
+        let gv = if matches!(kind, Kind::VoicePresence) {
+            self.voice_layers(device, queue, palette)
+                .create_view(&Default::default())
+        } else {
+            glyphs.create_view(&Default::default())
+        };
+        let pv = if matches!(kind, Kind::VoicePresence) {
+            self.voice_portrait(device, queue, palette)
+                .create_view(&Default::default())
+        } else if matches!(kind, Kind::GroundingHero) {
+            self.grounding_coverage(device, queue)
+                .create_view(&Default::default())
+        } else {
+            av.clone()
+        };
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("reused raster atlas bindings"),
+            layout: &self.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&av),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&gv),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&pv),
+                },
+            ],
+        });
+        (atlas, group)
     }
     fn grounding_coverage(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
         self.assets.borrow_mut()[7]
@@ -251,7 +339,7 @@ impl RasterLibrary {
             voice,
             grounding,
             fade,
-            assets: std::cell::RefCell::new([None, None, None, None, None, None, None, None]),
+            assets: std::cell::RefCell::new(std::array::from_fn(|_| None)),
         }
     }
 }
@@ -533,58 +621,13 @@ impl RasterGpu {
         kind: Kind,
         palette: crate::palette::Palette,
     ) -> Self {
-        let atlas = library.atlas(device, queue, kind, palette);
         let params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("small raster state uniform"),
             size: 128,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let av = atlas.create_view(&Default::default());
-        let gv = if matches!(kind, Kind::VoicePresence) {
-            library
-                .voice_layers(device, queue)
-                .create_view(&Default::default())
-        } else {
-            glyphs.create_view(&Default::default())
-        };
-        let pv = if matches!(kind, Kind::VoicePresence) {
-            library
-                .voice_portrait(device, queue)
-                .create_view(&Default::default())
-        } else if matches!(kind, Kind::GroundingHero) {
-            library
-                .grounding_coverage(device, queue)
-                .create_view(&Default::default())
-        } else {
-            av.clone()
-        };
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("reused raster atlas bindings"),
-            layout: &library.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&av),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&gv),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&library.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&pv),
-                },
-            ],
-        });
+        let (atlas, group) = library.bindings(device, queue, glyphs, &params, kind, palette);
         let vertices = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("reused authored vertices"),
             size: 72,
@@ -599,7 +642,7 @@ impl RasterGpu {
         });
         Self {
             kind,
-            groups: if palette == crate::palette::Palette::Light && matches!(kind, Kind::Gallery) {
+            groups: if palette.is_light() && kind.has_sand() {
                 [None, Some(group.clone())]
             } else {
                 [Some(group.clone()), None]
@@ -629,45 +672,26 @@ impl RasterGpu {
         if self.palette == palette {
             return;
         }
+        let swap = self.palette.is_light() != palette.is_light() && self.kind.has_sand();
         self.palette = palette;
-        if !matches!(self.kind, Kind::Gallery) {
+        if !swap {
             return;
         }
-        let at = usize::from(palette == crate::palette::Palette::Light);
-        let atlas = library.atlas(device, queue, self.kind, palette);
-        let group = self.groups[at].get_or_insert_with(|| {
-            let av = atlas.create_view(&Default::default());
-            let gv = glyphs.create_view(&Default::default());
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("cached sand portrait bindings"),
-                layout: &library.layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.params.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&av),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(&gv),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::Sampler(&library.sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: wgpu::BindingResource::TextureView(&av),
-                    },
-                ],
-            });
-            group
-        });
+        let at = usize::from(palette.is_light());
+        let (atlas, group) = match &self.groups[at] {
+            Some(group) => (
+                library.atlas(device, queue, self.kind, palette),
+                group.clone(),
+            ),
+            None => {
+                let (atlas, group) =
+                    library.bindings(device, queue, glyphs, &self.params, self.kind, palette);
+                self.groups[at] = Some(group.clone());
+                (atlas, group)
+            }
+        };
         self.atlas = atlas;
-        self.group = group.clone();
+        self.group = group;
     }
     pub fn prepare(
         &mut self,
@@ -839,9 +863,8 @@ impl RasterGpu {
             resolve_target: Some(output),
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(
-                    if matches!(self.kind, Kind::Gallery)
-                        && self.palette == crate::palette::Palette::Light
-                    {
+                    // Sand paintings fade into the light page, not into black.
+                    if self.kind.has_sand() && self.palette.is_light() {
                         wgpu::Color::TRANSPARENT
                     } else {
                         wgpu::Color::BLACK
@@ -870,8 +893,10 @@ impl RasterGpu {
         }
         pass.set_vertex_buffer(0, self.vertices.slice(..));
         pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
+        // Screen-blended light vanishes into a sand painting.
+        let lights = !(self.palette.is_light() && matches!(self.kind, Kind::VoicePresence));
         for (screen, range) in &self.ranges {
-            pass.set_pipeline(if *screen {
+            pass.set_pipeline(if *screen && lights {
                 &library.screen
             } else {
                 &library.normal

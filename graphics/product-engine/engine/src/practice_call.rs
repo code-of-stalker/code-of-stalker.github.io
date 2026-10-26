@@ -3,9 +3,9 @@
 //! drowns. Behind her the Observer rises, large and calm; its attention opens
 //! from its jugular notch in spheres, the noise falls away and her voice
 //! straightens into one pure tone. The tone travels down the corridor into the
-//! distance and comes back as the Call, ring after ring, answered each time by
-//! light from inside her jugular notch, and the Observer settles into her:
-//! Observation, Sounding and Presence.
+//! distance and comes back to her as the Call, ring after ring along her own
+//! line, answered each time by light from inside her jugular notch, and the
+//! Observer settles into her.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
     f64::consts::TAU,
@@ -13,7 +13,7 @@ use std::{
 };
 
 pub const PERIOD: f64 = 28.;
-/// The reduced-motion still: one with the Observer, its three names lit.
+/// The reduced-motion still: one with the Observer.
 pub const REST: f64 = 24.4;
 
 const HER: W = [-0.85, 0., 0.4];
@@ -56,7 +56,6 @@ const FRAGMENTS: [&str; 8] = ["ОПЯТЬ НЕ ТАК", "ЧТО ОНИ СКАЖ�
 const FRAGMENT_SIZE: f64 = 0.11;
 /// Other voices strung across the corridor: depth and height.
 const STATIC: [(f64, f64); 4] = [(4.2, 0.85), (6., 2.65), (8.4, 1.45), (11., 2.15)];
-const NAMES: [(&str, f64); 3] = [("НАБЛЮДЕНИЕ", 22.4), ("ЗВУЧАНИЕ", 23.1), ("ПРИСУТСТВИЕ", 23.8)];
 
 fn camera(t: f64) -> Camera {
     Camera {
@@ -195,16 +194,18 @@ fn sphere(t: f64, k: usize) -> Option<f64> {
     (born >= GAZE.0 && born <= MERGE.0).then_some(f)
 }
 
-/// A wavefront of the Call `f` of the way home: it fills the corridor wall to
-/// wall as it comes, and only at the last closes onto her jugular notch.
-/// Centre and half-axes.
-fn call_front(f: f64, home: W) -> (W, f64, f64) {
+/// A wavefront of the Call `f` of the way home: it comes down the corridor
+/// on the line from the eye to her jugular notch, so on screen it is always
+/// centred on her, growing as it nears and closing onto the notch as it
+/// reaches her. Centre and half-axes.
+fn call_front(f: f64, home: W, eye: W) -> (W, f64, f64) {
     let z = mix(DISTANCE[2], home[2], f);
-    let pull = ramp(f, 0.45, 1.);
-    (wmix([0., 1.8, z], [home[0], home[1], z], pull), mix(1.85, 0.05, pull), mix(1.7, 0.05, pull))
+    let on = wmix(eye, home, (z - eye[2]) / (home[2] - eye[2]));
+    let pull = ramp(f, 0.55, 1.);
+    (on, mix(1.1, 0.05, pull), mix(1., 0.05, pull))
 }
 fn call_ring(cam: &Camera, f: f64, home: W) -> String {
-    let (c, rx, ry) = call_front(f, home);
+    let (c, rx, ry) = call_front(f, home, cam.eye);
     cam.poly(
         &(0..40)
             .map(|i| {
@@ -319,9 +320,6 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let star = cam.project(DISTANCE);
     let kindle = bell(t, TRAVEL.1 - 0.1, TRAVEL.1 + 0.2, TRAVEL.1 + 0.4, CALLS[0] + 0.8);
     c.sprite(star, 3. + 10. * kindle + 1.5 * wb, "zv-glow", arrived * (0.55 + 0.45 * kindle) * (1. - 0.35 * end));
-    let above = cam.project(add(DISTANCE, [0., 1.2, 0.]));
-    let call = bell(t, CALLS[0], CALLS[0] + 0.8, MERGE.0 + 0.2, MERGE.0 + 1.2);
-    c.words("ЗОВ", || word("ЗОВ", 0., 3.6, 10.), &fill(LIGHT), &format!("translate({:.2} {:.2}) scale(.85)", above.0, above.1 - 2. * (1. - call)), call);
     c.fixed(|| "M-20 -20H340V64H-20Z".into(), r#"fill="url(#zv-top)""#, 1.);
 
     // The Observer: risen out of her, large and calm at her back.
@@ -445,18 +443,12 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         c.path(&d, &stroke(LIGHT, 0.5), 0.7 * a);
     }
 
-    // Names: the noise, and at the end who she is.
+    // The noise's name, until the Observer looks.
     let shout = cam.project([1.15, 2.85, 3.4]);
     let jitter = (hash(frame + 300) - 0.5, hash(frame + 600) - 0.5);
     let size = 0.32 * cam.scale(3.4) / 10.;
     let place_noise = format!("translate({:.2} {:.2}) scale({size:.4})", shout.0 + 1.4 * jitter.0 * noise, shout.1 + 1.4 * jitter.1 * noise);
     c.words("ШУМ", || word("ШУМ", 0., 3.6, 10.), &fill(LINE), &place_noise, 0.8 * bell(t, 1., 1.8, 9.8, 11.));
-    for (k, &(text, from)) in NAMES.iter().enumerate() {
-        let a = bell(t, from, from + 0.8, 25.4, 26.2);
-        let at = cam.project([1., 2.8 - 0.33 * k as f64, 2.2]);
-        let place = format!("translate({:.2} {:.2}) scale(.8)", at.0, at.1 + 2. * (1. - a));
-        c.words(text, || word(text, 0., 3.6, 10.), &fill(LINE), &place, a);
-    }
     for k in 0..2 {
         let f = ((t - MERGE.1) / 4.4 + k as f64 * 0.5).rem_euclid(1.);
         let on = ramp(t, MERGE.1, MERGE.1 + 1.) * (1. - ramp(t, 25.4, 26.4));
@@ -475,7 +467,7 @@ fn notch_world(breath: f64) -> P {
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "zv",
-        "Героиня стоит в коридоре шума: вокруг неё кружат обрывки мыслей, её голос рвётся и тонет. Сзади справа поднимается большой спокойный Наблюдатель; его внимание расходится сферами из яремной впадины. Шум стихает, голос выпрямляется в чистый тон и уходит вдаль, а оттуда возвращается Зовом, кольцо за кольцом, и каждый раз отзывается светом изнутри её яремной впадины. Наблюдатель сливается с ней: Наблюдение, Звучание, Присутствие.",
+        "Героиня стоит в коридоре шума: вокруг неё кружат обрывки мыслей, её голос рвётся и тонет. Сзади справа поднимается большой спокойный Наблюдатель; его внимание расходится сферами из яремной впадины. Шум стихает, голос выпрямляется в чистый тон и уходит вдаль, а оттуда возвращается к ней Зовом, кольцо за кольцом, и каждый раз отзывается светом изнутри её яремной впадины. Наблюдатель сливается с ней.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -528,10 +520,15 @@ mod tests {
     #[test]
     fn every_call_lands_in_her_jugular_notch() {
         let heart = [-0.8, 1.2, HER[2]];
-        let (c, rx, ry) = call_front(1., heart);
+        let eye = camera(CALLS[0]).eye;
+        let (c, rx, ry) = call_front(1., heart, eye);
         assert!(sub(c, heart).iter().all(|v| v.abs() < 1e-9) && rx < 0.06 && ry < 0.06);
-        let (c, rx, _) = call_front(0., heart);
-        assert!(c[2] == DISTANCE[2] && rx > 1.8);
+        let (c, rx, _) = call_front(0., heart, eye);
+        // From the distance it comes on the eye's line through her, so it is
+        // centred on her all the way, not down the corridor's middle.
+        let cam = camera(CALLS[0]);
+        let (a, b) = (cam.project(c), cam.project(heart));
+        assert!((c[2] - DISTANCE[2]).abs() < 1e-9 && (a.0 - b.0).abs() < 1e-6 && (a.1 - b.1).abs() < 1e-6 && rx > 1.);
         assert!(CALLS[0] > TRAVEL.1 && CALLS[3] + RETURN < MERGE.1);
     }
     #[test]

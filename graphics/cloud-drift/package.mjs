@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const scene = path.dirname(fileURLToPath(import.meta.url));
+const app = path.resolve(process.argv[2] ?? path.join(scene, '../..'));
+const compiled = path.join(scene, '../../output/motion/man-in-clouds/pkg');
+const output = path.join(app, 'public/graphics/cloud-drift');
+await fs.mkdir(path.join(output, 'assets'), { recursive: true });
+await fs.mkdir(path.join(output, 'pkg'), { recursive: true });
+for (const name of ['original.png', 'background-clean.png', 'hero.png']) await fs.copyFile(path.join(scene, 'assets', name), path.join(output, 'assets', name));
+for (const name of ['watcher_cloud_drift.js', 'watcher_cloud_drift_bg.wasm']) await fs.copyFile(path.join(compiled, name), path.join(output, 'pkg', name));
+await fs.copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
+console.log('Packaged Rust cloud scene:', output);

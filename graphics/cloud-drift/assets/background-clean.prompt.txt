@@ -1,0 +1,6 @@
+Built-in ImageGen. Source: background.png. Only static matrix glyphs removed.
+
+Use case: precise-object-edit.
+Asset type: clean background plate for a layered motion illustration.
+Edit only one thing in this exact supplied 1536x1024 illustration: REMOVE ALL vertical columns of tiny matrix-code characters, numbers and digital rain. Carefully reconstruct the black sky and the cloud detail hidden under the characters.
+KEEP EVERYTHING ELSE EXACTLY: the existing cloud shapes and their positions, fine engraved golden cloud contours, floating angular golden stones and their positions, the black and yellow palette, the lighting, camera and framing. All existing stones must remain. Do not add clouds, symbols, people, beams, haze, additional objects or any new details. Do not crop, zoom or resize the composition. The result must align with the supplied image as a clean plate. No text or vertical character columns anywhere. Preserve the stylish drawn illustration, no photographic appearance.

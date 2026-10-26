@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050503"><title>В облаках — Код Сталкера</title>
+  <link rel="icon" href="data:,">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#050503;color:#d9c975;font:14px/1.4 system-ui,-apple-system,sans-serif}
+    body{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 28px 20px}
+    main{width:min(100%,1536px)}header{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:18px}
+    h1{font-weight:450;font-size:clamp(24px,3vw,38px);letter-spacing:-.035em;margin:0;color:#f0d95d}
+    .eyebrow{text-transform:uppercase;letter-spacing:.24em;font-size:10px;color:#82794d;margin:0 0 9px}
+    .note{font-size:12px;color:#8f875f;margin:0;text-align:right}.stage{position:relative;width:100%;aspect-ratio:3/2;background:#000;overflow:hidden}
+    canvas,.fallback{display:block;width:100%;height:100%;object-fit:contain}.fallback{position:absolute;inset:0}.loaded .fallback{display:none}
+    footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,a{font:inherit;color:#cabb7b;background:transparent;border:.5px solid #4f482b;padding:9px 15px;border-radius:2px;text-decoration:none;cursor:pointer}
+    button:hover,a:hover{border-color:#ad9754;color:#eed75b}button[aria-pressed=true]{color:#f3d95b;border-color:#a28d36;background:#1b180b}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #b3a24f;outline-offset:3px}
+    .strength{display:flex;align-items:center;gap:10px;color:#8f875f;font-size:12px}input{accent-color:#c4ac32;width:100px}.hint{color:#696343;font-size:11px;margin:13px 0 0;min-height:16px}
+    .render body{padding:0;background:#000}.render main{width:100%;max-width:none}.render header,.render footer,.render .hint{display:none}.stage:fullscreen{height:100%;aspect-ratio:auto;background:#000;display:flex;align-items:center;justify-content:center}.stage:fullscreen canvas{width:min(100vw,150vh);height:min(100vh,66.666667vw);flex:none}
+    @media(min-width:900px){main{width:min(100%,calc((100svh - 168px)*1.5))}}
+    @media(max-width:600px){body{padding:20px 12px}.eyebrow{font-size:9px}.note{max-width:130px;font-size:10px}footer{gap:14px}button,a{padding:10px 12px;font-size:12px}.strength{width:100%;justify-content:space-between}input{width:45%}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><p class="eyebrow">Код Сталкера · моушен</p><h1>В облаках</h1></div><p class="note">Парение за пределами настоящего<br>Бесшовная петля · 16 секунд</p></header>
+  <div class="stage" id="stage"><img class="fallback" src="./assets/original.png" alt="Мужчина в костюме и очках парит среди чёрно-золотых облаков и тянется к символам любви, просветления, успеха и признания."><canvas id="scene" width="1536" height="1024" role="img" aria-label="Анимированная иллюстрация: мужчина парит в облаках и тянется к своим мечтам"></canvas></div>
+  <footer><div class="actions"><button id="pause" aria-pressed="false">Пауза</button><button id="scan">Сканер</button><button id="edges" aria-pressed="false">Контуры</button><button id="original" aria-pressed="false">Исходник</button><button id="fullscreen">На весь экран</button><a id="download" href="./cloud-drift.mp4" download>Скачать видео</a></div><label class="strength">Сила движения<input id="strength" type="range" min="0.3" max="1.5" step="0.1" value="1" aria-label="Сила движения"></label></footer>
+  <p class="hint" id="status" role="status">Загружаю иллюстрацию…</p>
+</main>
+<script type="module" src="./preview.mjs"></script>
+</body>
+</html>

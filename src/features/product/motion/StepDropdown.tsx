@@ -54,7 +54,7 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
         {groups.map(group => <View key={group.title} style={{ marginBottom: 12 }}>
           <ProductText variant="label" color={colors.muted} style={styles.groupTitle}>{group.title}</ProductText>
           {group.items.map((item, index) => <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={item.title} disabled={busy}
-            onPress={() => onSection(item.destination)} style={styles.sectionRow}>
+            hitSlop={{ top: 4, bottom: 4 }} onPress={() => onSection(item.destination)} style={styles.sectionRow}>
             <ProductText numberOfLines={1} color={colors.muted} style={styles.sectionNumber}>{String(index + 1).padStart(2, '0')}</ProductText>
             <ProductText style={styles.sectionText}>{item.title}</ProductText>
           </Pressable>)}
@@ -149,8 +149,11 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   sectionButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   sectionDivider: { position: 'absolute', left: 0, top: 13, bottom: 13, width: .25 },
   groupTitle: { fontSize: 8, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 8 },
-  sectionRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
-  sectionNumber: { fontSize: 8, lineHeight: 13, width: 24, flexShrink: 0 },
+  // No minimum height: a one-line title would get more air than a wrapped
+  // one. Every title sits 20px from the next; hitSlop keeps the touch target.
+  // The number rides the first line, not the middle of a wrapped title.
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10 },
+  sectionNumber: { fontSize: 8, lineHeight: 13, width: 24, flexShrink: 0, marginTop: 1.5 },
   sectionText: { fontSize: 10, lineHeight: 16, flex: 1, textTransform: 'uppercase', letterSpacing: .7 },
   optionText: { fontSize: 10, lineHeight: 14, letterSpacing: 2.2, flex: 1, minWidth: 0 },
   lock: { width: 12, height: 14, flexShrink: 0 },

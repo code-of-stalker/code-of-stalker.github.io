@@ -1,9 +1,10 @@
 //! Practice 4, "Слышание и чувствование". The Son stands sealed in a jar of
-//! code; the Father stands beside him and a step behind, never above. Three
-//! breaths climb the glass from inside while three of the Father's phrases
-//! travel to it from outside; the third of each meets at one point and the
-//! program breaks. Its pieces rise as the Spirit, and Father, Son and Spirit
-//! close into one breathing triangle.
+//! code; the Father stands to his side and well behind him, never above.
+//! Three breaths climb the glass from inside while three of the Father's
+//! phrases fly straight to it from outside; the third of each meets at one
+//! point and the program breaks. Its pieces gather into the Spirit: the
+//! breath between them, a straight line of light carrying the exchange both
+//! ways.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
     f64::consts::{FRAC_PI_2, PI, TAU},
@@ -11,13 +12,14 @@ use std::{
 };
 
 pub const PERIOD: f64 = 26.;
-/// The reduced-motion still: the triangle closed, both breathing as one.
+/// The reduced-motion still: the breath flowing between them, both as one.
 pub const REST: f64 = 19.;
 
-const SON: W = [-0.55, 0., 0.];
+const SON: W = [0.7, 0., 0.];
 const SON_HEIGHT: f64 = 1.75;
-const FATHER: W = [0.25, 0., 1.1];
-const FATHER_HEIGHT: f64 = 2.15;
+/// Farther back, so tall enough that their heads stay level on screen.
+const FATHER: W = [-0.95, 0., 2.3];
+const FATHER_HEIGHT: f64 = 1.92;
 /// The jar: a glass cylinder with a hemispherical dome around the Son.
 const JAR_R: f64 = 0.5;
 const JAR_WALL: f64 = 1.95;
@@ -25,9 +27,8 @@ const JAR_WALL: f64 = 1.95;
 const BAND: f64 = 1.05;
 const BAND_TEXT: &str = "ПРОГРАММА ";
 const BAND_LETTERS: usize = 30;
-const SPIRIT: W = [-0.15, 2.72, 0.55];
 /// Centre of the floor rings: between the two figures.
-const MIDDLE: W = [-0.15, 0., 0.55];
+const MIDDLE: W = [-0.12, 0., 1.15];
 /// The shaft: a cylinder of code walls around the stage, open toward the eye.
 const SHAFT: (f64, f64) = (1.5, 6.);
 const SHAFT_ARC: f64 = 1.4;
@@ -35,19 +36,20 @@ const SHAFT_TOP: f64 = 9.;
 const FACETS: usize = 16;
 const BREATHS: [f64; 3] = [2.2, 5.2, 8.2];
 const REACH: [f64; 3] = [0.45, 0.8, 1.];
-const PHRASES: [(&str, f64); 3] = [("Я ЛЮБЛЮ ТЕБЯ", 5.6), ("ПРОСТИ МЕНЯ", 6.9), ("ЭТО ТЫ", 8.3)];
-const PHRASE_TIME: f64 = 2.2;
+/// One phrase at a time on the one straight way: each is gone into the glass
+/// before the next leaves him.
+const PHRASES: [(&str, f64); 3] = [("Я ЛЮБЛЮ ТЕБЯ", 5.3), ("ПРОСТИ МЕНЯ", 7.1), ("ЭТО ТЫ", 8.9)];
+const PHRASE_TIME: f64 = 1.6;
 const PHRASE_SIZE: f64 = 6.5;
-/// How high each phrase arches on its way to the glass.
-const LIFTS: [f64; 3] = [0.8, 0.6, 0.42];
 const IMPACT_AT: f64 = 10.5;
 const BREAK_AT: f64 = 12.2;
-/// World azimuth and dome latitude where the last breath and word meet.
-const IMPACT: (f64, f64) = (0.91, 0.6);
+/// World azimuth and dome latitude where the last breath and word meet:
+/// on the Father's side of the dome, still turned to the eye.
+const IMPACT: (f64, f64) = (-0.91, 0.6);
 
 fn camera(t: f64) -> Camera {
     Camera {
-        eye: wmix([0.15, 1.45, -6.3], [-0.15, 1.3, -5.3], ramp(t, 0., 25.4)),
+        eye: wmix([0.12, 1.45, -6.3], [0., 1.3, -5.3], ramp(t, 0., 25.4)),
         focal: 300.,
         center: (160., 92.),
     }
@@ -292,8 +294,14 @@ fn shards(cam: &Camera, t: f64) -> String {
     }
     d
 }
-/// The pieces become light and drift up to the apex: the program becomes breath.
+/// The Spirit: the breath between them, from the Father's throat to the Son's.
+fn spirit() -> (W, W) {
+    (unseal_world(FATHER, FATHER_HEIGHT, UNSEAL_THROAT), unseal_world(SON, SON_HEIGHT, UNSEAL_THROAT))
+}
+/// The pieces become light and settle along the breath between them: the
+/// program becomes breath.
 fn rising(cam: &Camera, t: f64) -> String {
+    let (father, son) = spirit();
     let mut d = String::new();
     for (i, s) in SHARDS.iter().enumerate() {
         let tau = t - s.delay - 0.9;
@@ -301,8 +309,8 @@ fn rising(cam: &Camera, t: f64) -> String {
             continue;
         }
         let m = ease(tau / 2.8);
-        let goal = add(SPIRIT, [(hash(i + 7) - 0.5) * 0.25, (hash(i + 9) - 0.5) * 0.18, 0.]);
-        let p = add(wmix(s.at(s.delay + 0.9), goal, m), [0., 0.45 * (m * PI).sin(), 0.]);
+        let goal = wmix(son, father, 0.08 + 0.84 * hash(i + 7));
+        let p = add(wmix(s.at(s.delay + 0.9), goal, m), [0., 0.3 * (m * PI).sin(), 0.]);
         let r = 0.016 * ramp(tau, 0., 0.3) * (1. - ramp(m, 0.8, 1.));
         if r > 1e-4 {
             d.push_str(&circle(cam.project(p), (r * cam.scale(p[2])).max(0.25)));
@@ -311,6 +319,11 @@ fn rising(cam: &Camera, t: f64) -> String {
     d
 }
 
+/// A straight flight between two world points, as the eye sees it.
+fn straight(cam: &Camera, a: W, b: W) -> Vec<P> {
+    let (a, b) = (cam.project(a), cam.project(b));
+    (0..=8).map(|i| lerp(a, b, i as f64 / 8.)).collect()
+}
 fn wall(i: f64, y: f64) -> W {
     let a = mix(-SHAFT_ARC, SHAFT_ARC, i / FACETS as f64);
     [SHAFT.1 * a.sin(), y, SHAFT.0 + SHAFT.1 * a.cos()]
@@ -337,7 +350,7 @@ fn defs() -> String {
     let core = son.at(UNSEAL_HEART);
     let reach = 0.55 * 722. * son.scale;
     format!(
-        r#"{}<radialGradient id="tri-spill"><stop stop-color="var(--book-line)" stop-opacity=".24"/><stop offset=".45" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-pool"><stop stop-color="var(--book-light)" stop-opacity=".4"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-shade"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".6" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="tri-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".75"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><radialGradient id="tri-father" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-dim)"/><stop offset=".6" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-aura" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><radialGradient id="tri-inner" gradientUnits="userSpaceOnUse" cx="{cx:.2}" cy="{cy:.2}" r="{reach:.2}"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><filter id="tri-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>"#,
+        r#"{}<radialGradient id="tri-spill"><stop stop-color="var(--book-line)" stop-opacity=".24"/><stop offset=".45" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-pool"><stop stop-color="var(--book-light)" stop-opacity=".4"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-shade"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".6" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="tri-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity=".92"/><stop offset=".3" stop-color="var(--book-cover)" stop-opacity=".66"/><stop offset=".65" stop-color="var(--book-cover)" stop-opacity=".24"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><linearGradient id="tri-bottom" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".4"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".95"/></linearGradient><radialGradient id="tri-edge" cx=".5" cy=".47" r=".62"><stop offset=".5" stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".68" stop-color="var(--book-cover)" stop-opacity=".22"/><stop offset=".84" stop-color="var(--book-cover)" stop-opacity=".68"/><stop offset="1" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-father" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-dim)"/><stop offset=".6" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-aura" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><radialGradient id="tri-inner" gradientUnits="userSpaceOnUse" cx="{cx:.2}" cy="{cy:.2}" r="{reach:.2}"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><filter id="tri-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>"#,
         glow_defs("tri"),
         hx = heart.0,
         hy = heart.1,
@@ -379,7 +392,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         columns.push_str(&cam.line(&[wall(i as f64, 0.), wall(i as f64, SHAFT_TOP)]));
     }
     c.path(&columns, &stroke(LINE, 0.25), 0.08);
-    c.fixed(|| "M-20 -20H340V86H-20Z".into(), r#"fill="url(#tri-top)""#, 1.);
+    c.fixed(|| "M-20 -20H340V100H-20Z".into(), r#"fill="url(#tri-top)""#, 1.);
     c.path(&motes(&cam, t, 36, 0, (-4.5, 4.5), (2.5, 7.), 7., 0.02), &fill(INK), 0.5);
 
     // Floor: a disc of faint code under rings centred between the figures.
@@ -477,7 +490,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let inside = sub(hit, scaled(jar_normal(IMPACT.0, JAR_WALL + IMPACT.1 * JAR_R), 0.03));
     let start = unseal_world(SON, SON_HEIGHT, UNSEAL_THROAT);
     let climb: Vec<P> = (0..=28)
-        .map(|i| cam.project(cubic(start, add(start, [0.02, 0.42, 0.]), add(inside, [-0.14, -0.3, 0.05]), inside, i as f64 / 28.)))
+        .map(|i| cam.project(cubic(start, add(start, [-0.02, 0.42, 0.]), add(inside, [0.14, -0.3, 0.05]), inside, i as f64 / 28.)))
         .collect();
     let (mut head, mut tail, mut glow) = (0., 0., 0.);
     for (k, &b) in BREATHS.iter().enumerate() {
@@ -516,26 +529,15 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     c.path(&shards(&cam, t), &format!(r#"fill="{INK}" fill-opacity=".22" {}"#, stroke(LINE, 0.35)), shatter);
     c.path(&rising(&cam, t), &fill(LIGHT), 0.9);
 
-    // The Father's words arch over to the glass, each on its own flight and
-    // ringing out from him; they read left to right as they travel.
-    let mouth = unseal_world(FATHER, FATHER_HEIGHT, UNSEAL_THROAT);
-    // Words surface just over his head rather than across his face.
-    let rise = add(mouth, [-0.05, 0.3, -0.1]);
-    let flights: Vec<Vec<P>> = LIFTS
-        .iter()
-        .map(|&lift| {
-            let mut path: Vec<P> = (0..=40)
-                .map(|i| cam.project(cubic(rise, add(rise, [0.5 * lift, 0.9 * lift, -0.2]), add(hit, [0.7 * lift, 0.9 * lift, -0.1]), hit, i as f64 / 40.)))
-                .collect();
-            path.reverse();
-            path
-        })
-        .collect();
-    for (&(text, at), path) in PHRASES.iter().zip(&flights) {
+    // The Father's words fly straight to the glass, ringing out from him; he
+    // stands on the left, so they read left to right as they travel.
+    let (mouth, _) = spirit();
+    let flight = straight(&cam, add(mouth, [0.12, 0.06, -0.1]), hit);
+    let total = length(&flight);
+    for &(text, at) in &PHRASES {
         let u = (t - at) / PHRASE_TIME;
-        let total = length(path);
         let width = text_width(text, PHRASE_SIZE);
-        let d = if (0. ..1.).contains(&u) { text_along(text, path, total - (total + width) * u, PHRASE_SIZE) } else { String::new() };
+        let d = if (0. ..1.).contains(&u) { text_along(text, &flight, (total + width) * u - width, PHRASE_SIZE) } else { String::new() };
         c.path(&d, &fill(LINE), 1.);
     }
     let voice = cam.project(mouth);
@@ -545,7 +547,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         for &(_, at) in &PHRASES {
             let f = (t - at - 0.3 * j as f64) / 1.1;
             if (0. ..1.).contains(&f) {
-                d = arc(voice, 2.5 + 15. * f, 160_f64.to_radians(), 300_f64.to_radians());
+                d = arc(voice, 2.5 + 15. * f, (-120_f64).to_radians(), 20_f64.to_radians());
                 alpha = 0.55 * (1. - f);
             }
         }
@@ -555,8 +557,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     for j in 0..2 {
         let mut d = String::new();
         let mut alpha = 0.;
-        for (&(text, at), path) in PHRASES.iter().zip(&flights) {
-            let total = length(path);
+        for &(text, at) in &PHRASES {
             let arrive = at + PHRASE_TIME * total / (total + text_width(text, PHRASE_SIZE));
             let f = (t - arrive - 0.35 * j as f64) / 0.9;
             if (0. ..1.).contains(&f) {
@@ -569,54 +570,60 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let flash = ramp(t, IMPACT_AT - 0.05, 11.2);
     c.sprite(spot, 3. + 22. * flash, "tri-glow", bell(t, IMPACT_AT - 0.1, IMPACT_AT + 0.05, IMPACT_AT + 0.2, 11.6));
 
-    // Father, Son and Spirit: one triangle that keeps breathing.
-    let corners = [father_heart, son_heart, SPIRIT];
-    let edges = [ramp(t, 14.3, 15.3), ramp(t, 15.3, 16.3), ramp(t, 16.3, 17.2)];
-    let mut sides = String::new();
-    for k in 0..3 {
-        if edges[k] > 0. {
-            sides.push_str(&cam.line(&[corners[k], wmix(corners[k], corners[(k + 1) % 3], edges[k])]));
-        }
-    }
-    c.path(&sides, &stroke(INK, 2.4), 0.25);
-    c.path(&sides, &stroke(LINE, 0.55), 0.85);
-    let shown = [ramp(t, 14.3, 14.9), ramp(t, 15.3, 15.9), ramp(t, 16.2, 16.8)];
-    let points = corners.map(|w| cam.project(w));
-    let mut marks = String::new();
-    for k in 0..3 {
-        if shown[k] > 0. {
-            marks.push_str(&ticks(points[k], 2.6 + 0.6 * father_breath, 12, t * 0.5 + k as f64));
-        }
-    }
-    c.path(&marks, &stroke(LINE, 0.4), 0.6);
-    c.sprite(points[2], 4. + 3. * father_breath, "tri-glow", ramp(t, 15.6, 16.6) * (0.6 + 0.3 * father_breath));
-    for (k, (label, offset)) in [("ОТЕЦ", (24., 2.2)), ("СЫН", (-24., 2.2)), ("ДУХ", (0., -7.5))].into_iter().enumerate() {
-        let place = format!("translate({:.2} {:.2})", points[k].0 + offset.0, points[k].1 + offset.1);
-        c.words(label, || word(label, 0., 0., 7.5), &fill(LINE), &place, shown[k]);
-    }
-    let mut perimeter = points.to_vec();
-    perimeter.push(points[0]);
-    let loop_length = length(&perimeter);
+    // The Spirit is the breath between them: one straight line of light from
+    // throat to throat, growing from both ends until it meets in the middle.
+    let (from, to) = (cam.project(mouth), cam.project(unseal_world(SON, SON_HEIGHT, UNSEAL_THROAT)));
+    let middle = lerp(from, to, 0.5);
+    let drawn = ramp(t, 14.3, 15.8);
+    let fade = 1. - ramp(t, 23., 24.5);
+    let mut breath_line = line(&[from, lerp(from, middle, drawn)]);
+    breath_line.push_str(&line(&[to, lerp(to, middle, drawn)]));
+    c.path(&breath_line, &stroke(INK, 2.4), 0.25 * fade);
+    c.path(&breath_line, &stroke(LINE, 0.55), (0.6 + 0.3 * together_now) * fade);
+    // The exchange: Father to Son on the first half of each shared breath,
+    // Son to Father on the second.
+    let flowing = ramp(t, 15.4, 16.4) * fade;
+    let half = ((t - 12.) / 3.2).rem_euclid(1.);
+    let (a, b, f) = if half < 0.5 { (from, to, 2. * half) } else { (to, from, 2. * half - 1.) };
+    let pulse = flowing * (PI * f).sin();
     let (mut trails, mut heads) = (String::new(), String::new());
-    if together_now > 0. {
-        let doubled: Vec<P> = perimeter.iter().chain(perimeter[1..].iter()).copied().collect();
-        for i in 0..6 {
-            let s = (((t - 17.5) * 0.22 + i as f64 / 6.).rem_euclid(1.) + 1.) * loop_length;
-            trails.push_str(&line(&piece(&doubled, s - 0.09 * loop_length, s)));
-            heads.push_str(&circle(along(&doubled, s).0, 0.9));
+    if pulse > 0.01 {
+        for k in 0..2 {
+            let u = ease(((f - 0.18 * k as f64) / 0.82).clamp(0., 1.));
+            let head = lerp(a, b, u);
+            trails.push_str(&line(&[lerp(a, b, (u - 0.16).max(0.)), head]));
+            heads.push_str(&circle(head, 0.9 - 0.3 * k as f64));
         }
     }
-    c.path(&trails, &stroke(LINE, 0.6), 0.8 * together_now);
-    c.path(&heads, &fill(LIGHT), together_now);
+    c.path(&trails, &stroke(LINE, 0.6), 0.8 * pulse);
+    c.path(&heads, &fill(LIGHT), pulse);
+    c.sprite(a, 3. + 1.5 * together_now, "tri-glow", flowing * 0.45 * (1. - ramp(f, 0., 0.4)));
+    c.sprite(b, 3. + 2. * together_now, "tri-glow", flowing * 0.75 * ramp(f, 0.6, 1.));
+    let points = [cam.project(father_heart), cam.project(son_heart), middle];
+    let shown = [ramp(t, 14.6, 15.3), ramp(t, 14.6, 15.3), ramp(t, 15.6, 16.3)];
+    let mut marks = String::new();
+    for (k, end) in [from, to].into_iter().enumerate() {
+        if drawn > 0. {
+            marks.push_str(&ticks(end, 2.6 + 0.6 * father_breath, 12, t * 0.5 + k as f64));
+        }
+    }
+    c.path(&marks, &stroke(LINE, 0.4), 0.6 * shown[0] * fade);
+    for (k, (label, offset)) in [("ОТЕЦ", (-24., 2.2)), ("СЫН", (24., 2.2)), ("ДУХ", (0., -6.))].into_iter().enumerate() {
+        let place = format!("translate({:.2} {:.2})", points[k].0 + offset.0, points[k].1 + offset.1);
+        c.words(label, || word(label, 0., 0., 7.5), &fill(LINE), &place, shown[k] * fade);
+    }
 
     c.path(&motes(&cam, t, 10, 500, (-2.6, 2.4), (-3., -1.2), 4., 0.014), &fill(LINE), 0.35);
+    // Every edge dissolves softly into the page.
+    c.fixed(|| "M-20 166H340V212H-20Z".into(), r#"fill="url(#tri-bottom)""#, 1.);
+    c.fixed(|| "M-20 -20H340V212H-20Z".into(), r#"fill="url(#tri-edge)""#, 1.);
     c.end();
 }
 
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "tri",
-        "Сын стоит в стеклянном сосуде с надписью ПРОГРАММА, Отец рядом, на шаг позади него. Три вдоха Сына и три фразы Отца встречаются на стекле, сосуд раскалывается, его осколки поднимаются светом, и Отец, Сын и Дух замыкаются в один дышащий треугольник.",
+        "Сын стоит в стеклянном сосуде с надписью ПРОГРАММА, Отец сбоку и далеко позади него. Три вдоха Сына и три фразы Отца, летящие по прямой, встречаются на стекле, сосуд раскалывается, и его осколки становятся Духом: дыханием между ними, линией света, по которой обмен идёт в обе стороны.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -639,10 +646,28 @@ mod tests {
             let son = Placement::standing(&cam, SON, SON_HEIGHT);
             let father = Placement::standing(&cam, FATHER, FATHER_HEIGHT);
             let (s, f) = (son.at(UNSEAL_HEART), father.at(UNSEAL_HEART));
-            assert!(f.0 > s.0 + 15., "beside at {t}");
-            assert!(FATHER[2] > SON[2], "behind at {t}");
+            assert!(f.0 < s.0 - 40., "beside, with room between them, at {t}");
+            assert!(FATHER[2] > SON[2] + 2., "well behind at {t}");
             let (son_top, father_top) = (son.at((1268., 150.)).1, father.at((1268., 150.)).1);
             assert!((father_top - son_top).abs() < 16., "level heads at {t}");
+        }
+    }
+    #[test]
+    fn the_spirit_is_the_breath_between_them() {
+        let (father, son) = spirit();
+        for t in [15., 19., 22.] {
+            let cam = camera(t);
+            let (f, s) = (cam.project(father), cam.project(son));
+            let head = |feet: W, height: f64| cam.project(unseal_world(feet, height, (1268., 150.))).1;
+            assert!(f.0 < s.0, "from the Father on the left to the Son at {t}");
+            assert!(f.1 > head(FATHER, FATHER_HEIGHT) && s.1 > head(SON, SON_HEIGHT), "no apex above their heads at {t}");
+        }
+        let cam = camera(IMPACT_AT);
+        let flight = straight(&cam, father, impact());
+        let (a, b) = (flight[0], flight[flight.len() - 1]);
+        for p in &flight {
+            let off = ((b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0)) / (b.0 - a.0).hypot(b.1 - a.1);
+            assert!(off.abs() < 1e-6, "words fly straight");
         }
     }
     #[test]
@@ -661,6 +686,7 @@ mod tests {
     fn the_last_breath_and_word_meet_at_the_impact() {
         let (text, at) = PHRASES[2];
         assert!((at + PHRASE_TIME - IMPACT_AT).abs() < 1e-9, "{text}");
+        assert!(PHRASES.windows(2).all(|w| w[1].1 - w[0].1 >= PHRASE_TIME), "one phrase at a time");
         assert!((BREATHS[2] + 1.3 + 1. - IMPACT_AT).abs() < 1e-9);
         assert!(REACH[2] == 1. && REACH[0] < REACH[1] && REACH[1] < 1.);
         let cam = camera(IMPACT_AT);

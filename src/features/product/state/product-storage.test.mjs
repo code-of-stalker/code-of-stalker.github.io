@@ -72,6 +72,14 @@ const fresh=async()=> (await import(`./storage.native.ts?instance=${sequence++}`
 const meta={level:'basic',step:1,questionIndex:0};
 const draft={uri:'file:///cache/capture.m4a',durationMs:2100,waveform:[0.1,0.7]};
 
+test('native encrypted progress keeps independent step three and step four bookmarks', async () => {
+  setup(); const repo=await fresh(), three={chapter:1,page:2,offset:187}, four={page:14,offset:90};
+  await repo.updateProgress({stepThreeReading:three,stepFourReading:four});
+  const progress=(await (await fresh()).read()).progress;
+  assert.deepEqual(progress.stepThreeReading,three);
+  assert.deepEqual(progress.stepFourReading,four);
+});
+
 test('native encrypted progress reopens the exact third-step section', async () => {
   setup(); const repo=await fresh(), location={chapter:1,page:2,offset:187};
   await repo.updateProgress({stepThreeReading:location});

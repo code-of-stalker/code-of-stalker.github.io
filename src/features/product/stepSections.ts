@@ -1,13 +1,16 @@
 import { stepThreeBlocks } from './stepThreeContent';
 import { stepThreePractice } from './stepThreePractice';
+import { stepFourGroups, stepFourPages } from './stepFourContent';
 import type { PracticeStage } from './state/model';
 
-export type StepDestination = { step: 1 | 2 | 3; stage: PracticeStage; chapter: 0 | 1; page: number; section: boolean };
+export type StepDestination = { step: 1 | 2 | 3 | 4; stage: PracticeStage; chapter: 0 | 1; page: number; section: boolean };
 export type StepSection = { title: string; destination: StepDestination };
 export type StepSectionGroup = { title: string; items: StepSection[] };
-const item = (step: 1 | 2 | 3, title: string, stage: PracticeStage, chapter: 0 | 1, page = 0): StepSection =>
+const item = (step: 1 | 2 | 3 | 4, title: string, stage: PracticeStage, chapter: 0 | 1, page = 0): StepSection =>
   ({ title, destination: { step, stage, chapter, page, section: true } });
-export function stepSections(step: 1 | 2 | 3): StepSectionGroup[] {
+export function stepSections(step: 1 | 2 | 3 | 4): StepSectionGroup[] {
+  if (step === 4) return stepFourGroups.map(group => ({ title: group.title,
+    items: group.pages.map(page => item(4, stepFourPages[page].title!, 0, 0, page)) }));
   if (step === 1) return [
     { title: 'Материал', items: [item(1, 'Ловушка подобия', 0, 0), item(1, 'Но они не ты', 0, 0, 1)] },
     { title: 'Практика', items: [item(1, 'Наблюдение', 1, 0), item(1, 'Внимание', 2, 0), item(1, 'Среди множества', 3, 0), item(1, 'Вопросы к себе', 4, 0)] },

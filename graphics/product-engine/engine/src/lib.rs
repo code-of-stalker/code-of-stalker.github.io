@@ -25,6 +25,7 @@ pub mod scan_profile;
 pub mod scene_model;
 pub mod scene_edges;
 pub mod step_three;
+pub mod grounding;
 pub mod breath_axis;
 pub mod voice_unseal;
 pub mod voice_witness;

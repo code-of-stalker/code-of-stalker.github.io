@@ -43,6 +43,18 @@ function indexedDbFixture() {
 const fresh = async () => (await import(`./storage.ts?webInstance=${instance++}`)).productStorage;
 const meta = { level: 'basic', step: 1, questionIndex: 0 };
 
+test('fourth-step bookmark reopens without overwriting the third step', async () => {
+  indexedDbFixture(); const repo = await fresh();
+  const three = { chapter: 1, page: 2, offset: 187 }, four = { page: 6, offset: 240 };
+  await repo.updateProgress({ stepThreeReading: three, stepFourReading: four });
+  await repo.updateProgress({ step: 2 });
+  const restored = await (await fresh()).read();
+  assert.deepEqual(restored.progress.stepThreeReading, three);
+  assert.deepEqual(restored.progress.stepFourReading, four);
+  await assert.rejects(repo.updateProgress({ stepFourReading: { page: 99, offset: 0 } }));
+  await assert.rejects(repo.updateProgress({ stepFourReading: { page: 1, offset: -1 } }));
+});
+
 test('step three reading location survives reload, other steps and a return to the beginning', async () => {
   indexedDbFixture(); const repo = await fresh();
   const location = { chapter: 1, page: 2, offset: 187 };

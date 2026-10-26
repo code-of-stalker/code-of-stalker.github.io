@@ -12,9 +12,14 @@ import type { ArtInteraction } from './gesture';
 import { useArtEffects } from './useArtEffects';
 import { useThemeColors } from '../ProductTheme';
 import { paletteCode } from './graphicsPalette';
+import { ArtLoading, holdsPlace, useArtLoadingSettled } from '../skeleton/ArtLoading';
+
+export function Art(props: ArtProps) {
+  return holdsPlace(props) ? <ArtLoading props={props}>{scene => <NativeArt {...scene} />}</ArtLoading> : <NativeArt {...props} />;
+}
 
 /** Local artwork only. Matrix, credentials, recording and navigation stay native. */
-export function Art({ kind, height, width, glass, controllerRef, audioSource, scanOnMount = true, onRevealProgress, onReady, onDecoderComplete, active = true, decoderVisible = false, reducedMotion = false, level = 0, spectrum, mode = 'record', lockProgress = 0, locked = false, presentation = 'artwork', onPress, accessibilityLabel, style }: ArtProps) {
+function NativeArt({ kind, height, width, glass, controllerRef, audioSource, scanOnMount = true, onRevealProgress, onReady, onDecoderComplete, active = true, decoderVisible = false, reducedMotion = false, level = 0, spectrum, mode = 'record', lockProgress = 0, locked = false, presentation = 'artwork', onPress, accessibilityLabel, style }: ArtProps) {
   const focused = useIsFocused();
   const colors = useThemeColors();
   const theme = paletteCode(colors);
@@ -66,7 +71,8 @@ export function Art({ kind, height, width, glass, controllerRef, audioSource, sc
   useEffect(() => { const listener = AppState.addEventListener('change', value => setForeground(value === 'active')); return () => listener.remove(); }, []);
   useEffect(() => { if (!active || !foreground || !focused) gesture.cancel(); return () => gesture.cancel(); }, [active, foreground, focused, gesture]);
   return <View style={[{ height, width: width ?? '100%' }, style]} onLayout={event => { dimensions.current = { width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height }; }}>
-    {failed === kind || !source ? <View style={styles.fallback}><Text style={styles.label}>{artLabels[kind]}</Text></View> :
+    {/* While the asset loads, the skeleton holds the place. */}
+    {failed === kind ? <Unavailable kind={kind} /> : !source ? null :
       <View pointerEvents="none" style={styles.fill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <WebView key={kind} ref={browser} source={source} style={styles.web} containerStyle={styles.web} originWhitelist={['*']}
           javaScriptEnabled domStorageEnabled={false} scrollEnabled={false} bounces={false} overScrollMode="never"
@@ -81,5 +87,9 @@ export function Art({ kind, height, width, glass, controllerRef, audioSource, sc
     {onPress && <View {...responder.panHandlers} style={styles.fill} accessible accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? artLabels[kind]}
       accessibilityActions={[{ name: 'activate' }]} onAccessibilityAction={event => { if (event.nativeEvent.actionName === 'activate') gesture.activate(); }} onAccessibilityTap={() => gesture.activate()}/>}
   </View>;
+}
+function Unavailable({ kind }: { kind: ArtProps['kind'] }) {
+  useArtLoadingSettled();
+  return <View style={styles.fallback}><Text style={styles.label}>{artLabels[kind]}</Text></View>;
 }
 const styles = StyleSheet.create({ fill: { ...StyleSheet.absoluteFill }, web: { flex: 1, backgroundColor: 'transparent' }, fallback: { flex: 1, alignItems: 'center', justifyContent: 'center' }, label: { color: '#E7E100', fontSize: 13 } });

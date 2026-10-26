@@ -81,6 +81,7 @@ secrets.*.json
 # Local Rust toolchain and generated compiler caches
 /.local-rust/
 /graphics/product-engine/target/
+/graphics/skeleton/target/
 /graphics/product-engine/.cache/
 
 # Local previews, Android export checks, and the separate Sites checkout

@@ -1,0 +1,23 @@
+[package]
+name = "watcher-skeleton"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.129"
+web-sys = { version = "=0.3.106", features = ["CssStyleDeclaration", "Element", "HtmlElement"] }
+
+# The skeleton must be on screen before anything else has loaded: keep the
+# module a few kilobytes instead of tuning it for speed.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

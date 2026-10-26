@@ -27,8 +27,10 @@ const CELLS: i32 = 6;
 /// Mip levels that match the soft bloom (σ ≈ 20 px) and Art's lens blur
 /// (σ 2.85 authored px ≈ 22 panorama texels).
 const BLOOM_LOD: f32 = 5.3;
+/// The pale sky of the light painting (Дюна).
+const PAPER: [f32; 3] = [0.994, 0.94, 0.672];
 /// Left, right, top, bottom: how far the scene melts into the page.
-const EDGES: [f32; 4] = [0.1, 0.1, 0.12, 0.16];
+const EDGES: [f32; 4] = [0.05, 0.05, 0.06, 0.08];
 
 fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     let s = gl.create_shader(kind).ok_or("Cannot allocate shader")?;
@@ -190,6 +192,9 @@ pub struct WorldInGlasses {
     bytes: Vec<u8>,
     soft_edges: bool,
     backdrop: [f32; 3],
+    /// Page over paper when the light paintings draw without a theme
+    /// recolor (Дюна).
+    page: Option<[f32; 3]>,
     elapsed: f64,
     last_time: Option<f64>,
     paused: bool,
@@ -220,7 +225,7 @@ impl WorldInGlasses {
         let image = Pass::new(
             &gl,
             include_str!("shaders/image.frag"),
-            &["u_texture", "u_detail", "u_bloom"],
+            &["u_texture", "u_detail", "u_bloom", "u_page"],
         )?;
         let shape = Pass::new(
             &gl,
@@ -335,6 +340,7 @@ impl WorldInGlasses {
             bytes: Vec::with_capacity(480_000),
             soft_edges: false,
             backdrop: [0.0; 3],
+            page: None,
             elapsed: 0.0,
             last_time: None,
             paused: false,
@@ -479,6 +485,11 @@ impl WorldInGlasses {
         self.begin(&self.image, at);
         self.gl.uniform1i(self.image.at("u_texture"), slot);
         self.gl.uniform1f(self.image.at("u_bloom"), bloom);
+        // In Дюна the ruins behind her sit on the page's own yellow.
+        let page = self.page.filter(|_| matches!(slot, BACKGROUND | ORIGINAL));
+        let [r, g, b] = page.unwrap_or_default();
+        self.gl
+            .uniform4f(self.image.at("u_page"), r, g, b, f32::from(page.is_some()));
         self.draw_span(layer);
     }
     fn shapes(&self, at: [f32; 4], layer: Span, clip: bool) {
@@ -507,6 +518,10 @@ impl WorldInGlasses {
         let screen = view(1.0, [SIZE[0] / 2.0, SIZE[1] / 2.0]);
         let full = span(&mut mesh, |m| m.image(ARTWORK, WHOLE, 1.0, false));
         let f = compose(self.elapsed);
+        // The bloom adds its light on top, so the sky lands on the page with it.
+        let glow = if self.reduced { 0.0 } else { f.bloom };
+        self.page = (self.scene.light && !themed)
+            .then(|| std::array::from_fn(|i| self.backdrop[i] / (PAPER[i] * (1.0 + glow))));
         if self.reduced {
             self.upload(&mesh);
             self.picture(ORIGINAL, screen, full, 0.0);
@@ -601,8 +616,8 @@ impl WorldInGlasses {
         let settings = if self.reduced {
             [0.0; 4]
         } else {
-            // A dark vignette muddies the light paintings' pale edges.
-            let vignette = if self.scene.light { 0.15 } else { 0.6 };
+            // A dark vignette would pull the light paintings away from the page.
+            let vignette = if self.scene.light { 0.0 } else { 0.6 };
             [vignette, 0.05, f.flash, (f.time * 24.0).floor()]
         };
         if !self.reduced || backdrop[3] > 0.0 {

@@ -3,17 +3,18 @@
 //! its walls are lines of thought typing themselves and wiping out, and a dark
 //! swarm creeps along its corridors. She speaks; her voice becomes a thread of
 //! light that lays the way to the gate, and the swarm breaks on it. She
-//! follows the thread, the walls along her way crumble, the gate opens and,
-//! as the camera rises, the maze melts into the Light.
+//! follows the thread, her voice running ahead along it brings down the
+//! walls by her way, the gate opens and, as the camera rises, the maze melts
+//! into the Light.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
     f64::consts::{PI, TAU},
     sync::LazyLock,
 };
 
-pub const PERIOD: f64 = 30.;
-/// The reduced-motion still: through the gate, the maze melted, the words lit.
-pub const REST: f64 = 25.;
+pub const PERIOD: f64 = 36.;
+/// The reduced-motion still: through the gate, the maze melted, the Light named.
+pub const REST: f64 = 31.;
 
 type Cell = (usize, usize);
 /// Square cells in columns across and rows into the distance, metres.
@@ -100,12 +101,19 @@ const THOUGHTS: [(P, &str); 14] = [
 ];
 const SPEAK: f64 = 5.;
 const LAY: (f64, f64) = (5.2, 9.4);
-const WALK: (f64, f64) = (9.8, 18.6);
-const SWING: (f64, f64) = (17., 19.);
-const RISE: (f64, f64) = (19.6, 23.);
+const WALK: (f64, f64) = (11.4, 25.4);
+const SWING: (f64, f64) = (WALK.1 - 2., WALK.1);
+const RISE: (f64, f64) = (WALK.1 + 0.8, WALK.1 + 4.2);
 /// Her walk speeds up over this long and slows down over that.
-const START: f64 = 0.9;
-const STOP: f64 = 1.4;
+const START: f64 = 1.4;
+const STOP: f64 = 1.8;
+/// Her voice runs out along the thread in pulses, from a breath before she
+/// sets off: one every this many seconds, at this speed, metres a second,
+/// and this far; a wall by her way crumbles as the first one passes it.
+const PULSE: f64 = 1.6;
+const VOICE: f64 = 3.2;
+const REACH: f64 = 3.4;
+const PULSES: usize = 9;
 /// The thread runs at hand height.
 const THREAD_Y: f64 = 1.;
 /// The swarm: the dead ends it creeps through, specks in a stream and their spacing.
@@ -113,7 +121,6 @@ const RIGHT_SWARM: [Cell; 11] = [(5, 4), (5, 3), (5, 2), (4, 2), (4, 1), (5, 1),
 const LEFT_SWARM: [Cell; 11] = [(3, 4), (2, 4), (1, 4), (0, 4), (0, 3), (1, 3), (1, 2), (0, 2), (0, 1), (0, 0), (1, 0)];
 const SPECKS: usize = 18;
 const GAP: f64 = 0.085;
-const NAMES: [(&str, f64); 4] = [("АБСОЛЮТНЫЙ", 22.4), ("ЦЕЛЫЙ", 22.9), ("СОВЕРШЕННЫЙ", 23.4), ("ОДИН", 23.9)];
 
 fn time(seconds: f64, reduced: bool) -> f64 {
     if reduced || !seconds.is_finite() {
@@ -217,12 +224,20 @@ fn go() -> f64 {
 /// How far along the way the thread reaches: to the gate as she speaks, and
 /// on into the light as the gate opens.
 fn thread_head(t: f64) -> f64 {
-    mix(gate_at() * ramp(t, LAY.0, LAY.1), ROUTE.len(), ramp(t, 17., 19.5))
+    mix(gate_at() * ramp(t, LAY.0, LAY.1), ROUTE.len(), ramp(t, SWING.0, SWING.1 + 0.5))
+}
+/// The thread's head ripples while it travels.
+fn travelling(t: f64) -> f64 {
+    bell(t, LAY.0, LAY.0 + 0.3, LAY.1, LAY.1 + 0.5) + bell(t, SWING.0, SWING.0 + 0.3, SWING.1 + 0.5, SWING.1 + 1.)
+}
+/// Her steady speed, metres a second.
+fn cruise() -> f64 {
+    go() / (WALK.1 - WALK.0 - (START + STOP) / 2.)
 }
 /// Her walk along the way: speeding up, steady, slowing to a stop.
 fn walked(t: f64) -> f64 {
     let span = WALK.1 - WALK.0;
-    let v = go() / (span - (START + STOP) / 2.);
+    let v = cruise();
     let u = (t - WALK.0).clamp(0., span);
     if u < START {
         v * u * u / (2. * START)
@@ -244,6 +259,7 @@ fn pace(t: f64) -> f64 {
     }
 }
 /// When her walk reaches `s`.
+#[cfg(test)]
 fn arrive(s: f64) -> f64 {
     if s <= 0. {
         return WALK.0;
@@ -259,12 +275,39 @@ fn arrive(s: f64) -> f64 {
     }
     b
 }
-/// Her soles on the way, bobbing as she walks, and her art in world metres.
+/// Her soles on the way and her art in world metres.
 fn her(t: f64) -> (W, Affine) {
-    let s = walked(t);
-    let (x, z) = ROUTE.at(s);
-    let feet = [x, 0.012 * (PI * s / 0.65).sin().abs() * pace(t), z];
+    let (x, z) = ROUTE.at(walked(t));
+    let feet = [x, 0., z];
     (feet, heroine_world(feet, HEIGHT, 1.))
+}
+/// Her steps taken and the share of a full stride she walks with. Her
+/// cadence holds while her steps lengthen and shorten, so a planted foot
+/// keeps its place; where the way runs off into the view, seen side on, her
+/// steps shorten.
+fn gait(t: f64) -> (f64, f64) {
+    let steps = cruise() * (t - WALK.0).clamp(0., WALK.1 - WALK.0) / heroine_step(HEIGHT);
+    let s = walked(t);
+    let ((x, z), (dx, dz)) = (ROUTE.at(s), ROUTE.heading(s));
+    let (a, b) = (CAM.project([x, 0., z]), CAM.project([x + 0.1 * dx, 0., z + 0.1 * dz]));
+    let across = (b.0 - a.0).abs() / (b.0 - a.0).hypot(b.1 - a.1).max(1e-9);
+    (steps, pace(t) * mix(0.65, 1., across))
+}
+/// When pulse `n` of her voice leaves her, and how far along the way it is
+/// at `t` while it sounds.
+fn sent(n: usize) -> f64 {
+    WALK.0 - 0.8 + PULSE * n as f64
+}
+fn pulse(n: usize, t: f64) -> Option<f64> {
+    let u = t - sent(n);
+    (0. ..=REACH / VOICE).contains(&u).then(|| walked(sent(n)) + VOICE * u)
+}
+/// When her voice first passes `s` along the way.
+fn heard(s: f64) -> Option<f64> {
+    (0..PULSES).find_map(|n| {
+        let from = walked(sent(n));
+        (from + REACH >= s).then(|| sent(n) + (s - from).max(0.) / VOICE)
+    })
 }
 /// Shallow and quick at first; once she speaks, slow and deep.
 fn breath(t: f64) -> f64 {
@@ -272,32 +315,37 @@ fn breath(t: f64) -> f64 {
     let deep = 0.5 - 0.5 * (TAU * (t - SPEAK) / 4.4).cos();
     mix(shallow, deep, ramp(t, SPEAK - 0.6, SPEAK + 0.8))
 }
-fn throat(t: f64) -> W {
+/// Her jugular notch, the source of her voice, in art units under her
+/// placing as she walks.
+fn notch_art(t: f64) -> P {
+    let (steps, stride) = gait(t);
+    walking_mark(steps, stride, breath(t), HEROINE_NOTCH)
+}
+fn notch(t: f64) -> W {
     let (feet, world) = her(t);
-    let (x, y) = heroine_mark(world, HEROINE_THROAT, breath(t));
+    let (x, y) = world.apply(notch_art(t));
     [x, y, feet[2]]
 }
 /// A point of the thread `s` metres along the way: it rises out of her
-/// throat over the first metre, then runs at hand height, rippling near its
+/// notch over the first metre, then runs at hand height, rippling near its
 /// head while it travels.
-fn thread_at(s: f64, t: f64, throat: W) -> W {
+fn thread_at(s: f64, t: f64, notch: W) -> W {
     let (tail, head) = (walked(t), thread_head(t));
     let rise = ease((s - tail) / 0.9);
     let (x, z) = ROUTE.at(s);
-    let moving = bell(t, LAY.0, LAY.0 + 0.3, LAY.1, LAY.1 + 0.5) + bell(t, 17., 17.3, 19.5, 20.);
-    let ripple = 0.025 * rise * moving * (1. - ramp(head - s, 0.3, 2.)) * (TAU * s / 0.7 - 7. * t).sin();
-    [x + (1. - rise) * (throat[0] - x), mix(throat[1], THREAD_Y, rise) + ripple, z]
+    let ripple = 0.025 * rise * travelling(t) * (1. - ramp(head - s, 0.3, 2.)) * (TAU * s / 0.7 - 7. * t).sin();
+    [x + (1. - rise) * (notch[0] - x), mix(notch[1], THREAD_Y, rise) + ripple, z]
 }
 /// The thread split by rows of the maze, so each piece is drawn between the
 /// walls behind it and the walls before it. Straight runs keep only their ends.
-fn thread_rows(t: f64, throat: W) -> [String; ROWS + 1] {
+fn thread_rows(t: f64, notch: W) -> [String; ROWS + 1] {
     let mut rows: [Vec<P>; ROWS + 1] = Default::default();
     let (tail, head) = (walked(t), thread_head(t));
     if head - tail > 0.02 {
         let n = ((head - tail) / 0.1).ceil() as usize;
         let points: Vec<(P, usize)> = (0..=n)
             .map(|i| {
-                let p = thread_at(mix(tail, head, i as f64 / n as f64), t, throat);
+                let p = thread_at(mix(tail, head, i as f64 / n as f64), t, notch);
                 (CAM.project(p), row_of(p[2]))
             })
             .collect();
@@ -491,7 +539,9 @@ impl Wall {
     fn shown(&self, t: f64) -> (f64, f64) {
         let f = self.fall;
         if self.beside.is_some() {
-            (1. - ramp(t, f, f + 0.35), 0.8 * bell(t, f - 0.4, f - 0.1, f + 0.05, f + 0.3))
+            // Her voice lights it up; it cracks into slabs that let go.
+            let u = t - f;
+            (1. - ramp(u, 0.45, 0.8), 0.8 * bell(u, -0.15, 0.05, 0.35, 0.9))
         } else {
             (1. - 0.78 * ramp(t, f, f + 1.2), 0.9 * bell(t, f - 0.2, f + 0.3, f + 0.6, f + 1.2))
         }
@@ -519,7 +569,7 @@ impl Wall {
         let along = unit(sub(face[1], face[0]));
         let mut d = String::new();
         if self.beside.is_some() {
-            if !(0. ..1.8).contains(&u) {
+            if !(0. ..3.7).contains(&u) {
                 return (d, 0.);
             }
             let (across, down) = (6, 4);
@@ -529,17 +579,18 @@ impl Wall {
                     let (a0, b0) = (i as f64 / across as f64, j as f64 / down as f64);
                     let (da, db) = (1. / across as f64, 1. / down as f64);
                     let centre = self.on_face(a0 + da / 2., b0 + db / 2.);
-                    let lift = 0.5 * hash(k + 2);
-                    // Top slabs go first; each tumbles and comes to rest on the floor.
-                    let landed = (lift + (lift * lift + 11. * centre[1]).sqrt()) / 5.5;
-                    let tau = (u - 0.22 * (b0 + db / 2.)).clamp(0., landed);
-                    let fly = add(add(scaled(normal, 0.35 + 0.6 * hash(k)), scaled(along, 0.8 * (hash(k + 1) - 0.5))), [0., lift, 0.]);
+                    let lift = 0.35 * hash(k + 2);
+                    // Top slabs let go first, slowly, as if in a dream; each
+                    // tumbles and comes to rest on the floor.
+                    let landed = (lift + (lift * lift + 4. * DRIFT * centre[1]).sqrt()) / (2. * DRIFT);
+                    let tau = (u - 0.55 - 0.9 * (b0 + db / 2.) - 0.35 * hash(k + 5)).clamp(0., landed);
+                    let fly = add(add(scaled(normal, 0.2 + 0.35 * hash(k)), scaled(along, 0.5 * (hash(k + 1) - 0.5))), [0., lift, 0.]);
                     let mut at = add(centre, scaled(fly, tau));
-                    at[1] -= 2.75 * tau * tau;
+                    at[1] -= DRIFT * tau * tau;
                     let tilt = hash(k + 3) * PI;
                     let axis = add(scaled(along, tilt.cos()), [0., tilt.sin(), 0.]);
-                    let turn = (2.4 + 3. * hash(k + 4)) * tau;
-                    let size = 1. - 0.5 * ramp(u, 0.25, 1.3);
+                    let turn = (1.1 + 1.6 * hash(k + 4)) * tau;
+                    let size = 1. - 0.45 * ramp(u, 2.4, 3.8);
                     let mut points: Vec<W> = [(0., 0.), (1., 0.), (1., 1.), (0., 1.)]
                         .iter()
                         .map(|&(a, b)| {
@@ -554,7 +605,7 @@ impl Wall {
                     d.push_str(&CAM.poly(&points));
                 }
             }
-            (d, ramp(u, 0., 0.1) * (1. - ramp(u, 0.9, 1.7)))
+            (d, ramp(u, 0.4, 0.5) * (1. - ramp(u, 2.6, 3.6)))
         } else {
             if !(0. ..2.4).contains(&u) {
                 return (d, 0.);
@@ -582,6 +633,9 @@ impl Wall {
         }
     }
 }
+/// Half the pull on the slabs of a crumbling wall, metres a second squared:
+/// far below a real fall, so they drift down.
+const DRIFT: f64 = 1.3;
 /// Every wall in painter order: the farthest band first; in a band the wall
 /// across the way, then the walls into the view from the outside in.
 static WALLS: LazyLock<Vec<Wall>> = LazyLock::new(|| {
@@ -613,8 +667,8 @@ static WALLS: LazyLock<Vec<Wall>> = LazyLock::new(|| {
             let (near, off) = ROUTE.nearest(mid);
             let beside = (off < 1.).then_some(near);
             let fall = match beside {
-                // It flashes and crumbles while she is still a few steps away.
-                Some(near) => arrive(near - 1.3) - 0.4,
+                // Her voice reaches it while she is still a few steps away.
+                Some(near) => heard(near).unwrap_or(RISE.0),
                 // The maze melts outward from the gate.
                 None => RISE.0 + 2.2 * apart(mid, (2.25, BACK)) / 9.5,
             };
@@ -744,26 +798,28 @@ fn lens(t: f64, her: P) -> Affine {
     let gate = CAM.project([2.25, 1.1, BACK]);
     let mut s = mix(1.75, 1.5, ramp(t, 0., 4.8));
     s = mix(s, 1., ramp(t, 5., 9.));
-    s = mix(s, 1.15, ramp(t, 9., 11.));
-    s = mix(s, 1.3, ramp(t, 17.5, 19.5));
-    s = mix(s, 0.7, ramp(t, 19.5, 24.5));
+    let (follow, gate_in, up) = ((WALK.0 - 1.6, WALK.0 + 0.4), (SWING.0 + 0.5, SWING.1 + 0.5), (SWING.1 + 0.5, SWING.1 + 5.5));
+    s = mix(s, 1.15, ramp(t, follow.0, follow.1));
+    s = mix(s, 1.3, ramp(t, gate_in.0, gate_in.1));
+    s = mix(s, 0.7, ramp(t, up.0, up.1));
     let mut f = lerp(her, centre, ramp(t, 5., 9.));
-    f = lerp(f, lerp(her, centre, 0.5), ramp(t, 9., 11.));
-    f = lerp(f, gate, ramp(t, 17.5, 19.5));
-    f = lerp(f, (gate.0, gate.1 - 45.), ramp(t, 19.5, 24.5));
+    f = lerp(f, lerp(her, centre, 0.5), ramp(t, follow.0, follow.1));
+    f = lerp(f, gate, ramp(t, gate_in.0, gate_in.1));
+    f = lerp(f, (gate.0, gate.1 - 45.), ramp(t, up.0, up.1));
     Affine([s, 0., 0., s, 160. - s * f.0, 96. - s * f.1])
 }
 
 fn defs() -> String {
     let (hx, hy) = HEROINE_HEART;
     format!(
-        r#"{}<radialGradient id="nt-smudge"><stop stop-color="var(--book-cover)" stop-opacity=".9"/><stop offset=".55" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><radialGradient id="nt-bloom"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-light)" stop-opacity=".6"/><stop offset=".55" stop-color="var(--book-line)" stop-opacity=".25"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="nt-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="nt-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="nt-vignette" r=".75"><stop offset=".6" stop-color="var(--book-cover)" stop-opacity="0"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".85"/></radialGradient><linearGradient id="nt-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)"/><stop offset=".85" stop-color="var(--book-cover)"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient>"#,
+        r#"{}<radialGradient id="nt-smudge"><stop stop-color="var(--book-cover)" stop-opacity=".9"/><stop offset=".55" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><radialGradient id="nt-bloom"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-light)" stop-opacity=".6"/><stop offset=".55" stop-color="var(--book-line)" stop-opacity=".25"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="nt-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="nt-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="nt-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)"/><stop offset=".85" stop-color="var(--book-cover)"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient>{}"#,
         glow_defs("nt"),
+        edge_defs("nt"),
     )
 }
 
 fn draw(c: &mut Canvas, t: f64, reduced: bool) {
-    let master = if reduced { 1. } else { ramp(t, 0., 1.2) * (1. - ramp(t, 28.2, 29.8)) };
+    let master = if reduced { 1. } else { ramp(t, 0., 1.2) * (1. - ramp(t, PERIOD - 1.8, PERIOD - 0.2)) };
     let calm = ramp(t, LAY.1, LAY.1 + 1.2);
     let end = ramp(t, RISE.0, RISE.1);
     let open = ramp(t, SWING.0, SWING.1);
@@ -771,8 +827,9 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let (feet, world) = her(t);
     let place = world.then(CAM.plane(feet[2]));
     let chest = heroine_mark(place, HEROINE_HEART, b);
-    let voice = throat(t);
-    let (tail, head) = (walked(t), thread_head(t));
+    let (steps, stride) = gait(t);
+    let voice = notch(t);
+    let head = thread_head(t);
     let thread = thread_rows(t, voice);
     let shine = ramp(t, LAY.0, LAY.0 + 0.3) * (1. - 0.5 * end);
     let laying = bell(t, LAY.0, LAY.0 + 0.1, LAY.1, LAY.1 + 0.4);
@@ -862,7 +919,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         for w in WALLS.iter().filter(|w| w.band == r) {
             let (d, a) = w.debris(t);
             if w.beside.is_some() {
-                c.path(&d, &format!(r#"fill="{COVER}" stroke="{LINE}" stroke-width=".35""#), a);
+                c.path(&d, &format!(r#"fill="{COVER}" stroke="{LINE}" stroke-width=".3" stroke-opacity=".45""#), a);
             } else {
                 c.path(&d, &format!(r#"fill="{LIGHT}" fill-opacity=".7""#), a);
             }
@@ -882,38 +939,42 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         glows: &[(&inner, 0.15 * calm + 0.5 * end)],
         inks: &[(&ink, 1.), (&lit, 0.2 * calm + 0.6 * end)],
     };
-    heroine(c, place, b, 1., &mine);
-    let speaking = bell(t, SPEAK - 0.2, SPEAK + 0.2, SPEAK + 1., SPEAK + 1.8);
-    c.sprite(heroine_mark(place, HEROINE_THROAT, b), 3. + 2. * speaking, "nt-glow", 0.6 * speaking + 0.25 * calm * (1. - end));
-    let moving = bell(t, LAY.0, LAY.0 + 0.3, LAY.1, LAY.1 + 0.5) + bell(t, 17., 17.3, 19.5, 20.);
-    c.sprite(CAM.project(thread_at(head, t, voice)), 2.8 + 1.5 * moving, "nt-glow", shine * (1. - 0.6 * end));
-    // Her voice runs along the thread ahead of her, pulse after pulse.
-    let k = ((t - LAY.1) / 1.7).rem_euclid(1.);
-    let bead = thread_at(mix(tail, head, k), t, voice);
-    c.sprite(CAM.project(bead), 2.2, "nt-glow", 0.8 * bell(k, 0., 0.08, 0.75, 1.) * ramp(t, LAY.1, LAY.1 + 0.4) * (1. - end));
+    heroine_walking(c, place, steps, stride, b, 1., &mine);
+    // Her notch lights as she speaks and each time her voice goes out again.
+    let sending = (0..PULSES).map(|n| bell(t - sent(n), -0.15, 0.02, 0.15, 0.5)).fold(0., f64::max);
+    let speaking = bell(t, SPEAK - 0.2, SPEAK + 0.2, SPEAK + 1., SPEAK + 1.8).max(0.6 * sending * (1. - end));
+    c.sprite(place.apply(notch_art(t)), 3. + 2. * speaking, "nt-glow", 0.6 * speaking + 0.25 * calm * (1. - end));
+    c.sprite(CAM.project(thread_at(head, t, voice)), 2.8 + 1.5 * travelling(t), "nt-glow", shine * (1. - 0.6 * end));
+    // Her voice runs along the thread ahead of her, pulse after pulse, and
+    // brings down the walls it passes.
+    for slot in 0..2 {
+        let sounding = (slot..PULSES).step_by(2).find_map(|n| pulse(n, t).map(|s| (n, s)));
+        let (at, a) = match sounding {
+            Some((n, s)) => {
+                let u = (t - sent(n)) * VOICE / REACH;
+                let at = CAM.project(thread_at(s.min(head), t, voice));
+                (at, bell(u, 0., 0.08, 0.75, 1.) * (1. - ramp(s, head - 0.5, head)) * shine)
+            }
+            None => ((0., 0.), 0.),
+        };
+        c.sprite(at, 7., "nt-glow", 0.3 * a);
+        c.sprite(at, 2.6, "nt-glow", 0.9 * a);
+    }
     c.end();
 
     // The Light, named.
-    c.fixed(|| "M-20 -20H340V212H-20Z".into(), r#"fill="url(#nt-vignette)""#, 1. - 0.5 * end);
-    let named = bell(t, 21.6, 22.6, 27.8, 28.6);
+    let named = bell(t, RISE.0 + 2., RISE.0 + 3., PERIOD - 2.4, PERIOD - 1.6);
     c.fixed(|| ellipse((160., 42.), 125., 30.), r#"fill="url(#nt-smudge)""#, 0.55 * named);
     let place_light = format!("translate(160 {:.2}) scale(1.25)", 30. + 2. * (1. - named));
     c.words("СВЕТ", || word("СВЕТ", 0., 3.6, 10.), &fill(LIGHT), &place_light, named);
-    let widths: Vec<f64> = NAMES.iter().map(|(text, _)| text_width(text, 5.2)).collect();
-    let mut x = 160. - (widths.iter().sum::<f64>() + 7. * (NAMES.len() - 1) as f64) / 2.;
-    for (&(text, from), width) in NAMES.iter().zip(widths) {
-        let a = bell(t, from, from + 0.8, 27.8, 28.6);
-        let at = format!("translate({:.2} {:.2}) scale(.52)", x + width / 2., 48. + 1.5 * (1. - a));
-        c.words(text, || word(text, 0., 3.6, 10.), &fill(LINE), &at, a);
-        x += width + 7.;
-    }
+    soft_edges(c, "nt");
     c.end();
 }
 
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "nt",
-        "Объёмный лабиринт сверху: стены из бегущих строк мыслей, по коридорам ползёт тёмный рой. Героиня заговаривает, и голос становится нитью света, которая прокладывает путь к воротам; рой рассыпается о нить. Она идёт за нитью, стены на её пути осыпаются, ворота открываются, камера поднимается, и лабиринт тает в Свете: абсолютный, целый, совершенный, один.",
+        "Объёмный лабиринт сверху: стены из бегущих строк мыслей, по коридорам ползёт тёмный рой. Героиня заговаривает, и голос становится нитью света, которая прокладывает путь к воротам; рой рассыпается о нить. Она мягко идёт за нитью, а голос волна за волной бежит по нити вперёд, и стены на её пути медленно осыпаются. Ворота открываются, камера поднимается, и лабиринт тает в Свете.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -973,7 +1034,7 @@ mod tests {
         assert_eq!(cells[cells.len() - 1], (GATE, ROWS));
         // She steps through the gate and stops in the light.
         assert!((walked(WALK.1) - go()).abs() < 1e-9 && ROUTE.at(go()).1 > BACK);
-        assert!((0..400).all(|i| walked(i as f64 * 0.075) <= walked((i + 1) as f64 * 0.075)));
+        assert!((0..480).all(|i| walked(i as f64 * 0.075) <= walked((i + 1) as f64 * 0.075)));
     }
     #[test]
     fn the_swarm_creeps_through_open_passages() {
@@ -994,7 +1055,25 @@ mod tests {
             assert!(w.shown(arrive(near).max(WALK.0)).0 < 0.05, "{:?}", w.mid);
             // Not before the thread has shown the way.
             assert!(w.fall >= LAY.1 - 1e-9, "{:?}", w.mid);
+            // Her voice is passing it just then, and it takes its time.
+            let passing = (0..PULSES).filter_map(|n| pulse(n, w.fall)).any(|s| (s - near).abs() < 0.01);
+            assert!(heard(near).is_some() && passing, "{:?}", w.mid);
+            assert!(w.debris(w.fall + 2.).1 > 0.99 && w.debris(w.fall + 3.65).1 == 0., "{:?}", w.mid);
         }
+    }
+    #[test]
+    fn her_voice_goes_ahead_of_her() {
+        // Every pulse leaves her notch and outruns her while it sounds.
+        for n in 0..PULSES {
+            let from = sent(n);
+            assert_eq!(pulse(n, from), Some(walked(from)));
+            for k in 1..10 {
+                let t = from + k as f64 * 0.1 * REACH / VOICE;
+                assert!(pulse(n, t).unwrap() > walked(t) + 0.2, "{n} {t}");
+            }
+        }
+        // Pulses keep going until she is through the gate.
+        assert!(walked(sent(PULSES - 1)) + REACH > gate_at() && sent(PULSES - 1) < WALK.1);
     }
     #[test]
     fn the_swarm_breaks_before_it_touches_her_or_the_thread() {
@@ -1003,7 +1082,7 @@ mod tests {
             let mut t = 0.;
             while t < BREAK[k] {
                 let (feet, _) = her(t);
-                let voice = throat(t);
+                let voice = notch(t);
                 let (tail, head) = (walked(t), thread_head(t));
                 for i in 0..SPECKS {
                     let Some((p, _)) = speck(k, i, t) else { continue };

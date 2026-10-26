@@ -14,6 +14,12 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
 }
 @fragment fn main(v: V) -> @location(0) vec4<f32> {
     let pixel = textureSample(image, smooth_sampler, vec2(v.uv.x, 1. - v.uv.y));
+    // Grounding uses the application's Matrix yellow, not the gold pigment of
+    // its immutable source. Other themes continue through the shared palette.
+    if (palette.mode.x < .5 && palette.mode.y > 3.5) {
+        let energy = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)), 0., pixel.a);
+        return vec4(vec3(245. / 255., 221. / 255., 7. / 255.) * energy, pixel.a);
+    }
     if (palette.mode.x < .5) { return pixel; }
     // Sand portraits are an authored RGBA asset, not a duotone of the original.
     if (palette.mode.x < 1.5 && palette.mode.y > .5 && palette.mode.y < 1.5) { return pixel; }

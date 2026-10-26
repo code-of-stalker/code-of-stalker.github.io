@@ -40,6 +40,8 @@ export const productStepNames = {
   6: 'ВНУТРЕННЕЕ КОЛЬЦО',
   7: 'ДИНАМИЧЕСКАЯ СФЕРА',
 } as const;
+/** Closes each step once, after its last practice page (not each material or practice). */
+export const stepAuthor = '#Яна Корнилова';
 
 // Labels and descriptions from the selected Laboratory level-selection reference.
 export const productLevels: {

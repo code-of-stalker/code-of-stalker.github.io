@@ -112,6 +112,21 @@ impl TextTimeline {
                 }
             }
         }
+        if self.effect == 4 {
+            if let Ok(Some(node)) = self.root.query_selector("[data-rust-signature]") {
+                if let Some(node) = node.dyn_ref::<HtmlElement>() {
+                    let style = node.style();
+                    let _ = style.set_property("--signature-written", &frame.scale.to_string());
+                    let _ = style.set_property(
+                        "text-shadow",
+                        &format!(
+                            "0 0 9px color-mix(in srgb,var(--signature-warm) {}%,transparent)",
+                            frame.opacity * 100.
+                        ),
+                    );
+                }
+            }
+        }
         let _ = self
             .root
             .set_attribute("data-rust-text-time", &self.clock.elapsed.to_string());

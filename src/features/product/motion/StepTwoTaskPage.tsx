@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { secondStepClosing, secondStepTasks } from '../content';
 import { ProductText } from '../ui';
+import { StepSignature } from './StepSignature';
 import { fonts } from '../theme';
 import { Art } from './Art';
 import { ContentSwap } from './ContentSwap';
@@ -52,6 +53,7 @@ export function StepTwoTaskPage({ part, active, enabled, width, viewportHeight, 
           {!!block.title && <ProductText variant="title" style={styles.title}>{block.title}</ProductText>}
           <ProductText testID="step-two-task-copy" style={[styles.text, { fontSize, lineHeight: fontSize + 9 }, block.art === 'body-senses' && styles.emphasis]}>{block.text}</ProductText>
           <View style={styles.art} pointerEvents="none"><Art kind={block.art} height={Math.max(148, Math.min(width * 210 / (block.art === 'life-book' ? 272 : 288), viewportHeight * .55))} active={playing} reducedMotion={reducedMotion} /></View>
+          {part === 4 && value === pages.length - 1 && <StepSignature active={playing} reducedMotion={reducedMotion} style={styles.signature} />}
         </ScrollGate>
       </View>;
     }} />
@@ -63,4 +65,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 21, lineHeight: 29, marginBottom: 20, textTransform: 'uppercase' },
   text: { textTransform: 'uppercase' }, emphasis: { fontFamily: fonts.bodyBold, fontSize: 24, lineHeight: 34 },
   art: { flexGrow: 1, minHeight: 0, justifyContent: 'center', paddingTop: 24, paddingBottom: 12 },
+  signature: { marginTop: 12 },
 });

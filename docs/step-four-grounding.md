@@ -110,3 +110,27 @@ generated binary during conflict resolution.
   `0783958fa65ea9eac678ec1a79cfe31b03d681f64345d892b6629c3291cf6e81`.
   The web export and compressed native payload match this validated binary.
   Real-device validation and publication have not been performed.
+
+## Theme matching, live rain and release integration, 2026-10-26
+
+- Removed the stationary glyph bands embedded in the source from a cached Rust
+  intermediate. All rain is now rendered by the moving project glyph atlas.
+  The source PNG remains unchanged; a regression checks every covered foreground
+  pixel and every pixel below the background against the original.
+- Grounding has a separate presentation role: Matrix uses the application's
+  `#F5DD07` instead of gold source pigment. Neutral, light and violet continue
+  through their existing palette mapping, including breathing and floor waves.
+- Merged `origin/main` at `dc3419c` before release, retaining the other agent's
+  Step 3 films, section menu changes and signatures. Rebuilt graphics and native
+  kernels from the merged Rust sources; no generated binary was chosen over the
+  other branch's implementation.
+- 207 Rust unit tests, 3 integration tests and 22 native bridge tests passed;
+  1 pre-existing Rust test remains ignored. Typecheck, lint, shader validation,
+  release builds and export passed. Clippy completed with 33 existing warnings.
+  The storage/reading regression subset passed all 35 tests.
+- Browser QA checked Matrix and neutral palettes, and compared only the rain
+  region over time in economy mode to confirm it changes independently of the
+  figure. WASM and the native embedded payload match SHA-256
+  `d7dc7770f633c317c69d21f8a9340f06ecc6ae213e9ef104840eb4081c895484`.
+  The split Sites engine reconstructs those exact bytes and validates.
+  Deployment cache: `b4682d9b366efc155dc07057`.

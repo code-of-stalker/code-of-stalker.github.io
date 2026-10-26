@@ -21,7 +21,8 @@ impl Kind {
         match self {
             Self::Gallery => 1.,
             Self::Mirror => 2.,
-            Self::VoicePresence | Self::GroundingHero => 3.,
+            Self::VoicePresence => 3.,
+            Self::GroundingHero => 4.,
         }
     }
 }
@@ -53,11 +54,13 @@ impl RasterLibrary {
         };
         self.assets.borrow_mut()[at]
             .get_or_insert_with(|| {
+                if at == 6 {
+                    return upload_image(device, queue, &crate::grounding_hero::prepared_artwork());
+                }
                 upload(
                     device,
                     queue,
                     match at {
-                        6 => include_bytes!("../assets/grounding-hero.png"),
                         3 => include_bytes!("../assets/voice-presence.png"),
                         2 => include_bytes!("../assets/gallery-sand-atlas.png"),
                         1 => include_bytes!("../assets/mirror-atlas.png"),

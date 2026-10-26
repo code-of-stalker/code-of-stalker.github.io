@@ -3,6 +3,83 @@
 pub const CYCLE_SECONDS: f64 = 9.6;
 pub const CODE_SECONDS: f64 = 48.0;
 
+/// The approved image contains authored, stationary glyph columns. Remove only
+/// those narrow bands in the cached GPU input, before adding the live glyph atlas.
+/// The original PNG, foreground, architecture outside the bands and floor remain
+/// unchanged. This preparation runs once, never in the per-frame render loop.
+pub fn prepared_artwork() -> tiny_skia::Pixmap {
+    let source = tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero.png"))
+        .expect("validated grounding hero PNG");
+    let mut prepared = source.clone();
+    let matte = coverage();
+    // Measured column centers and half widths in the 1536 x 1024 source.
+    const COLUMNS: [(u32, u32); 28] = [
+        (60, 11),
+        (84, 5),
+        (150, 12),
+        (184, 6),
+        (225, 12),
+        (270, 6),
+        (306, 7),
+        (346, 5),
+        (387, 14),
+        (428, 5),
+        (467, 9),
+        (529, 5),
+        (569, 5),
+        (614, 5),
+        (665, 5),
+        (889, 5),
+        (950, 5),
+        (1002, 9),
+        (1050, 6),
+        (1083, 9),
+        (1118, 6),
+        (1164, 5),
+        (1211, 5),
+        (1262, 12),
+        (1316, 6),
+        (1369, 12),
+        (1429, 7),
+        (1476, 10),
+    ];
+    for (center, half) in COLUMNS {
+        let left = center - half - 4;
+        let right = center + half + 4;
+        for y in 0..570 {
+            let fade = 1.0 - smooth(525., 570., y as f64);
+            for x in left..=right {
+                let solid = f32::from(matte.pixel(x / 2, y / 2).unwrap().green()) / 255.;
+                let edge = smooth(0., 4., f64::from((x - left).min(right - x)));
+                let amount = edge * fade * (1.0 - solid);
+                if amount < 0.001 {
+                    continue;
+                }
+                let mix = (x - left) as f32 / (right - left) as f32;
+                let a = source.pixel(left, y).unwrap();
+                let b = source.pixel(right, y).unwrap();
+                let original = source.pixel(x, y).unwrap();
+                let mut channels = [0u8; 3];
+                for (out, (before, (lo, hi))) in channels.iter_mut().zip(
+                    [original.red(), original.green(), original.blue()]
+                        .into_iter()
+                        .zip([a.red(), a.green(), a.blue()].into_iter().zip([
+                            b.red(),
+                            b.green(),
+                            b.blue(),
+                        ])),
+                ) {
+                    let background = f32::from(lo) * (1.0 - mix) + f32::from(hi) * mix;
+                    *out = (f32::from(before) * (1.0 - amount) + background * amount).round() as u8;
+                }
+                let offset = ((y * source.width() + x) * 4) as usize;
+                prepared.data_mut()[offset..offset + 3].copy_from_slice(&channels);
+            }
+        }
+    }
+    prepared
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Frame {
     pub breath: f32,
@@ -147,6 +224,29 @@ pub fn coverage() -> tiny_skia::Pixmap {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_rain_preparation_preserves_foreground_and_floor() {
+        let original =
+            tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero.png")).unwrap();
+        let prepared = prepared_artwork();
+        let solid = coverage();
+        let mut removed_energy = 0u64;
+        for y in 0..original.height() {
+            for x in 0..original.width() {
+                let a = original.pixel(x, y).unwrap();
+                let b = prepared.pixel(x, y).unwrap();
+                if y >= 570 || solid.pixel(x / 2, y / 2).unwrap().green() == 255 {
+                    assert_eq!(a, b, "immutable foreground or floor at {x},{y}");
+                }
+                removed_energy += u64::from(a.red().saturating_sub(b.red()));
+            }
+        }
+        assert!(
+            removed_energy > 500_000,
+            "authored bright code was not removed"
+        );
+    }
 
     #[test]
     fn energy_reaches_feet_before_the_floor_answers() {

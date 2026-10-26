@@ -286,6 +286,15 @@ pub fn text_frame(text: &str, effect: u32, seconds: f64, reduced: bool) -> TextF
         }
     } else if effect == 3 {
         result.opacity = 0.12 + 0.58 * (seconds * std::f64::consts::PI / 5.6).sin().powi(2);
+    } else if effect == 4 {
+        // The author's name is written once, left to right, by a soft hand;
+        // then a faint warm glow settles in and breathes slowly. `scale`
+        // carries how much of the name is written, `opacity` the glow.
+        let smooth = |x: f64| x * x * (3. - 2. * x);
+        result.scale = smooth(((seconds - 0.4) / 2.4).clamp(0., 1.));
+        let settled = smooth(((seconds - 2.2) / 1.2).clamp(0., 1.));
+        let breath = 0.5 + 0.5 * (std::f64::consts::TAU * (seconds - 3.4) / 6.4).cos();
+        result.opacity = settled * (0.18 + 0.3 * breath);
     }
     result
 }
@@ -341,5 +350,25 @@ mod tests {
         assert_eq!(text_frame("Одному", 2, 6., false).scale, 1.);
         assert_eq!(text_frame("Одному", 2, 2.8, true).scale, 1.);
         assert!(text_frame("Но они не ты.", 3, 2.8, false).opacity > 0.69);
+    }
+    #[test]
+    fn the_signature_is_written_once_then_glows_softly() {
+        let name = "#Яна Корнилова";
+        let start = text_frame(name, 4, 0., false);
+        assert!(start.scale == 0. && start.opacity == 0., "unwritten and dark until seen");
+        let mut written = 0.;
+        for i in 0..400 {
+            let f = text_frame(name, 4, i as f64 / 20., false);
+            assert!(f.scale >= written, "the hand never goes back");
+            written = f.scale;
+            assert!((0.0..=0.4800001).contains(&f.opacity), "a faint glow, never a flare");
+        }
+        assert_eq!(text_frame(name, 4, 2.8, false).scale, 1.);
+        for t in [4., 7.3, 11.] {
+            let (a, b) = (text_frame(name, 4, t, false), text_frame(name, 4, t + 6.4, false));
+            assert!((a.opacity - b.opacity).abs() < 1e-12 && a.scale == 1.);
+        }
+        let still = text_frame(name, 4, 0., true);
+        assert!(still.scale == 1. && still.opacity == 0., "reduced motion shows the whole name");
     }
 }

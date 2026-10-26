@@ -34,7 +34,7 @@ const OPENING: f64 = 2.25;
 const VALANCE: f64 = 2.8;
 /// The hall, nearest row last: depth, head height and extent.
 const ROWS: [(f64, f64, f64, f64); 2] = [(-2.6, 0.1, -2.75, 2.9), (-3.4, 0.45, -2.35, 2.5)];
-const TURN: (f64, f64) = (6.4, 7.6);
+const TURN: (f64, f64) = (6.1, 7.9);
 const TOUCH: f64 = 10.6;
 const BREAK: f64 = 13.4;
 const STEP: (f64, f64) = (18.6, 21.8);
@@ -96,13 +96,13 @@ fn spill() -> W {
     let s = throw();
     [LAMP[0] + s * (AIM[0] - LAMP[0]), LAMP[1] + s * (AIM[1] - LAMP[1]), WALL]
 }
-/// Facing the hall, then turned to the shadow: the two drawings of her turn.
-fn turn(t: f64) -> [(f64, f64); 2] {
-    turning(ramp(t, TURN.0, TURN.1), 1.)
+/// How far she has turned from the hall to the shadow.
+fn turn(t: f64) -> f64 {
+    ramp(t, TURN.0, TURN.1)
 }
 /// Which way she mostly faces.
 fn facing(t: f64) -> f64 {
-    if ramp(t, TURN.0, TURN.1) < 0.5 { 1. } else { -1. }
+    if turn(t) < 0.5 { 1. } else { -1. }
 }
 /// Calm breaths; one long inhale, then the exhale that becomes the voice.
 fn breath(t: f64) -> f64 {
@@ -148,13 +148,13 @@ fn shadow(cam: &Camera, facing: f64) -> Affine {
 /// Her light self steps down out of the lit shadow: it stands at the wall as
 /// tall as the shadow reaches, its head where the shadow's head is, then comes
 /// to her size as it crosses to her and turns round to face her. Soles,
-/// height and the two drawings of its turn.
-fn light_self(t: f64) -> (W, f64, [(f64, f64); 2]) {
+/// height and how far it has turned.
+fn light_self(t: f64) -> (W, f64, f64) {
     let u = ramp(t, STEP.0, STEP.1);
     let s = throw();
     let feet = [mix(LAMP[0] + s * (HER[0] - LAMP[0]), MIRROR[0], u), 0., mix(WALL, MIRROR[2], u)];
     let tall = LAMP[1] + s * (HEIGHT - LAMP[1]);
-    (feet, mix(tall, HEIGHT, u), turning((u - 0.2) / 0.6, -1.))
+    (feet, mix(tall, HEIGHT, u), ((u - 0.2) / 0.6).clamp(0., 1.))
 }
 fn world(map: Affine, p: P, z: f64, breath: f64) -> W {
     let q = heroine_mark(map, p, breath);
@@ -459,8 +459,9 @@ fn defs() -> String {
         )
     };
     format!(
-        r#"{}<radialGradient id="sh-spill"><stop stop-color="var(--book-line)" stop-opacity=".3"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".12"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="sh-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="sh-beam" x1="1" y1="1" x2="0" y2=".15"><stop stop-color="var(--book-light)" stop-opacity=".22"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".07"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".02"/></linearGradient><radialGradient id="sh-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>{}{}{}"#,
+        r#"{}{}<radialGradient id="sh-spill"><stop stop-color="var(--book-line)" stop-opacity=".3"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".12"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="sh-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="sh-beam" x1="1" y1="1" x2="0" y2=".15"><stop stop-color="var(--book-light)" stop-opacity=".22"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".07"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".02"/></linearGradient><radialGradient id="sh-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>{}{}{}"#,
         glow_defs("sh"),
+        edge_defs("sh"),
         burn("burn1", 260.),
         burn("burn2", 560.),
         burn("burn3", 1100.),
@@ -507,9 +508,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         glows: &[(&burns[0], ramp(t, 10.7, 11.5)), (&burns[1], ramp(t, 11.5, 13.)), (&burns[2], ramp(t, 12.8, 15.2))],
         inks: &[(&ink, 0.3 * (1. - ramp(t, 15., 19.))), (&lit, 0.9 * ramp(t, 14.5, 18.5))],
     };
-    for (f, a) in turn(t) {
-        heroine(c, shadow(&cam, f), b, seen * leave * a, &shade);
-    }
+    heroine_turn(c, |f| shadow(&cam, f), turn(t), 1., b, seen * leave, &shade);
 
     // What binds it, on the wall over it: strings from above and ropes of
     // thought fed by the hall; the light cuts them and they fall.
@@ -591,9 +590,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         inks: &[(&lit, 0.95)],
     };
     let appear = ramp(t, STEP.0, STEP.0 + 1.);
-    for (f, a) in its_turn {
-        heroine(c, heroine_world(feet, height, f).then(cam.plane(feet[2])), b, appear * a, &other);
-    }
+    heroine_turn(c, |f| heroine_world(feet, height, f).then(cam.plane(feet[2])), its_turn, -1., b, appear, &other);
 
     // She herself: code under her skin until her own light rises.
     let me = her(&cam, t);
@@ -605,15 +602,14 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         glows: &[(&inner_fill, inner)],
         inks: &[(&ink, 1.), (&lit, 0.6 * end)],
     };
-    for (f, a) in turn(t) {
-        heroine(c, heroine_world(HER, HEIGHT, f).then(cam.plane(HER[2])), b, a, &mine_look);
-    }
-    c.sprite(heroine_mark(me, HEROINE_THROAT, b), 4. + 2. * b, "sh-glow", 0.6 * speak);
+    heroine_turn(c, |f| heroine_world(HER, HEIGHT, f).then(cam.plane(HER[2])), turn(t), 1., b, 1., &mine_look);
+    c.sprite(heroine_mark(me, HEROINE_NOTCH, b), 4. + 2. * b, "sh-glow", 0.6 * speak);
     c.sprite(heroine_mark(me, HEROINE_HEART, b), 3. + 2. * b, "sh-glow", 0.15 * b * (1. - end) + end * (0.6 + 0.3 * b));
 
-    // The voice: her breath leaving as a living thread that reaches the shadow.
+    // The voice: her breath leaving the jugular notch as a living thread that
+    // reaches the shadow.
     let mine = heroine_world(HER, HEIGHT, k);
-    let from = world(mine, HEROINE_THROAT, HER[2], b);
+    let from = world(mine, HEROINE_NOTCH, HER[2], b);
     let to = world(cast(k), HEROINE_HEART, WALL, b);
     const SAMPLES: usize = 80;
     let path: Vec<P> = (0..=SAMPLES)
@@ -636,17 +632,17 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     c.path(&thread, &stroke(INK, 2.4), 0.3);
     c.path(&thread, &stroke(LIGHT, 0.7), 0.95);
     c.sprite(along(&wavy, head * length(&wavy)).0, 2.4, "sh-glow", (head - tail).min(0.15) / 0.15);
-    let mouth = cam.project(from);
+    let notch = cam.project(from);
     for j in 0..3 {
         let f = (t - 9.45 - 0.4 * j as f64) / 1.2;
         let on = (0. ..1.).contains(&f);
-        let d = if on { arc(mouth, 1.5 + 9. * f, 150_f64.to_radians(), 210_f64.to_radians()) } else { String::new() };
+        let d = if on { arc(notch, 1.5 + 9. * f, 150_f64.to_radians(), 210_f64.to_radians()) } else { String::new() };
         c.path(&d, &stroke(LINE, 0.45), if on { 0.55 * (1. - f) } else { 0. });
     }
 
     // Heart to heart, once she stands before herself: one breath between them.
     let mine_heart = world(mine, HEROINE_HEART, HER[2], b);
-    let its_heart = world(heroine_world(feet, height, its_turn[1].0), HEROINE_HEART, feet[2], b);
+    let its_heart = world(heroine_world(feet, height, if its_turn < 0.5 { -1. } else { 1. }), HEROINE_HEART, feet[2], b);
     let link = ramp(t, 22., 23.);
     let reach = wmix(mine_heart, its_heart, link);
     let bond = if link > 0. { cam.line(&[mine_heart, reach]) } else { String::new() };
@@ -724,6 +720,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     }
 
     c.path(&motes(&cam, t, 10, 500, (-2.6, 2.4), (-1., 1.5), 3.5, 0.012), &fill(LINE), 0.3);
+    soft_edges(c, "sh");
     c.end();
 }
 
@@ -771,15 +768,15 @@ mod tests {
     }
     #[test]
     fn the_light_self_steps_out_from_under_the_shadows_head() {
-        let (feet, height, turns) = light_self(STEP.0);
-        assert_eq!(turns, [(-1., 1.), (1., 0.)]);
+        let (feet, height, turned) = light_self(STEP.0);
+        assert_eq!(turned, 0.);
         let top = (HEROINE_FEET.0, HEROINE_TOP);
         let (a, b) = (cast(facing(STEP.0)).apply(top), heroine_world(feet, height, -1.).apply(top));
         assert!((a.0 - b.0).hypot(a.1 - b.1) < 1e-9 && feet[1] == 0., "{a:?} {b:?}");
-        let (feet, height, turns) = light_self(STEP.1);
+        let (feet, height, turned) = light_self(STEP.1);
         let off = feet.iter().zip(MIRROR).map(|(a, b)| (a - b).abs()).fold(0., f64::max);
         assert!(off < 1e-9 && (height - HEIGHT).abs() < 1e-9, "{feet:?} {height}");
-        assert!((turns[1].0 - 1.).abs() < 1e-9 && turns[1].1 == 1., "it ends facing her: {turns:?}");
+        assert_eq!(turned, 1., "it ends facing her");
     }
     #[test]
     fn every_rope_carries_its_whole_thought() {

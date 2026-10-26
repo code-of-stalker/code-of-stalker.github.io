@@ -4,7 +4,7 @@ use std::{fmt::Write, sync::LazyLock};
 pub type Point = (f64, f64);
 pub const ART: &str = include_str!("../assets/breath-heroine.svg");
 pub const HIPS: [Point; 2] = [(545., 710.), (463., 714.)];
-const KNEES: [Point; 2] = [(541., 1018.), (430., 1030.)];
+pub const KNEES: [Point; 2] = [(541., 1018.), (430., 1030.)];
 pub const ANKLES: [Point; 2] = [(535., 1330.), (405., 1348.)];
 pub const HEELS: [Point; 2] = [(511., 1381.), (393., 1412.)];
 pub const TOES: [Point; 2] = [(639., 1401.), (472., 1425.)];

@@ -75,11 +75,11 @@ fn floor_wave(p: vec2<f32>, phase: vec2<f32>, detail: f32) -> vec3<f32> {
         let matte = textureSampleLevel(coverage, smooth_sampler, uv, 0.).rg;
         let environment = 1. - matte.g;
         let background = (1. - smoothstep(.46, .62, p.y)) * environment;
-        // Quiet authored distant columns remain as depth; nearer glyphs descend.
-        rgb *= 1. - background * .28;
+        // The cached source has no stationary glyphs: every visible code stream
+        // comes from the moving project atlas, including the far depth layer.
         var rain = matrix_rain(p, true);
         if (params.size.z < 2.5) { rain += matrix_rain(p, false); }
-        rgb += rain * background * smoothstep(0., .035, p.y);
+        rgb += rain * 1.4 * background * smoothstep(0., .035, p.y);
 
         let flow_y = mix(.16, .84, params.flow.x);
         let light_band = exp(-pow((uv.y - flow_y) / .065, 2.)) * params.flow.y * matte.r;

@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import { ProductScreen, ProductText } from '../ui';
+import { StepSignature } from '../motion/StepSignature';
 import { productSpacing, useProductSpacing } from '../layout';
 import { fonts } from '../theme';
 import { stepThreeBlocks } from '../stepThreeContent';
@@ -136,7 +137,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onClose, availab
                     reading={reading} width={width} viewportHeight={viewport.height} reducedMotion={reducedMotion}
                     onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => changeChapter(1)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}
-                    />;
+                    endContent={part === 1 ? <StepSignature active={current && focused && !open} reducedMotion={reducedMotion} /> : undefined} />;
                   return <ScrollGate enabled={enabled} allowAdvance={current} onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => changeChapter(1)} onRetreat={retreat} fadeTop={24} fadeBottom={24} startAtEnd={returnToReading} initialOffset={entry.chapter === part ? entry.offset : 0} guardEntryGesture={returnToReading}
                     controllerRef={current ? reading.controllerRef : undefined} readingGesture={current ? reading.readingGesture : undefined}

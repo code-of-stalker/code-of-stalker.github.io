@@ -1,7 +1,7 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
 //! from `compose` and the generators in `geometry`.
 use crate::geometry::{self, Mesh, Scene};
-use crate::{compose, look, Look, LOOP_SECONDS, ORDER, PHRASE, PLATES, SIZE, STILL};
+use crate::{compose, look, Look, LOOP_SECONDS, SIZE, STILL};
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
@@ -17,7 +17,7 @@ const BLOOM: i32 = 3;
 const WIDE: i32 = 4;
 const SPARE: i32 = 5;
 /// Left, right, top, bottom: how far the scene melts into the page.
-const EDGES: [f32; 4] = [0.1, 0.1, 0.12, 0.16];
+const EDGES: [f32; 4] = [0.1, 0.1, 0.1, 0.07];
 /// Authored px → clip.
 const VIEW: [f32; 4] = [2.0 / SIZE[0], -2.0 / SIZE[1], -1.0, 1.0];
 
@@ -163,6 +163,7 @@ pub struct HearState {
     soft: Pass,
     text: Pass,
     figure: Pass,
+    inner: Pass,
     air: Pass,
     blur: Pass,
     composite: Pass,
@@ -207,6 +208,11 @@ impl HearState {
             include_str!("shaders/figure.frag"),
             &["u_figure", "u_light"],
         )?;
+        let inner = Pass::new(
+            &gl,
+            include_str!("shaders/inner.frag"),
+            &["u_figure", "u_rect"],
+        )?;
         let air = Pass::new(
             &gl,
             include_str!("shaders/background.frag"),
@@ -242,6 +248,8 @@ impl HearState {
         gl.uniform1i(text.at("u_atlas"), ATLAS);
         gl.use_program(Some(&figure_pass.program));
         gl.uniform1i(figure_pass.at("u_figure"), FIGURE);
+        gl.use_program(Some(&inner.program));
+        gl.uniform1i(inner.at("u_figure"), FIGURE);
         gl.use_program(Some(&composite.program));
         gl.uniform1i(composite.at("u_scene"), SCENE);
         gl.uniform1i(composite.at("u_bloom"), BLOOM);
@@ -269,6 +277,7 @@ impl HearState {
             soft,
             text,
             figure: figure_pass,
+            inner,
             air,
             blur,
             composite,
@@ -388,6 +397,7 @@ impl HearState {
             &self.soft,
             &self.text,
             &self.figure,
+            &self.inner,
             &self.air,
             &self.blur,
             &self.composite,
@@ -490,8 +500,6 @@ impl HearState {
         }
         let px = width as f32 / SIZE[0];
         let f = compose(if self.reduced { STILL } else { self.elapsed });
-        let index = ((f.time / PHRASE) as usize).min(ORDER.len() - 1);
-        let answering = ORDER[index];
         let mut mesh = std::mem::take(&mut self.mesh);
         mesh.clear();
         let s = &self.scene;
@@ -511,22 +519,15 @@ impl HearState {
         });
         let air = span(&mut mesh, geometry::background);
         let floor = span(&mut mesh, |m| geometry::floor(m, &f, px));
-        // Depth order: dust behind each card, the card, its label; nearest last.
-        let mut cards: Vec<usize> = (0..PLATES.len()).collect();
-        cards.sort_by(|a, b| PLATES[*b][2].total_cmp(&PLATES[*a][2]));
-        let mut layers = Vec::with_capacity(cards.len());
-        let mut far = f32::INFINITY;
-        for &i in &cards {
-            let z = PLATES[i][2];
-            let dust = span(&mut mesh, |m| geometry::motes(m, s, &f, z, far, px));
-            let card = span(&mut mesh, |m| geometry::plate(m, &f, i, i == answering, px));
-            let label = span(&mut mesh, |m| geometry::label(m, &f, i));
-            layers.push((dust, card, label));
-            far = z;
-        }
-        let near_dust = span(&mut mesh, |m| geometry::motes(m, s, &f, 0.0, far, px));
+        let far_dust = span(&mut mesh, |m| {
+            geometry::motes(m, s, &f, 0.0, f32::INFINITY, px)
+        });
         let body = span(&mut mesh, |m| geometry::figure(m, &f.camera));
-        let front = span(&mut mesh, |m| geometry::front(m, s, &f, px));
+        let glow = if self.look.light { 0.4 } else { 1.0 };
+        let inner = span(&mut mesh, |m| geometry::inner(m, &f, px, glow));
+        let front = span(&mut mesh, |m| geometry::front(m, s, &f, px, glow));
+        let words = span(&mut mesh, |m| geometry::labels(m, &f));
+        let rect = geometry::figure_rect(&f.camera).unwrap_or([0.0, 0.0, 1.0, 1.0]);
         self.upload(&mesh);
         self.mesh = mesh;
 
@@ -545,7 +546,7 @@ impl HearState {
             f.time / LOOP_SECONDS * std::f32::consts::TAU,
             f.ambient,
             f.camera.eye[0],
-            f.camera.eye[1] - 1.87,
+            f.camera.eye[1] - 1.652,
         );
         gl.uniform4fv_with_f32_array(self.air.at("u_key"), &key);
         self.draw_span(air);
@@ -553,27 +554,23 @@ impl HearState {
         gl.blend_func(Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
         self.begin(&self.soft);
         self.draw_span(floor);
-        for (dust, card, label) in &layers {
-            self.begin(&self.soft);
-            self.draw_span(*dust);
-            self.draw_span(*card);
-            self.begin(&self.text);
-            self.draw_span(*label);
-        }
-        self.begin(&self.soft);
-        self.draw_span(near_dust);
+        self.draw_span(far_dust);
         self.begin(&self.figure);
-        let rim = 0.3 + 0.55 * f.voice + 0.25 * f.plates.iter().cloned().fold(0.0, f32::max);
         gl.uniform4f(
             self.figure.at("u_light"),
-            rim,
-            0.5 + 0.5 * f.heard,
+            0.22 + 0.4 * f.voice,
+            0.45 + 0.25 * f.heard + 0.2 * f.noticed,
             0.0035,
             1.0,
         );
         self.draw_span(body);
+        self.begin(&self.inner);
+        gl.uniform4fv_with_f32_array(self.inner.at("u_rect"), &rect);
+        self.draw_span(inner);
         self.begin(&self.soft);
         self.draw_span(front);
+        self.begin(&self.text);
+        self.draw_span(words);
 
         // Bloom: a quarter-size glow and a wider eighth-size one.
         gl.disable(Gl::BLEND);

@@ -8,7 +8,9 @@ uniform vec4 u_view;
 out vec2 v_uv;
 out vec4 v_color;
 out float v_hard;
+out vec2 v_pos;
 void main() {
+  v_pos = a_pos;
   v_uv = a_uv;
   v_color = a_color;
   v_hard = a_hard;

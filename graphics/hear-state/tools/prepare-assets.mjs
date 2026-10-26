@@ -11,7 +11,8 @@ const scene = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const engine = path.resolve(scene, '../product-engine/engine/assets');
 const svg = await readFile(path.join(engine, 'spoken-thought-person.svg'), 'utf8');
 const font = (await readFile(path.join(engine, 'fonts/Disket-Mono-Regular.ttf'))).toString('base64');
-const states = ['УВЕРЕННОСТЬ', 'ТРЕВОГА', 'МАСКА', 'ОТСУТСТВИЕ', 'АВТОМАТИЗМ'];
+// The five states of the page, then the question the page asks.
+const states = ['УВЕРЕННОСТЬ', 'ТРЕВОГА', 'МАСКА', 'ОТСУТСТВИЕ', 'АВТОМАТИЗМ', 'ИЗ КАКОГО СОСТОЯНИЯ?'];
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent('<canvas id="c"></canvas>');
@@ -45,4 +46,4 @@ const shots = await page.evaluate(async ({ svg, font, states }) => {
 await browser.close();
 const { writeFile } = await import('node:fs/promises');
 for (const [name, url] of Object.entries(shots)) await writeFile(path.join(scene, 'assets', `${name}.png`), Buffer.from(url.split(',')[1], 'base64'));
-console.log('Prepared figure.png (1005 × 1590) and labels.png (1024 × 640).');
+console.log(`Prepared figure.png (1005 × 1590) and labels.png (1024 × ${128 * states.length}).`);

@@ -1,0 +1,14 @@
+[package]
+name = "watcher-scene-palette"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.129"
+web-sys = { version = "=0.3.106", features = ["WebGl2RenderingContext", "WebGlFramebuffer", "WebGlProgram", "WebGlRenderbuffer", "WebGlShader", "WebGlTexture", "WebGlUniformLocation", "WebGlVertexArrayObject"] }

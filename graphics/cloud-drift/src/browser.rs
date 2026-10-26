@@ -1,5 +1,6 @@
 use crate::{compose, Frame, LOOP_SECONDS, MAX_MOTION_STRENGTH};
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Themed;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlProgram,
     WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -94,6 +95,9 @@ pub struct CloudDrift {
     amount: f32,
     accent: [f32; 3],
     background: [f32; 3],
+    themed: Themed,
+    /// The recolor pass owns the page edges while a theme is active.
+    offscreen: bool,
     original: bool,
     reduced: bool,
     paused: bool,
@@ -170,6 +174,7 @@ impl CloudDrift {
             .collect();
         let spark_view = gl.get_uniform_location(&spark, "u_view");
         let spark_viewport = gl.get_uniform_location(&spark, "u_viewport");
+        let themed = Themed::new(&gl, false)?;
         let buffer = gl.create_buffer().ok_or("Cannot create particle buffer")?;
         let contour_buffer = gl.create_buffer().ok_or("Cannot create contour buffer")?;
         let mut vertices = Vec::new();
@@ -220,6 +225,8 @@ impl CloudDrift {
             amount: MAX_MOTION_STRENGTH,
             accent: [245.0 / 255.0, 221.0 / 255.0, 7.0 / 255.0],
             background: [0.0; 3],
+            themed,
+            offscreen: false,
             original: false,
             reduced: false,
             paused: false,
@@ -329,6 +336,13 @@ impl CloudDrift {
     pub fn gpu_error(&self) -> u32 {
         self.gl.get_error()
     }
+    /// The app theme: 0 Искра, 1 Дюна, 2 Тишина, 3 Астрал; others keep the
+    /// engraving's own gold.
+    pub fn palette(&mut self, code: u32) {
+        if self.themed.set(code) {
+            self.draw();
+        }
+    }
     pub fn wireframe(&mut self, value: bool) {
         self.wireframe = value;
         self.draw();
@@ -355,6 +369,7 @@ impl CloudDrift {
         self.gl.delete_program(Some(&self.scene));
         self.gl.delete_program(Some(&self.spark));
         self.gl.delete_program(Some(&self.contours));
+        self.themed.dispose(&self.gl);
         self.disposed = true;
     }
 }
@@ -387,7 +402,7 @@ impl CloudDrift {
             locations[9].as_ref(),
             self.canvas.width() as f32,
             self.canvas.height() as f32,
-            0.0,
+            f32::from(self.offscreen),
             0.0,
         );
         gl.uniform3fv_with_f32_array(locations[10].as_ref(), &self.accent);
@@ -404,6 +419,9 @@ impl CloudDrift {
             f.scan[1] = 0.0;
         }
         let still = self.original || self.reduced;
+        // A theme recolors the finished frame, so the scene draws offscreen.
+        let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
+        self.offscreen = self.themed.begin(&self.gl, width, height).unwrap_or(false);
         let gl = &self.gl;
         gl.disable(Gl::BLEND);
         gl.use_program(Some(&self.scene));
@@ -448,7 +466,7 @@ impl CloudDrift {
                 self.spark_viewport.as_ref(),
                 self.canvas.width() as f32,
                 self.canvas.height() as f32,
-                0.0,
+                f32::from(self.offscreen),
                 0.0,
             );
             gl.uniform4f(
@@ -468,6 +486,11 @@ impl CloudDrift {
             gl.draw_arrays(Gl::POINTS, 0, 28);
             gl.disable_vertex_attrib_array(0);
             gl.disable(Gl::BLEND);
+        }
+        if self.offscreen {
+            // The same widths as `edge_coverage` in shared.glsl.
+            let edges = Some([0.10, 0.10, 0.15, 0.15]);
+            self.themed.present(&self.gl, self.background, edges);
         }
         self.frames = self.frames.wrapping_add(1);
     }

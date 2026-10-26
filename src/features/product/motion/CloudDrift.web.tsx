@@ -3,12 +3,13 @@ import { View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useThemeColors } from '../ProductTheme';
 import { useEffectQualityLevel } from './EffectsQuality';
+import { paletteCode } from './graphicsPalette';
 import { observeMotionVisibility } from './motion-visibility.web';
 import type { ArtProps } from './types';
 
 type Renderer = {
   accent(r: number, g: number, b: number): void; reduced(value: boolean): void;
-  background(r: number, g: number, b: number): void;
+  background(r: number, g: number, b: number): void; palette(code: number): void;
   resize(width: number, height: number): void; frame(at: number): void;
   suspend(): void; dispose(): void; free(): void;
 };
@@ -24,7 +25,7 @@ export function CloudDrift(props: ArtProps) {
   const colors = useThemeColors(), focused = useIsFocused(), quality = useEffectQualityLevel();
   const canvas = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
   const latest = useRef({ props, colors, focused, quality });
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
   useLayoutEffect(() => { latest.current = { props, colors, focused, quality }; sync.current(); }, [props, colors, focused, quality]);
   useEffect(() => {
     const output = canvas.current;
@@ -54,6 +55,7 @@ export function CloudDrift(props: ArtProps) {
         const background = latest.current.colors.background;
         renderer.accent(...([1, 3, 5].map(start => Number.parseInt(accent.slice(start, start + 2), 16) / 255) as [number, number, number]));
         renderer.background(...([1, 3, 5].map(start => Number.parseInt(background.slice(start, start + 2), 16) / 255) as [number, number, number]));
+        renderer.palette(paletteCode(latest.current.colors));
         renderer.reduced(!!latest.current.props.reducedMotion);
         output.dataset.accent = accent;
         resize();
@@ -65,7 +67,7 @@ export function CloudDrift(props: ArtProps) {
           if (disposed) { value.dispose(); value.free(); return; }
           renderer = value; update(); setReady(true); latest.current.props.onReady?.();
         }).catch(error => {
-          if (!disposed) { output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Cloud scene:', error); }
+          if (!disposed) { setFailed(true); output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Cloud scene:', error); }
         });
       }
     };
@@ -85,8 +87,9 @@ export function CloudDrift(props: ArtProps) {
     <div role="img" aria-label="Мужчина в костюме парит в облаках, стремясь к любви, просветлению, успеху и признанию"
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
+        {/* The full-color poster is only a fallback: every theme recolors the scene. */}
         <img src="/graphics/cloud-drift/assets/poster.png" alt="" aria-hidden loading="lazy" decoding="async"
-          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, display: ready ? 'none' : 'block' }} />
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, display: failed ? 'block' : 'none' }} />
         <canvas ref={canvas} data-graphics="rust-cloud-drift" aria-hidden
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, visibility: ready ? 'visible' : 'hidden' }} />
       </div>

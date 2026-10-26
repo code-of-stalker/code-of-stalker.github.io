@@ -4,6 +4,7 @@ import { useIsFocused } from 'expo-router';
 import { useThemeColors } from '../ProductTheme';
 import { useEffectsController } from './EffectsQuality';
 import { artworkBufferLayout, qualityDensity } from './effectQuality';
+import { paletteCode } from './graphicsPalette';
 import { observeMotionVisibility } from './motion-visibility.web';
 import type { ArtProps } from './types';
 
@@ -11,7 +12,7 @@ type Renderer = {
   reduced(value: boolean): void; resize(width: number, height: number): void;
   frame(at: number): void; elapsed(): number; seek(seconds: number): void;
   frame_count(): number; gpu_error(): number; suspend(): void; dispose(): void; free(): void;
-  backdrop(red: number, green: number, blue: number): void;
+  backdrop(red: number, green: number, blue: number): void; palette(code: number): void;
 };
 type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
@@ -23,8 +24,9 @@ const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as 
 export function TheatreMarionette(props: ArtProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
-  const latest = useRef({ props, focused, background: colors.background }), [ready, setReady] = useState(false);
-  useLayoutEffect(() => { latest.current = { props, focused, background: colors.background }; sync.current(); });
+  const latest = useRef({ props, focused, background: colors.background, palette: paletteCode(colors) });
+  const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
+  useLayoutEffect(() => { latest.current = { props, focused, background: colors.background, palette: paletteCode(colors) }; sync.current(); });
   useEffect(() => {
     const output = outputRef.current;
     if (!output || !controller) return;
@@ -80,6 +82,7 @@ export function TheatreMarionette(props: ArtProps) {
       controller.activity(id, active && !!renderer, running);
       if (renderer) {
         const background = latest.current.background;
+        renderer.palette(latest.current.palette);
         renderer.backdrop(...[1, 3, 5].map(start => parseInt(background.slice(start, start + 2), 16) / 255) as [number, number, number]);
         const nextReduced = !!latest.current.props.reducedMotion;
         if (nextReduced !== reduced) { renderer.reduced(nextReduced); reduced = nextReduced; }
@@ -95,7 +98,7 @@ export function TheatreMarionette(props: ArtProps) {
           setReady(true); output.dataset.ready = 'true'; latest.current.props.onReady?.();
         }).catch(error => {
           loading = false;
-          if (!disposed) { lost = true; output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Theatre scene:', error); }
+          if (!disposed) { lost = true; setFailed(true); output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Theatre scene:', error); }
         });
       }
     };
@@ -132,8 +135,9 @@ export function TheatreMarionette(props: ArtProps) {
     <div role="img" aria-label="Героиня-марионетка на сцене театра: движение нитей, объёмный свет и медленный матричный дождь"
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
+        {/* The full-color poster is only a fallback: every theme recolors the scene. */}
         <img src="/graphics/theatre-marionette/assets/original.png" alt="" aria-hidden loading="lazy" decoding="async"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: ready ? 'none' : 'block' }} />
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: failed ? 'block' : 'none' }} />
         <canvas ref={outputRef} data-graphics="rust-theatre-marionette" data-strength="1.5" data-rain-speed="0.5" aria-hidden
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />
       </div>

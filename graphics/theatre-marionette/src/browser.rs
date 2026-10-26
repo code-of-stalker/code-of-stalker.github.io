@@ -4,6 +4,7 @@ use crate::{
     compose, control_point, deform, particle, strings, Frame, LOOP_SECONDS, MAX_STRENGTH, SIZE,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Themed;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlProgram,
     WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -97,6 +98,7 @@ pub struct Marionette {
     haze: Option<WebGlUniformLocation>,
     edge_widths: Option<WebGlUniformLocation>,
     backdrop_uniform: Option<WebGlUniformLocation>,
+    themed: Themed,
     soft_edges: bool,
     backdrop: [f32; 4],
     points: Vec<[f32; 2]>,
@@ -159,6 +161,7 @@ impl Marionette {
         let haze = gl.get_uniform_location(&image, "u_haze");
         let edge_widths = gl.get_uniform_location(&image, "u_edge_widths");
         let backdrop_uniform = gl.get_uniform_location(&image, "u_backdrop");
+        let themed = Themed::new(&gl, true)?;
         const COLS: usize = 68;
         const ROWS: usize = 88;
         let mut points = Vec::with_capacity((COLS + 1) * (ROWS + 1));
@@ -235,6 +238,7 @@ impl Marionette {
             haze,
             edge_widths,
             backdrop_uniform,
+            themed,
             soft_edges: false,
             backdrop: [0.0, 0.0, 0.0, 1.0],
             points,
@@ -342,6 +346,13 @@ impl Marionette {
             self.draw();
         }
     }
+    /// The app theme: 0 Искра, 1 Дюна, 2 Тишина, 3 Астрал; others keep the
+    /// source colors.
+    pub fn palette(&mut self, code: u32) {
+        if self.themed.set(code) {
+            self.draw();
+        }
+    }
     pub fn frame_count(&self) -> u32 {
         self.frames
     }
@@ -367,6 +378,7 @@ impl Marionette {
         for p in [&self.image, &self.line, &self.spark, &self.rain] {
             self.gl.delete_program(Some(p));
         }
+        self.themed.dispose(&self.gl);
         self.disposed = true;
     }
 }
@@ -582,6 +594,9 @@ impl Marionette {
         if self.disposed || self.gl.is_context_lost() {
             return;
         }
+        // A theme recolors the finished frame, so the scene draws offscreen.
+        let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
+        let themed = self.themed.begin(&self.gl, width, height).unwrap_or(false);
         self.gl.disable(Gl::BLEND);
         if self.original || self.reduced {
             self.quad(0, 2.0, 1.0);
@@ -611,12 +626,17 @@ impl Marionette {
             }
             self.gl.disable(Gl::BLEND);
         }
-        if self.soft_edges {
+        // Left, right, top, bottom: preserve the central heroine while
+        // letting the floor reflection fade gently into the page.
+        const EDGES: [f32; 4] = [0.12, 0.12, 0.14, 0.18];
+        if themed {
+            let [red, green, blue, _] = self.backdrop;
+            let edges = self.soft_edges.then_some(EDGES);
+            self.themed.present(&self.gl, [red, green, blue], edges);
+        } else if self.soft_edges {
             self.gl.use_program(Some(&self.image));
-            // Left, right, top, bottom: preserve the central heroine while
-            // letting the floor reflection fade gently into the page.
             self.gl
-                .uniform4f(self.edge_widths.as_ref(), 0.12, 0.12, 0.14, 0.18);
+                .uniform4fv_with_f32_array(self.edge_widths.as_ref(), &EDGES);
             self.gl
                 .uniform4fv_with_f32_array(self.backdrop_uniform.as_ref(), &self.backdrop);
             self.gl.enable(Gl::BLEND);

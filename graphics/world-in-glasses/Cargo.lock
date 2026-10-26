@@ -154,11 +154,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "watcher-scene-palette"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "watcher-world-in-glasses"
 version = "0.1.0"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+ "watcher-scene-palette",
  "web-sys",
 ]
 

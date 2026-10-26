@@ -17,6 +17,8 @@ const vec2 SIZE = vec2(1536.0, 1024.0);
 const float TAU = 6.28318530718;
 
 float edge_coverage(vec2 uv) {
+    // Themed frames melt into the page after the recolor pass instead.
+    if(u_viewport.z>0.5)return 1.0;
     vec2 distance=min(uv,1.0-uv);
     return smoothstep(0.0,0.10,distance.x)*smoothstep(0.0,0.15,distance.y);
 }

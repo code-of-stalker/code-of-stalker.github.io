@@ -134,3 +134,18 @@ generated binary during conflict resolution.
   `d7dc7770f633c317c69d21f8a9340f06ecc6ae213e9ef104840eb4081c895484`.
   The split Sites engine reconstructs those exact bytes and validates.
   Deployment cache: `b4682d9b366efc155dc07057`.
+
+## Forward crossing and themed web scenes, 2026-10-26
+
+- Scrolling past the Step 3 signature (practice page 07/07) enters the start of
+  Step 4, mirroring the backward crossing. The cue reads «ПРОКРУТИ К ШАГУ 4».
+  The crossing writes `stepFourReading` page 0 and, outside “Everything open”,
+  `fourthStepUnlocked`.
+- The three standalone web scenes of Step 4 (world in glasses, cloud drift,
+  theatre marionette) follow the app theme. `graphics/scene-palette` renders
+  each finished frame offscreen and recolors it with the product engine's
+  grounding mapping: Matrix yellow luminance in Искра, the sand duotone in Дюна,
+  cool luminance ink in Тишина and Астрал. The page edges melt in after the
+  recolor. Each scene exposes `palette(code)` with the `graphicsPalette` codes;
+  other codes keep the original colors for previews and video export.
+- The full-color posters are shown only if WebGL2 fails.

@@ -9,6 +9,7 @@ use crate::{
     WORLD_SIZE,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Themed;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlProgram,
     WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
@@ -180,6 +181,7 @@ pub struct WorldInGlasses {
     lens: Pass,
     bubble: Pass,
     post: Pass,
+    themed: Themed,
     textures: Vec<WebGlTexture>,
     vertices: WebGlBuffer,
     layout: WebGlVertexArrayObject,
@@ -249,6 +251,7 @@ impl WorldInGlasses {
             include_str!("shaders/post.frag"),
             &["u_post", "u_edges", "u_backdrop", "u_pass"],
         )?;
+        let themed = Themed::new(&gl, true)?;
         let scene = Scene::new();
         let mouth_size = [
             MOUTH_SIZE[0] * MOUTH_COLUMNS as f32,
@@ -317,6 +320,7 @@ impl WorldInGlasses {
             lens,
             bubble,
             post,
+            themed,
             textures,
             vertices,
             layout,
@@ -400,6 +404,13 @@ impl WorldInGlasses {
             self.draw();
         }
     }
+    /// The app theme: 0 Искра, 1 Дюна, 2 Тишина, 3 Астрал; others keep
+    /// Art's colors.
+    pub fn palette(&mut self, code: u32) {
+        if self.themed.set(code) {
+            self.draw();
+        }
+    }
     pub fn frame_count(&self) -> u32 {
         self.frames
     }
@@ -415,6 +426,7 @@ impl WorldInGlasses {
         }
         self.gl.delete_buffer(Some(&self.vertices));
         self.gl.delete_vertex_array(Some(&self.layout));
+        self.themed.dispose(&self.gl);
         for pass in [
             &self.image,
             &self.shape,
@@ -468,6 +480,13 @@ impl WorldInGlasses {
         if self.disposed || self.gl.is_context_lost() {
             return;
         }
+        let gl = &self.gl;
+        gl.bind_vertex_array(Some(&self.layout));
+        gl.enable(Gl::BLEND);
+        gl.blend_func(Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
+        let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
+        // A theme recolors the finished frame, so the scene draws offscreen.
+        let themed = self.themed.begin(gl, width, height).unwrap_or(false);
         let mut mesh = std::mem::take(&mut self.mesh);
         mesh.clear();
         let screen = view(1.0, [SIZE[0] / 2.0, SIZE[1] / 2.0]);
@@ -557,18 +576,19 @@ impl WorldInGlasses {
         }
 
         // Vignette, film grain, the flash of the pop and the page around it.
+        // With a theme the page edges come after the recolor.
         let backdrop = [
             self.backdrop[0],
             self.backdrop[1],
             self.backdrop[2],
-            if self.soft_edges { 1.0 } else { 0.0 },
+            if self.soft_edges && !themed { 1.0 } else { 0.0 },
         ];
         let settings = if self.reduced {
             [0.0; 4]
         } else {
             [0.6, 0.05, f.flash, (f.time * 24.0).floor()]
         };
-        if !self.reduced || self.soft_edges {
+        if !self.reduced || backdrop[3] > 0.0 {
             let gl = &self.gl;
             self.begin(&self.post, screen);
             gl.uniform4fv_with_f32_array(self.post.at("u_post"), &settings);
@@ -581,6 +601,10 @@ impl WorldInGlasses {
             }
             gl.uniform1f(self.post.at("u_pass"), 1.0);
             self.draw_span(full);
+        }
+        if themed {
+            let edges = self.soft_edges.then_some(EDGES);
+            self.themed.present(&self.gl, self.backdrop, edges);
         }
         self.mesh = mesh;
         self.frames = self.frames.wrapping_add(1);

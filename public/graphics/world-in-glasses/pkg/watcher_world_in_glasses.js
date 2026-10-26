@@ -75,6 +75,14 @@ export class WorldInGlasses {
         }
     }
     /**
+     * The app theme: 0 Искра, 1 Дюна, 2 Тишина, 3 Астрал; others keep
+     * Art's colors.
+     * @param {number} code
+     */
+    palette(code) {
+        wasm.worldinglasses_palette(this.__wbg_ptr, code);
+    }
+    /**
      * @param {boolean} value
      */
     pause(value) {
@@ -120,6 +128,12 @@ function __wbg_get_imports() {
             const ret = typeof(v) === 'boolean' ? v : undefined;
             return isLikeNone(ret) ? 0xFFFFFF : ret ? 1 : 0;
         },
+        __wbg___wbindgen_number_get_2e0e7dee9f701a71: function(arg0, arg1) {
+            const obj = getObject(arg1);
+            const ret = typeof(obj) === 'number' ? obj : undefined;
+            getDataViewMemory0().setFloat64(arg0 + 8 * 1, isLikeNone(ret) ? 0 : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
+        },
         __wbg___wbindgen_throw_41e9ee4f547fc59a: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
@@ -132,6 +146,12 @@ function __wbg_get_imports() {
         __wbg_bindBuffer_0324f62b876c4403: function(arg0, arg1, arg2) {
             getObject(arg0).bindBuffer(arg1 >>> 0, getObject(arg2));
         },
+        __wbg_bindFramebuffer_378eb18ef219d37a: function(arg0, arg1, arg2) {
+            getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
+        },
+        __wbg_bindRenderbuffer_e0c5aeef245a913a: function(arg0, arg1, arg2) {
+            getObject(arg0).bindRenderbuffer(arg1 >>> 0, getObject(arg2));
+        },
         __wbg_bindTexture_3cf008f256f3ed99: function(arg0, arg1, arg2) {
             getObject(arg0).bindTexture(arg1 >>> 0, getObject(arg2));
         },
@@ -141,8 +161,21 @@ function __wbg_get_imports() {
         __wbg_blendFunc_589e4252bb396484: function(arg0, arg1, arg2) {
             getObject(arg0).blendFunc(arg1 >>> 0, arg2 >>> 0);
         },
+        __wbg_blitFramebuffer_7b39bfec6cfece56: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+            getObject(arg0).blitFramebuffer(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10 >>> 0);
+        },
         __wbg_bufferData_ec7957bcbbf38591: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
+        },
+        __wbg_checkFramebufferStatus_301a7db105ca966b: function(arg0, arg1) {
+            const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
+            return ret;
+        },
+        __wbg_clearColor_796427e8ac60fe14: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).clearColor(arg1, arg2, arg3, arg4);
+        },
+        __wbg_clear_cb96796cc568b7c8: function(arg0, arg1) {
+            getObject(arg0).clear(arg1 >>> 0);
         },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
@@ -151,8 +184,16 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createBuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
+        __wbg_createFramebuffer_2c6b5b0f49c88e5d: function(arg0) {
+            const ret = getObject(arg0).createFramebuffer();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
         __wbg_createProgram_cbf448e6f18a9402: function(arg0) {
             const ret = getObject(arg0).createProgram();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
+        __wbg_createRenderbuffer_c864095d6ebd60d0: function(arg0) {
+            const ret = getObject(arg0).createRenderbuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_createShader_6c1a2295587878a5: function(arg0, arg1) {
@@ -170,8 +211,14 @@ function __wbg_get_imports() {
         __wbg_deleteBuffer_070e58aaaf2a7a8b: function(arg0, arg1) {
             getObject(arg0).deleteBuffer(getObject(arg1));
         },
+        __wbg_deleteFramebuffer_3f8ab330098bf8e6: function(arg0, arg1) {
+            getObject(arg0).deleteFramebuffer(getObject(arg1));
+        },
         __wbg_deleteProgram_b524b30ad176cdb4: function(arg0, arg1) {
             getObject(arg0).deleteProgram(getObject(arg1));
+        },
+        __wbg_deleteRenderbuffer_826c9b43b7ea68f5: function(arg0, arg1) {
+            getObject(arg0).deleteRenderbuffer(getObject(arg1));
         },
         __wbg_deleteShader_a70f6cc1918d67eb: function(arg0, arg1) {
             getObject(arg0).deleteShader(getObject(arg1));
@@ -182,6 +229,9 @@ function __wbg_get_imports() {
         __wbg_deleteVertexArray_ca9768805d051d49: function(arg0, arg1) {
             getObject(arg0).deleteVertexArray(getObject(arg1));
         },
+        __wbg_disable_19fe787eccdf0272: function(arg0, arg1) {
+            getObject(arg0).disable(arg1 >>> 0);
+        },
         __wbg_drawArrays_08872e02fb57b847: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
         },
@@ -190,6 +240,12 @@ function __wbg_get_imports() {
         },
         __wbg_enable_cb4fc19b51148c37: function(arg0, arg1) {
             getObject(arg0).enable(arg1 >>> 0);
+        },
+        __wbg_framebufferRenderbuffer_f019e9231b142c0d: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).framebufferRenderbuffer(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4));
+        },
+        __wbg_framebufferTexture2D_73c52f23ec33aa22: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).framebufferTexture2D(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4), arg5);
         },
         __wbg_generateMipmap_cd49f6eec9558721: function(arg0, arg1) {
             getObject(arg0).generateMipmap(arg1 >>> 0);
@@ -202,6 +258,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getError();
             return ret;
         },
+        __wbg_getParameter_974595a6624c6c10: function() { return handleError(function (arg0, arg1) {
+            const ret = getObject(arg0).getParameter(arg1 >>> 0);
+            return addHeapObject(ret);
+        }, arguments); },
         __wbg_getProgramInfoLog_3276b294d6d42fe2: function(arg0, arg1, arg2) {
             const ret = getObject(arg1).getProgramInfoLog(getObject(arg2));
             var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export2, wasm.__wbindgen_export3);
@@ -264,6 +324,9 @@ function __wbg_get_imports() {
         __wbg_pixelStorei_cb4e43466f5b8703: function(arg0, arg1, arg2) {
             getObject(arg0).pixelStorei(arg1 >>> 0, arg2);
         },
+        __wbg_renderbufferStorageMultisample_ed16f3ef446e3bc7: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).renderbufferStorageMultisample(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
+        },
         __wbg_set_145a351398b48c65: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
             return ret;
@@ -286,11 +349,17 @@ function __wbg_get_imports() {
         __wbg_texParameteri_7864076abcdb03e0: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).texParameteri(arg1 >>> 0, arg2 >>> 0, arg3);
         },
+        __wbg_texStorage2D_cf2bd991072d9efb: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).texStorage2D(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
+        },
         __wbg_uniform1f_b5856e35a43b65a1: function(arg0, arg1, arg2) {
             getObject(arg0).uniform1f(getObject(arg1), arg2);
         },
         __wbg_uniform1i_531b98c4a7177366: function(arg0, arg1, arg2) {
             getObject(arg0).uniform1i(getObject(arg1), arg2);
+        },
+        __wbg_uniform3fv_055ea5ac38af4fce: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniform3fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
         },
         __wbg_uniform4f_8dd8f311e656ca0d: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).uniform4f(getObject(arg1), arg2, arg3, arg4, arg5);

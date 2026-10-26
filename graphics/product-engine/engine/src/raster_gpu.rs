@@ -34,7 +34,7 @@ pub struct RasterLibrary {
     voice: wgpu::RenderPipeline,
     grounding: wgpu::RenderPipeline,
     fade: wgpu::RenderPipeline,
-    assets: std::cell::RefCell<[Option<wgpu::Texture>; 7]>,
+    assets: std::cell::RefCell<[Option<wgpu::Texture>; 8]>,
 }
 impl RasterLibrary {
     fn atlas(
@@ -85,6 +85,11 @@ impl RasterLibrary {
             .get_or_insert_with(|| {
                 upload_image(device, queue, &crate::voice_presence::user_portrait())
             })
+            .clone()
+    }
+    fn grounding_coverage(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Texture {
+        self.assets.borrow_mut()[7]
+            .get_or_insert_with(|| upload_image(device, queue, &crate::grounding_hero::coverage()))
             .clone()
     }
     pub fn new(device: &wgpu::Device) -> Self {
@@ -243,7 +248,7 @@ impl RasterLibrary {
             voice,
             grounding,
             fade,
-            assets: std::cell::RefCell::new([None, None, None, None, None, None, None]),
+            assets: std::cell::RefCell::new([None, None, None, None, None, None, None, None]),
         }
     }
 }
@@ -544,6 +549,10 @@ impl RasterGpu {
             library
                 .voice_portrait(device, queue)
                 .create_view(&Default::default())
+        } else if matches!(kind, Kind::GroundingHero) {
+            library
+                .grounding_coverage(device, queue)
+                .create_view(&Default::default())
         } else {
             av.clone()
         };
@@ -703,10 +712,22 @@ impl RasterGpu {
         );
         match self.kind {
             Kind::GroundingHero => {
-                // The main illustration is independent of the retained window
-                // study. Fit it uniformly; the shared presentation owns themes.
+                let frame = crate::grounding_hero::frame(seconds, reduced);
+                values[0..4].copy_from_slice(&[
+                    frame.breath,
+                    frame.code_phase,
+                    frame.motion,
+                    frame.contact,
+                ]);
                 values[8] = width;
                 values[9] = height;
+                values[12..14].copy_from_slice(&frame.flow);
+                values[16..20].copy_from_slice(&[
+                    frame.waves[0][0],
+                    frame.waves[0][1],
+                    frame.waves[1][0],
+                    frame.waves[1][1],
+                ]);
                 values[30] = 1.;
             }
             Kind::Gallery => {

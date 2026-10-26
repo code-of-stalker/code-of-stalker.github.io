@@ -81,3 +81,32 @@ generated binary during conflict resolution.
   WASM SHA-256: `3d22a907f15a88f60abc53a24bf8480c0cdb711f932d2a9d3a46922f5ae2eff5`.
   Web export and native embedded payload match and pass `WebAssembly.validate`.
   Native-device appearance remains untested. This revision is local, not deployed.
+
+## Opening illustration motion, 2026-10-26
+
+- Replaced the faint light variation with a 9.6-second breathing cycle. The upper
+  body expands and settles; the knees, feet and chair seat stay grounded. Light
+  travels down the figure, reaches both feet, then sends two waves across the
+  perspective floor. Two depths of the project's matrix glyphs move behind it.
+- `grounding_hero.rs` owns the timeline and registered body/chair coverage.
+  `grounding-hero.wgsl` renders the immutable source art with those parameters;
+  foreground coverage prevents the rain or floor waves crossing the figure.
+  The PNG hash remains
+  `63379a73ce750032b0ba3ef86be996feb4fe82bfc8a141cd558aa658a096b01a`.
+- Economy mode keeps the full choreography and drops the farther rain layer.
+  Visibility pause uses the shared render clock without catching up on resume;
+  reduced motion returns the original static artwork. No JS scene was added.
+- Four new Rust regressions cover the sequence, loop seam, suspended time and
+  body/chair occlusion. Full suite: 200 unit and 3 integration tests passed, with
+  1 pre-existing ignored test. Typecheck, Expo lint, WGSL validation, WASM build
+  and production export passed. WASM Clippy finished with the existing 33 warnings
+  and no warnings in the new module.
+- Browser QA used the production renderer at
+  `http://127.0.0.1:8964/grounding-hero-preview.html`: automatic playback after
+  reload, changing consecutive frames, phone-size and neutral/economy rendering,
+  plus byte-identical screenshots over time with reduced motion enabled.
+  The separate-frame controls explicitly pause; the deliverable opens playing.
+- Web export version: `04317060193367635a963c9a`. WASM SHA-256:
+  `0783958fa65ea9eac678ec1a79cfe31b03d681f64345d892b6629c3291cf6e81`.
+  The web export and compressed native payload match this validated binary.
+  Real-device validation and publication have not been performed.

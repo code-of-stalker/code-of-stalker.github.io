@@ -9,7 +9,7 @@ const delta=(a,b)=>{assert.equal(a.length,b.length);let sum=0;for(let i=0;i<a.le
 const report={checks:[],measurements:{}};
 try{
   const page=await browser.newPage({viewport:{width:1536,height:1024},deviceScaleFactor:1});
-  await page.goto('http://127.0.0.1:8976/?qa&render');
+  await page.goto((process.env.CLOUD_PREVIEW_URL ?? 'http://127.0.0.1:8976')+'/?qa&render');
   await page.waitForFunction(()=>document.documentElement.dataset.ready||document.documentElement.dataset.error);
   assert.equal(await page.evaluate(()=>document.documentElement.dataset.error),undefined);
   const capture=async(time,effects,name)=>{
@@ -38,7 +38,7 @@ try{
   assert.equal(await page.evaluate(()=>window.cloudPreview.renderer.gpu_error()),0);
   report.measurements={rainDifference,rainMovement:movement,windDifference,scanDifference,vectorMean:stats.channels[0].mean};
   report.checks.push('Moving rain is isolated from camera movement','Wind changes cloth/cloud geometry','Scanner reveals the vector layer','Pure contour view contains real line geometry','No GPU errors');
-  await page.goto('http://127.0.0.1:8976/');
+  await page.goto((process.env.CLOUD_PREVIEW_URL ?? 'http://127.0.0.1:8976')+'/');
   await page.waitForFunction(()=>document.documentElement.dataset.ready);
   await page.locator('#edges').click();assert.equal(await page.locator('#edges').getAttribute('aria-pressed'),'true');
   await page.locator('#scan').click();assert.equal(await page.locator('#edges').getAttribute('aria-pressed'),'false');

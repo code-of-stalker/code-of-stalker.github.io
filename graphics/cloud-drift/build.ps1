@@ -11,6 +11,7 @@ function Run-Checked([string]$Program, [string[]]$Arguments) {
 }
 Run-Checked $cargo @('fmt', '--manifest-path', $manifest)
 Run-Checked $cargo @('run', '--offline', '--manifest-path', $manifest, '--example', 'vectorize')
+Run-Checked $cargo @('run', '--offline', '--manifest-path', $manifest, '--example', 'poster')
 Run-Checked $cargo @('test', '--offline', '--manifest-path', $manifest)
 Run-Checked $cargo @('clippy', '--offline', '--manifest-path', $manifest, '--all-targets', '--', '-D', 'warnings')
 Run-Checked $cargo @('clippy', '--offline', '--manifest-path', $manifest, '--target', 'wasm32-unknown-unknown', '--', '-D', 'warnings')

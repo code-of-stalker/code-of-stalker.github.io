@@ -19,6 +19,14 @@ export class CloudDrift {
     accent(red, green, blue) {
         wasm.clouddrift_accent(this.__wbg_ptr, red, green, blue);
     }
+    /**
+     * @param {number} red
+     * @param {number} green
+     * @param {number} blue
+     */
+    background(red, green, blue) {
+        wasm.clouddrift_background(this.__wbg_ptr, red, green, blue);
+    }
     dispose() {
         wasm.clouddrift_dispose(this.__wbg_ptr);
     }
@@ -49,6 +57,13 @@ export class CloudDrift {
     gpu_error() {
         const ret = wasm.clouddrift_gpu_error(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    motion_strength() {
+        const ret = wasm.clouddrift_motion_strength(this.__wbg_ptr);
+        return ret;
     }
     /**
      * @param {HTMLCanvasElement} canvas
@@ -205,6 +220,9 @@ function __wbg_get_imports() {
         },
         __wbg_enable_cb4fc19b51148c37: function(arg0, arg1) {
             getObject(arg0).enable(arg1 >>> 0);
+        },
+        __wbg_generateMipmap_cd49f6eec9558721: function(arg0, arg1) {
+            getObject(arg0).generateMipmap(arg1 >>> 0);
         },
         __wbg_getContext_051324720aa5b7e8: function() { return handleError(function (arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2), getObject(arg3));

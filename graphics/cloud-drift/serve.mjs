@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const root = path.join(project, 'output/motion/man-in-clouds');
+const port = Number(process.argv[2] ?? 8976);
 const mime = { '.html':'text/html; charset=utf-8', '.mjs':'text/javascript', '.js':'text/javascript', '.wasm':'application/wasm', '.png':'image/png', '.svg':'image/svg+xml', '.mp4':'video/mp4', '.webm':'video/webm' };
 http.createServer(async (request,response) => {
   try {
@@ -29,4 +30,4 @@ http.createServer(async (request,response) => {
     response.writeHead(200, { 'Content-Type':mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control':'no-store' });
     response.end(data);
   } catch { response.writeHead(404).end('Not found'); }
-}).listen(8976,'127.0.0.1',()=>console.log('Cloud motion: http://127.0.0.1:8976'));
+}).listen(port,'127.0.0.1',()=>console.log(`Cloud motion: http://127.0.0.1:${port}`));

@@ -17,6 +17,6 @@ void main() {
     float width=max(0.18,u_viewport.x/1536.0*0.23);
     float core=1.0-smoothstep(width,width+0.48,abs(v_side));
     float halo=exp(-v_side*v_side/2.2)*0.045;
-    float alpha=(core*0.78+halo)*reveal*v_opacity;
+    float alpha=(core*0.78+halo)*reveal*v_opacity*edge_coverage(gl_FragCoord.xy/u_viewport.xy);
     out_color=vec4(u_accent,alpha);
 }

@@ -19,7 +19,7 @@ try {
     const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
     page.on('pageerror',e=>report.errors.push(String(e)));
     page.on('console',m=>{if(m.type()==='error') report.errors.push(m.text());});
-    await page.goto('http://127.0.0.1:8976/?qa');
+    await page.goto((process.env.CLOUD_PREVIEW_URL ?? 'http://127.0.0.1:8976')+'/?qa');
     await page.waitForFunction(()=>document.documentElement.dataset.ready||document.documentElement.dataset.error);
     assert.equal(await page.evaluate(()=>document.documentElement.dataset.error),undefined);
     const frame=async(t,label)=>{
@@ -48,7 +48,7 @@ try {
     await page.close();
   }
   const page=await browser.newPage({viewport:{width:1000,height:850}});
-  await page.goto('http://127.0.0.1:8976/');
+  await page.goto((process.env.CLOUD_PREVIEW_URL ?? 'http://127.0.0.1:8976')+'/');
   await page.waitForFunction(()=>document.documentElement.dataset.ready);
   await page.locator('#pause').click();
   const before=await page.evaluate(()=>window.cloudPreview.renderer.frame_count());

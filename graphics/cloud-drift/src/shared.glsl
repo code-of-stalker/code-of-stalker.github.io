@@ -12,8 +12,14 @@ uniform vec4 u_scan;
 uniform vec4 u_effects;
 uniform vec4 u_viewport;
 uniform vec3 u_accent;
+uniform vec3 u_background;
 const vec2 SIZE = vec2(1536.0, 1024.0);
 const float TAU = 6.28318530718;
+
+float edge_coverage(vec2 uv) {
+    vec2 distance=min(uv,1.0-uv);
+    return smoothstep(0.0,0.10,distance.x)*smoothstep(0.0,0.15,distance.y);
+}
 
 vec2 turn(vec2 p, float angle) {
     float c=cos(angle),s=sin(angle);
@@ -75,7 +81,7 @@ vec2 world_screen(vec2 q) {return (q-SIZE*0.5+u_camera.xy+u_control.yz)*u_camera
 float scan_weight(vec2 q) {
     if(u_control.w>0.5)return 1.0;
     float distance=u_scan.x-(q.x+q.y*0.24);
-    float front=exp(-pow(distance/32.0,2.0));
-    float wake=smoothstep(-12.0,28.0,distance)*(1.0-smoothstep(75.0,265.0,distance))*0.53;
-    return min(1.0,front+wake)*u_scan.y*u_effects.z;
+    // Only the narrow wake that the scanner has already crossed can reveal lines.
+    float wake=smoothstep(0.0,10.0,distance)*(1.0-smoothstep(36.0,128.0,distance));
+    return wake*u_scan.y*u_effects.z;
 }

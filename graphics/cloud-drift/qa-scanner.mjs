@@ -4,7 +4,7 @@ import sharp from 'file:///C:/Users/qtas5/.cache/codex-runtimes/codex-primary-ru
 const browser = await chromium.launch({headless:true, executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 try {
   const page = await browser.newPage({viewport:{width:1536,height:1024},deviceScaleFactor:1});
-  await page.goto('http://127.0.0.1:8976/?qa&render');
+  await page.goto((process.env.CLOUD_PREVIEW_URL ?? 'http://127.0.0.1:8976')+'/?qa&render');
   await page.waitForFunction(() => document.documentElement.dataset.ready === 'true');
   const capture = async (accent, scanner) => {
     await page.evaluate(({accent,scanner}) => {
@@ -24,12 +24,12 @@ try {
       if(Math.max(scan[i]-base[i],scan[i+1]-base[i+1],scan[i+2]-base[i+2]) < 12) continue;
       changed++; for(let c=0;c<3;c++) gain[c]+=scan[i+c]-base[i+c];
     }
-    assert(darkest >= -1, `Scanner darkened artwork in ${hex}: ${darkest}`);
+    assert(darkest < -10 && darkest > -125, `Expected restrained dimming under the contours: ${darkest}`);
     assert(changed>50, `No visible scanner in ${hex}`);
     const scale = Math.max(...gain), accentScale = Math.max(...accent);
     gain.forEach((value,c) => assert(Math.abs(value/scale-accent[c]/accentScale)<.045, `Wrong accent ${hex}`));
     result.push({accent:hex, darkestDelta:darkest, checkedPixels:changed});
   }
   assert.equal(await page.evaluate(() => window.cloudPreview.renderer.gpu_error()),0);
-  console.log(JSON.stringify({scannerNeverDarkens:true,palettes:result}));
+  console.log(JSON.stringify({scannerKeepsAccentWithDimmedArtwork:true,palettes:result}));
 } finally { await browser.close(); }

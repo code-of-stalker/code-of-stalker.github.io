@@ -8,6 +8,7 @@ import type { ArtProps } from './types';
 
 type Renderer = {
   accent(r: number, g: number, b: number): void; reduced(value: boolean): void;
+  background(r: number, g: number, b: number): void;
   resize(width: number, height: number): void; frame(at: number): void;
   suspend(): void; dispose(): void; free(): void;
 };
@@ -50,7 +51,9 @@ export function CloudDrift(props: ArtProps) {
       stop();
       if (renderer) {
         const accent = latest.current.colors.accent;
+        const background = latest.current.colors.background;
         renderer.accent(...([1, 3, 5].map(start => Number.parseInt(accent.slice(start, start + 2), 16) / 255) as [number, number, number]));
+        renderer.background(...([1, 3, 5].map(start => Number.parseInt(background.slice(start, start + 2), 16) / 255) as [number, number, number]));
         renderer.reduced(!!latest.current.props.reducedMotion);
         output.dataset.accent = accent;
         resize();
@@ -82,7 +85,7 @@ export function CloudDrift(props: ArtProps) {
     <div role="img" aria-label="Мужчина в костюме парит в облаках, стремясь к любви, просветлению, успеху и признанию"
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
-        <img src="/graphics/cloud-drift/assets/original.png" alt="" aria-hidden loading="lazy" decoding="async"
+        <img src="/graphics/cloud-drift/assets/poster.png" alt="" aria-hidden loading="lazy" decoding="async"
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, display: ready ? 'none' : 'block' }} />
         <canvas ref={canvas} data-graphics="rust-cloud-drift" aria-hidden
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, visibility: ready ? 'visible' : 'hidden' }} />

@@ -1,4 +1,4 @@
-use crate::{compose, Frame, LOOP_SECONDS};
+use crate::{compose, Frame, LOOP_SECONDS, MAX_MOTION_STRENGTH};
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlProgram,
@@ -50,7 +50,11 @@ fn texture(gl: &Gl, slot: u32, image: &HtmlImageElement) -> Result<WebGlTexture,
     let t = gl.create_texture().ok_or("Cannot create scene texture")?;
     gl.active_texture(Gl::TEXTURE0 + slot);
     gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
-    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(
+        Gl::TEXTURE_2D,
+        Gl::TEXTURE_MIN_FILTER,
+        Gl::LINEAR_MIPMAP_LINEAR as i32,
+    );
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
@@ -63,6 +67,9 @@ fn texture(gl: &Gl, slot: u32, image: &HtmlImageElement) -> Result<WebGlTexture,
         Gl::UNSIGNED_BYTE,
         image,
     )?;
+    // The authored layers are much larger than a phone illustration. Filter their
+    // fine engraving before minification so motion does not sparkle between texels.
+    gl.generate_mipmap(Gl::TEXTURE_2D);
     Ok(t)
 }
 
@@ -80,11 +87,13 @@ pub struct CloudDrift {
     uniforms: Vec<Option<WebGlUniformLocation>>,
     contour_uniforms: Vec<Option<WebGlUniformLocation>>,
     spark_view: Option<WebGlUniformLocation>,
+    spark_viewport: Option<WebGlUniformLocation>,
     particle_data: Vec<f32>,
     elapsed: f64,
     last_time: Option<f64>,
     amount: f32,
     accent: [f32; 3],
+    background: [f32; 3],
     original: bool,
     reduced: bool,
     paused: bool,
@@ -149,6 +158,7 @@ impl CloudDrift {
             "u_effects",
             "u_viewport",
             "u_accent",
+            "u_background",
         ];
         let uniforms = names
             .iter()
@@ -159,6 +169,7 @@ impl CloudDrift {
             .map(|n| gl.get_uniform_location(&contours, n))
             .collect();
         let spark_view = gl.get_uniform_location(&spark, "u_view");
+        let spark_viewport = gl.get_uniform_location(&spark, "u_viewport");
         let buffer = gl.create_buffer().ok_or("Cannot create particle buffer")?;
         let contour_buffer = gl.create_buffer().ok_or("Cannot create contour buffer")?;
         let mut vertices = Vec::new();
@@ -202,11 +213,13 @@ impl CloudDrift {
             uniforms,
             contour_uniforms,
             spark_view,
+            spark_viewport,
             particle_data: Vec::with_capacity(128),
             elapsed: 0.0,
             last_time: None,
-            amount: 1.0,
+            amount: MAX_MOTION_STRENGTH,
             accent: [245.0 / 255.0, 221.0 / 255.0, 7.0 / 255.0],
+            background: [0.0; 3],
             original: false,
             reduced: false,
             paused: false,
@@ -284,7 +297,7 @@ impl CloudDrift {
     }
     pub fn strength(&mut self, value: f32) {
         self.amount = if value.is_finite() {
-            value.clamp(0.0, 1.5)
+            value.clamp(0.0, MAX_MOTION_STRENGTH)
         } else {
             1.0
         };
@@ -300,6 +313,15 @@ impl CloudDrift {
             self.accent = [red, green, blue].map(|value| value.clamp(0.0, 1.0));
             self.draw();
         }
+    }
+    pub fn background(&mut self, red: f32, green: f32, blue: f32) {
+        if [red, green, blue].iter().all(|value| value.is_finite()) {
+            self.background = [red, green, blue].map(|value| value.clamp(0.0, 1.0));
+            self.draw();
+        }
+    }
+    pub fn motion_strength(&self) -> f32 {
+        self.amount
     }
     pub fn frame_count(&self) -> u32 {
         self.frames
@@ -369,6 +391,7 @@ impl CloudDrift {
             0.0,
         );
         gl.uniform3fv_with_f32_array(locations[10].as_ref(), &self.accent);
+        gl.uniform3fv_with_f32_array(locations[11].as_ref(), &self.background);
     }
     fn draw(&mut self) {
         if self.disposed || self.gl.is_context_lost() {
@@ -421,6 +444,13 @@ impl CloudDrift {
                 ]);
             }
             gl.use_program(Some(&self.spark));
+            gl.uniform4f(
+                self.spark_viewport.as_ref(),
+                self.canvas.width() as f32,
+                self.canvas.height() as f32,
+                0.0,
+                0.0,
+            );
             gl.uniform4f(
                 self.spark_view.as_ref(),
                 f.camera[0] + self.pointer[0],

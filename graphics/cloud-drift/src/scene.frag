@@ -66,7 +66,7 @@ vec3 dream(vec3 behind, vec2 q, vec2 center, vec2 radius, int index) {
 
 void main() {
     if (u_control.x > 0.5) {
-        out_color = vec4(texture(u_source, v_uv).rgb, 1.0);
+        out_color = vec4(mix(u_background,texture(u_source, v_uv).rgb,edge_coverage(v_uv)), 1.0);
         return;
     }
     vec2 q = (v_uv * SIZE - SIZE * 0.5) / u_camera.z + SIZE * 0.5 - u_camera.xy - u_control.yz;
@@ -91,7 +91,9 @@ void main() {
         float alpha = smoothstep(0.012, 0.995, hero.a);
         color = mix(color, hero.rgb, alpha);
     }
-    // Illuminate the pass; never drag a dark curtain over the approved artwork.
+    // Dim only the short trailing reveal so the etched contours read clearly.
+    // The leading light is composited afterwards and retains the theme accent.
+    if(u_control.w<0.5)color*=1.0-scan_weight(q)*0.42;
     float scan_distance=abs(u_scan.x-(q.x+q.y*0.24));
     float pixel_size=SIZE.x/max(u_viewport.x,1.0);
     float scan_core=1.0-smoothstep(pixel_size*0.4,pixel_size*1.25,scan_distance);
@@ -99,5 +101,5 @@ void main() {
     float scan_light=(scan_core+scan_halo)*u_scan.y*u_effects.z;
     color+=u_accent*scan_light;
     if(u_control.w>0.5)color=vec3(0.0);
-    out_color = vec4(max(color, vec3(0.0)), 1.0);
+    out_color = vec4(mix(u_background,max(color,vec3(0.0)),edge_coverage(v_uv)), 1.0);
 }

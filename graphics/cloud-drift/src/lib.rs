@@ -1,8 +1,17 @@
-//! Independent art review. All choreography, deformation and rendering live in Rust.
-//! The application and its approved scenes are deliberately not coupled to this study.
+//! Cloud illustration. All choreography, deformation and rendering live in Rust.
 use std::f32::consts::TAU;
 
 pub const LOOP_SECONDS: f64 = 16.0;
+pub const MAX_MOTION_STRENGTH: f32 = 1.5;
+
+/// Same four-edge coverage used by the GPU and the transparent fallback poster.
+pub fn edge_coverage(x: f32, y: f32) -> f32 {
+    let smooth = |value: f32| {
+        let value = value.clamp(0.0, 1.0);
+        value * value * (3.0 - 2.0 * value)
+    };
+    smooth(x.min(1.0 - x) / 0.10) * smooth(y.min(1.0 - y) / 0.15)
+}
 
 #[derive(Clone, Debug)]
 pub struct Frame {
@@ -19,7 +28,7 @@ pub struct Frame {
 pub fn compose(seconds: f64, strength: f32) -> Frame {
     let seconds = if seconds.is_finite() { seconds } else { 0.0 };
     let a = if strength.is_finite() {
-        strength.clamp(0.0, 1.5)
+        strength.clamp(0.0, MAX_MOTION_STRENGTH)
     } else {
         1.0
     };
@@ -91,6 +100,19 @@ pub use browser::CloudDrift;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn feather_reaches_the_background_on_every_edge_and_preserves_the_center() {
+        for i in 0..=100 {
+            let t = i as f32 / 100.0;
+            assert_eq!(edge_coverage(0.0, t), 0.0);
+            assert_eq!(edge_coverage(1.0, t), 0.0);
+            assert_eq!(edge_coverage(t, 0.0), 0.0);
+            assert_eq!(edge_coverage(t, 1.0), 0.0);
+        }
+        assert_eq!(edge_coverage(0.5, 0.5), 1.0);
+        assert!(edge_coverage(0.03, 0.5) < edge_coverage(0.06, 0.5));
+        assert!(edge_coverage(0.5, 0.03) < edge_coverage(0.5, 0.06));
+    }
     #[test]
     fn loop_is_continuous_in_value_and_velocity() {
         let first = compose(0.0, 1.0);

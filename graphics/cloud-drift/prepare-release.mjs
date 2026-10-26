@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { prepareWebCache } from '../../scripts/prepare-web-cache.mjs';
-const root=process.cwd(), site=path.resolve(process.argv[2]), output=path.join(root,'.local-preview/cloud-site/release-dist');
+const root=process.cwd(), site=path.resolve(process.argv[2]), output=path.resolve(process.argv[3] ?? path.join(root,'.local-preview/cloud-site/release-dist'));
 const manifest=JSON.parse(await fs.readFile(path.join(site,'.openai/hosting.json'),'utf8'));
 if(manifest.project_id!=='appgprj_6acce501d4988191938370d0410d080b')throw Error('Site identity mismatch');
 await fs.mkdir(output,{recursive:false});
@@ -48,7 +48,7 @@ for(const asset of cache.assets){
   if(hash(bytes)!==asset.sha256)throw Error('Cache hash mismatch: '+asset.url);
 }
 const cloud=cache.assets.filter(a=>a.url.startsWith('/graphics/cloud-drift/'));
-if(cloud.length!==6)throw Error('Cloud scene not completely cached: '+cloud.length);
+if(cloud.length!==7)throw Error('Cloud scene not completely cached: '+cloud.length);
 const report={output,project_id:manifest.project_id,sharedEngineUnchanged:true,sha256,cacheVersion:cache.version,cloudAssets:cloud,cacheAssets:cache.assets.length};
 await fs.writeFile(path.join(root,'.local-preview/cloud-site/release.json'),JSON.stringify(report,null,2));
 console.log(JSON.stringify({output,cacheVersion:cache.version,sharedEngineUnchanged:true,cloudAssets:cloud.length}));

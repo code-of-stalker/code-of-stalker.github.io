@@ -2,7 +2,7 @@ import type { ReadingPage } from './motion/readingPages';
 
 /** Authored reading order. Each page has one focal scene and keeps the supplied text. */
 export const stepFourPages: readonly ReadingPage[] = [
-  { id: 'grounding-default', title: 'Практика заземления и прямого узнавания', art: 'grounding-drift', paragraphs: [
+  { id: 'grounding-default', title: 'Практика заземления и прямого узнавания', art: 'grounding-drift', webScene: 'world-in-glasses', paragraphs: [
     'Мысли думают человека.\nПарадигмы живут им — по умолчанию.',
     'Ментал контролирует, воображение рисует образы, в которые он верит больше, чем в тело.',
     'И всё это называется «жизнью» — хотя жизни в этом практически нет.',

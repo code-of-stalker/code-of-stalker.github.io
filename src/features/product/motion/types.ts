@@ -15,11 +15,13 @@ export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | '
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
+/** Live Rust illustrations that replace a page's artwork in the browser. */
+export type WebScene = 'theatre-marionette' | 'world-in-glasses';
 export type ArtController = { interact(value: ArtInteraction): void };
 export type ArtProps = {
   kind: ArtKind;
   /** Optional live Rust illustration in the browser; native keeps its current scene. */
-  webScene?: 'theatre-marionette';
+  webScene?: WebScene;
   glass?: GlassShape;
   scanOnMount?: boolean;
   onRevealProgress?(value: number): void;

@@ -18,15 +18,15 @@ pub const REST: f64 = 24.4;
 
 const HER: W = [-0.85, 0., 0.4];
 const HEIGHT: f64 = 1.68;
-/// Where the Observer stands once risen: behind her to the right, a little
-/// apart, half as tall again, never over her head.
-const WATCHER: W = [0.55, 0., 1.9];
-const WATCHER_HEIGHT: f64 = 2.7;
+/// Where the Observer stands once risen: behind her back, on our side of
+/// her, to the right; taller than her, never over her head.
+const WATCHER: W = [0.8, 0., -0.6];
+const WATCHER_HEIGHT: f64 = 2.15;
 /// Spheres of the Observer's attention: how many at once, each one's life in
 /// seconds and how far it reaches, metres.
 const SPHERES: usize = 3;
 const SPHERE_LIFE: f64 = 2.7;
-const SPHERE_REACH: f64 = 2.4;
+const SPHERE_REACH: f64 = 1.6;
 /// The corridor: half its width, its walls' height, where it starts and ends.
 const HALF: f64 = 2.;
 const WALL: f64 = 4.4;
@@ -324,43 +324,13 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     c.words("ЗОВ", || word("ЗОВ", 0., 3.6, 10.), &fill(LIGHT), &format!("translate({:.2} {:.2}) scale(.85)", above.0, above.1 - 2. * (1. - call)), call);
     c.fixed(|| "M-20 -20H340V64H-20Z".into(), r#"fill="url(#zv-top)""#, 1.);
 
-    // The Observer: risen out of her, large and calm behind her.
+    // The Observer: risen out of her, large and calm at her back.
     let dark = heroine_cover(COVER);
     let aura = heroine_cover("url(#zv-aura)");
     let inner = heroine_cover("url(#zv-inner)");
     let (ink, lit) = (heroine_ink(INK), heroine_ink(LIGHT));
     let fine = format!("{:.6} 0 0 0 {:.6} 0 0 0 1", 0.000407 * 2., 0.000488 * 2.);
-    let place = heroine_world(feet, height, 1.).then(cam.plane(feet[2]));
-    let its_heart = heroine_mark(place, HEROINE_HEART, wb);
-    c.path(&floor_ring(&cam, feet, 0.35 * height), r#"fill="url(#zv-pool)""#, 0.6 * present);
-    c.group(r#"filter="url(#zv-aura-blur)""#, "", (0.35 + 0.2 * wb + 0.25 * gazing) * present);
     let halo = Layers { cover: (&aura, 1.), code: None, glows: &[], inks: &[] };
-    heroine(c, place.then(Affine::about(its_heart, 1.08, 1.04)), wb, 1., &halo);
-    c.end();
-    let presence = Layers {
-        cover: (&dark, 1.),
-        code: Some((&fine, 0.12)),
-        glows: &[(&inner, 0.3 + 0.2 * wb + 0.2 * gazing)],
-        inks: &[(&lit, 0.85)],
-    };
-    heroine(c, place, wb, 0.92 * present, &presence);
-    // Its attention: not a beam from the eyes but spheres opening from its
-    // jugular notch, wide enough to hold her and her voice.
-    let source = heroine_mark(place, HEROINE_NOTCH, wb);
-    c.sprite(source, 2.5 + gazing + 0.6 * wb, "zv-glow", 0.8 * gazing * present);
-    let scale = cam.scale(feet[2]);
-    for k in 0..SPHERES {
-        let (d, shell, rim) = match sphere(t, k) {
-            Some(f) => {
-                let r = (0.12 + SPHERE_REACH * f.sqrt()) * scale;
-                let a = gazing * present * ramp(f, 0., 0.12) * (1. - ramp(f, 0.5, 1.));
-                (circle(source, r), a, 0.35 * a)
-            }
-            None => (String::new(), 0., 0.),
-        };
-        c.path(&d, r#"fill="url(#zv-sphere)""#, shell);
-        c.path(&d, &stroke(LINE, 0.3), rim);
-    }
 
     // Thoughts passing behind her.
     let thoughts: Vec<(W, f64, f64)> = (0..FRAGMENTS.len()).map(|i| fragment(i, t)).collect();
@@ -391,6 +361,37 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         inks: &[(&ink, 1.), (&lit, 0.15 * warm + 0.55 * end)],
     };
     heroine(c, me, b, 1., &mine);
+    // The Observer, nearer us than she is, so drawn over her.
+    let place = heroine_world(feet, height, 1.).then(cam.plane(feet[2]));
+    let its_heart = heroine_mark(place, HEROINE_HEART, wb);
+    c.path(&floor_ring(&cam, feet, 0.35 * height), r#"fill="url(#zv-pool)""#, 0.6 * present);
+    c.group(r#"filter="url(#zv-aura-blur)""#, "", (0.35 + 0.2 * wb + 0.25 * gazing) * present);
+    heroine(c, place.then(Affine::about(its_heart, 1.08, 1.04)), wb, 1., &halo);
+    c.end();
+    let presence = Layers {
+        cover: (&dark, 1.),
+        code: Some((&fine, 0.12)),
+        glows: &[(&inner, 0.3 + 0.2 * wb + 0.2 * gazing)],
+        inks: &[(&lit, 0.85)],
+    };
+    heroine(c, place, wb, 0.92 * present, &presence);
+    // Its attention: not a beam from the eyes but spheres opening from its
+    // jugular notch, wide enough to hold her and her voice.
+    let source = heroine_mark(place, HEROINE_NOTCH, wb);
+    c.sprite(source, 2.5 + gazing + 0.6 * wb, "zv-glow", 0.8 * gazing * present);
+    let scale = cam.scale(feet[2]);
+    for k in 0..SPHERES {
+        let (d, shell, rim) = match sphere(t, k) {
+            Some(f) => {
+                let r = (0.12 + SPHERE_REACH * f.sqrt()) * scale;
+                let a = gazing * present * ramp(f, 0., 0.12) * (1. - ramp(f, 0.5, 1.));
+                (circle(source, r), a, 0.35 * a)
+            }
+            None => (String::new(), 0., 0.),
+        };
+        c.path(&d, r#"fill="url(#zv-sphere)""#, shell);
+        c.path(&d, &stroke(LINE, 0.3), rim);
+    }
     // The Observer's light outline coming to rest on hers.
     let settle = ramp(t, MERGE.0 + 1.2, MERGE.1 - 0.2) * (1. - ramp(t, MERGE.1, MERGE.1 + 1.));
     let outline = Layers { cover: (&dark, 0.), code: None, glows: &[], inks: &[(&lit, 0.9)] };
@@ -497,7 +498,7 @@ mod tests {
         }
         for t in [RISE.1, 14., MERGE.0] {
             let (feet, height) = watcher(t);
-            assert!(feet[2] > HER[2] + 1.4 && feet[0] > HER[0] + 1. && height > 1.5 * HEIGHT, "behind her to the right: {t}");
+            assert!(feet[2] < HER[2] - 0.8 && feet[0] > HER[0] + 1. && height > 1.2 * HEIGHT, "behind her, nearer us, to the right: {t}");
             // Beside her, not over her: its head clears hers on screen.
             let cam = camera(t);
             let head = |feet: W, height: f64| heroine_world(feet, height, 1.).then(cam.plane(feet[2])).apply((468., 115.)).0;

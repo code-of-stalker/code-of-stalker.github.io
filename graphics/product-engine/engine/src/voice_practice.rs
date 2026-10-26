@@ -2,11 +2,11 @@
 //! independent of input adapters; reduced motion presents a resolved still.
 use crate::step_three::Update;
 pub fn contains(kind: &str) -> bool {
-    matches!(kind, "home-shade" | "practice-room" | "practice-father") || crate::practice_art::contains(kind)
+    matches!(kind, "home-shade" | "practice-room") || crate::practice_art::contains(kind)
 }
 pub fn svg(kind: &str) -> Option<String> {
-    if matches!(kind, "practice-room" | "practice-father") {
-        return Some(crate::practice_dialogue::svg(kind));
+    if kind == "practice-room" {
+        return Some(crate::practice_dialogue::svg());
     }
     if crate::practice_art::contains(kind) {
         return crate::practice_art::svg(kind);
@@ -17,8 +17,8 @@ pub fn svg(kind: &str) -> Option<String> {
     None
 }
 pub fn frame(kind: &str, seconds: f64, reduced: bool) -> Vec<Update> {
-    if matches!(kind, "practice-room" | "practice-father") {
-        return crate::practice_dialogue::frame(kind, seconds, reduced);
+    if kind == "practice-room" {
+        return crate::practice_dialogue::frame(seconds, reduced);
     }
     if crate::practice_art::contains(kind) {
         return crate::practice_art::frame(kind, seconds, reduced);

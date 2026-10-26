@@ -3,8 +3,16 @@
 //! immediate-mode canvas. A scene is one drawing function: run once it writes
 //! the SVG, run per frame it writes only the changing attributes of the same
 //! elements, so painter order and topology can never drift apart.
-use crate::{family_artwork::Contour, step_three::Update};
-use std::{f64::consts::TAU, fmt::Write, sync::LazyLock};
+use crate::{
+    breath_heroine::{solve_knee, FootTarget, Pose, ProjectedSkeleton, Rig, View, ANKLES, HEELS, TOES},
+    family_artwork::Contour,
+    step_three::Update,
+};
+use std::{
+    f64::consts::{PI, TAU},
+    fmt::Write,
+    sync::LazyLock,
+};
 
 pub(crate) type P = (f64, f64);
 pub(crate) type W = [f64; 3];
@@ -683,9 +691,9 @@ pub(crate) fn still_unseal(c: &mut Canvas, at: Placement, breath: f64, open: f64
     }
 }
 
-/// The approved heroine of the breath scenes, her stair-stepped trace
-/// straightened: far leg, near leg and upper body, each cover then ink.
-pub(crate) static HEROINE: LazyLock<Vec<(String, String)>> = LazyLock::new(|| {
+/// The approved heroine of the breath scenes as rings, her stair-stepped
+/// trace straightened: far leg, near leg and upper body, each cover then ink.
+static HEROINE_RINGS: LazyLock<Vec<(String, Vec<Vec<P>>)>> = LazyLock::new(|| {
     let doc = roxmltree::Document::parse(crate::breath_heroine::ART).expect("approved heroine");
     doc.descendants()
         .filter(|n| n.has_tag_name("path"))
@@ -698,35 +706,45 @@ pub(crate) static HEROINE: LazyLock<Vec<(String, String)>> = LazyLock::new(|| {
                     _ => {}
                 }
             }
+            (n.attribute("id").unwrap().to_owned(), rings.iter().map(|ring| simplify(ring, 1.2)).collect())
+        })
+        .collect()
+});
+/// The same as paths in art units.
+pub(crate) static HEROINE: LazyLock<Vec<(String, String)>> = LazyLock::new(|| {
+    HEROINE_RINGS
+        .iter()
+        .map(|(id, rings)| {
             let mut d = String::new();
             for ring in rings {
-                for (i, (x, y)) in simplify(&ring, 1.2).into_iter().enumerate() {
+                for (i, (x, y)) in ring.iter().enumerate() {
                     let _ = write!(d, "{}{x} {y}", if i == 0 { 'M' } else { 'L' });
                 }
                 d.push('Z');
             }
-            (n.attribute("id").unwrap().to_owned(), d)
+            (id.clone(), d)
         })
         .collect()
 });
 /// Her soles' centre, the top of her head, throat and the hand on her heart.
 pub(crate) const HEROINE_FEET: P = (503.75, 1404.75);
 pub(crate) const HEROINE_TOP: f64 = 29.;
+#[cfg(test)]
 pub(crate) const HEROINE_THROAT: P = (528., 236.);
 pub(crate) const HEROINE_HEART: P = (515., 340.);
+/// The jugular notch, just below the throat where the collarbones meet: the
+/// source of her voice.
+pub(crate) const HEROINE_NOTCH: P = (497., 263.);
 /// Art units to world x, y: soles on `feet`, `height` tall, facing right at 1
 /// and turned round at −1; between, she is turning.
 pub(crate) fn heroine_world(feet: W, height: f64, facing: f64) -> Affine {
     let m = height / (HEROINE_FEET.1 - HEROINE_TOP);
     Affine([facing * m, 0., 0., -m, feet[0] - facing * m * HEROINE_FEET.0, feet[1] + m * HEROINE_FEET.1])
 }
-/// A flat figure turning round over `u` from 0 to 1, as two drawings: the one
-/// facing `from` narrows and hands over to the one facing the other way, so
-/// she never thins to an edge. Pairs of facing and opacity.
-pub(crate) fn turning(u: f64, from: f64) -> [(f64, f64); 2] {
-    let narrow = 1. - 0.5 * (std::f64::consts::PI * u.clamp(0., 1.)).sin();
-    let over = ramp(u, 0.35, 0.65);
-    [(from * narrow, 1. - over), (-from * narrow, over)]
+/// How far each part of her has turned at `u` of a turn: the head and
+/// shoulders lead, the legs follow.
+fn part_turn(u: f64, upper: bool) -> f64 {
+    if upper { u / 0.86 } else { (u - 0.14) / 0.86 }.clamp(0., 1.)
 }
 /// The upper body rising on a breath, about the hips.
 fn heroine_breath(breath: f64) -> Affine {
@@ -768,6 +786,249 @@ pub(crate) fn heroine(c: &mut Canvas, place: Affine, breath: f64, alpha: f64, lo
     }
     c.end();
 }
+/// She turns round over `u` from 0 to 1 as a body rather than a card. Her head
+/// and shoulders lead and the legs follow; each part narrows only to its
+/// depth, never to an edge; the drawing facing `from` stays solid until the
+/// one facing away is, so she is never see-through while her lines hand over.
+/// `place` maps the art for a facing.
+pub(crate) fn heroine_turn(c: &mut Canvas, place: impl Fn(f64) -> Affine, u: f64, from: f64, breath: f64, alpha: f64, look: &Layers) {
+    c.group("", "", alpha);
+    for (id, d) in HEROINE.iter() {
+        let upper = id.starts_with("upper");
+        let v = part_turn(u, upper);
+        let narrow = 1. - 0.36 * (PI * v).sin();
+        let lines = ramp(v, 0.3, 0.7);
+        // Facing, solidity and share of the lines of each of the two drawings.
+        let drawings = [(from * narrow, 1. - ramp(v, 0.55, 0.8), 1. - lines), (-from * narrow, ramp(v, 0.2, 0.45), lines)];
+        for (facing, solid, share) in drawings {
+            let map = if upper { heroine_breath(breath).then(place(facing)) } else { place(facing) };
+            c.group("", &map.svg(), 1.);
+            if id.ends_with("ink") {
+                for &(paint, alpha) in look.inks {
+                    c.fixed(|| d.clone(), paint, alpha * share);
+                }
+            } else {
+                c.fixed(|| d.clone(), look.cover.0, look.cover.1 * solid);
+                if let Some((uv, alpha)) = look.code {
+                    c.fixed_rain(|| d.clone(), uv, alpha * share);
+                }
+                for &(paint, alpha) in look.glows {
+                    c.fixed(|| d.clone(), paint, alpha * share.sqrt());
+                }
+            }
+            c.end();
+        }
+    }
+    c.end();
+}
+/// Her step as she walks in profile, art units: soft and unhurried, half a
+/// metre for her height.
+const HEROINE_STEP: f64 = 410.;
+/// Her step in metres, `height` tall.
+pub(crate) fn heroine_step(height: f64) -> f64 {
+    HEROINE_STEP * height / (HEROINE_FEET.1 - HEROINE_TOP)
+}
+/// The share of a stride a foot is planted, the swinging foot's lift, the
+/// heel's rise about the ball as it pushes off and the toes' as it lands.
+const PLANTED: f64 = 0.58;
+const LIFT: f64 = 40.;
+const PUSH: f64 = 0.42;
+const LAND: f64 = -0.16;
+/// Where the rig hangs both legs in profile, and how far ahead of the drawn
+/// ankle that is: mid-stance, the planted foot is under her hips.
+const PROFILE_HIPS: P = (570., 710.);
+const UNDER: f64 = PROFILE_HIPS.0 - ANKLES[0].0;
+/// Walking, her hips sink this much, so her knees stay soft, and bob this
+/// much more, lowest as her heel comes down; a leg at its fullest reach may
+/// stretch this share past its length rather than jerk her hips.
+const SINK: f64 = 10.;
+const BOB: f64 = 26.;
+const LOWEST: f64 = -0.04;
+const GIVE: f64 = 1.012;
+/// Her thigh and shin in profile, art units.
+const LEG: (f64, f64) = (309.36, 312.06);
+/// Her rig in profile `steps` along at `pace`, the share of a full stride (0
+/// standing, her feet a little apart), and how far her hips sink, art units.
+fn stride(steps: f64, pace: f64) -> (Pose, f64) {
+    let ball = lerp(HEELS[0], TOES[0], 0.85);
+    let heel = (HEELS[0].0 + 6., 1400.);
+    // The drawn foot carried `rel` along and rolled `angle` about `pivot` on the floor.
+    let foot = |rel: f64, pivot: P, angle: f64| {
+        let ankle = rotate(ANKLES[0], pivot, angle);
+        FootTarget { ankle: (ankle.0 + UNDER + rel, ankle.1), angle, scale: 1. }
+    };
+    let reach = PLANTED * HEROINE_STEP;
+    // A foot `p` of the way through its stride: planted while she passes over
+    // it, landing on the heel and pushing off the ball, then swung through.
+    let gait = |p: f64| {
+        if p < PLANTED {
+            let rel = reach * (1. - 2. * p / PLANTED);
+            let push = ramp(p, 0.6 * PLANTED, PLANTED);
+            if push > 0. {
+                foot(rel, ball, PUSH * push)
+            } else {
+                foot(rel, heel, LAND * (1. - ramp(p, 0., 0.2 * PLANTED)))
+            }
+        } else {
+            let q = (p - PLANTED) / (1. - PLANTED);
+            let (from, to) = (foot(-reach, ball, PUSH), foot(reach, heel, LAND));
+            // At rest against the floor at both ends while her body carries her on.
+            let carried = 2. * (1. - PLANTED) * HEROINE_STEP;
+            let travel = to.ankle.0 - from.ankle.0 + carried;
+            FootTarget {
+                ankle: (
+                    from.ankle.0 + travel * (q - (TAU * q).sin() / TAU) - carried * q,
+                    mix(from.ankle.1, to.ankle.1, ease(q)) - LIFT * (PI * q).sin().powi(2),
+                ),
+                angle: mix(PUSH, LAND, ease(q)),
+                scale: 1.,
+            }
+        }
+    };
+    let walking = |stand: FootTarget, walk: FootTarget| FootTarget {
+        ankle: lerp(stand.ankle, walk.ankle, pace),
+        angle: mix(stand.angle, walk.angle, pace),
+        scale: 1.,
+    };
+    let feet = [
+        walking(foot(18., heel, 0.), gait((steps / 2.).rem_euclid(1.))),
+        walking(foot(-30., heel, 0.), gait((steps / 2. + 0.5).rem_euclid(1.))),
+    ];
+    let (thigh, shin) = LEG;
+    // Standing, her hips settle just enough for both feet; walking, they ride
+    // a gentle wave and sink further only where a reaching leg needs it.
+    let need = |full: f64| {
+        feet.map(|f| {
+            let dx = f.ankle.0 - PROFILE_HIPS.0;
+            f.ankle.1 - (full * full - dx * dx).max(1.).sqrt() - PROFILE_HIPS.1
+        })
+    };
+    // A soft maximum, so her hips never snap from one leg to the other.
+    let most = |a: f64, b: f64| (a + b + ((a - b).powi(2) + 64.).sqrt()) / 2.;
+    let [a, b] = need(thigh + shin - 1.);
+    let stand = most(a, b);
+    let [a, b] = need(GIVE * (thigh + shin));
+    let wave = SINK + BOB * (0.5 + 0.5 * (TAU * (steps - LOWEST)).cos());
+    let drop = mix(stand, most(wave, most(a, b)), pace);
+    let hips = (PROFILE_HIPS.0, PROFILE_HIPS.1 + drop);
+    let pose = Pose {
+        view: View::Profile,
+        feet: Some(feet),
+        skeleton: Some(ProjectedSkeleton {
+            hips: [hips; 2],
+            knees: feet.map(|f| solve_knee(hips, f.ankle, thigh, shin, 1.)),
+            body_drop: drop,
+        }),
+        walk: pace,
+        breath: 0.,
+        time: 0.,
+    };
+    (pose, drop)
+}
+/// Her upper body turned to profile for walking, cover then ink, art units.
+static PROFILE_UPPER: LazyLock<Vec<String>> = LazyLock::new(|| {
+    let rig = Rig::new(Pose { view: View::Profile, ..Default::default() });
+    HEROINE_RINGS
+        .iter()
+        .filter(|(id, _)| id.starts_with("upper"))
+        .map(|(_, rings)| compact(rings, |p| rig.point(p, 2), 10.))
+        .collect()
+});
+/// Her near leg, cover then ink, a little coarser: in profile both legs are
+/// drawn from it, solved afresh every frame.
+static PROFILE_LEG: LazyLock<Vec<Vec<Vec<P>>>> = LazyLock::new(|| {
+    HEROINE_RINGS
+        .iter()
+        .filter(|(id, _)| id.starts_with("near"))
+        .map(|(_, rings)| rings.iter().map(|ring| simplify(ring, 2.4)).collect())
+        .collect()
+});
+/// Rings mapped through `map` as short path data: each ring starts absolute,
+/// then steps on a grid of `1 / grain`.
+fn compact(rings: &[Vec<P>], map: impl Fn(P) -> P, grain: f64) -> String {
+    let mut d = String::new();
+    let num = |d: &mut String, v: i64, lead: bool| {
+        if lead && v >= 0 {
+            d.push(' ');
+        }
+        let _ = write!(d, "{}", v as f64 / grain);
+    };
+    for ring in rings {
+        let mut last: Option<(i64, i64)> = None;
+        let mut open = false;
+        for &p in ring {
+            let (x, y) = map(p);
+            let q = ((x * grain).round() as i64, (y * grain).round() as i64);
+            match last {
+                None => {
+                    d.push('M');
+                    num(&mut d, q.0, false);
+                    num(&mut d, q.1, true);
+                }
+                Some(l) if l == q => continue,
+                Some(l) => {
+                    let lead = open;
+                    if !open {
+                        d.push('l');
+                        open = true;
+                    }
+                    num(&mut d, q.0 - l.0, lead);
+                    num(&mut d, q.1 - l.1, true);
+                }
+            }
+            last = Some(q);
+        }
+        d.push('Z');
+    }
+    d
+}
+/// Her upper body sinking with her hips and leaning into the walk.
+fn stride_body(pace: f64, drop: f64) -> Affine {
+    let lean = 0.012 * pace;
+    Affine([1., 0., -lean, 1., 715. * lean, drop])
+}
+/// She walks in profile on the approved rig, `steps` along at `pace`. Her
+/// legs are solved each frame, far then near; her upper body keeps its fixed
+/// drawing and only breathes, sinks and leans with the stride. Art units
+/// under `place`.
+pub(crate) fn heroine_walking(c: &mut Canvas, place: Affine, steps: f64, pace: f64, breath: f64, alpha: f64, look: &Layers) {
+    let (pose, drop) = stride(steps, pace);
+    let rig = Rig::new(pose);
+    c.group("", &place.svg(), alpha);
+    for (part, lines) in [(0, 0.75), (1, 1.)] {
+        let [cover, ink] = [0, 1].map(|k| compact(&PROFILE_LEG[k], |p| rig.point(p, part), 1.));
+        c.path(&cover, look.cover.0, look.cover.1);
+        if let Some((uv, alpha)) = look.code {
+            c.rain(&cover, uv, alpha);
+        }
+        for &(paint, alpha) in look.glows {
+            c.path(&cover, paint, alpha);
+        }
+        for &(paint, alpha) in look.inks {
+            c.path(&ink, paint, alpha * lines);
+        }
+    }
+    c.group("", &heroine_breath(breath).then(stride_body(pace, drop)).svg(), 1.);
+    let (cover, ink) = (&PROFILE_UPPER[0], &PROFILE_UPPER[1]);
+    c.fixed(|| cover.clone(), look.cover.0, look.cover.1);
+    if let Some((uv, alpha)) = look.code {
+        c.fixed_rain(|| cover.clone(), uv, alpha);
+    }
+    for &(paint, alpha) in look.glows {
+        c.fixed(|| cover.clone(), paint, alpha);
+    }
+    for &(paint, alpha) in look.inks {
+        c.fixed(|| ink.clone(), paint, alpha);
+    }
+    c.end();
+    c.end();
+}
+/// Where an art point of her upper body is while she walks, before `place`.
+pub(crate) fn walking_mark(steps: f64, pace: f64, breath: f64, p: P) -> P {
+    let (_, drop) = stride(steps, pace);
+    let profile = Rig::new(Pose { view: View::Profile, ..Default::default() }).point(p, 2);
+    heroine_breath(breath).then(stride_body(pace, drop)).apply(profile)
+}
 /// Where an art point of the breathing heroine is, through `place`.
 pub(crate) fn heroine_mark(place: Affine, p: P, breath: f64) -> P {
     place.apply(heroine_breath(breath).apply(p))
@@ -780,6 +1041,19 @@ pub(crate) fn heroine_cover(paint: &str) -> String {
 }
 pub(crate) fn heroine_ink(color: &str) -> String {
     format!(r#"fill="{color}" fill-rule="evenodd" stroke="{color}" stroke-width="3""#)
+}
+
+/// Gradients for `soft_edges`, under the scene's prefix.
+pub(crate) fn edge_defs(id: &str) -> String {
+    format!(
+        r#"<linearGradient id="{id}-edge-foot" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".4"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".95"/></linearGradient><radialGradient id="{id}-edge" cx=".5" cy=".47" r=".62"><stop offset=".5" stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".68" stop-color="var(--book-cover)" stop-opacity=".22"/><stop offset=".84" stop-color="var(--book-cover)" stop-opacity=".68"/><stop offset="1" stop-color="var(--book-cover)"/></radialGradient>"#
+    )
+}
+/// Every edge dissolves softly into the page: a deeper fall at the foot and a
+/// vignette all round, in the page's own colour. Drawn last, over everything.
+pub(crate) fn soft_edges(c: &mut Canvas, id: &str) {
+    c.fixed(|| "M-20 166H340V212H-20Z".into(), &format!(r#"fill="url(#{id}-edge-foot)""#), 1.);
+    c.fixed(|| "M-20 -20H340V212H-20Z".into(), &format!(r#"fill="url(#{id}-edge)""#), 1.);
 }
 
 /// A level ring on the floor.
@@ -828,6 +1102,42 @@ pub(crate) fn ticks(at: P, r: f64, n: usize, turn: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::breath_heroine::KNEES;
+    #[test]
+    fn a_planted_foot_stays_put_while_she_walks() {
+        let ankle = |steps: f64, k: usize| stride(steps, 1.).0.feet.unwrap()[k].ankle;
+        // Flat on the floor mid-stance, it slides back under her exactly as she moves on.
+        for (k, from) in [(0, 0.25), (1, 1.25)] {
+            let held: Vec<f64> = (0..5).map(|i| from + 0.11 * i as f64).map(|s| ankle(s, k).0 + s * HEROINE_STEP).collect();
+            assert!(held.iter().all(|x| (x - held[0]).abs() < 1e-6), "{k} {held:?}");
+            assert!((ankle(from, k).1 - ANKLES[0].1).abs() < 1e-9);
+        }
+        // Nothing jumps anywhere in the stride, her hips barely bob, and a
+        // leg at its fullest reach stretches no more than the eye can tell.
+        let length = |a: P, b: P| (a.0 - b.0).hypot(a.1 - b.1);
+        assert!((length(PROFILE_HIPS, KNEES[0]) - LEG.0).abs() < 0.01 && (length(KNEES[0], ANKLES[0]) - LEG.1).abs() < 0.01);
+        let mut lowest = (f64::MAX, f64::MIN);
+        for i in 0..400 {
+            let s = i as f64 * 0.01;
+            let (pose, drop) = stride(s, 1.);
+            for k in 0..2 {
+                let (a, b) = (ankle(s, k), ankle(s + 0.01, k));
+                assert!((b.0 - a.0 + 0.01 * HEROINE_STEP).abs() < 30. && (a.1 - b.1).abs() < 6., "{s} {k}");
+                let hip = pose.skeleton.unwrap().hips[k];
+                assert!(length(hip, a) < 1.01 * (LEG.0 + LEG.1), "{s} {k}");
+            }
+            assert!((drop - stride(s + 0.01, 1.).1).abs() < 1.5, "{s}");
+            lowest = (lowest.0.min(drop), lowest.1.max(drop));
+        }
+        // About 4 cm for her height, as people walk.
+        assert!(lowest.0 > 5. && lowest.1 - lowest.0 < 34., "{lowest:?}");
+    }
+    #[test]
+    fn compact_paths_keep_their_points() {
+        let ring = vec![(10.4, 20.), (13., 18.2), (13.2, 18.4), (9., 25.)];
+        assert_eq!(compact(&[ring.clone()], |p| p, 1.), "M10 20l3-2-4 7Z");
+        assert_eq!(compact(&[ring], |p| p, 10.), "M10.4 20l2.6-1.8 0.2 0.2-4.2 6.6Z");
+    }
     #[test]
     fn rain_coordinates_invert_the_camera() {
         let camera = Camera {

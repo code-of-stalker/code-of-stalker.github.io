@@ -27,6 +27,7 @@ import { createRecordingHold } from '../audio/recording-hold';
 import { useProduct } from '../state/ProductProvider';
 import { useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
+import { StepSignature } from '../motion/StepSignature';
 import { RecordingReview } from '../RecordingReview';
 import { DiaryGlass } from '../diary/DiaryGlass';
 import { PanelBorder } from '../PanelBorder';
@@ -273,6 +274,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ObservationActionButton label="ДОПОЛНИТЬ ОТВЕТ" icon="lips" onPress={() => void startRecording('toggle')} disabled={busy || !ready} style={styles.addButton} />
       </View> : <View style={{ opacity: review ? 0 : 1 }}><Marquee text="ЗДЕСЬ НЕТ ПРАВИЛЬНЫХ ОТВЕТОВ, ЕСТЬ ТОЛЬКО ТВОЁ НАБЛЮДЕНИЕ" active={active && effectsActive && !sheet && !review} reducedMotion={settings.reducedMotion} /></View>}
       {!selected && <ProductText variant="label" style={[styles.localNote, { opacity: review ? 0 : 1 }]}>ЗАПИСИ СОХРАНЯЮТСЯ НА ЭТОМ УСТРОЙСТВЕ</ProductText>}
+      {progress.step === 1 && question === questions.length - 1 && <StepSignature center active={active && effectsActive && !sheet && !review} reducedMotion={settings.reducedMotion} style={[styles.signature, { opacity: review ? 0 : 1 }]} />}
       </View>
       </ScrollGate>
       {!embedded && <View pointerEvents={review ? 'none' : 'auto'} style={{ opacity: review ? 0 : 1 }}><TaskStepSelector step={progress.step === 2 ? 2 : 1} availableAt={progress.availableAt} testUnlockAll={settings.testUnlockAll} open={selectorOpen}
@@ -343,6 +345,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   date: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, color: colors.muted },
   addButton: { width: '80%', marginTop: 8, minHeight: 36 },
   marquee: { marginTop: 18, marginBottom: 8, fontSize: 8, lineHeight: 12, letterSpacing: 3.5 },
+  signature: { marginTop: 14 },
   localNote: { fontSize: 6, lineHeight: 10, marginTop: 8, textAlign: 'center', color: colors.muted, letterSpacing: 0.5 },
   modalBackdrop: { flex: 1, backgroundColor: colors.background === '#000000' ? '#000000cf' : colors.overlay, padding: 16, alignItems: 'center', justifyContent: 'flex-end' },
   recordingsSheet: { width: '100%', maxWidth: 440, alignSelf: 'center', maxHeight: '100%', gap: 8 },

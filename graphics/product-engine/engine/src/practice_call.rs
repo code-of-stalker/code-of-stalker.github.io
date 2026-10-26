@@ -1,9 +1,10 @@
 //! Practice 6, "Говори с собой! Слушай свой голос — не как шум, а как Зов."
 //! A corridor of noise: thoughts circle her and her voice comes out torn and
-//! drowns. Behind her the Observer rises, large and calm; under its gaze the
-//! noise falls away and her voice straightens into one pure tone. The tone
-//! travels down the corridor into the distance and comes back as the Call,
-//! ring after ring, into her chest, and the Observer settles into her:
+//! drowns. Behind her the Observer rises, large and calm; its attention opens
+//! from its jugular notch in spheres, the noise falls away and her voice
+//! straightens into one pure tone. The tone travels down the corridor into the
+//! distance and comes back as the Call, ring after ring, answered each time by
+//! light from inside her jugular notch, and the Observer settles into her:
 //! Observation, Sounding and Presence.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
@@ -17,13 +18,15 @@ pub const REST: f64 = 24.4;
 
 const HER: W = [-0.85, 0., 0.4];
 const HEIGHT: f64 = 1.68;
-/// Where the Observer stands once risen: beside her and a step behind her
-/// back, half as tall again, never over her head.
-const WATCHER: W = [-1.55, 0., 1.5];
+/// Where the Observer stands once risen: behind her to the right, a little
+/// apart, half as tall again, never over her head.
+const WATCHER: W = [0.55, 0., 1.9];
 const WATCHER_HEIGHT: f64 = 2.7;
-/// Her lips and the Observer's eye, in her art units.
-const MOUTH: P = (556., 192.);
-const EYE: P = (548., 118.);
+/// Spheres of the Observer's attention: how many at once, each one's life in
+/// seconds and how far it reaches, metres.
+const SPHERES: usize = 3;
+const SPHERE_LIFE: f64 = 2.7;
+const SPHERE_REACH: f64 = 2.4;
 /// The corridor: half its width, its walls' height, where it starts and ends.
 const HALF: f64 = 2.;
 const WALL: f64 = 4.4;
@@ -102,18 +105,20 @@ fn watcher(t: f64) -> (W, f64) {
     (wmix(HER, WATCHER, u), mix(HEIGHT, WATCHER_HEIGHT, u))
 }
 
-fn mouth() -> W {
-    let q = heroine_world(HER, HEIGHT, 1.).apply(MOUTH);
+/// Her jugular notch in the world, where her voice comes from.
+fn notch() -> W {
+    let q = heroine_world(HER, HEIGHT, 1.).apply(HEROINE_NOTCH);
     [q.0, q.1, HER[2]]
 }
 /// The voice's way through the world, with the distance walked to each point:
-/// out from her lips, across the corridor and away down its axis.
+/// out from her jugular notch and away into the depth, passing left of the
+/// Observer, to the corridor's far end.
 static VOICE: LazyLock<Vec<(W, f64)>> = LazyLock::new(|| {
-    let from = mouth();
+    let from = notch();
     let (mut last, mut walked) = (from, 0.);
     (0..=400)
         .map(|i| {
-            let p = cubic(from, add(from, [1.1, 0.25, 0.5]), [1.3, 1.75, 6.5], DISTANCE, i as f64 / 400.);
+            let p = cubic(from, add(from, [0.35, 0.25, 1.2]), [-0.55, 1.75, 6.5], DISTANCE, i as f64 / 400.);
             walked += dot(sub(p, last), sub(p, last)).sqrt();
             last = p;
             (p, walked)
@@ -182,30 +187,24 @@ fn trail(cam: &Camera, to: f64) -> String {
     }
     cam.line(&(0..=64).map(|i| voice_at(to * i as f64 / 64.)).collect::<Vec<_>>())
 }
-/// Where the gaze rests: on her voice, then following the tone away.
-fn gaze_target(t: f64) -> W {
-    voice_at(mix(GAZE_AT, spoken(t).1, ramp(t, TRAVEL.0, TRAVEL.1)))
-}
-/// A cone of calm attention from the eye to a disc around the target.
-fn gaze(cam: &Camera, eye: P, target: W) -> String {
-    let mut points = vec![eye];
-    points.extend((0..20).map(|i| {
-        let a = i as f64 / 20. * TAU;
-        cam.project([target[0] + 0.36 * a.cos(), target[1] + 0.28 * a.sin(), target[2]])
-    }));
-    poly(&hull(points))
+/// Sphere `k` of the Observer's attention, opening from its jugular notch:
+/// how far it has grown, 0 to 1, while the Observer is looking.
+fn sphere(t: f64, k: usize) -> Option<f64> {
+    let f = ((t - GAZE.0) / SPHERE_LIFE - k as f64 / SPHERES as f64).rem_euclid(1.);
+    let born = t - f * SPHERE_LIFE;
+    (born >= GAZE.0 && born <= MERGE.0).then_some(f)
 }
 
 /// A wavefront of the Call `f` of the way home: it fills the corridor wall to
-/// wall as it comes, and only at the last closes onto her heart. Centre and
-/// half-axes.
-fn call_front(f: f64, heart: W) -> (W, f64, f64) {
-    let z = mix(DISTANCE[2], heart[2], f);
-    let pull = ramp(f, 0.62, 1.);
-    (wmix([0., 1.8, z], [heart[0], heart[1], z], pull), mix(1.85, 0.05, pull), mix(1.7, 0.05, pull))
+/// wall as it comes, and only at the last closes onto her jugular notch.
+/// Centre and half-axes.
+fn call_front(f: f64, home: W) -> (W, f64, f64) {
+    let z = mix(DISTANCE[2], home[2], f);
+    let pull = ramp(f, 0.45, 1.);
+    (wmix([0., 1.8, z], [home[0], home[1], z], pull), mix(1.85, 0.05, pull), mix(1.7, 0.05, pull))
 }
-fn call_ring(cam: &Camera, f: f64, heart: W) -> String {
-    let (c, rx, ry) = call_front(f, heart);
+fn call_ring(cam: &Camera, f: f64, home: W) -> String {
+    let (c, rx, ry) = call_front(f, home);
     cam.poly(
         &(0..40)
             .map(|i| {
@@ -273,9 +272,11 @@ fn static_line(cam: &Camera, t: f64, frame: usize, k: usize, (z, y): (f64, f64),
 
 fn defs() -> String {
     let (hx, hy) = HEROINE_HEART;
+    let (nx, ny) = HEROINE_NOTCH;
     format!(
-        r#"{}<radialGradient id="zv-deep"><stop stop-color="var(--book-cover)"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".85"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="zv-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".7"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><radialGradient id="zv-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="zv-gaze" x1="0" y1="0" x2="1" y2="1"><stop stop-color="var(--book-light)" stop-opacity=".05"/><stop offset=".55" stop-color="var(--book-line)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-light)" stop-opacity=".24"/></linearGradient><radialGradient id="zv-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="zv-aura" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="900"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><filter id="zv-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>"#,
+        r#"{}<radialGradient id="zv-deep"><stop stop-color="var(--book-cover)"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".85"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="zv-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".7"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><radialGradient id="zv-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="zv-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="zv-aura" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="900"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><filter id="zv-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4"/></filter><radialGradient id="zv-sphere"><stop offset=".55" stop-color="var(--book-line)" stop-opacity="0"/><stop offset=".86" stop-color="var(--book-line)" stop-opacity=".07"/><stop offset=".97" stop-color="var(--book-light)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-light)" stop-opacity="0"/></radialGradient><radialGradient id="zv-notch" gradientUnits="userSpaceOnUse" cx="{nx}" cy="{ny}" r="460"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".2" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".18"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>{}"#,
         glow_defs("zv"),
+        edge_defs("zv"),
     )
 }
 
@@ -343,10 +344,23 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         inks: &[(&lit, 0.85)],
     };
     heroine(c, place, wb, 0.92 * present, &presence);
-    let eye = heroine_mark(place, EYE, wb);
-    c.sprite(eye, 2.5 + gazing, "zv-glow", 0.8 * gazing * present);
-    let target = gaze_target(t);
-    c.path(&gaze(&cam, eye, target), r#"fill="url(#zv-gaze)""#, 0.85 * gazing * present);
+    // Its attention: not a beam from the eyes but spheres opening from its
+    // jugular notch, wide enough to hold her and her voice.
+    let source = heroine_mark(place, HEROINE_NOTCH, wb);
+    c.sprite(source, 2.5 + gazing + 0.6 * wb, "zv-glow", 0.8 * gazing * present);
+    let scale = cam.scale(feet[2]);
+    for k in 0..SPHERES {
+        let (d, shell, rim) = match sphere(t, k) {
+            Some(f) => {
+                let r = (0.12 + SPHERE_REACH * f.sqrt()) * scale;
+                let a = gazing * present * ramp(f, 0., 0.12) * (1. - ramp(f, 0.5, 1.));
+                (circle(source, r), a, 0.35 * a)
+            }
+            None => (String::new(), 0., 0.),
+        };
+        c.path(&d, r#"fill="url(#zv-sphere)""#, shell);
+        c.path(&d, &stroke(LINE, 0.3), rim);
+    }
 
     // Thoughts passing behind her.
     let thoughts: Vec<(W, f64, f64)> = (0..FRAGMENTS.len()).map(|i| fragment(i, t)).collect();
@@ -361,18 +375,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     c.group(r#"filter="url(#zv-aura-blur)""#, "", end * (0.3 + 0.2 * b));
     heroine(c, me.then(Affine::about(heart, 1.1, 1.05)), b, 1., &halo);
     c.end();
-    let mine = Layers {
-        cover: (&dark, 1.),
-        code: Some((HEROINE_CODE, 0.14 * (1. - 0.6 * end))),
-        glows: &[(&inner, 0.3 * warm + end * (0.45 + 0.3 * b))],
-        inks: &[(&ink, 1.), (&lit, 0.15 * warm + 0.55 * end)],
-    };
-    heroine(c, me, b, 1., &mine);
-    // The Observer's light outline coming to rest on hers.
-    let settle = ramp(t, MERGE.0 + 1.2, MERGE.1 - 0.2) * (1. - ramp(t, MERGE.1, MERGE.1 + 1.));
-    let outline = Layers { cover: (&dark, 0.), code: None, glows: &[], inks: &[(&lit, 0.9)] };
-    heroine(c, place, wb, settle, &outline);
-    c.sprite(heroine_mark(me, HEROINE_THROAT, b), 3.5 + 1.5 * b, "zv-glow", 0.55 * speaking(t));
+    // The Call is answered from inside her: light rising in her jugular notch.
     let landing = CALLS
         .iter()
         .map(|&a| {
@@ -380,7 +383,27 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
             bell(t, at - 0.15, at, at + 0.1, at + 0.9)
         })
         .fold(0., f64::max);
-    c.sprite(heart, 3. + 2. * b + 8. * landing, "zv-glow", 0.45 * warm + 0.5 * landing + end * (0.25 + 0.2 * b));
+    let from_within = heroine_cover("url(#zv-notch)");
+    let mine = Layers {
+        cover: (&dark, 1.),
+        code: Some((HEROINE_CODE, 0.14 * (1. - 0.6 * end))),
+        glows: &[(&from_within, 0.35 * warm + 0.4 * landing + end * (0.45 + 0.3 * b))],
+        inks: &[(&ink, 1.), (&lit, 0.15 * warm + 0.55 * end)],
+    };
+    heroine(c, me, b, 1., &mine);
+    // The Observer's light outline coming to rest on hers.
+    let settle = ramp(t, MERGE.0 + 1.2, MERGE.1 - 0.2) * (1. - ramp(t, MERGE.1, MERGE.1 + 1.));
+    let outline = Layers { cover: (&dark, 0.), code: None, glows: &[], inks: &[(&lit, 0.9)] };
+    heroine(c, place, wb, settle, &outline);
+    let her_notch = heroine_mark(me, HEROINE_NOTCH, b);
+    c.sprite(her_notch, 3.5 + 1.5 * b, "zv-glow", 0.55 * speaking(t));
+    c.sprite(her_notch, 3. + 2. * b + 8. * landing, "zv-glow", 0.45 * warm + 0.5 * landing + end * (0.3 + 0.2 * b));
+    // Each Call that lands answers back as a ring of light from the notch.
+    for &a in &CALLS {
+        let f = (t - a - RETURN) / 1.1;
+        let on = (0. ..1.).contains(&f);
+        c.path(&if on { circle(her_notch, 1.5 + 9. * f.sqrt()) } else { String::new() }, &stroke(LIGHT, 0.4), if on { 0.6 * (1. - f) } else { 0. });
+    }
 
     // Thoughts passing before her.
     for (&text, &(p, a, behind)) in FRAGMENTS.iter().zip(&thoughts) {
@@ -409,8 +432,8 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let held = cam.project(voice_at(GAZE_AT));
     c.path(&ticks(held, 6. + 0.8 * wb, 16, 0.4 * t), &stroke(LINE, 0.4), 0.6 * ramp(t, GAZE.1, GAZE.1 + 0.6) * (1. - ramp(t, 12.6, 13.4)));
 
-    // The Call coming home, ring after ring, into her chest.
-    let (hx, hy) = heart_world(b);
+    // The Call coming home, ring after ring, into her jugular notch.
+    let (hx, hy) = notch_world(b);
     let home = [hx, hy, HER[2]];
     for &at in &CALLS {
         let f = (t - at) / RETURN;
@@ -440,17 +463,18 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     }
 
     c.path(&motes(&cam, t, 24, 700, (-1.9, 1.9), (0., 12.), 4., 0.012), &fill(LINE), 0.35);
+    soft_edges(c, "zv");
     c.end();
 }
-/// Her heart in world metres, breathing.
-fn heart_world(breath: f64) -> P {
-    heroine_mark(heroine_world(HER, HEIGHT, 1.), HEROINE_HEART, breath)
+/// Her jugular notch in world metres, breathing.
+fn notch_world(breath: f64) -> P {
+    heroine_mark(heroine_world(HER, HEIGHT, 1.), HEROINE_NOTCH, breath)
 }
 
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "zv",
-        "Героиня стоит в коридоре шума: вокруг неё кружат обрывки мыслей, её голос рвётся и тонет. За ней поднимается большой спокойный Наблюдатель. Под его взглядом шум стихает, голос выпрямляется в чистый тон и уходит вдаль, а оттуда возвращается Зовом, кольцо за кольцом, в её грудь. Наблюдатель сливается с ней: Наблюдение, Звучание, Присутствие.",
+        "Героиня стоит в коридоре шума: вокруг неё кружат обрывки мыслей, её голос рвётся и тонет. Сзади справа поднимается большой спокойный Наблюдатель; его внимание расходится сферами из яремной впадины. Шум стихает, голос выпрямляется в чистый тон и уходит вдаль, а оттуда возвращается Зовом, кольцо за кольцом, и каждый раз отзывается светом изнутри её яремной впадины. Наблюдатель сливается с ней: Наблюдение, Звучание, Присутствие.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -473,18 +497,18 @@ mod tests {
         }
         for t in [RISE.1, 14., MERGE.0] {
             let (feet, height) = watcher(t);
-            assert!(feet[2] > HER[2] + 1. && feet[0] < HER[0] && height > 1.5 * HEIGHT, "{t}");
+            assert!(feet[2] > HER[2] + 1.4 && feet[0] > HER[0] + 1. && height > 1.5 * HEIGHT, "behind her to the right: {t}");
             // Beside her, not over her: its head clears hers on screen.
             let cam = camera(t);
             let head = |feet: W, height: f64| heroine_world(feet, height, 1.).then(cam.plane(feet[2])).apply((468., 115.)).0;
-            assert!(head(HER, HEIGHT) - head(feet, height) > 14., "{t}");
+            assert!(head(feet, height) - head(HER, HEIGHT) > 14., "{t}");
         }
         assert!(RISE.1 <= GAZE.0 && GAZE.1 <= QUIET.0);
     }
     #[test]
-    fn the_tone_leaves_her_lips_and_reaches_the_distance() {
+    fn the_tone_leaves_her_jugular_notch_and_reaches_the_distance() {
         let off = |a: W, b: W| sub(a, b).iter().map(|v| v.abs()).fold(0., f64::max);
-        assert!(off(voice_at(0.), mouth()) < 1e-9 && off(voice_at(voice_length()), DISTANCE) < 1e-9);
+        assert!(off(voice_at(0.), notch()) < 1e-9 && off(voice_at(voice_length()), DISTANCE) < 1e-9);
         assert_eq!(spoken(SPEAK - 0.1), (0., 0.));
         let (tail, head) = spoken(TRAVEL.1);
         assert!((head - voice_length()).abs() < 1e-9 && (head - tail - PACKET).abs() < 1e-9);
@@ -492,7 +516,16 @@ mod tests {
         assert!(clarity(12.2, GAZE_AT) > 0.99 && clarity(TRAVEL.0, NEAR_VOICE) > 0.99 && clarity(10., 0.) < 0.01);
     }
     #[test]
-    fn every_call_lands_in_her_chest() {
+    fn the_observers_attention_opens_in_spheres_while_it_looks() {
+        assert!((0..SPHERES).all(|k| sphere(GAZE.0 - 0.1, k).is_none() && sphere(MERGE.0 + SPHERE_LIFE + 0.1, k).is_none()));
+        for t in [GAZE.1 + 2., 14., 18.] {
+            let open: Vec<f64> = (0..SPHERES).filter_map(|k| sphere(t, k)).collect();
+            assert_eq!(open.len(), SPHERES, "{t}");
+            assert!(open.iter().all(|f| (0. ..1.).contains(f)));
+        }
+    }
+    #[test]
+    fn every_call_lands_in_her_jugular_notch() {
         let heart = [-0.8, 1.2, HER[2]];
         let (c, rx, ry) = call_front(1., heart);
         assert!(sub(c, heart).iter().all(|v| v.abs() < 1e-9) && rx < 0.06 && ry < 0.06);

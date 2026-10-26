@@ -35,4 +35,12 @@ export const violetColors: ProductColors = {
   overlay: '#0d1426bb', track: '#6296f533', subtle: '#6296f519',
   iconTint: '#6296F5', onAccent: '#0D1426',
 };
+// Матрица: the code-rain green on black. Same structure as Искра, with
+// muted labels kept readable instead of a dim olive.
+export const matrixColors: ProductColors = {
+  background: '#000000', surface: '#000A03', accent: '#00FF41', text: '#00FF41',
+  muted: '#4FB868', faint: '#3F6B4A', border: '#0A5C22', error: '#F5A790',
+  overlay: '#000000bb', track: '#00ff4133', subtle: '#00ff4119',
+  iconTint: '#00FF41', onAccent: '#000000',
+};
 export const fonts = { title: 'Tektur', body: 'DisketMono', bodyBold: 'DisketMonoBold' };

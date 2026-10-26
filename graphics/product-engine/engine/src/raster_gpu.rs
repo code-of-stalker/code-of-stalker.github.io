@@ -701,6 +701,7 @@ impl RasterGpu {
             crate::palette::Palette::Light => 1.,
             crate::palette::Palette::Neutral => 2.,
             crate::palette::Palette::Violet => 3.,
+            crate::palette::Palette::Matrix => 4.,
         };
         values[29] = f32::from(matches!(self.kind, Kind::Mirror));
         let mut b = Batch::new(

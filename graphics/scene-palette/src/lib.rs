@@ -28,6 +28,8 @@ pub enum Palette {
     Neutral,
     /// Астрал.
     Violet,
+    /// Матрица: code green on black.
+    Matrix,
 }
 
 /// Paper, accent and highlight of one theme.
@@ -39,20 +41,21 @@ pub struct Colors {
 
 impl Palette {
     /// The codes of the app's `graphicsPalette`: 0 dark, 1 light, 2 neutral,
-    /// 3 violet. Any other code keeps the original colors.
+    /// 3 violet, 4 matrix. Any other code keeps the original colors.
     pub fn from_code(code: u32) -> Self {
         match code {
             0 => Self::Dark,
             1 => Self::Light,
             2 => Self::Neutral,
             3 => Self::Violet,
+            4 => Self::Matrix,
             _ => Self::Original,
         }
     }
     /// The mapping selector of `recolor.frag`.
     pub fn mode(self) -> f32 {
         match self {
-            Self::Original | Self::Dark => 0.0,
+            Self::Original | Self::Dark | Self::Matrix => 0.0,
             Self::Light => 1.0,
             Self::Neutral | Self::Violet => 2.0,
         }
@@ -66,6 +69,7 @@ impl Palette {
             Self::Light => (rgb(250, 225, 143), rgb(255, 102, 0), rgb(190, 76, 0)),
             Self::Neutral => (rgb(13, 21, 32), rgb(134, 201, 199), rgb(214, 218, 210)),
             Self::Violet => (rgb(13, 20, 38), rgb(98, 150, 245), rgb(170, 150, 214)),
+            Self::Matrix => (rgb(0, 0, 0), rgb(0, 255, 65), rgb(0, 255, 65)),
         };
         Some(Colors {
             paper,
@@ -88,7 +92,7 @@ impl Palette {
             std::array::from_fn(|i| a[i] + (b[i] - a[i]) * t)
         };
         match self {
-            Self::Dark => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
+            Self::Dark | Self::Matrix => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
             Self::Light => {
                 let level = dot(color).clamp(0.0, 1.0);
                 let print = mix(paper, highlight, (1.0 - level).powf(1.8) * 0.42);
@@ -114,16 +118,17 @@ impl Palette {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const THEMES: [Palette; 4] = [
+    const THEMES: [Palette; 5] = [
         Palette::Dark,
         Palette::Light,
         Palette::Neutral,
         Palette::Violet,
+        Palette::Matrix,
     ];
 
     #[test]
     fn codes_follow_the_app_and_unknown_codes_keep_the_artwork() {
-        assert_eq!(THEMES, [0, 1, 2, 3].map(Palette::from_code));
+        assert_eq!(THEMES, [0, 1, 2, 3, 4].map(Palette::from_code));
         assert_eq!(Palette::from_code(255), Palette::Original);
         let gold = [0.93, 0.68, 0.12];
         assert_eq!(Palette::Original.recolor(gold), gold);
@@ -131,7 +136,7 @@ mod tests {
 
     #[test]
     fn black_is_the_page_of_every_dark_theme() {
-        for palette in [Palette::Dark, Palette::Neutral, Palette::Violet] {
+        for palette in [Palette::Dark, Palette::Neutral, Palette::Violet, Palette::Matrix] {
             let paper = palette.colors().unwrap().paper;
             assert_eq!(palette.recolor([0.0; 3]), paper, "{palette:?}");
         }
@@ -142,6 +147,12 @@ mod tests {
         let [r, g, b] = Palette::Dark.recolor([1.0, 0.78, 0.07]);
         assert!(r > g && g > b * 20.0);
         assert!((g / r - 221.0 / 245.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn matrix_paints_gold_in_code_green() {
+        let [r, g, b] = Palette::Matrix.recolor([1.0, 0.78, 0.07]);
+        assert!(r == 0.0 && g > b * 3.0);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 precision highp float;
 // The finished full-color frame of a scene.
 uniform sampler2D u_image;
-// x: mapping (0 Matrix yellow, 1 sand sepia, 2 cool luminance ink),
+// x: mapping (0 luminance in the accent: Искра yellow, Матрица green, 1 sand sepia, 2 cool luminance ink),
 // y: 1 when the edges melt into the page.
 uniform vec4 u_mode;
 uniform vec3 u_paper;

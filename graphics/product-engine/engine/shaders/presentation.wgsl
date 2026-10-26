@@ -16,6 +16,17 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
     let pixel = textureSample(image, smooth_sampler, vec2(v.uv.x, 1. - v.uv.y));
     // Grounding uses the application's Matrix yellow, not the gold pigment of
     // its immutable source. Other themes continue through the shared palette.
+    // Матрица shows the authored dark material in code green: a linear map
+    // keeps premultiplied alpha, shading and white highlights (pale mint).
+    // Mirror and its sprites arrive here uncolored in this theme.
+    if (palette.mode.x > 3.5) {
+        if (palette.mode.y > 3.5) {
+            let energy = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)), 0., pixel.a);
+            return vec4(palette.accent.rgb * energy, pixel.a);
+        }
+        let green = mat3x3<f32>(vec3(0., .55, .25), vec3(0., .5, 0.), vec3(.9, 0., .6)) * pixel.rgb;
+        return vec4(min(green, vec3(pixel.a)), pixel.a);
+    }
     if (palette.mode.x < .5 && palette.mode.y > 3.5) {
         let energy = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)), 0., pixel.a);
         return vec4(vec3(245. / 255., 221. / 255., 7. / 255.) * energy, pixel.a);

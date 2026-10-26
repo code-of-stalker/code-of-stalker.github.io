@@ -25,6 +25,6 @@ fn card_inside(p:vec2<f32>,size:vec2<f32>,phase:f32)->bool{let i=u32(round((phas
  let result=vec4(pixel.rgb*v.color.rgb*v.color.a,pixel.a*v.color.a);
  // Mirror is already colored in its scene pass and bypasses presentation.
  // Its separate rain/foreground sprites need the same premultiplied palette.
- if(params.unused.x>2.5&&params.unused.y>.5){let ink=clamp(max(max(result.r,result.g),result.b),0.,result.a);let accent=select(vec3(98.,150.,245.),vec3(152.,105.,218.),kind<.5)/255.;return vec4(vec3(13.,20.,38.)/255.*(result.a-ink)+accent*ink,result.a);}
+ if(params.unused.x>2.5&&params.unused.x<3.5&&params.unused.y>.5){let ink=clamp(max(max(result.r,result.g),result.b),0.,result.a);let accent=select(vec3(98.,150.,245.),vec3(152.,105.,218.),kind<.5)/255.;return vec4(vec3(13.,20.,38.)/255.*(result.a-ink)+accent*ink,result.a);}
  return result;
 }

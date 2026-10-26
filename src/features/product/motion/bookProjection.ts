@@ -1,5 +1,5 @@
 import { bookScript, bookSvg } from './bookProjection.generated';
-import { colors as darkColors, lightColors, neutralColors, violetColors, type ProductColors } from '../theme';
+import { colors as darkColors, lightColors, matrixColors, neutralColors, violetColors, type ProductColors } from '../theme';
 
 const blend = (a: string, b: string, amount: number) => '#' + [1, 3, 5].map(at =>
   Math.round(parseInt(a.slice(at, at + 2), 16) * (1 - amount) + parseInt(b.slice(at, at + 2), 16) * amount).toString(16).padStart(2, '0')).join('');
@@ -7,10 +7,10 @@ const blend = (a: string, b: string, amount: number) => '#' + [1, 3, 5].map(at =
 export function bookProjectionPalette(colors: ProductColors) {
   const light = colors === lightColors, soft = colors === neutralColors;
   return {
-    name: light ? 'light' : soft ? 'neutral' : colors === violetColors ? 'violet' : 'dark', soft,
+    name: light ? 'light' : soft ? 'neutral' : colors === violetColors ? 'violet' : colors === matrixColors ? 'matrix' : 'dark', soft,
     colors: {
       ink: colors.accent,
-      light: light ? colors.accent : soft ? '#D1BD96' : colors === violetColors ? '#C2C4FF' : '#FFF9D4',
+      light: light ? colors.accent : soft ? '#D1BD96' : colors === violetColors ? '#C2C4FF' : colors === matrixColors ? '#D4FFDC' : '#FFF9D4',
       cover: blend(colors.background, colors.accent, .025), paper: blend(colors.background, colors.accent, .065),
       edge: blend(colors.background, colors.accent, .12), dim: blend(colors.background, colors.accent, light ? .60 : .30),
       line: blend(colors.background, light ? colors.text : colors.accent, .65),

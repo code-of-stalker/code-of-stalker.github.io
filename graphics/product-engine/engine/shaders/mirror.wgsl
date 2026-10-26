@@ -32,7 +32,7 @@ fn movement(p:vec2<f32>,center:vec2<f32>,radius:vec2<f32>,phase:f32,depth:f32)->
  let breath=.5+.5*sin(t*.83-.8);rgb*=1.+hero*(breath*.085-.025);let energy=.69+.22*sin(t*.83-.8)+.09*sin(t*1.43+.2);let convection=.78+.22*sin(p.y*.063+t*.71+sin(p.x*.047+t*.24));let glow=(field.r*.24+field.g*.12)*(1.-hero)*energy*convection;rgb+=vec3(1.,.66,.08)*glow;
  let floor_gate=smoothstep(328.+p.x*.063,342.+p.x*.063,p.y)*(1.-foreground);
  if(floor_gate>.001){let depth=60000./max(15.,p.y-300.);let world=vec2((p.x-228.)*depth/220.,depth-600.);let cell=(world+65.)-floor((world+65.)/130.)*130.;let dist=min(cell,130.-cell);let width=depth/220.*.65;let gx=1.-smoothstep(width*.35,width*1.5,dist.x);let gz=1.-smoothstep(width*.35,width*1.5,dist.y);let radius=length(world);let raw=t*225.*2.-radius+16000.;let age=raw-floor(raw/1600.)*1600.;let wave=exp(-age/360.)*(1.-exp(-age/32.));let near_front=exp(-pow(age/45.,2.));let fade=1.-smoothstep(1800.,4300.,radius);let grid=max(gx,gz)*(.035+wave*.52)+gx*gz*wave*.18;rgb+=vec3(1.,.74,.08)*(grid+near_front*.025)*floor_gate*fade*.6;}
- if(params.unused.x>1.5){
+ if(params.unused.x>1.5&&params.unused.x<3.5){
   // Approved Laconic composition: cool bodies and masks, localized chest
   // illumination. The original motion, glitch and floor sweep remain intact.
   let violet=params.unused.x>2.5;

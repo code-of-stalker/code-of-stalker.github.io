@@ -1,14 +1,14 @@
 import { createContext, useContext, useLayoutEffect } from 'react';
 import type { PropsWithChildren } from 'react';
-import { colors, lightColors, neutralColors, violetColors } from './theme';
+import { colors, lightColors, matrixColors, neutralColors, violetColors } from './theme';
 import type { ProductColors } from './theme';
 import type { ProductSettings } from './state/model';
 import { graphicsPalette } from './motion/graphicsPalette';
 
 const ThemeContext = createContext<ProductColors>(colors);
 export function ProductThemeProvider({ theme, children }: PropsWithChildren<{ theme: ProductSettings['theme'] }>) {
-  const palette = theme === 'light' ? lightColors : theme === 'neutral' ? neutralColors : theme === 'violet' ? violetColors : colors;
-  useLayoutEffect(() => { graphicsPalette.set(theme === 'light' ? 1 : theme === 'neutral' ? 2 : theme === 'violet' ? 3 : 0); }, [theme]);
+  const palette = theme === 'light' ? lightColors : theme === 'neutral' ? neutralColors : theme === 'violet' ? violetColors : theme === 'matrix' ? matrixColors : colors;
+  useLayoutEffect(() => { graphicsPalette.set(theme === 'light' ? 1 : theme === 'neutral' ? 2 : theme === 'violet' ? 3 : theme === 'matrix' ? 4 : 0); }, [theme]);
   return <ThemeContext.Provider value={palette}>{children}</ThemeContext.Provider>;
 }
 export function useThemeColors() { return useContext(ThemeContext); }

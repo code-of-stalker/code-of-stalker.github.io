@@ -11,13 +11,13 @@ import { useCardPress } from './useCardPress';
 import type { ArtInteraction } from './gesture';
 import { useArtEffects } from './useArtEffects';
 import { useThemeColors } from '../ProductTheme';
-import { lightColors, neutralColors, violetColors } from '../theme';
+import { paletteCode } from './graphicsPalette';
 
 /** Local artwork only. Matrix, credentials, recording and navigation stay native. */
 export function Art({ kind, height, width, glass, controllerRef, audioSource, scanOnMount = true, onRevealProgress, onReady, onDecoderComplete, active = true, decoderVisible = false, reducedMotion = false, level = 0, spectrum, mode = 'record', lockProgress = 0, locked = false, presentation = 'artwork', onPress, accessibilityLabel, style }: ArtProps) {
   const focused = useIsFocused();
   const colors = useThemeColors();
-  const theme = colors === lightColors ? 1 : colors === neutralColors ? 2 : colors === violetColors ? 3 : 0;
+  const theme = paletteCode(colors);
   const browser = useRef<WebView>(null);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [failed, setFailed] = useState<string>();

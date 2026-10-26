@@ -7,6 +7,8 @@ pub enum Palette {
     Light,
     Neutral,
     Violet,
+    /// Матрица: the authored dark material, shown in code green.
+    Matrix,
 }
 pub const OFFSET: usize = 264;
 pub const BACKGROUND: [f32; 3] = [250. / 255., 225. / 255., 143. / 255.];
@@ -15,12 +17,17 @@ pub const NEUTRAL_BACKGROUND: [f32; 3] = [13. / 255., 21. / 255., 32. / 255.];
 pub const NEUTRAL_ACCENT: [f32; 3] = [134. / 255., 201. / 255., 199. / 255.];
 pub const VIOLET_BACKGROUND: [f32; 3] = [13. / 255., 20. / 255., 38. / 255.];
 pub const VIOLET_ACCENT: [f32; 3] = [98. / 255., 150. / 255., 245. / 255.];
+pub const MATRIX_ACCENT: [f32; 3] = [0., 1., 65. / 255.];
+/// Rows of the linear map `presentation.wgsl` applies to the dark material:
+/// gold becomes code green and white highlights a pale mint.
+pub const MATRIX: [[f32; 3]; 3] = [[0., 0., 0.9], [0.55, 0.5, 0.], [0.25, 0., 0.6]];
 impl Palette {
     pub fn from_code(code: u32) -> Self {
         match code {
             1 => Self::Light,
             2 => Self::Neutral,
             3 => Self::Violet,
+            4 => Self::Matrix,
             _ => Self::Dark,
         }
     }
@@ -30,11 +37,13 @@ impl Palette {
             Self::Light => 1.,
             Self::Neutral => 2.,
             Self::Violet => 3.,
+            Self::Matrix => 4.,
         };
         params[OFFSET + 1] = 0.; // Authored full-color raster bypass is per scene.
         let (paper, accent) = match self {
             Self::Neutral => (NEUTRAL_BACKGROUND, NEUTRAL_ACCENT),
             Self::Violet => (VIOLET_BACKGROUND, VIOLET_ACCENT),
+            Self::Matrix => ([0.; 3], MATRIX_ACCENT),
             _ => (BACKGROUND, ACCENT),
         };
         params[OFFSET + 4..OFFSET + 7].copy_from_slice(&paper);
@@ -44,6 +53,18 @@ impl Palette {
     fn color(self, pixel: [f32; 4]) -> [f32; 4] {
         if self == Self::Dark {
             return pixel;
+        }
+        if self == Self::Matrix {
+            return std::array::from_fn(|i| {
+                if i == 3 {
+                    pixel[3]
+                } else {
+                    (0..3)
+                        .map(|k| MATRIX[i][k] * pixel[k])
+                        .sum::<f32>()
+                        .min(pixel[3])
+                }
+            });
         }
         let energy = pixel[0].max(pixel[1]).max(pixel[2]).clamp(0., pixel[3]);
         let mut params = [0.; 512];
@@ -127,6 +148,22 @@ mod tests {
                 assert!((composite - NEUTRAL_BACKGROUND[channel]).abs() < 0.00001);
             }
             assert_eq!(color[3], Palette::Dark.color([0., 0., 0., alpha])[3]);
+        }
+    }
+    #[test]
+    fn matrix_turns_gold_into_code_green_and_keeps_alpha() {
+        assert!(Palette::from_code(4) == Palette::Matrix);
+        assert_eq!(Palette::Matrix.color([0.; 4]), [0.; 4]);
+        let [r, g, b, a] = Palette::Matrix.color([1., 0.87, 0.03, 1.]);
+        assert!(g > 0.95 && r < 0.05 && b > 0.2 && b < 0.3);
+        assert_eq!(a, 1.);
+        let white = Palette::Matrix.color([1., 1., 1., 1.]);
+        assert!(white[0] > 0.8 && white[1] == 1. && white[2] > 0.8);
+        for alpha in [0., 0.01, 0.25, 0.5, 1.] {
+            let pixel = Palette::Matrix.color([alpha, alpha * 0.8, 0., alpha]);
+            assert_eq!(pixel[3], alpha);
+            assert!(pixel[..3].iter().all(|v| *v >= 0. && *v <= alpha));
+            assert!(pixel[1] >= pixel[0] && pixel[1] >= pixel[2]);
         }
     }
     #[test]

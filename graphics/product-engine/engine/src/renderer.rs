@@ -1065,6 +1065,7 @@ impl ProductRenderer {
             Palette::Light => 1,
             Palette::Neutral => 2,
             Palette::Violet => 3,
+            Palette::Matrix => 4,
         });
         let vector =
             vector_gpu::VectorGpu::new(&self.device, &self.queue, &self.vector_library, &root)?;

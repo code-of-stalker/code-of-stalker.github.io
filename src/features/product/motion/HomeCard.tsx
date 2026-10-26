@@ -37,18 +37,23 @@ export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { k
   </View><ScanLight path={glass.path}/></View>;
 }
 
-// The shade begins at the text block and continues to the bottom of the card.
+// The shade begins at the text block and runs flush to the bottom of the card.
+// On the left it starts just inside the 0.25px stroke at full strength: the
+// authored left fade (7% of the shade's width) is pushed outside the clip.
+const shadeLeftFade = .07, strokeClear = 1;
 export function HomeCardCopy({ children, inset, gradient, style }: PropsWithChildren<{
   inset: number; gradient: HomeTitleGradient; style?: StyleProp<ViewStyle>;
 }>) {
   const { size, onLayout, ref } = usePanelSize({ width: 260, height: 110 });
-  return <View ref={ref} onLayout={onLayout} pointerEvents="none" testID={`home-copy-${gradient}`} style={[styles.copy, { bottom: 6, paddingBottom: inset - 6, paddingLeft: inset - 6, paddingRight: Math.max(0, inset - 5) }, style]}>
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}><Art kind="home-shade" width={size.width} height={size.height} reducedMotion /></View>
+  const fade = size.width * shadeLeftFade / (1 - shadeLeftFade);
+  return <View ref={ref} onLayout={onLayout} pointerEvents="none" testID={`home-copy-${gradient}`} style={[styles.copy, { paddingBottom: inset, paddingLeft: inset - strokeClear, paddingRight: Math.max(0, inset - 5) }, style]}>
+    <View pointerEvents="none" style={[styles.shade, { left: -fade }]}><Art kind="home-shade" width={size.width + fade} height={size.height} reducedMotion /></View>
     {children}
   </View>;
 }
 const styles = StyleSheet.create({
   card: { flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: 'transparent' },
-  copy: { position: 'absolute', left: 6, right: 28, gap: 4, zIndex: 2 },
+  copy: { position: 'absolute', left: strokeClear, right: 28, bottom: 0, gap: 4, zIndex: 2 },
+  shade: { position: 'absolute', top: 0, right: 0, bottom: 0, overflow: 'hidden' },
   mask: { ...StyleSheet.absoluteFill, zIndex: 3 },
 });

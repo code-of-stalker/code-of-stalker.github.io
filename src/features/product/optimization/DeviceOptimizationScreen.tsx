@@ -64,7 +64,7 @@ export function DeviceOptimizationScreen({ onFinish, saving, error, onRetry, onC
           <ProductText style={[styles.body, { color: colors.text }]}>{error || 'Пожалуйста, подожди.\nОптимизируем приложение\nпод твоё устройство.'}</ProductText>
           <ProductText variant="label" style={[styles.note, { color: colors.muted }]}>{saving ? 'СОХРАНЯЕМ НАСТРОЙКИ' : error ? 'Настройки действуют в этом запуске' : 'Обычно это занимает 30–45 секунд'}</ProductText>
           {error ? <><ProductButton label="ПОВТОРИТЬ СОХРАНЕНИЕ" kind="ghost" onPress={onRetry} /><ProductButton label="ПРОДОЛЖИТЬ" kind="ghost" onPress={onContinue} /></>
-            : <><ProductButton label={'ОСТАВИТЬ НАСТРОЙКИ\nПО УМОЛЧАНИЮ'} kind="ghost" onPress={keepDefaults} disabled={saving || !!view.result} style={styles.defaultsButton} />
+            : <><ProductButton label={'ОСТАВИТЬ НАСТРОЙКИ\nПО УМОЛЧАНИЮ'} kind="outline" onPress={keepDefaults} disabled={saving || !!view.result} style={styles.defaultsButton} />
               <ProductText variant="label" style={[styles.defaultsNote, { color: colors.muted }]}>{'Сбалансированное качество.\nРежим плавности выключен.'}</ProductText></>}
         </View>
       </ProductScreen>
@@ -76,6 +76,6 @@ const styles = StyleSheet.create({
   copy: { width: '100%', maxWidth: 380, alignItems: 'center', paddingHorizontal: 8 },
   title: { textAlign: 'center', fontSize: 24, lineHeight: 32, marginBottom: 18 },
   body: { textAlign: 'center', fontSize: 12, lineHeight: 22 }, note: { textAlign: 'center', fontSize: 8, lineHeight: 18, marginTop: 20, marginBottom: 24 },
-  defaultsButton: { minWidth: 120, maxWidth: '100%', alignSelf: 'center' },
-  defaultsNote: { textAlign: 'center', fontSize: 8, lineHeight: 16, marginTop: 4 },
+  defaultsButton: { minWidth: 220, maxWidth: '100%', alignSelf: 'center', paddingHorizontal: 24 },
+  defaultsNote: { textAlign: 'center', fontSize: 8, lineHeight: 16, marginTop: 10 },
 });

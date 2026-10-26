@@ -35,6 +35,9 @@ const GROUND: f64 = 889.;
 const MIDST: f64 = 746.;
 const FATHER_NOTCH: P = (636., 408.);
 const FATHER_HEART: P = (590., 470.);
+/// Where the Father's light sits: at his jugular notch, just under the throat,
+/// not in the middle of his chest.
+const FATHER_GLOW: P = (630., 417.);
 const FATHER_MOUTH: P = (680., 351.);
 const SON_NOTCH: P = (889., 405.);
 const SON_HEART: P = (900., 452.);
@@ -259,8 +262,8 @@ fn defs() -> String {
         r#"{}{}<radialGradient id="pf-deep"><stop stop-color="var(--book-line)" stop-opacity=".5"/><stop offset=".3" stop-color="var(--book-ink)" stop-opacity=".18"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="pf-pool"><stop stop-color="var(--book-light)" stop-opacity=".4"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="pf-shade"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".6" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="pf-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".35" stop-color="var(--book-cover)" stop-opacity=".6"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><radialGradient id="pf-radiance"><stop stop-color="var(--book-light)" stop-opacity=".5"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".26"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="pf-aura"><stop stop-color="var(--book-line)" stop-opacity=".8"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".4"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".12"/></radialGradient><radialGradient id="pf-father" gradientUnits="userSpaceOnUse" cx="{fx}" cy="{fy}" r="420"><stop stop-color="var(--book-dim)"/><stop offset=".65" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="pf-father-light" gradientUnits="userSpaceOnUse" cx="{fx}" cy="{fy}" r="430"><stop stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".3" stop-color="var(--book-line)" stop-opacity=".5"/><stop offset=".75" stop-color="var(--book-ink)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".05"/></radialGradient><radialGradient id="pf-son-light" gradientUnits="userSpaceOnUse" cx="{sx}" cy="{sy}" r="380"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".6" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".04"/></radialGradient><filter id="pf-aura-blur" x="-60%" y="-30%" width="220%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>"#,
         glow_defs("pf"),
         edge_defs("pf"),
-        fx = FATHER_HEART.0,
-        fy = FATHER_HEART.1,
+        fx = FATHER_GLOW.0,
+        fy = FATHER_GLOW.1,
         sx = SON_HEART.0,
         sy = SON_HEART.1,
     )
@@ -373,7 +376,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let father_ink = figure("father-ink");
     let formed = ramp(t, FORM.0, FORM.0 + 1.2) * (1. - ramp(t, home + 1.2, home + 2.6));
     let radiant = ramp(t, home, home + 0.8);
-    let heart = held.apply(FATHER_HEART);
+    let heart = held.apply(FATHER_GLOW);
     c.sprite(heart, 34. + 10. * speak + 18. * radiant, "pf-radiance", formed * (0.7 + 0.3 * speak));
     c.group(r#"filter="url(#pf-aura-blur)""#, "", formed * (0.55 + 0.25 * speak + 0.2 * radiant));
     c.group("", &Affine::about(FATHER_HEART, 1.07, 1.04).then(held).svg(), 1.);

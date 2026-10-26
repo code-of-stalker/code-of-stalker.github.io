@@ -2,9 +2,9 @@
 //! a stage in a follow-spot before a hall, and the spot throws her shadow onto
 //! the back wall: huge, bound by ropes of thought that the hall's murmurs keep
 //! feeding. She turns from the hall to the shadow; her breath becomes a voice,
-//! one long tone whose waves reach it, and it fills with light. The ropes
-//! tremble with the tone and fall, the hall and the
-//! spot go out, and her light self steps out of the wall to face her:
+//! one long tone whose waves reach its belly, and it fills with light. The
+//! ropes tremble with the tone and fall, the hall and the spot go out, and
+//! her light self steps out of the wall to face her, notch to notch:
 //! Spectator, Witness, Liberator.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
@@ -18,6 +18,8 @@ pub const REST: f64 = 23.5;
 
 const HER: W = [0.05, 0., 0.];
 const HEIGHT: f64 = 1.68;
+/// Where her tone strikes the shadow: its belly, in her art units.
+const BELLY: P = (510., 650.);
 /// The back wall; the follow-spot close below the stage lip, and where it
 /// aims. So near and so low, it throws her three times her size: the shadow
 /// rises from the floor at her knees and reaches the top of the opening.
@@ -229,7 +231,7 @@ impl Rope {
 static ROPE_SET: LazyLock<Vec<Rope>> = LazyLock::new(|| {
     let cam = camera(0.);
     let map = shadow(&cam, 1.);
-    let heart = heroine_mark(shadow(&cam, -1.), HEROINE_HEART, 0.);
+    let heart = heroine_mark(shadow(&cam, -1.), BELLY, 0.);
     ROPES
         .iter()
         .map(|&(a, b, sag, text)| {
@@ -491,9 +493,11 @@ fn dust(cam: &Camera, t: f64) -> String {
 
 fn defs() -> String {
     let (hx, hy) = HEROINE_HEART;
+    // The shadow lights up from where her tone strikes it.
+    let (bx, by) = BELLY;
     let burn = |id: &str, r: f64| {
         format!(
-            r#"<radialGradient id="sh-{id}" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="{r}"><stop stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".45"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>"#
+            r#"<radialGradient id="sh-{id}" gradientUnits="userSpaceOnUse" cx="{bx}" cy="{by}" r="{r}"><stop stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".45"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>"#
         )
     };
     format!(
@@ -525,7 +529,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let wall = cam.carry(&cam0, WALL).svg();
     let k0 = cam0.scale(WALL);
     let quad = [[-4.9, 5.2, WALL], [4.9, 5.2, WALL], [4.9, 0., WALL], [-4.9, 0., WALL]];
-    let core = heroine_mark(shadow(&cam0, -1.), HEROINE_HEART, 0.);
+    let core = heroine_mark(shadow(&cam0, -1.), BELLY, 0.);
     c.group("", &wall, 1.);
     c.fixed_rain(|| cam0.poly(&quad), &cam0.uv(quad, [1.6, 1.05]), 0.1 + 0.08 * light + 0.06 * end);
     c.fixed(|| seams(&cam0), &stroke(LINE, 0.25), 0.1 * (1. - 0.5 * ramp(t, 17., 19.)));
@@ -572,8 +576,8 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         c.words(r.text, || r.words(), &fill(LINE), &drop, seen * (0.4 + 0.5 * hold) * gone);
         c.words(r.text, || r.words(), &fill(LIGHT), &drop, ignite * gone);
     }
-    // Where the voice lands: a ring on the wall for every wave of the tone.
-    let heart = heroine_mark(shadow(&cam0, k), HEROINE_HEART, b);
+    // Where the voice lands: a ring on the wall's belly for every wave of the tone.
+    let heart = heroine_mark(shadow(&cam0, k), BELLY, b);
     for j in 0..SLOTS {
         let (d, a) = match slot(t, CROSS, 1.4, j) {
             Some((_, age)) => {
@@ -640,14 +644,15 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     };
     heroine_turn(c, |f| heroine_world(HER, HEIGHT, f).then(cam.plane(HER[2])), turn(t), 1., b, 1., &mine_look, Some(("sh", 0.4 + 0.6 * lamp)));
     c.sprite(heroine_mark(me, HEROINE_NOTCH, b), 4. + 2. * b, "sh-glow", 0.6 * speak);
-    c.sprite(heroine_mark(me, HEROINE_HEART, b), 3. + 2. * b, "sh-glow", 0.15 * b * (1. - end) + end * (0.6 + 0.3 * b));
+    c.sprite(heroine_mark(me, HEROINE_HEART, b), 3. + 2. * b, "sh-glow", 0.15 * b * (1. - end));
+    c.sprite(heroine_mark(me, HEROINE_NOTCH, b), 3. + 2. * b, "sh-glow", end * (0.6 + 0.3 * b));
 
     // The voice: not a line of light but a tone. Wave after wave leaves her
     // jugular notch and widens as it crosses to the shadow, fuller the longer
     // she sounds.
     let mine = heroine_world(HER, HEIGHT, k);
     let from = world(mine, HEROINE_NOTCH, HER[2], b);
-    let to = world(cast(k), HEROINE_HEART, WALL, b);
+    let to = world(cast(k), BELLY, WALL, b);
     let way: Vec<P> = (0..=40)
         .map(|i| cam.project(cubic(from, add(from, [-0.35, 0.45, 0.5]), add(to, [0.5, 0.7, -0.9]), to, i as f64 / 40.)))
         .collect();
@@ -666,9 +671,9 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         c.path(&d, &stroke(LIGHT, 0.65), a);
     }
 
-    // Heart to heart, once she stands before herself: one breath between them.
-    let mine_heart = world(mine, HEROINE_HEART, HER[2], b);
-    let its_heart = world(heroine_world(feet, height, if its_turn < 0.5 { -1. } else { 1. }), HEROINE_HEART, feet[2], b);
+    // Notch to notch, once she stands before herself: one breath between them.
+    let mine_heart = world(mine, HEROINE_NOTCH, HER[2], b);
+    let its_heart = world(heroine_world(feet, height, if its_turn < 0.5 { -1. } else { 1. }), HEROINE_NOTCH, feet[2], b);
     let link = ramp(t, 22., 23.);
     let reach = wmix(mine_heart, its_heart, link);
     let bond = if link > 0. { cam.line(&[mine_heart, reach]) } else { String::new() };

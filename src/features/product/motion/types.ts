@@ -18,6 +18,8 @@ export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind ===
 export type ArtController = { interact(value: ArtInteraction): void };
 export type ArtProps = {
   kind: ArtKind;
+  /** Optional live Rust illustration in the browser; native keeps its current scene. */
+  webScene?: 'theatre-marionette';
   glass?: GlassShape;
   scanOnMount?: boolean;
   onRevealProgress?(value: number): void;

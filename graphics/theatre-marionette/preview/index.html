@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050503"><title>Откуда берётся вывод? — Код Сталкера</title>
+  <link rel="icon" href="data:,">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#050503;color:#d5c789;font:14px/1.45 system-ui,-apple-system,sans-serif}
+    body{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 28px}main{width:min(100%,1536px)}
+    header{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:18px}.eyebrow{margin:0 0 7px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8d7d43}
+    h1{margin:0;font-size:clamp(22px,3vw,36px);font-weight:500;letter-spacing:-.035em;color:#f1d45c}.note{margin:0;font-size:11px;color:#8f8050;text-align:right}
+    .stage{position:relative;width:100%;aspect-ratio:3/2;background:#000;overflow:hidden}canvas,.fallback{display:block;width:100%;height:100%;object-fit:contain}.fallback{position:absolute;inset:0}.loaded .fallback{display:none}
+    footer{margin-top:15px}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}button,a{font:inherit;font-size:12px;color:#d7c681;background:transparent;border:.5px solid #514725;padding:9px 12px;text-decoration:none;cursor:pointer}
+    button:hover,a:hover{border-color:#b39a43;color:#ffe177}button[aria-pressed=true]{background:#211b08;border-color:#a48d39;color:#ffe177}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #d2b749;outline-offset:3px}
+    .settings{display:flex;gap:22px;align-items:center;justify-content:space-between;margin-top:14px}.strength,.timeline{display:flex;gap:10px;align-items:center;font-size:11px;color:#988751}.timeline{flex:1}.strength input{width:100px}.timeline input{flex:1;min-width:50px}input{accent-color:#cbb143}output{font-variant-numeric:tabular-nums;min-width:54px;text-align:right}
+    .status{min-height:17px;margin:11px 0 0;font-size:11px;color:#887a4c}.export-progress{display:none;width:100%;height:4px;margin-top:12px;accent-color:#dcc14e}.exporting .export-progress{display:block}.exporting .fallback{display:block}
+    .render body{padding:0;background:#000}.render main{width:100%;max-width:none}.render header,.render footer{display:none}.stage:fullscreen{width:100vw;height:100vh;aspect-ratio:auto;display:grid;place-items:center;background:#000}.stage:fullscreen canvas{width:min(100vw,150vh);height:min(100vh,66.666667vw)}
+    @media(min-width:900px){main{width:min(100%,calc((100svh - 230px)*1.5))}}
+    @media(max-width:600px){body{padding:20px 12px}.note{max-width:95px;font-size:10px}.eyebrow{font-size:9px}header{gap:12px}.actions{gap:6px}button,a{padding:9px 10px}.settings{flex-direction:column;align-items:stretch;gap:12px}.strength{justify-content:space-between}.strength input{width:45%}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><p class="eyebrow">Код Сталкера · театр</p><h1>Откуда берётся вывод?</h1></div><p class="note">Марионетка на сцене<br>Петля · 24 секунды</p></header>
+  <div class="stage" id="stage"><img class="fallback" src="./assets/original.png" alt="Героиня в чёрном костюме и золотых очках на нитях марионетки в театре."><canvas id="scene" width="1536" height="1024" role="img" aria-label="Анимированная сцена: героиня-марионетка в чёрно-золотом театре"></canvas></div>
+  <footer>
+    <div class="actions"><button id="pause" aria-pressed="false" disabled>Пауза</button><button id="atmosphere" aria-pressed="true" disabled>Фон и свет</button><button id="original" aria-pressed="false" disabled>Исходник</button><button id="reduce" aria-pressed="false" disabled>Меньше движения</button><button id="start" disabled>Начало</button><button id="fullscreen">На весь экран</button><button id="export" disabled>Сохранить видео</button><a id="download" href="./theatre-marionette.mp4" download hidden>Скачать видео</a></div>
+    <div class="settings"><label class="timeline">Момент<input id="timeline" type="range" min="0" max="24" step="0.05" value="0" aria-label="Момент анимации" disabled><output id="time" for="timeline">0,00 с</output></label><label class="strength">Сила движения<input id="strength" type="range" min="0" max="1.5" step="0.1" value="1.5" aria-label="Сила движения" disabled></label></div>
+    <progress id="progress" class="export-progress" max="1440" value="0" aria-label="Подготовка видео"></progress>
+    <p class="status" id="status" role="status">Загружаю иллюстрацию…</p>
+  </footer>
+</main>
+<script type="module" src="./preview.mjs"></script>
+</body>
+</html>

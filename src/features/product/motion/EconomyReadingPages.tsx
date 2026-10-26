@@ -66,7 +66,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
               { marginHorizontal: -reading.contentInset - 8 }]}>
-              <Art kind={kind} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+              <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}

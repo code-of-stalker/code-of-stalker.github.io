@@ -1,0 +1,57 @@
+THEATRE MARIONETTE — ATMOSPHERE V2 — 2026-10-26
+
+Rust owns three depth planes of code rain, background parallax, three moving
+light cones, floor illumination, drifting haze and 18 foreground dust sprites.
+The heroine rig/strings are unchanged. Shaders have no time uniform; JS only
+bridges browser events/clock and encodes frames rendered by Rust.
+
+Technical checks passed
+- Rust formatting, 11 tests (rig, loop, safe UV bounds, pinned contact point,
+  invisible rain wraps, zero strength and atmosphere seam equality).
+- Clippy host/all-targets and wasm32-unknown-unknown, -D warnings.
+- Release WASM build with existing pinned dependencies/toolchain.
+- npm run lint; npm run typecheck; node --check preview and server.
+- Browser shader compilation/linking; GL error remained 0.
+- GPU resources persist; stream buffers are reused, not recreated each frame.
+
+Browser checks passed
+- Visual phases 0, 5, 6 seconds; light/rain/background composition inspected.
+- Background/light toggle preserved elapsed=6.0000 and the heroine pose.
+- Reduced-motion toggle retains time and displays the original illustration.
+- Narrow 375 x 812 CSS viewport: 3:2 scene and controls fit the width.
+- Export completed: 720 Rust frames, 60 FPS, 1536 x 1024, 12 seconds, silent.
+- Saved MP4 played to ended=true/currentTime=12, readyState=4, no media error.
+- Replacing the old MP4 initially failed. Previous video was preserved; new
+  exports use an atmosphere filename, with a timestamp fallback for a busy file.
+  UI uses the returned filename. Complete export repeated successfully.
+
+Verified artifacts
+MP4: theatre-marionette-atmosphere.mp4, 21279832 bytes
+SHA256: 65AD51F2B8AB1FB6F6142CD14FB7FEF206F58ACEEA50C6D666F6E5026EE8BDCB
+WASM: watcher_theatre_marionette_bg.wasm, 65079 bytes
+SHA256: 25E4F1154B5523393069134DAA5A553A4557878E1EB901161F257A2C89C3C202
+Original painting unchanged:
+2331232219E83B53EC8A1BFA67C9D2C213B7D6E5B40B60573333AEB358ED3DFC
+Previous source/video: output/motion/theatre-marionette-before-atmosphere/
+Previous video backup verified:
+801E10BF196D7A8BD3E950F1F3293C930F52CBDC1A78119C99E8ED2E82B8196F
+
+Scope
+No application-screen integration, native build or publication in this task.
+Physical Tecno/iPhone/iPad performance is unmeasured. Narrow viewport checks
+are desktop browser checks. 60 FPS describes the video, not every device.
+
+Documentation
+Repository Rust reference read. Context7 had no exact uniform/buffer example;
+installed primary web-sys 0.3.106 signatures and pinned compilation checked.
+
+2026-10-26 — Website integration (v3)
+Target: Step 4, page 03/15, «Откуда берётся вывод?»; only this page replaces grounding-trace on web.
+Rust default strength: 1.50. Rain speed: exactly half of v2. Combined loop: 24 s; body/lights retain the approved 12 s motion.
+Verified: 12 Rust tests; host and wasm32 Clippy with warnings denied; release WASM build; WebAssembly.validate; Expo lint; TypeScript; production export with --clear and explicit worktree router root.
+Browser: Codex Chromium, production export at 375x812, 375x568, 520x812. Correct page/text and illustration; no horizontal overflow; GPU error 0. Sampled committed cadence ~58.8–60 FPS at density 1.50 (desktop browser, not a phone benchmark).
+Offscreen: elapsed 18.567 and frame count 8751 stayed unchanged across separate observations. Resize/reveal resumed at 18.589 with frame count 8755; no scene restart.
+Assets: original artwork SHA-256 2331232219E83B53EC8A1BFA67C9D2C213B7D6E5B40B60573333AEB358ED3DFC unchanged.
+WASM SHA-256 C1715DDD159FA0A4CE4AFC74BD034342F046E578433E27986A6390497421DE87.
+Native retains its existing scene. Physical Android/iOS, context-loss recovery and on-device reduced-motion acceptance are not validated in this integration.
+The previous MP4 remains the v2 reference; no new MP4 is claimed by this web release.

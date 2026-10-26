@@ -5,7 +5,7 @@ import { stepThreePractice } from '../stepThreePractice';
 import { stepFourPages } from '../stepFourContent';
 
 export type ReadingPage = {
-  id: string; art?: ArtKind; paragraphs: readonly string[];
+  id: string; art?: ArtKind; webScene?: 'theatre-marionette'; paragraphs: readonly string[];
   spoken?: readonly string[]; after?: readonly string[];
   title?: string; emphasis?: string; conclusion?: string; firstStepConclusion?: boolean; statement?: string;
 };

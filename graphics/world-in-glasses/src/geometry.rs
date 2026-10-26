@@ -24,6 +24,17 @@ pub const GOLD_FILL: Rgb = rgb(246, 200, 84);
 pub const GOLD_RIM: Rgb = rgb(255, 228, 150);
 const BLACK: Rgb = [0.0, 0.0, 0.0];
 const WHITE: Rgb = [1.0, 1.0, 1.0];
+/// The shade of holes and shadows in the light paintings' pale stone.
+const UMBER: Rgb = rgb(122, 60, 12);
+
+/// Holes and shadows: black on the dark originals, umber on the light paintings.
+fn hollow(scene: &Scene) -> Rgb {
+    if scene.light {
+        UMBER
+    } else {
+        BLACK
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Mesh {
@@ -255,10 +266,12 @@ pub fn rain(mesh: &mut Mesh, scene: &Scene, t: f32) {
                 (1.0 - k as f32 / c.length as f32) * (1.0 - smoothstep(300.0, 420.0, y)) * c.alpha;
             let pick = hash(f64::from(c.seed) + k as f64 * 7.0 + f64::from(ticks) + k as f64);
             let strokes = GLYPHS[(pick * GLYPHS.len() as f32) as usize % GLYPHS.len()];
-            let (color, alpha) = if k == 0 {
-                (rgb(255, 240, 170), fade)
-            } else {
-                (rgb(255, 205, 40), fade * 0.7)
+            // Light code on the dark originals, amber ink on the light paintings.
+            let (color, alpha) = match (scene.light, k == 0) {
+                (false, true) => (rgb(255, 240, 170), fade),
+                (false, false) => (rgb(255, 205, 40), fade * 0.7),
+                (true, true) => (rgb(176, 72, 0), fade * 0.8),
+                (true, false) => (rgb(214, 124, 24), fade * 0.55),
             };
             mesh.glyph([c.x - 3.2, y - 8.0], [6.4, 9.0], strokes, color, alpha);
         }
@@ -280,8 +293,8 @@ pub fn flake_holes(mesh: &mut Mesh, scene: &Scene, t: f32, px: f32) {
             .map(|p| [p[0] + f.at[0], p[1] + f.at[1]])
             .collect();
         if k > 0.2 {
-            let a = 0.85 * (1.0 - smoothstep(0.7, 1.0, k));
-            mesh.fan(&outline, |_| (BLACK, a), false);
+            let a = if scene.light { 0.7 } else { 0.85 } * (1.0 - smoothstep(0.7, 1.0, k));
+            mesh.fan(&outline, |_| (hollow(scene), a), false);
             // A gold rim glows around the opening.
             mesh.polyline(
                 &outline,
@@ -355,7 +368,8 @@ pub fn flake_shadows(mesh: &mut Mesh, scene: &Scene, t: f32) {
                         [q[0], q[1] + 3.0 * peel]
                     })
                     .collect();
-                mesh.fan(&pts, |_| (BLACK, 0.45 * peel), false);
+                let a = if scene.light { 0.3 } else { 0.45 };
+                mesh.fan(&pts, |_| (hollow(scene), a * peel), false);
             }
         }
     }
@@ -399,7 +413,11 @@ pub fn stones(mesh: &mut Mesh, scene: &Scene, t: f32, center: [f32; 2], near: bo
         if let Some((m, fade)) = stone_place(s, t, center) {
             let pts: Vec<_> = s.outline.iter().map(|&p| m.apply(p)).collect();
             let shade = |local: [f32; 2]| clamp01((local[0] + local[1] + 20.0) / 40.0);
-            let dark = [rgb(58, 50, 16), rgb(11, 9, 3)];
+            let dark = if scene.light {
+                [rgb(251, 233, 190), rgb(204, 138, 62)]
+            } else {
+                [rgb(58, 50, 16), rgb(11, 9, 3)]
+            };
             let color = |p: [f32; 2]| {
                 // Undo the placement to find the gradient position.
                 let d = [p[0] - m.origin[0], p[1] - m.origin[1]];
@@ -466,7 +484,12 @@ pub fn dust(mesh: &mut Mesh, scene: &Scene, t: f32, center: [f32; 2]) {
         let a = (0.25 + 0.25 * (t * 4.0 * TAU / span + p.phase * 3.0).sin())
             * if p.rising { 1.0 } else { 0.6 }
             * (k * PI).sin();
-        mesh.disc(at, p.size * 3.0, rgb(255, 225, 110), a, -1.0);
+        if scene.light {
+            // Light adds nothing to a pale page; the motes are amber specks.
+            mesh.disc(at, p.size * 3.0, rgb(206, 120, 30), a * 0.7, 1.0);
+        } else {
+            mesh.disc(at, p.size * 3.0, rgb(255, 225, 110), a, -1.0);
+        }
     }
 }
 
@@ -750,6 +773,27 @@ mod tests {
             assert!(mesh.data.iter().all(|v| v.is_finite()));
             assert!(mesh.data.len() < 400_000);
         }
+    }
+
+    #[test]
+    fn light_paintings_draw_no_black_and_ink_the_dust() {
+        let mut scene = Scene::new();
+        scene.light = true;
+        let (mut mesh, mut motes) = (Mesh::default(), Mesh::default());
+        for step in 0..60 {
+            let t = step as f32 * LOOP_SECONDS as f32 / 60.0;
+            flake_holes(&mut mesh, &scene, t, 1.5);
+            flake_shadows(&mut mesh, &scene, t);
+            stones(&mut mesh, &scene, t, [768.0, 512.0], false, 1.5);
+            stones(&mut mesh, &scene, t, [768.0, 512.0], true, 1.5);
+            dust(&mut motes, &scene, t, [768.0, 512.0]);
+        }
+        for vertex in mesh.data.chunks_exact(STRIDE) {
+            let [r, g, b] = [vertex[4], vertex[5], vertex[6]];
+            assert!(r + g + b > 0.6, "near-black {r} {g} {b}");
+        }
+        // Added light vanishes on the pale page; the motes cover it instead.
+        assert!(motes.data.chunks_exact(STRIDE).all(|v| v[8] > 0.0));
     }
 
     #[test]

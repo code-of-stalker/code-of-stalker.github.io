@@ -50,6 +50,14 @@ export class WorldInGlasses {
         return ret >>> 0;
     }
     /**
+     * Set when the renderer was given Art's light paintings: the effects
+     * ink the pale page instead of lighting it.
+     * @param {boolean} value
+     */
+    light_paintings(value) {
+        wasm.worldinglasses_light_paintings(this.__wbg_ptr, value);
+    }
+    /**
      * @param {HTMLCanvasElement} canvas
      * @param {HTMLImageElement} original
      * @param {HTMLImageElement} background

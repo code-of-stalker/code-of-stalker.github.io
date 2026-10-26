@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import { useThemeColors } from '../ProductTheme';
 import { useEffectsController } from './EffectsQuality';
 import { artworkBufferLayout, qualityDensity } from './effectQuality';
-import { paletteCode } from './graphicsPalette';
+import { isLightPalette, paletteCode } from './graphicsPalette';
 import { observeMotionVisibility } from './motion-visibility.web';
 import type { ArtProps } from './types';
 
@@ -14,7 +14,7 @@ type Renderer = {
   frame_count(): number; gpu_error(): number; suspend(): void; dispose(): void; free(): void;
   backdrop(red: number, green: number, blue: number): void; palette(code: number): void;
 };
-type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
+type Runtime = { mount(canvas: HTMLCanvasElement, options: { light: boolean }): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
 const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/theatre-marionette/runtime.js')
   .catch(error => { runtime = undefined; throw error; });
@@ -32,7 +32,7 @@ export function TheatreMarionette(props: ArtProps) {
     if (!output || !controller) return;
     const id = {};
     let renderer: Renderer | undefined, disposed = false, visible = false, lost = false, loading = false;
-    let removeJob: (() => void) | undefined, reduced: boolean | undefined, elapsed = 0;
+    let removeJob: (() => void) | undefined, reduced: boolean | undefined, elapsed = 0, light = false;
     let previousPaint = 0, lastReport = 0;
     let intervals: number[] = [];
     const playing = () => !disposed && !lost && visible && !document.hidden && latest.current.focused && latest.current.props.active !== false;
@@ -80,6 +80,8 @@ export function TheatreMarionette(props: ArtProps) {
       if (disposed) return;
       const active = playing(), running = active && !latest.current.props.reducedMotion && !!renderer;
       controller.activity(id, active && !!renderer, running);
+      // Light and dark themes draw different paintings: swap the renderer.
+      if (renderer && light !== isLightPalette(latest.current.palette)) { recover(); return; }
       if (renderer) {
         const background = latest.current.background;
         renderer.palette(latest.current.palette);
@@ -90,10 +92,12 @@ export function TheatreMarionette(props: ArtProps) {
         else if (!running && removeJob) { stop(); report(); }
       } else if (active && !loading) {
         loading = true;
-        void loadRuntime().then(module => disposed ? undefined : module.mount(output)).then(value => {
+        const wanted = isLightPalette(latest.current.palette);
+        void loadRuntime().then(module => disposed ? undefined : module.mount(output, { light: wanted })).then(value => {
           loading = false;
           if (!value) return;
-          if (disposed) { value.dispose(); value.free(); return; }
+          if (disposed || wanted !== isLightPalette(latest.current.palette)) { value.dispose(); value.free(); update(); return; }
+          light = wanted;
           renderer = value; renderer.seek(elapsed); resize(); update(); report();
           setReady(true); output.dataset.ready = 'true'; latest.current.props.onReady?.();
         }).catch(error => {
@@ -136,7 +140,7 @@ export function TheatreMarionette(props: ArtProps) {
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* The full-color poster is only a fallback: every theme recolors the scene. */}
-        <img src="/graphics/theatre-marionette/assets/original.png" alt="" aria-hidden loading="lazy" decoding="async"
+        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/theatre-marionette/assets-light/original.webp' : '/graphics/theatre-marionette/assets/original.png'} alt="" aria-hidden loading="lazy" decoding="async"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: failed ? 'block' : 'none' }} />
         <canvas ref={outputRef} data-graphics="rust-theatre-marionette" data-strength="1.5" data-rain-speed="0.5" aria-hidden
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

@@ -22,7 +22,7 @@ pub enum Palette {
     Original,
     /// Искра: Matrix yellow on black.
     Dark,
-    /// Дюна: a sepia print in brown ink on sand.
+    /// Дюна: Art's light paintings, shown as painted.
     Light,
     /// Тишина.
     Neutral,
@@ -49,21 +49,25 @@ impl Palette {
             _ => Self::Original,
         }
     }
+    /// Light themes draw the scenes from Art's light paintings
+    /// (`assets-light`); dark themes recolor only the dark originals.
+    pub fn is_light(self) -> bool {
+        matches!(self, Self::Light)
+    }
     /// The mapping selector of `recolor.frag`.
     pub fn mode(self) -> f32 {
         match self {
-            Self::Original | Self::Dark => 0.0,
-            Self::Light => 1.0,
+            Self::Original | Self::Dark | Self::Light => 0.0,
             Self::Neutral | Self::Violet => 2.0,
         }
     }
     /// The same values as `src/features/product/theme.ts` and the product
-    /// engine's `palette.rs`. Дюна's highlight is its brown text ink.
+    /// engine's `palette.rs`. None draws the source as painted: the
+    /// originals, or Дюна's light paintings.
     pub fn colors(self) -> Option<Colors> {
         let (paper, accent, highlight) = match self {
-            Self::Original => return None,
+            Self::Original | Self::Light => return None,
             Self::Dark => (rgb(0, 0, 0), rgb(245, 221, 7), rgb(245, 221, 7)),
-            Self::Light => (rgb(250, 225, 143), rgb(255, 102, 0), rgb(190, 76, 0)),
             Self::Neutral => (rgb(13, 21, 32), rgb(134, 201, 199), rgb(214, 218, 210)),
             Self::Violet => (rgb(13, 20, 38), rgb(98, 150, 245), rgb(170, 150, 214)),
         };
@@ -89,16 +93,6 @@ impl Palette {
         };
         match self {
             Self::Dark => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
-            Self::Light => {
-                let level = dot(color).clamp(0.0, 1.0);
-                let print = mix(paper, highlight, (1.0 - level).powf(1.8) * 0.42);
-                let t = ((level - 0.55) / 0.45).clamp(0.0, 1.0);
-                mix(
-                    print,
-                    mix(paper, accent, 0.5),
-                    t * t * (3.0 - 2.0 * t) * 0.35,
-                )
-            }
             _ => {
                 let level = dot(color).clamp(0.0, 1.0);
                 let ink = level.powf(1.3) * 0.74;
@@ -131,7 +125,7 @@ mod tests {
 
     #[test]
     fn black_is_the_page_of_every_dark_theme() {
-        for palette in [Palette::Dark, Palette::Neutral, Palette::Violet] {
+        for palette in THEMES.into_iter().filter(|p| !p.is_light()) {
             let paper = palette.colors().unwrap().paper;
             assert_eq!(palette.recolor([0.0; 3]), paper, "{palette:?}");
         }
@@ -145,16 +139,11 @@ mod tests {
     }
 
     #[test]
-    fn sand_keeps_the_picture_light_and_never_floods_it_with_orange() {
-        let luma = |[r, g, b]: [f32; 3]| r * LUMA[0] + g * LUMA[1] + b * LUMA[2];
-        let paper = Palette::Light.colors().unwrap().paper;
-        let black = Palette::Light.recolor([0.0; 3]);
-        let white = Palette::Light.recolor([1.0; 3]);
-        // Shadows are a brown tint of the page, not a dark block.
-        assert!(luma(black) > 0.55 && luma(black) < luma(paper));
-        // Light warms toward the accent at most halfway.
-        assert!(white[1] > 0.6 && white[2] > 0.25, "{white:?}");
-        assert!(luma(white) > luma(black));
+    fn dune_shows_the_light_paintings_as_painted() {
+        assert!(Palette::Light.is_light());
+        assert!(THEMES.iter().filter(|p| p.is_light()).count() == 1);
+        let amber = [0.98, 0.72, 0.31];
+        assert_eq!(Palette::Light.recolor(amber), amber);
     }
 
     #[test]

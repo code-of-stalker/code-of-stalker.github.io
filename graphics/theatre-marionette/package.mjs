@@ -12,6 +12,11 @@ for (const file of ['watcher_theatre_marionette.js', 'watcher_theatre_marionette
 for (const file of ['original.png', 'background.png', 'heroine.png']) {
   await copyFile(path.join(scene, 'assets', file), path.join(output, 'assets', file));
 }
+// Light themes draw the light paintings, in the original pose.
+await mkdir(path.join(output, 'assets-light'), { recursive: true });
+for (const file of ['original.webp', 'background.webp', 'heroine.webp']) {
+  await copyFile(path.join(scene, 'assets-light', file), path.join(output, 'assets-light', file));
+}
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_theatre_marionette_bg.wasm')))) throw new Error('Invalid marionette WASM');
 console.log('Packaged Rust marionette: strength 1.5, half-speed rain, 24-second seamless loop.');

@@ -227,7 +227,11 @@ impl WorldInGlasses {
             include_str!("shaders/shape.frag"),
             &["u_clip", "u_mask", "u_region"],
         )?;
-        let glyph = Pass::new(&gl, include_str!("shaders/glyph.frag"), &["u_stroke"])?;
+        let glyph = Pass::new(
+            &gl,
+            include_str!("shaders/glyph.frag"),
+            &["u_stroke", "u_cover"],
+        )?;
         let lens = Pass::new(
             &gl,
             include_str!("shaders/lens.frag"),
@@ -401,6 +405,17 @@ impl WorldInGlasses {
         let color = [red, green, blue].map(|value| value.clamp(0.0, 1.0));
         if self.backdrop != color {
             self.backdrop = color;
+            self.draw();
+        }
+    }
+    /// Set when the renderer was given Art's light paintings: the effects
+    /// ink the pale page instead of lighting it.
+    pub fn light_paintings(&mut self, value: bool) {
+        if self.scene.light != value {
+            self.scene.light = value;
+            self.gl.use_program(Some(&self.glyph.program));
+            self.gl
+                .uniform1f(self.glyph.at("u_cover"), f32::from(value));
             self.draw();
         }
     }
@@ -586,7 +601,9 @@ impl WorldInGlasses {
         let settings = if self.reduced {
             [0.0; 4]
         } else {
-            [0.6, 0.05, f.flash, (f.time * 24.0).floor()]
+            // A dark vignette muddies the light paintings' pale edges.
+            let vignette = if self.scene.light { 0.15 } else { 0.6 };
+            [vignette, 0.05, f.flash, (f.time * 24.0).floor()]
         };
         if !self.reduced || backdrop[3] > 0.0 {
             let gl = &self.gl;

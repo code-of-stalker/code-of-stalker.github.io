@@ -98,6 +98,8 @@ pub struct CloudDrift {
     themed: Themed,
     /// The recolor pass owns the page edges while a theme is active.
     offscreen: bool,
+    /// Drawn from the light paintings: effects ink the pale page instead of lighting it.
+    light: bool,
     original: bool,
     reduced: bool,
     paused: bool,
@@ -119,6 +121,8 @@ impl CloudDrift {
         source: HtmlImageElement,
         plate: HtmlImageElement,
         person: HtmlImageElement,
+        // Only the light paintings pass the matte of their floating visions.
+        matte: Option<HtmlImageElement>,
     ) -> Result<CloudDrift, JsValue> {
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
@@ -139,14 +143,21 @@ impl CloudDrift {
             include_str!("contours.vert"),
             include_str!("contours.frag"),
         )?;
-        let textures = vec![
+        let mut textures = vec![
             texture(&gl, 0, &source)?,
             texture(&gl, 1, &plate)?,
             texture(&gl, 2, &person)?,
         ];
+        let light = matte.is_some();
+        if let Some(matte) = &matte {
+            textures.push(texture(&gl, 3, matte)?);
+        }
         for p in [&scene, &contours] {
             gl.use_program(Some(p));
-            for (i, name) in ["u_source", "u_plate", "u_person"].iter().enumerate() {
+            for (i, name) in ["u_source", "u_plate", "u_person", "u_matte"]
+                .iter()
+                .enumerate()
+            {
                 gl.uniform1i(gl.get_uniform_location(p, name).as_ref(), i as i32);
             }
         }
@@ -227,6 +238,7 @@ impl CloudDrift {
             background: [0.0; 3],
             themed,
             offscreen: false,
+            light,
             original: false,
             reduced: false,
             paused: false,
@@ -396,7 +408,7 @@ impl CloudDrift {
             self.effects[0],
             self.effects[1],
             self.effects[2],
-            0.0,
+            f32::from(self.light),
         );
         gl.uniform4f(
             locations[9].as_ref(),
@@ -436,7 +448,11 @@ impl CloudDrift {
             gl.vertex_attrib_pointer_with_i32(0, 4, Gl::FLOAT, false, 32, 0);
             gl.vertex_attrib_pointer_with_i32(1, 4, Gl::FLOAT, false, 32, 16);
             gl.enable(Gl::BLEND);
-            gl.blend_func(Gl::SRC_ALPHA, Gl::ONE);
+            if self.light {
+                gl.blend_func(Gl::SRC_ALPHA, Gl::ONE_MINUS_SRC_ALPHA);
+            } else {
+                gl.blend_func(Gl::SRC_ALPHA, Gl::ONE);
+            }
             gl.draw_arrays(Gl::TRIANGLES, 0, self.contour_count);
             gl.disable_vertex_attrib_array(0);
             gl.disable_vertex_attrib_array(1);

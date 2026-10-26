@@ -2,7 +2,8 @@
 precision highp float;
 // The finished full-color frame of a scene.
 uniform sampler2D u_image;
-// x: mapping (0 Matrix yellow, 1 sand sepia, 2 cool luminance ink),
+// x: mapping (0 Matrix yellow, 2 cool luminance ink; Дюна draws its light
+// paintings unmodified),
 // y: 1 when the edges melt into the page.
 uniform vec4 u_mode;
 uniform vec3 u_paper;
@@ -17,13 +18,6 @@ const vec3 LUMA = vec3(.2126, .7152, .0722);
 // graphics/product-engine/engine/shaders/presentation.wgsl.
 vec3 recolor(vec3 c) {
     if (u_mode.x < .5) return u_accent * clamp(dot(c, LUMA), 0., 1.);
-    if (u_mode.x < 1.5) {
-        // Sand: a sepia print in the theme's brown ink, with the light warming
-        // toward the accent. The max-channel duotone flooded it with orange.
-        float level = clamp(dot(c, LUMA), 0., 1.);
-        vec3 print = mix(u_paper, u_highlight, pow(1. - level, 1.8) * .42);
-        return mix(print, mix(u_paper, u_accent, .5), smoothstep(.55, 1., level) * .35);
-    }
     float level = clamp(dot(c, LUMA), 0., 1.);
     float ink = pow(level, 1.3) * .74;
     vec3 muted = mix(u_accent, vec3(dot(u_accent, LUMA)), .4);

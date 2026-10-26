@@ -101,8 +101,10 @@ impl Themed {
         self.palette = palette;
         changed
     }
+    /// Whether frames pass through the recolor; Дюна's light paintings and
+    /// the originals draw straight to the canvas.
     pub fn active(&self) -> bool {
-        self.palette != Palette::Original
+        self.palette.colors().is_some()
     }
     /// Directs the scene's draws into the offscreen frame when a theme is
     /// active and returns whether it did.

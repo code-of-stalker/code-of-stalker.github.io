@@ -200,9 +200,11 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
     return [0, 1, 2, 3].findIndex(index => index !== additional && !observations.some(record => record.level === (progress.selectedLevel ?? 'basic') &&
       record.step === progress.step && record.questionIndex === index));
   }
+  // «Всё открыто» lets the questions be leafed through without recording.
+  const freeMove = !!settings.testUnlockAll;
   const next = () => {
     if (question < 3) void changeQuestion(question + 1);
-    else { const missing = missingQuestion(); if (missing < 0) onDone(); else void changeQuestion(missing); }
+    else { const missing = missingQuestion(); if (missing < 0 || freeMove) onDone(); else void changeQuestion(missing); }
   };
   const nextRef = useRef(next);
   useEffect(() => { nextRef.current = next; });
@@ -210,11 +212,11 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
   const backRef = useRef(() => leave(onBack));
   useEffect(() => { backRef.current = () => { if (question > 0) void changeQuestion(question - 1); else leave(onBack); }; });
   const previousQuestion = useCallback(() => backRef.current(), []);
-  const hasSavedAnswer = !!selected;
+  const hasSavedAnswer = !!selected, canAdvance = hasSavedAnswer || freeMove;
   const canNavigate = active && effectsActive && !busy && !isRecording && !review && !sheet && !selectorOpen;
-  const cueVisible = scrollReady && canNavigate && (scrollProgress < 0 || hasSavedAnswer);
+  const cueVisible = scrollReady && canNavigate && (scrollProgress < 0 || canAdvance);
   const cueLabel = scrollProgress < 0 ? 'ПРОКРУТИ НАЗАД К ЗАДАНИЮ' : question < 3 ? 'ПРОКРУТИ К СЛЕДУЮЩЕМУ ВОПРОСУ'
-    : missingQuestion() < 0 ? 'ПРОКРУТИ ДЛЯ ЗАВЕРШЕНИЯ' : 'ПРОКРУТИ К ОСТАВШИМСЯ ОТВЕТАМ';
+    : missingQuestion() < 0 || freeMove ? 'ПРОКРУТИ ДЛЯ ЗАВЕРШЕНИЯ' : 'ПРОКРУТИ К ОСТАВШИМСЯ ОТВЕТАМ';
   useBackSwipe(() => {
     if (saving) return;
     previousQuestion();
@@ -234,7 +236,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ProductIconButton icon="close" onPress={() => leave(onClose)} />
       </View>}
       <TaskProgress part={question + 1} total={questions.length} segmented label="Вопрос" reducedMotion={settings.reducedMotion} />
-      <ScrollGate fadeTop={24} fill resetKey={question} startAtEnd={startAtEnd} allowAdvance={hasSavedAnswer} enabled={canNavigate} onReady={setScrollReady} onProgress={setScrollProgress}
+      <ScrollGate fadeTop={24} fill resetKey={question} startAtEnd={startAtEnd} allowAdvance={canAdvance} enabled={canNavigate} onReady={setScrollReady} onProgress={setScrollProgress}
         onAdvance={nextQuestion} onRetreat={previousQuestion} onViewportChange={value => { if (value.height > 0) setRecordingHeight(previous => Math.abs(previous - value.height) < 1 ? previous : value.height); }}>
       <View onLayout={event => { setQuestionHeight(event.nativeEvent.layout.height); onQuestionHeight?.(event.nativeEvent.layout.height); }}>
       <Reveal reducedMotion={settings.reducedMotion} delay={140} style={[styles.questionBlock, recordingHeight < 420 && { paddingTop: 12, minHeight: 96 }]}>

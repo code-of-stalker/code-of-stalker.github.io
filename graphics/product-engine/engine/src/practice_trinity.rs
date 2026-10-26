@@ -1,8 +1,9 @@
 //! Practice 4, "Слышание и чувствование". The Son stands sealed in a jar of
 //! code; the Father stands to his side and well behind him, never above, and
 //! light streams from him. Three breaths climb the glass from inside while
-//! the Father's four phrases fly straight to it from outside; the last breath
-//! and the last phrase meet at one point and the program breaks. Its pieces gather into the Spirit: the
+//! the Father says his four phrases, each one whole, and each flies straight
+//! to its own part of the dome; the last breath and the last phrase meet at
+//! one point and the program breaks. Its pieces gather into the Spirit: the
 //! breath between them, a straight line of light carrying the exchange both
 //! ways.
 use crate::{practice_stage::*, step_three::Update};
@@ -17,9 +18,10 @@ pub const REST: f64 = 24.;
 
 const SON: W = [0.7, 0., 0.];
 const SON_HEIGHT: f64 = 1.75;
-/// Farther back, so tall enough that their heads stay level on screen.
-const FATHER: W = [-0.95, 0., 2.3];
-const FATHER_HEIGHT: f64 = 1.92;
+/// Farther back and to the left, so tall enough that their heads stay level
+/// on screen.
+const FATHER: W = [-1.5, 0., 1.35];
+const FATHER_HEIGHT: f64 = 1.84;
 /// The jar: a glass cylinder with a hemispherical dome around the Son.
 const JAR_R: f64 = 0.5;
 const JAR_WALL: f64 = 1.95;
@@ -28,7 +30,7 @@ const BAND: f64 = 1.05;
 const BAND_TEXT: &str = "ПРОГРАММА ";
 const BAND_LETTERS: usize = 30;
 /// Centre of the floor rings: between the two figures.
-const MIDDLE: W = [-0.12, 0., 1.15];
+const MIDDLE: W = [-0.4, 0., 0.68];
 /// The shaft: a cylinder of code walls around the stage, open toward the eye.
 const SHAFT: (f64, f64) = (1.5, 6.);
 const SHAFT_ARC: f64 = 1.4;
@@ -36,20 +38,25 @@ const SHAFT_TOP: f64 = 9.;
 const FACETS: usize = 16;
 const BREATHS: [f64; 3] = [2.2, 7.7, 13.2];
 const REACH: [f64; 3] = [0.45, 0.8, 1.];
-/// The Father's four phrases. Words fly left to right, the way they are read,
-/// so a line longer than the way would show its end first: each phrase is cut
-/// into lines short enough to be seen whole, and one line at a time is on the
-/// one straight way, gone into the glass before the next leaves him.
+/// The Father's four phrases. Each is said whole: its lines gather together
+/// beside him, stay while they are read, then fly as one piece straight to
+/// the glass, one phrase at a time.
 const PHRASES: [&[&str]; 4] = [&["Я ЛЮБЛЮ ТЕБЯ"], &["Я НИКОГДА", "НЕ ПОКИНУ", "ТЕБЯ"], &["ПРОСТИ МЕНЯ"], &["ВСЕ, ЧТО", "У МЕНЯ ЕСТЬ", "— ЭТО ТЫ"]];
-/// Words keep one reading pace, so a longer line simply flies longer. FLIGHT
-/// is the way from his mouth to the glass as the eye sees it.
-const SPEED: f64 = 70.;
-const FLIGHT: f64 = 58.;
-/// The pause between lines of one phrase, and between phrases.
-const BETWEEN: (f64, f64) = (0.15, 0.45);
 const PHRASE_SIZE: f64 = 6.5;
-/// The words leave from just before his mouth.
-const VOICE: W = [0.12, 0.06, -0.1];
+/// Line spacing, in letter heights.
+const LEADING: f64 = 1.3;
+/// A phrase gathers in APPEAR seconds and flies for FLY; GAP between one
+/// landing and the next phrase.
+const APPEAR: f64 = 0.45;
+const FLY: f64 = 1.;
+const GAP: f64 = 0.7;
+/// Where a phrase hangs while he says it: beside his mouth, toward the Son.
+const SAID: W = [0.8, 0.4, -0.35];
+/// Where each phrase strikes the dome, by azimuth and latitude: all over its
+/// front, the last where the last breath meets it.
+const STRIKES: [(f64, f64); 4] = [(-0.3, 1.2), (0.55, 0.5), (0.05, 0.15), IMPACT];
+/// How far the chips of the first three strikes run, surface metres.
+const CHIP: f64 = 0.28;
 const IMPACT_AT: f64 = 15.5;
 const BREAK_AT: f64 = 17.2;
 /// The Son's breath joins the Father's rhythm once the glass is gone.
@@ -88,44 +95,37 @@ fn son_breath(t: f64) -> f64 {
 fn presence(t: f64) -> f64 {
     0.55 + 0.15 * ramp(t, 4., 9.) + 0.3 * ramp(t, 14.5, 16.)
 }
-/// One line of the Father's words: which phrase, when it leaves him and how
-/// long it flies.
-struct Line {
-    text: &'static str,
-    phrase: usize,
+/// One of the Father's phrases: when it gathers beside him, leaves him and
+/// lands on the glass.
+struct Phrase {
+    lines: &'static [&'static str],
     at: f64,
-    flies: f64,
+    leaves: f64,
+    lands: f64,
 }
-/// Every line in order, scheduled back from the impact so the last one ends
-/// exactly there.
-fn lines() -> Vec<Line> {
+/// How long a phrase stays beside him to be read.
+fn reading(lines: &[&str]) -> f64 {
+    0.6 + 0.045 * lines.iter().map(|l| l.chars().count()).sum::<usize>() as f64
+}
+/// Every phrase in order, scheduled back from the impact so the last one
+/// lands exactly there.
+fn phrases() -> Vec<Phrase> {
     let mut out = Vec::new();
-    let mut end = IMPACT_AT;
-    for (phrase, texts) in PHRASES.iter().enumerate().rev() {
-        for (k, &text) in texts.iter().enumerate().rev() {
-            let flies = (FLIGHT + text_width(text, PHRASE_SIZE)) / SPEED;
-            out.push(Line { text, phrase, at: end - flies, flies });
-            end -= flies + if k > 0 { BETWEEN.0 } else { BETWEEN.1 };
-        }
+    let mut lands = IMPACT_AT;
+    for &lines in PHRASES.iter().rev() {
+        let leaves = lands - FLY;
+        let at = leaves - reading(lines) - APPEAR;
+        out.push(Phrase { lines, at, leaves, lands });
+        lands = at - GAP;
     }
     out.reverse();
     out
 }
-/// How long a line takes to leave his mouth.
-fn said(text: &str) -> f64 {
-    text_width(text, PHRASE_SIZE) / SPEED
-}
-/// He glows from the first word of a phrase until its last has left him.
+/// He glows while a phrase gathers and stays beside him.
 fn speaking(t: f64) -> f64 {
-    let spoken = lines();
-    (0..PHRASES.len())
-        .map(|p| {
-            let mut mine = spoken.iter().filter(|l| l.phrase == p);
-            let first = mine.next().unwrap();
-            let last = mine.last().unwrap_or(first);
-            let done = last.at + said(last.text);
-            bell(t, first.at - 0.15, first.at + 0.1, done, done + 0.5)
-        })
+    phrases()
+        .iter()
+        .map(|p| bell(t, p.at - 0.15, p.at + 0.2, p.leaves, p.leaves + 0.5))
         .fold(0., f64::max)
 }
 /// Rings sent every 0.4 s for `lasting` seconds from `from`, each spreading
@@ -203,7 +203,12 @@ fn streak(cam: &Camera, theta: f64, from: f64, to: f64) -> String {
     cam.line(&(0..=16).map(|i| jar_point(theta, mix(from, to, i as f64 / 16.))).collect::<Vec<_>>())
 }
 fn impact() -> W {
-    jar_point(IMPACT.0, JAR_WALL + IMPACT.1 * JAR_R)
+    strike(3)
+}
+/// Where phrase `k` strikes the dome.
+fn strike(k: usize) -> W {
+    let (theta, lat) = STRIKES[k];
+    jar_point(theta, JAR_WALL + lat * JAR_R)
 }
 fn band(cam: &Camera, t: f64) -> String {
     let (eye, half) = view(cam);
@@ -231,18 +236,23 @@ struct Crack {
     from: f64,
     to: f64,
 }
-static CRACKS: LazyLock<Vec<Crack>> = LazyLock::new(|| {
+/// The fracture of the last strike, and the chips of the first three.
+static CRACKS: LazyLock<Vec<Crack>> = LazyLock::new(|| fracture(IMPACT, 7, 5, 1., 0));
+static CHIPS: LazyLock<Vec<Vec<Crack>>> = LazyLock::new(|| (0..3).map(|k| fracture(STRIKES[k], 5, 2, 0.6, 1000 * (k + 1))).collect());
+/// Branches from a point of the glass: `arms` of at least `steps` segments
+/// each, `size` times the full length; only full fractures fork.
+fn fracture(at: (f64, f64), arms: usize, steps: usize, size: f64, seed: usize) -> Vec<Crack> {
     let mut out = Vec::new();
-    let origin = (IMPACT.0 * JAR_R, JAR_WALL + IMPACT.1 * JAR_R);
-    for k in 0..7 {
-        let mut dir = k as f64 / 7. * TAU + hash(k) * 0.6;
+    let origin = (at.0 * JAR_R, JAR_WALL + at.1 * JAR_R);
+    for k in seed..seed + arms {
+        let mut dir = (k - seed) as f64 / arms as f64 * TAU + hash(k) * 0.6;
         let (mut p, mut walked) = (origin, 0.);
-        for j in 0..5 + (hash(k + 20) * 4.) as usize {
+        for j in 0..steps + (hash(k + 20) * (steps as f64 - 1.)) as usize {
             dir += (hash(k * 31 + j) - 0.5) * 0.7;
-            let len = 0.07 + hash(k * 17 + j + 5) * 0.1;
+            let len = size * (0.07 + hash(k * 17 + j + 5) * 0.1);
             let q = (p.0 + len * dir.cos(), p.1 + len * dir.sin());
             out.push(Crack { a: p, b: q, from: walked, to: walked + len });
-            if j == 1 || j == 3 {
+            if size >= 1. && (j == 1 || j == 3) {
                 let mut side = dir + if hash(k * 7 + j) > 0.5 { 0.65 } else { -0.65 };
                 let (mut r, mut at) = (q, walked + len);
                 for m in 0..3 {
@@ -257,10 +267,10 @@ static CRACKS: LazyLock<Vec<Crack>> = LazyLock::new(|| {
         }
     }
     out
-});
-fn cracks(cam: &Camera, reach: f64) -> String {
+}
+fn cracks(cam: &Camera, set: &[Crack], reach: f64) -> String {
     let mut d = String::new();
-    for c in CRACKS.iter().filter(|c| c.from < reach && c.a.1 > 0. && c.b.1 > 0.) {
+    for c in set.iter().filter(|c| c.from < reach && c.a.1 > 0. && c.b.1 > 0.) {
         let end = lerp(c.a, c.b, ((reach - c.from) / (c.to - c.from)).min(1.));
         let at = |p: P| (p.0 / JAR_R, p.1);
         let points = [c.a, lerp(c.a, end, 0.5), end].map(at);
@@ -371,15 +381,6 @@ fn rising(cam: &Camera, t: f64) -> String {
     d
 }
 
-/// A straight flight between two world points, as the eye sees it.
-fn straight(cam: &Camera, a: W, b: W) -> Vec<P> {
-    let (a, b) = (cam.project(a), cam.project(b));
-    (0..=8).map(|i| lerp(a, b, i as f64 / 8.)).collect()
-}
-/// The words' way from the Father's mouth to the glass.
-fn flight(cam: &Camera) -> Vec<P> {
-    straight(cam, add(spirit().0, VOICE), impact())
-}
 /// Long and short light streaming from the Father's heart, in his reference
 /// place.
 fn beams(heart: P, reach: f64) -> String {
@@ -611,42 +612,52 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     }
     c.path(&belt, &stroke(LINE, 0.3), 0.35 * glass);
     c.path(&band(&cam, t), &fill(LINE), 0.55 * glass);
-    let reach = 1.7 * ramp(t, IMPACT_AT, IMPACT_AT + 1.5);
-    let broken = cracks(&cam, reach);
+    let spoken = phrases();
+    let mut broken = cracks(&cam, &CRACKS, 1.7 * ramp(t, IMPACT_AT, IMPACT_AT + 1.5));
+    for (chips, p) in CHIPS.iter().zip(&spoken) {
+        broken.push_str(&cracks(&cam, chips, CHIP * ramp(t, p.lands, p.lands + 0.5)));
+    }
     c.path(&broken, &stroke(LINE, 0.9), 0.3 * glass);
     c.path(&broken, &stroke(LIGHT, 0.35), 0.9 * glass);
     let shatter = ramp(t, BREAK_AT, BREAK_AT + 0.1) * (1. - ramp(t, BREAK_AT + 1.8, BREAK_AT + 2.4));
     c.path(&shards(&cam, t), &format!(r#"fill="{INK}" fill-opacity=".22" {}"#, stroke(LINE, 0.35)), shatter);
     c.path(&rising(&cam, t), &fill(LIGHT), 0.9);
 
-    // The Father's words fly straight to the glass at one reading pace, voice
-    // ringing out from him while each leaves him and from the glass while it
-    // goes in; he stands on the left, so they read left to right.
+    // The Father's phrases: each gathers whole beside him while he says it,
+    // then flies as one piece straight to its own part of the dome, growing
+    // as it nears the eye and pressing into the glass. His voice rings out
+    // while he speaks, and the glass rings where each lands.
     let (mouth, _) = spirit();
-    let flight = flight(&cam);
-    let total = length(&flight);
-    let spoken = lines();
-    let words = spoken
-        .iter()
-        .find_map(|l| {
-            let u = (t - l.at) / l.flies;
-            let width = text_width(l.text, PHRASE_SIZE);
-            (0. ..1.).contains(&u).then(|| text_along(l.text, &flight, (total + width) * u - width, PHRASE_SIZE))
-        })
-        .unwrap_or_default();
-    c.path(&words, &fill(LINE), 1.);
     let voice = cam.project(mouth);
-    let spot = cam.project(hit);
+    let hold = add(mouth, SAID);
+    let near = cam.scale(hold[2]);
+    for (k, p) in spoken.iter().enumerate() {
+        let f = ((t - p.leaves) / FLY).clamp(0., 1.);
+        let at = wmix(hold, strike(k), f * f);
+        let centre = cam.project(at);
+        let into = ramp(f, 0.8, 1.);
+        let size = PHRASE_SIZE * cam.scale(at[2]) / near * (1. - 0.75 * into);
+        let alpha = ramp(t, p.at, p.at + APPEAR) * (1. - into);
+        let rise = 3. * (1. - ramp(t, p.at, p.at + APPEAR));
+        let n = p.lines.len() as f64;
+        for (i, &text) in p.lines.iter().enumerate() {
+            let y = centre.1 + rise + (i as f64 - (n - 1.) / 2.) * LEADING * size;
+            let place = format!("translate({:.2} {y:.2}) scale({:.4})", centre.0, size / 10.);
+            c.words(text, || word(text, 0., 3.6, 10.), &fill(LINE), &place, alpha);
+        }
+        let wake = cam.project(wmix(hold, strike(k), (f * f - 0.3).max(0.)));
+        c.path(&line(&[wake, centre]), &stroke(LINE, 0.5), 0.4 * bell(f, 0., 0.1, 0.8, 1.));
+    }
     for j in 0..3 {
         let (mut d, mut alpha) = (String::new(), 0.);
         let (mut ring, mut seen) = (String::new(), 0.);
-        for &Line { text, at, flies, .. } in &spoken {
-            if let Some(f) = ringing(t, at, said(text), j) {
+        for (k, p) in spoken.iter().enumerate() {
+            if let Some(f) = ringing(t, p.at, p.leaves - p.at, j) {
                 d = arc(voice, 2.5 + 15. * f, (-120_f64).to_radians(), 20_f64.to_radians());
                 alpha = 0.5 * (1. - f);
             }
-            let arrive = at + flies * total / (total + text_width(text, PHRASE_SIZE));
-            if let Some(f) = ringing(t, arrive, said(text), j) {
+            if let Some(f) = ringing(t, p.lands, 0.8, j) {
+                let spot = cam.project(strike(k));
                 ring = ellipse(spot, 1.5 + 9. * f, (1.5 + 9. * f) * 0.7);
                 seen = 0.5 * (1. - f) * glass;
             }
@@ -654,8 +665,13 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         c.path(&d, &stroke(LINE, 0.45), alpha);
         c.path(&ring, &stroke(LINE, 0.4), seen);
     }
-    let flash = ramp(t, IMPACT_AT - 0.05, IMPACT_AT + 0.7);
-    c.sprite(spot, 3. + 22. * flash, "tri-glow", bell(t, IMPACT_AT - 0.1, IMPACT_AT + 0.05, IMPACT_AT + 0.2, IMPACT_AT + 1.1));
+    for (k, p) in spoken.iter().enumerate() {
+        let last = k == spoken.len() - 1;
+        let flash = ramp(t, p.lands - 0.05, p.lands + 0.7);
+        let shown = bell(t, p.lands - 0.1, p.lands + 0.05, p.lands + 0.2, p.lands + 1.1);
+        let spot = cam.project(strike(k));
+        c.sprite(spot, 3. + if last { 22. } else { 9. } * flash, "tri-glow", if last { 1. } else { 0.8 } * shown);
+    }
 
     // The Spirit is the breath between them: one straight line of light from
     // throat to throat, growing from both ends until it meets in the middle.
@@ -710,7 +726,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "tri",
-        "Сын стоит в стеклянном сосуде с надписью ПРОГРАММА, Отец, излучающий свет, сбоку и далеко позади него. Три вдоха Сына и четыре фразы Отца: «Я люблю тебя», «Я никогда не покину тебя», «Прости меня», «Все, что у Меня есть — это Ты» — строка за строкой летят по прямой и встречаются на стекле, сосуд раскалывается, и его осколки становятся Духом: дыханием между ними, линией света, по которой обмен идёт в обе стороны.",
+        "Сын стоит в стеклянном сосуде с надписью ПРОГРАММА, Отец, излучающий свет, сбоку и далеко позади него. Три вдоха Сына и четыре фразы Отца: «Я люблю тебя», «Я никогда не покину тебя», «Прости меня», «Все, что у Меня есть — это Ты» — каждая целиком летит по прямой и ударяет в свою часть купола, последняя встречает последний вдох, сосуд раскалывается, и его осколки становятся Духом: дыханием между ними, линией света, по которой обмен идёт в обе стороны.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -734,7 +750,7 @@ mod tests {
             let father = Placement::standing(&cam, FATHER, FATHER_HEIGHT);
             let (s, f) = (son.at(UNSEAL_HEART), father.at(UNSEAL_HEART));
             assert!(f.0 < s.0 - 40., "beside, with room between them, at {t}");
-            assert!(FATHER[2] > SON[2] + 2., "well behind at {t}");
+            assert!(FATHER[2] > SON[2] + 1.2, "behind at {t}");
             let (son_top, father_top) = (son.at((1268., 150.)).1, father.at((1268., 150.)).1);
             assert!((father_top - son_top).abs() < 16., "level heads at {t}");
         }
@@ -748,13 +764,6 @@ mod tests {
             let head = |feet: W, height: f64| cam.project(unseal_world(feet, height, (1268., 150.))).1;
             assert!(f.0 < s.0, "from the Father on the left to the Son at {t}");
             assert!(f.1 > head(FATHER, FATHER_HEIGHT) && s.1 > head(SON, SON_HEIGHT), "no apex above their heads at {t}");
-        }
-        let cam = camera(IMPACT_AT);
-        let flight = flight(&cam);
-        let (a, b) = (flight[0], flight[flight.len() - 1]);
-        for p in &flight {
-            let off = ((b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0)) / (b.0 - a.0).hypot(b.1 - a.1);
-            assert!(off.abs() < 1e-6, "words fly straight");
         }
     }
     #[test]
@@ -770,20 +779,30 @@ mod tests {
         }
     }
     #[test]
-    fn the_last_breath_and_word_meet_at_the_impact() {
+    fn each_phrase_is_said_whole_and_strikes_its_own_part_of_the_dome() {
         let words = ["Я ЛЮБЛЮ ТЕБЯ", "Я НИКОГДА НЕ ПОКИНУ ТЕБЯ", "ПРОСТИ МЕНЯ", "ВСЕ, ЧТО У МЕНЯ ЕСТЬ — ЭТО ТЫ"];
         assert!(PHRASES.iter().zip(words).all(|(lines, phrase)| lines.join(" ") == phrase), "his words exactly");
-        let spoken = lines();
-        let last = &spoken[spoken.len() - 1];
-        assert!((last.at + last.flies - IMPACT_AT).abs() < 1e-9, "{}", last.text);
-        assert!(spoken.windows(2).all(|w| w[1].at >= w[0].at + w[0].flies + BETWEEN.0 - 1e-9), "one line at a time");
+        let spoken = phrases();
+        assert!((spoken[3].lands - IMPACT_AT).abs() < 1e-9, "the last lands at the impact");
+        assert!(spoken.windows(2).all(|w| w[1].at >= w[0].lands + GAP - 1e-9), "one phrase at a time");
         assert!(spoken[0].at > 1.5, "the first words wait for the fade in");
-        for &Line { text, at, flies, .. } in &spoken {
-            assert!(text_width(text, PHRASE_SIZE) < FLIGHT, "{text} is seen whole on the way");
-            for t in [at, at + flies] {
-                let pace = (length(&flight(&camera(t))) + text_width(text, PHRASE_SIZE)) / flies;
-                assert!((pace / SPEED - 1.).abs() < 0.04, "{text} keeps the reading pace at {t}: {pace}");
+        for (k, p) in spoken.iter().enumerate() {
+            assert!(p.leaves - p.at >= APPEAR + reading(p.lines) - 1e-9 && (p.lands - p.leaves - FLY).abs() < 1e-9);
+            let cam = camera(p.lands);
+            let (theta, lat) = STRIKES[k];
+            assert!(lat > 0. && lat < FRAC_PI_2 && facing(&cam, theta, JAR_WALL + lat * JAR_R), "{k} strikes the dome where it is seen");
+            let here = cam.project(strike(k));
+            for j in 0..k {
+                let there = cam.project(strike(j));
+                assert!((here.0 - there.0).hypot(here.1 - there.1) > 12., "{k} and {j} strike different parts");
             }
+            // The whole phrase is seen at once, between him and the glass.
+            let cam = camera(p.at + APPEAR);
+            let centre = cam.project(add(spirit().0, SAID));
+            let wide = p.lines.iter().map(|l| text_width(l, PHRASE_SIZE)).fold(0., f64::max);
+            let (eye, half) = view(&cam);
+            let glass = cam.project(jar_point(eye - half, JAR_WALL)).0;
+            assert!(centre.0 - wide / 2. > 12. && centre.0 + wide / 2. < glass, "{k} fits beside him: {centre:?} {wide}");
         }
         assert!((BREATHS[2] + 1.3 + 1. - IMPACT_AT).abs() < 1e-9);
         assert!(REACH[2] == 1. && REACH[0] < REACH[1] && REACH[1] < 1.);

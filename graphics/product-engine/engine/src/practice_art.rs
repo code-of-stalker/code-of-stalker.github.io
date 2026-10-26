@@ -1,15 +1,16 @@
-//! Practice films 4–7: each a short story in the volumetric matrix space, told
+//! Practice films 3–7: each a short story in the volumetric matrix space, told
 //! in its own module. Reduced motion shows each film's still.
 use crate::step_three::Update;
 
 pub fn contains(kind: &str) -> bool {
     matches!(
         kind,
-        "practice-trinity" | "practice-awareness" | "practice-listening" | "practice-thread"
+        "practice-father" | "practice-trinity" | "practice-awareness" | "practice-listening" | "practice-thread"
     )
 }
 pub fn svg(kind: &str) -> Option<String> {
     Some(match kind {
+        "practice-father" => crate::practice_father::svg(),
         "practice-trinity" => crate::practice_trinity::svg(),
         "practice-awareness" => crate::practice_shadow::svg(),
         "practice-listening" => crate::practice_call::svg(),
@@ -20,6 +21,7 @@ pub fn svg(kind: &str) -> Option<String> {
 /// Each film keeps its own length and closes its loop through darkness.
 pub fn period(kind: &str) -> f64 {
     match kind {
+        "practice-father" => crate::practice_father::PERIOD,
         "practice-trinity" => crate::practice_trinity::PERIOD,
         "practice-awareness" => crate::practice_shadow::PERIOD,
         "practice-listening" => crate::practice_call::PERIOD,
@@ -29,6 +31,7 @@ pub fn period(kind: &str) -> f64 {
 }
 pub fn frame(kind: &str, seconds: f64, reduced: bool) -> Vec<Update> {
     match kind {
+        "practice-father" => crate::practice_father::frame(seconds, reduced),
         "practice-trinity" => crate::practice_trinity::frame(seconds, reduced),
         "practice-awareness" => crate::practice_shadow::frame(seconds, reduced),
         "practice-listening" => crate::practice_call::frame(seconds, reduced),
@@ -41,7 +44,7 @@ pub fn frame(kind: &str, seconds: f64, reduced: bool) -> Vec<Update> {
 mod tests {
     use super::*;
     use std::fmt::Write;
-    const KINDS: [&str; 4] = ["practice-trinity", "practice-awareness", "practice-listening", "practice-thread"];
+    const KINDS: [&str; 5] = ["practice-father", "practice-trinity", "practice-awareness", "practice-listening", "practice-thread"];
     /// Writes every film as frame updates for the scratch preview page:
     /// `PRACTICE_PREVIEW=<dir> cargo test dump_previews -- --ignored`.
     #[test]

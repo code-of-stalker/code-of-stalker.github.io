@@ -35,6 +35,7 @@ pub mod practice_art;
 mod practice_call;
 mod practice_shadow;
 mod practice_stage;
+mod practice_father;
 mod practice_thread;
 mod practice_trinity;
 pub mod practice_dialogue;

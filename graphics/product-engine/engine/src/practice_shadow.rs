@@ -1,8 +1,9 @@
 //! Practice 5, "Голос — это не звук. Это Дыхание Осознавания." She stands on
 //! a stage in a follow-spot before a hall, and the spot throws her shadow onto
 //! the back wall: huge, bound by ropes of thought that the hall's murmurs keep
-//! feeding. She turns from the hall to the shadow; her breath becomes a voice
-//! that touches it, and light passes through. The ropes fall, the hall and the
+//! feeding. She turns from the hall to the shadow; her breath becomes a voice,
+//! one long tone whose waves reach it, and it fills with light. The ropes
+//! tremble with the tone and fall, the hall and the
 //! spot go out, and her light self steps out of the wall to face her:
 //! Spectator, Witness, Liberator, and at last Author.
 use crate::{practice_stage::*, step_three::Update};
@@ -37,6 +38,13 @@ const ROWS: [(f64, f64, f64, f64); 2] = [(-2.6, 0.1, -2.75, 2.9), (-3.4, 0.45, -
 const TURN: (f64, f64) = (6.1, 7.9);
 const TOUCH: f64 = 10.6;
 const BREAK: f64 = 13.4;
+/// Her voice: one long tone, wave after wave crossing to the shadow every
+/// PULSE seconds; the first reaches it at TOUCH.
+const TONE: (f64, f64) = (9.5, 13.1);
+const PULSE: f64 = 0.18;
+const CROSS: f64 = TOUCH - TONE.0;
+/// Waves of the tone alive at once, at most.
+const SLOTS: usize = 8;
 const STEP: (f64, f64) = (18.6, 21.8);
 /// Ropes of thought binding the shadow, in its art units: ends and sag. They
 /// stay above her knees, where the shadow leaves the floor.
@@ -110,14 +118,45 @@ fn breath(t: f64) -> f64 {
         0.5 - 0.5 * (TAU * t / 4.).cos()
     } else if t < 9.4 {
         ramp(t, 8., 9.3)
-    } else if t < 11. {
-        1. - ramp(t, 9.4, 10.9)
+    } else if t < BREAK {
+        1. - ramp(t, 9.4, BREAK - 0.1)
     } else {
-        0.5 - 0.5 * (TAU * (t - 11.) / 4.4).cos()
+        0.5 - 0.5 * (TAU * (t - BREAK) / 4.4).cos()
     }
 }
 fn speaking(t: f64) -> f64 {
-    bell(t, 9.3, 9.6, 10.6, 11.2)
+    bell(t, 9.3, 9.6, TONE.1, TONE.1 + 0.5)
+}
+/// When wave `n` of the tone leaves her.
+fn wave_at(n: usize) -> f64 {
+    TONE.0 + n as f64 * PULSE
+}
+fn waves() -> usize {
+    ((TONE.1 - TONE.0) / PULSE).floor() as usize + 1
+}
+/// The latest wave in slot `j` that reached `delay` seconds into its way at
+/// most `life` seconds ago: which wave, and how long ago.
+fn slot(t: f64, delay: f64, life: f64, j: usize) -> Option<(usize, f64)> {
+    let local = (t - delay - TONE.0) / PULSE;
+    if local < 0. {
+        return None;
+    }
+    let latest = ((local + 1e-9).floor() as usize).min(waves() - 1);
+    let n = latest.checked_sub((latest + SLOTS - j % SLOTS) % SLOTS)?;
+    let age = t - delay - wave_at(n);
+    (age < life).then_some((n, age))
+}
+/// One wavefront: an arc across the way at `at`, bowed forward along `angle`.
+fn front(at: P, angle: f64, half: f64) -> String {
+    let (sin, cos) = angle.sin_cos();
+    let points: Vec<P> = (0..=10)
+        .map(|i| {
+            let u = i as f64 / 5. - 1.;
+            let ahead = 0.45 * half * (1. - u * u);
+            (at.0 - sin * u * half + cos * ahead, at.1 + cos * u * half + sin * ahead)
+        })
+        .collect();
+    line(&points)
 }
 /// The follow-spot: it catches, flickers out after the hall is gone.
 fn spot(t: f64) -> f64 {
@@ -524,28 +563,27 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         let side = if i % 2 == 0 { 1. } else { -1. };
         c.fixed(|| r.ends(), &stroke(LINE, 0.3), seen * (0.3 + 0.3 * hold) * (1. - snap));
         c.fixed(|| r.ends(), &stroke(LIGHT, 0.45), ignite * (1. - snap));
+        let hum = bell(t, TOUCH, TOUCH + 0.4, r.falls - 0.1, r.falls) * (1.2 + 1.2 * ramp(t, TOUCH, BREAK));
+        let shake = hum * (38. * t + 1.7 * i as f64).sin();
         let drop = Affine::turn(r.centre, side * 0.35 * fall)
-            .then(Affine([1., 0., 0., 1., side * 4. * fall, 26. * fall * fall]))
+            .then(Affine([1., 0., 0., 1., side * 4. * fall, 26. * fall * fall + shake]))
             .svg();
         let gone = 1. - ramp(fall, 0.4, 1.8);
         c.words(r.text, || r.words(), &fill(LINE), &drop, seen * (0.4 + 0.5 * hold) * gone);
         c.words(r.text, || r.words(), &fill(LIGHT), &drop, ignite * gone);
     }
-    // Where the voice lands: rings on the wall and light streaming out.
+    // Where the voice lands: a ring on the wall for every wave of the tone.
     let heart = heroine_mark(shadow(&cam0, k), HEROINE_HEART, b);
-    for j in 0..3 {
-        let f = (t - TOUCH - 0.3 * j as f64) / 1.4;
-        let on = (0. ..1.).contains(&f);
-        c.path(&if on { circle(heart, 2. + 28. * f) } else { String::new() }, &stroke(LINE, 0.45), if on { 0.6 * (1. - f) } else { 0. });
+    for j in 0..SLOTS {
+        let (d, a) = match slot(t, CROSS, 1.4, j) {
+            Some((_, age)) => {
+                let f = age / 1.4;
+                (circle(heart, 2. + 28. * f), 0.6 * (1. - f))
+            }
+            None => (String::new(), 0.),
+        };
+        c.path(&d, &stroke(LINE, 0.45), a);
     }
-    let grow = ramp(t, 10.8, 13.);
-    let mut rays = String::new();
-    for n in 0..14 {
-        let a = n as f64 / 14. * TAU + 0.15 * t + 0.2 * hash(n);
-        let (r0, r1) = (5. + 2. * hash(n + 3), 6. + 34. * grow * (0.6 + 0.4 * hash(n + 6)));
-        rays.push_str(&line(&[(heart.0 + r0 * a.cos(), heart.1 + r0 * a.sin()), (heart.0 + r1 * a.cos(), heart.1 + r1 * a.sin())]));
-    }
-    c.path(&rays, &stroke(LIGHT, 0.35), 0.4 * bell(t, 10.8, 11.6, 14.5, 16.5));
     let flash = ramp(t, TOUCH - 0.05, TOUCH + 0.6);
     c.sprite(heart, 3. + 24. * flash, "sh-glow", bell(t, TOUCH - 0.1, TOUCH + 0.05, TOUCH + 0.3, TOUCH + 1.3));
     // Names on the wall, one after another; the last above the two of her.
@@ -606,38 +644,28 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     c.sprite(heroine_mark(me, HEROINE_NOTCH, b), 4. + 2. * b, "sh-glow", 0.6 * speak);
     c.sprite(heroine_mark(me, HEROINE_HEART, b), 3. + 2. * b, "sh-glow", 0.15 * b * (1. - end) + end * (0.6 + 0.3 * b));
 
-    // The voice: her breath leaving the jugular notch as a living thread that
-    // reaches the shadow.
+    // The voice: not a line of light but a tone. Wave after wave leaves her
+    // jugular notch and widens as it crosses to the shadow, fuller the longer
+    // she sounds.
     let mine = heroine_world(HER, HEIGHT, k);
     let from = world(mine, HEROINE_NOTCH, HER[2], b);
     let to = world(cast(k), HEROINE_HEART, WALL, b);
-    const SAMPLES: usize = 80;
-    let path: Vec<P> = (0..=SAMPLES)
-        .map(|i| cam.project(cubic(from, add(from, [-0.35, 0.45, 0.5]), add(to, [0.5, 0.7, -0.9]), to, i as f64 / SAMPLES as f64)))
+    let way: Vec<P> = (0..=40)
+        .map(|i| cam.project(cubic(from, add(from, [-0.35, 0.45, 0.5]), add(to, [0.5, 0.7, -0.9]), to, i as f64 / 40.)))
         .collect();
-    // A soft travelling wave, widest mid-flight and calming as it lands.
-    let calm = 1. - 0.6 * ramp(t, TOUCH, TOUCH + 0.8);
-    let wavy: Vec<P> = (0..path.len())
-        .map(|i| {
-            let (a, z) = (path[i.saturating_sub(1)], path[(i + 1).min(SAMPLES)]);
-            let (dx, dy) = (z.0 - a.0, z.1 - a.1);
-            let n = dx.hypot(dy).max(1e-6);
-            let along = i as f64 / SAMPLES as f64;
-            let w = 1.6 * calm * (along * 7. * TAU - t * 9.).sin() * (PI * along).sin();
-            (path[i].0 - dy / n * w, path[i].1 + dx / n * w)
-        })
-        .collect();
-    let (head, tail) = (ramp(t, 9.5, TOUCH), ramp(t, 10.2, 11.4));
-    let thread = part(&wavy, tail, head);
-    c.path(&thread, &stroke(INK, 2.4), 0.3);
-    c.path(&thread, &stroke(LIGHT, 0.7), 0.95);
-    c.sprite(along(&wavy, head * length(&wavy)).0, 2.4, "sh-glow", (head - tail).min(0.15) / 0.15);
-    let notch = cam.project(from);
-    for j in 0..3 {
-        let f = (t - 9.45 - 0.4 * j as f64) / 1.2;
-        let on = (0. ..1.).contains(&f);
-        let d = if on { arc(notch, 1.5 + 9. * f, 150_f64.to_radians(), 210_f64.to_radians()) } else { String::new() };
-        c.path(&d, &stroke(LINE, 0.45), if on { 0.55 * (1. - f) } else { 0. });
+    let total = length(&way);
+    for j in 0..SLOTS {
+        let (d, a) = match slot(t, 0., CROSS, j) {
+            Some((n, age)) => {
+                let u = age / CROSS;
+                let (at, angle) = along(&way, u * total);
+                let full = 1. + 0.6 * ramp(wave_at(n), TOUCH, BREAK - 0.5);
+                (front(at, angle, (2. + 15. * u) * full), bell(u, 0., 0.06, 0.8, 1.))
+            }
+            None => (String::new(), 0.),
+        };
+        c.path(&d, &stroke(INK, 2.), 0.3 * a);
+        c.path(&d, &stroke(LIGHT, 0.65), a);
     }
 
     // Heart to heart, once she stands before herself: one breath between them.
@@ -727,7 +755,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "sh",
-        "Героиня стоит на сцене в луче прожектора перед залом, за ней на стене огромная тень, опутанная строками мыслей. Она отворачивается от зала к тени, её выдох-голос касается тени, и сквозь неё проходит свет. Нити рвутся, зрители рассыпаются светом, прожектор гаснет, и из стены выходит её светлое отражение: Зритель, Свидетель, Освобождающий, Автор.",
+        "Героиня стоит на сцене в луче прожектора перед залом, за ней на стене огромная тень, опутанная строками мыслей. Она отворачивается от зала к тени, её голос — долгий звук — волна за волной доходит до тени, и тень наполняется светом. Нити дрожат от звука и рвутся, зрители рассыпаются светом, прожектор гаснет, и из стены выходит её светлое отражение: Зритель, Свидетель, Освобождающий, Автор.",
         &defs(),
     );
     draw(&mut c, REST, false);
@@ -777,6 +805,20 @@ mod tests {
         let off = feet.iter().zip(MIRROR).map(|(a, b)| (a - b).abs()).fold(0., f64::max);
         assert!(off < 1e-9 && (height - HEIGHT).abs() < 1e-9, "{feet:?} {height}");
         assert_eq!(turned, 1., "it ends facing her");
+    }
+    #[test]
+    fn her_voice_reaches_the_shadow_in_waves_not_a_line() {
+        assert_eq!(slot(TONE.0 - 0.01, 0., CROSS, 0), None);
+        assert_eq!(slot(TONE.0, 0., CROSS, 0), Some((0, 0.)));
+        assert!((wave_at(0) + CROSS - TOUCH).abs() < 1e-9, "the first wave touches it");
+        assert!(wave_at(waves() - 1) <= TONE.1 && wave_at(waves()) > TONE.1);
+        for k in 0..400 {
+            let t = TONE.0 + k as f64 * 0.013;
+            let alive: Vec<usize> = (0..SLOTS).filter_map(|j| slot(t, 0., CROSS, j).map(|w| w.0)).collect();
+            let expected = (0..waves()).filter(|&n| (0. ..CROSS).contains(&(t - wave_at(n)))).count();
+            assert_eq!(alive.len(), expected, "{t}: every wave on its way is drawn");
+        }
+        assert!(speaking(BREAK - 0.5) > 0.99, "she still sounds as the ropes give");
     }
     #[test]
     fn every_rope_carries_its_whole_thought() {

@@ -206,7 +206,7 @@ impl SimplePractice {
         let figure_pass = Pass::new(
             &gl,
             include_str!("shaders/figure.frag"),
-            &["u_figure", "u_mode", "u_light", "u_more"],
+            &["u_figure", "u_mode", "u_light", "u_more", "u_flow"],
         )?;
         let blur = Pass::new(
             &gl,
@@ -581,7 +581,14 @@ impl SimplePractice {
             f.weight,
             f.soles,
         );
-        gl.uniform4f(self.figure.at("u_more"), f.head, f.breath, f.time, f.light);
+        gl.uniform4f(
+            self.figure.at("u_more"),
+            f.flow[2],
+            f.breath,
+            f.time,
+            f.light,
+        );
+        gl.uniform2f(self.figure.at("u_flow"), f.flow[0], f.flow[1]);
         for d in &figures {
             self.figure_draw(&f, d);
         }

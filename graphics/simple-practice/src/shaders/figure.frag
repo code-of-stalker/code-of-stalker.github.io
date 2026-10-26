@@ -6,7 +6,8 @@ precision highp float;
 uniform sampler2D u_figure;
 uniform vec4 u_mode;  // 0 body, 1 reflection, 2 scattered copy; alpha; blur radius (uv x, y)
 uniform vec4 u_light; // contour, presence, weight, soles
-uniform vec4 u_more;  // head, breath, time (s), exposure
+uniform vec4 u_more;  // flowing, breath, time (s), exposure
+uniform vec2 u_flow;  // lower and upper edge of the inner light along the body
 in vec2 v_local;
 out vec4 o;
 const vec2 SVG = vec2(335.0, 530.0);
@@ -25,6 +26,32 @@ vec3 lens(vec2 uv) {
     sum += textureLod(u_figure, uv + vec2(cos(a), sin(a)) * sqrt(f / 18.0) * r, lod).rgb;
   }
   return sum / 19.0;
+}
+// The body's line from the soles to the crown, in SVG units.
+const vec2 BONE[8] = vec2[8](vec2(266.0, 514.0), vec2(250.0, 468.0), vec2(256.0, 312.0),
+  vec2(132.0, 300.0), vec2(88.0, 252.0), vec2(86.0, 185.0), vec2(101.0, 131.0), vec2(110.0, 14.0));
+// How far along that line a point of the body is: 0 the soles, 1 the crown.
+// Nearby bones are blended so the light has no seams across the limbs.
+float along(vec2 p) {
+  float d[7];
+  float at[7];
+  float total = 0.0, nearest = 1e9;
+  for (int i = 0; i < 7; i++) {
+    vec2 a = BONE[i], ab = BONE[i + 1] - a;
+    float len = length(ab);
+    float h = clamp(dot(p - a, ab) / (len * len), 0.0, 1.0);
+    d[i] = length(p - a - ab * h);
+    at[i] = total + h * len;
+    total += len;
+    nearest = min(nearest, d[i]);
+  }
+  float weight = 0.0, sum = 0.0;
+  for (int i = 0; i < 7; i++) {
+    float w = exp(-(d[i] - nearest) / 10.0);
+    weight += w;
+    sum += w * at[i];
+  }
+  return sum / (weight * total);
 }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -52,7 +79,7 @@ void main() {
   }
   float chair = clamp(cover - body, 0.0, 1.0);
   float head = 1.0 - smoothstep(110.0, 126.0, p.y);
-  // The torso as a soft oval inside the body: no box edges in the light.
+  // The torso as a soft oval; the legs are what lies below and before it.
   vec2 e = (p - vec2(84.0, 222.0)) / vec2(70.0, 112.0);
   float torso = 1.0 - smoothstep(0.55, 1.05, length(e));
   float legs = (1.0 - head) * (1.0 - torso) * smoothstep(262.0, 312.0, p.y) * smoothstep(120.0, 170.0, p.x);
@@ -63,22 +90,26 @@ void main() {
   float rim = max(cover - above, 0.0) * clamp(1.0 - texels / 6.0, 0.0, 1.0);
   float t = u_more.z;
   float n = 0.6 * noise(p / 26.0 + vec2(0.0, t * 0.12)) + 0.4 * noise(p / 9.0 - vec2(t * 0.08, 0.0));
-  // Presence: an even light that fills the whole torso — a form, not a point.
-  float presence = u_light.y * torso * body * (0.3 + 0.22 * n + 0.08 * u_more.y);
+  // Presence: an even light that fills the body between two edges — a form,
+  // not a point. The edges move: up into the head, back, then everywhere.
+  float line = along(p) + 0.035 * (noise(p / 16.0 + vec2(t * 0.35, -t * 0.2)) - 0.5);
+  float within = smoothstep(u_flow.x - 0.055, u_flow.x + 0.055, line)
+    * (1.0 - smoothstep(u_flow.y - 0.055, u_flow.y + 0.055, line));
+  float front = exp(-pow((line - u_flow.x) / 0.03, 2.0)) + exp(-pow((line - u_flow.y) / 0.03, 2.0));
+  float presence = u_light.y * body * (within * (0.27 + 0.2 * n + 0.08 * u_more.y) + 0.2 * u_more.x * front);
   // Weight: heavier towards the soles, sinking.
   // Streaks of heaviness drift down the shin, never a flat fill.
   float sink = smoothstep(0.3, 0.95, noise(p / vec2(22.0, 9.0) - vec2(0.0, t * 2.2)));
   float weight = u_light.z * legs * body * (0.015 + 0.09 * pow(smoothstep(300.0, 515.0, p.y), 1.6)) * (0.35 + 0.65 * sink);
   float soles = u_light.w * sole * ink;
   float felt = u_light.w * sole * body * 0.07;
-  float drawn = u_more.x * head * body * (0.16 + 0.18 * n);
   float contour = u_light.x * ink;
   float exposure = u_more.w;
   float room = (0.42 * contour * chair + 0.28 * rim) * exposure;
   float person = (contour * (1.0 - chair) + soles) * mix(0.55, 1.0, exposure);
   // Blue holds the body: its lower half the cover, its upper half the light
-  // that fills it (presence, weight, the drawn-up head). Light pages show
+  // that fills it (presence, weight, the felt soles). Light pages show
   // that light as a paler, luminous body; dark rooms as light.
-  float glow = clamp((presence + weight + drawn + felt) * mix(0.55, 1.0, exposure), 0.0, 1.0);
+  float glow = clamp((presence + weight + felt) * mix(0.55, 1.0, exposure), 0.0, 1.0);
   o = vec4(room, person, 0.5 * cover + 0.5 * glow * cover, cover) * alpha;
 }

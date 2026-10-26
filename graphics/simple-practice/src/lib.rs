@@ -93,6 +93,12 @@ pub fn torso_at(row: f32) -> Option<[f32; 2]> {
 /// to its width in profile.
 pub const TORSO_DEPTH: f32 = 0.78;
 
+/// Edges of the inner light along the body (0 soles, 1 crown): in the
+/// torso, in the head, and over the whole person.
+pub const TORSO_FLOW: [f32; 2] = [0.48, 0.8];
+pub const HEAD_FLOW: [f32; 2] = [0.83, 1.1];
+pub const WHOLE_FLOW: [f32; 2] = [-0.12, 1.12];
+
 pub fn smooth(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
@@ -334,8 +340,11 @@ pub struct Frame {
     /// Particles of mass inside the torso and how far they have settled.
     pub mass: f32,
     pub settled: f32,
-    /// The even inner light of the torso: the form of Presence.
+    /// The even inner light of the body: the form of Presence.
     pub presence: f32,
+    /// Where that light is along the body, from the soles (0) to the crown
+    /// (1): its lower and upper edge and how fast it is flowing.
+    pub flow: [f32; 3],
     /// Strength of the figure's contour.
     pub contour: f32,
     /// Images rising from the head: progress, visibility, and their retreat.
@@ -345,8 +354,6 @@ pub struct Frame {
     /// Threads from the head to the images, and how far they have snapped.
     pub threads: f32,
     pub snap: f32,
-    /// Light drawn up into the head.
-    pub head: f32,
     /// The attention: where it is and how bright.
     pub mote: [f32; 3],
     pub mote_light: f32,
@@ -386,10 +393,20 @@ pub fn compose(seconds: f32) -> Frame {
         }
     }
     let escape = bell(t, 29.4, 30.8, 32.2, 33.6);
-    let presence = (smooth(23.6, 26.0, t) * (1.0 - 0.55 * smooth(26.5, 28.5, t))
-        + 0.25 * bell(t, 35.6, 37.6, 41.0, 43.6))
-        * (1.0 - 0.65 * escape)
-        * fade;
+    // The light gathers in the torso, flows up into the head when the images
+    // call, comes back down, and at the end fills the whole person.
+    let presence = smooth(23.6, 26.0, t) * (1.0 - 0.12 * escape) * fade;
+    let flow = [
+        TORSO_FLOW[0] + (HEAD_FLOW[0] - TORSO_FLOW[0]) * smooth(28.0, 29.6, t)
+            - (HEAD_FLOW[0] - TORSO_FLOW[0]) * smooth(32.6, 33.9, t)
+            - (TORSO_FLOW[0] - WHOLE_FLOW[0]) * smooth(34.6, 37.6, t),
+        TORSO_FLOW[1] + (HEAD_FLOW[1] - TORSO_FLOW[1]) * smooth(27.6, 28.8, t)
+            - (HEAD_FLOW[1] - TORSO_FLOW[1]) * smooth(33.0, 34.3, t)
+            + (WHOLE_FLOW[1] - TORSO_FLOW[1]) * smooth(35.0, 37.2, t),
+        bell(t, 27.6, 28.3, 29.0, 29.8)
+            + bell(t, 32.6, 33.1, 33.8, 34.4)
+            + 0.8 * bell(t, 34.6, 35.4, 36.8, 37.8),
+    ];
     let arrival = bell(t, 35.0, 35.5, 36.2, 37.8);
     Frame {
         time: t,
@@ -412,6 +429,7 @@ pub fn compose(seconds: f32) -> Frame {
         mass: bell(t, 20.2, 21.4, 25.0, 27.6),
         settled: smooth(21.2, 25.2, t),
         presence,
+        flow,
         contour: 0.45 + 0.27 * smooth(0.4, 2.6, t) + 0.28 * smooth(23.6, 26.0, t)
             - 0.3 * escape
             - 0.55 * smooth(41.3, LOOP_SECONDS, t),
@@ -420,7 +438,6 @@ pub fn compose(seconds: f32) -> Frame {
         retreat: smooth(31.8, 34.2, t),
         threads: bell(t, 28.8, 29.8, 31.9, 32.05),
         snap: smooth(31.9, 32.8, t),
-        head: bell(t, 29.0, 30.4, 31.8, 33.0),
         mote: along(&MOTE_PATH, t),
         mote_light: bell(t, 29.4, 29.9, 35.2, 35.8),
         breath: 0.5 - 0.5 * (t / 5.5 * TAU).cos(),
@@ -556,7 +573,7 @@ mod tests {
                 f.retreat,
                 f.threads,
                 f.snap,
-                f.head,
+                f.flow[2],
                 f.mote_light,
                 f.breath,
                 f.stir,
@@ -598,6 +615,36 @@ mod tests {
         let end = compose(35.36);
         assert!(end.mote[1] < 0.05 && end.mote[0] > HEEL[0] && end.mote[0] < BALL[0]);
         assert!(compose(STILL).camera.aperture < 0.01);
+    }
+
+    #[test]
+    fn the_light_flows_into_the_head_back_and_fills_the_person() {
+        let lit = |t: f32, s: f32| {
+            let f = compose(t);
+            f.presence > 0.8 && s > f.flow[0] && s < f.flow[1]
+        };
+        let (belly, crown_side, sole) = (0.6, 0.9, 0.02);
+        assert!(lit(26.5, belly) && !lit(26.5, crown_side) && !lit(26.5, sole));
+        assert!(lit(31.0, crown_side) && !lit(31.0, belly));
+        assert!(lit(34.4, belly) && !lit(34.4, crown_side));
+        assert!(lit(STILL, belly) && lit(STILL, crown_side) && lit(STILL, sole));
+        assert!(compose(STILL).flow[0] < 0.0 && compose(STILL).flow[1] > 1.0);
+        // It moves without jumps while it is visible.
+        let mut previous = compose(23.0);
+        for i in 2301..4400 {
+            let f = compose(i as f32 * 0.01);
+            if f.presence > 0.02 {
+                assert!(
+                    close(f.flow[0], previous.flow[0], 0.01),
+                    "lower edge at {i}"
+                );
+                assert!(
+                    close(f.flow[1], previous.flow[1], 0.01),
+                    "upper edge at {i}"
+                );
+            }
+            previous = f;
+        }
     }
 
     #[test]

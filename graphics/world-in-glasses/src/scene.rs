@@ -303,6 +303,9 @@ pub struct Scene {
     pub glass: [crate::glass::Glass; 2],
     pub chips: Vec<crate::glass::Chip>,
     pub lenses: crate::lens::Lenses,
+    /// Drawn over Art's light paintings: holes, stones and code are inked in
+    /// warm browns instead of black and light.
+    pub light: bool,
 }
 impl Scene {
     pub fn new() -> Self {
@@ -318,6 +321,7 @@ impl Scene {
             chips: crate::glass::chips(&glass),
             glass,
             lenses: crate::lens::Lenses::new(),
+            light: false,
         }
     }
 }

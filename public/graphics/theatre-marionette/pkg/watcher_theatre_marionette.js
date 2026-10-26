@@ -54,6 +54,13 @@ export class Marionette {
         return ret >>> 0;
     }
     /**
+     * Set when the renderer was given Art's light paintings.
+     * @param {boolean} value
+     */
+    light_paintings(value) {
+        wasm.marionette_light_paintings(this.__wbg_ptr, value);
+    }
+    /**
      * @param {HTMLCanvasElement} canvas
      * @param {HTMLImageElement} source
      * @param {HTMLImageElement} background

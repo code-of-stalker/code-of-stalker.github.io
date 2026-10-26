@@ -10,7 +10,7 @@ use web_sys::{
 
 /// The scenes bind their artwork to the low units once; this one is theirs to keep.
 const UNIT: u32 = 15;
-const NAMES: [&str; 7] = [
+const NAMES: [&str; 8] = [
     "u_image",
     "u_mode",
     "u_paper",
@@ -18,6 +18,7 @@ const NAMES: [&str; 7] = [
     "u_highlight",
     "u_backdrop",
     "u_edges",
+    "u_detail",
 ];
 
 struct Frame {
@@ -101,8 +102,10 @@ impl Themed {
         self.palette = palette;
         changed
     }
+    /// Whether frames pass through the recolor; Дюна's light paintings and
+    /// the originals draw straight to the canvas.
     pub fn active(&self) -> bool {
-        self.palette != Palette::Original
+        self.palette.colors().is_some()
     }
     /// Directs the scene's draws into the offscreen frame when a theme is
     /// active and returns whether it did.
@@ -166,6 +169,7 @@ impl Themed {
         gl.uniform3fv_with_f32_array(u[4].as_ref(), &colors.highlight);
         gl.uniform3fv_with_f32_array(u[5].as_ref(), &backdrop);
         gl.uniform4fv_with_f32_array(u[6].as_ref(), &edges.unwrap_or([0.0; 4]));
+        gl.uniform3fv_with_f32_array(u[7].as_ref(), &colors.detail);
         gl.bind_vertex_array(Some(&self.layout));
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.bind_vertex_array(None);

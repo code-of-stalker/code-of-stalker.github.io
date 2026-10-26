@@ -2,14 +2,17 @@
 precision highp float;
 // The finished full-color frame of a scene.
 uniform sampler2D u_image;
-// x: mapping (0 luminance in the accent: Искра yellow, Матрица green,
-// 3 Мираж/Рассвет print: text ink to accent by level on the paper, 1 sand sepia, 2 cool luminance ink),
+// x: mapping (0 luminance in the accent: Искра yellow, Матрица green;
+// 2 cool luminance ink; 3 Мираж/Рассвет gradient map of the light paintings;
+// Дюна draws its light paintings unmodified),
 // y: 1 when the edges melt into the page.
 uniform vec4 u_mode;
 uniform vec3 u_paper;
 uniform vec3 u_accent;
 uniform vec3 u_highlight;
 uniform vec3 u_backdrop;
+// The light themes' third ink (lilac, copper); u_highlight is their text ink.
+uniform vec3 u_detail;
 // Left, right, top, bottom, as fractions of the canvas.
 uniform vec4 u_edges;
 out vec4 out_color;
@@ -20,15 +23,10 @@ vec3 recolor(vec3 c) {
     if (u_mode.x < .5) return u_accent * clamp(dot(c, LUMA), 0., 1.);
     if (u_mode.x > 2.5) {
         float level = clamp(dot(c, LUMA), 0., 1.);
-        vec3 tint = mix(u_highlight, u_accent, smoothstep(.25, .85, level));
-        return mix(u_paper, tint, level * .92);
-    }
-    if (u_mode.x < 1.5) {
-        // Sand: a sepia print in the theme's brown ink, with the light warming
-        // toward the accent. The max-channel duotone flooded it with orange.
-        float level = clamp(dot(c, LUMA), 0., 1.);
-        vec3 print = mix(u_paper, u_highlight, pow(1. - level, 1.8) * .42);
-        return mix(print, mix(u_paper, u_accent, .5), smoothstep(.55, 1., level) * .35);
+        vec3 soft = mix(u_detail, u_paper, .35);
+        if (level < .4) return mix(u_highlight, u_accent, level / .4);
+        if (level < .72) return mix(u_accent, soft, (level - .4) / .32);
+        return mix(soft, u_paper, (level - .72) / .28);
     }
     float level = clamp(dot(c, LUMA), 0., 1.);
     float ink = pow(level, 1.3) * .74;

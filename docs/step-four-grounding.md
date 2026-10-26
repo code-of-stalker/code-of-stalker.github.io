@@ -144,8 +144,26 @@ generated binary during conflict resolution.
 - The three standalone web scenes of Step 4 (world in glasses, cloud drift,
   theatre marionette) follow the app theme. `graphics/scene-palette` renders
   each finished frame offscreen and recolors it with the product engine's
-  grounding mapping: Matrix yellow luminance in Искра, a soft sepia print in Дюна,
-  cool luminance ink in Тишина and Астрал. The page edges melt in after the
-  recolor. Each scene exposes `palette(code)` with the `graphicsPalette` codes;
+  grounding mapping: Matrix yellow luminance in Искра, cool luminance ink in
+  Тишина and Астрал. The page edges melt in after the recolor. Each scene exposes `palette(code)` with the `graphicsPalette` codes;
   other codes keep the original colors for previews and video export.
 - The full-color posters are shown only if WebGL2 fails.
+
+## Art's light paintings for Дюна, 2026-10-26
+
+- Дюна is a light theme: its scenes draw Art's hand-painted light versions
+  (`graphics/*/assets-light`, WebP) as painted, with no recolor pass. Dark
+  themes keep recoloring only the dark originals. `Palette::is_light` in
+  `graphics/scene-palette` and `isLightPalette` in `graphicsPalette.ts` mark
+  this; the bridges swap the renderer when a theme crosses between the two.
+- The light paintings follow the dark compositions, so the existing lens mask,
+  figure matte, contours and rigs apply. Two layers needed new cut-outs:
+  the cloud's floating visions sit on painted sky, so `light-matte.py` stores
+  their matte (the dark original's own coverage) in `objects.webp`; the pack's
+  separate marionette heroine stands in another pose, so `light-heroine.py`
+  cuts her from the light full scene against its plate.
+- Effects that add light to black air ink the pale page instead
+  (`light_paintings`): code rain and dust become amber ink, holes and falling
+  stones umber and pale marble, the scanner a thin accent-ink line, the stage
+  beams a warm veil. Vignettes and pulses are gentler so nothing washes out.
+

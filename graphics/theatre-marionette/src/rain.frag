@@ -5,6 +5,8 @@ in vec2 v_uv;
 flat in uint v_strokes;
 in float v_alpha;
 in float v_softness;
+// 1 on Art's light paintings: amber ink instead of light.
+uniform float u_pale;
 out vec4 out_color;
 const vec4 STROKES[13]=vec4[13](
     vec4(.18,.14,.82,.14),vec4(.18,.50,.82,.50),vec4(.18,.86,.82,.86),
@@ -25,5 +27,5 @@ void main(){
     float aa=max(fwidth(d)*.8,v_softness);
     float ink=1.0-smoothstep(.035-aa,.035+aa,d);
     float glow=exp(-d*d/0.018)*.24;
-    out_color=vec4(1.0,.77,.20,(ink+glow)*v_alpha);
+    out_color=u_pale>0.5?vec4(.70,.34,.03,ink*v_alpha*.75):vec4(1.0,.77,.20,(ink+glow)*v_alpha);
 }

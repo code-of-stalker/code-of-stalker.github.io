@@ -99,6 +99,8 @@ pub struct Marionette {
     edge_widths: Option<WebGlUniformLocation>,
     backdrop_uniform: Option<WebGlUniformLocation>,
     themed: Themed,
+    /// Drawn from Art's light paintings: light becomes a veil, code becomes ink.
+    pale: bool,
     soft_edges: bool,
     backdrop: [f32; 4],
     points: Vec<[f32; 2]>,
@@ -239,6 +241,7 @@ impl Marionette {
             edge_widths,
             backdrop_uniform,
             themed,
+            pale: false,
             soft_edges: false,
             backdrop: [0.0, 0.0, 0.0, 1.0],
             points,
@@ -346,6 +349,19 @@ impl Marionette {
             self.draw();
         }
     }
+    /// Set when the renderer was given Art's light paintings.
+    pub fn light_paintings(&mut self, value: bool) {
+        if self.pale != value {
+            self.pale = value;
+            let pale = f32::from(value);
+            for program in [&self.image, &self.rain] {
+                self.gl.use_program(Some(program));
+                let location = self.gl.get_uniform_location(program, "u_pale");
+                self.gl.uniform1f(location.as_ref(), pale);
+            }
+            self.draw();
+        }
+    }
     /// The app theme: 0 Искра, 1 Дюна, 2 Тишина, 3 Астрал; others keep the
     /// source colors.
     pub fn palette(&mut self, code: u32) {
@@ -448,7 +464,14 @@ impl Marionette {
         gl.vertex_attrib_pointer_with_i32(0, 4, Gl::FLOAT, false, 32, 0);
         gl.enable_vertex_attrib_array(1);
         gl.vertex_attrib_pointer_with_i32(1, 4, Gl::FLOAT, false, 32, 16);
+        if self.pale {
+            // Ink covers the pale page; the caller's additive state returns after.
+            gl.blend_func(Gl::SRC_ALPHA, Gl::ONE_MINUS_SRC_ALPHA);
+        }
         gl.draw_arrays(Gl::TRIANGLES, 0, (self.rain_data.len() / 8) as i32);
+        if self.pale {
+            gl.blend_func(Gl::SRC_ALPHA, Gl::ONE);
+        }
         gl.disable_vertex_attrib_array(1);
     }
 

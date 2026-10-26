@@ -12,3 +12,5 @@ export const graphicsPalette = {
 /** The code ProductTheme publishes, for a component that already has its palette. */
 export const paletteCode = (colors: ProductColors): GraphicsPalette =>
   colors === lightColors ? 1 : colors === neutralColors ? 2 : colors === violetColors ? 3 : colors === matrixColors ? 4 : colors === mirageColors ? 5 : colors === dawnColors ? 6 : 0;
+/** Light themes (Дюна, Мираж, Рассвет) draw scenes from the light paintings, dark themes from the dark originals. */
+export const isLightPalette = (code: GraphicsPalette) => code === 1 || code === 5 || code === 6;

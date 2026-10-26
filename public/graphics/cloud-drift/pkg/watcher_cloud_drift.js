@@ -68,11 +68,12 @@ export class CloudDrift {
      * @param {HTMLImageElement} source
      * @param {HTMLImageElement} plate
      * @param {HTMLImageElement} person
+     * @param {HTMLImageElement | null} [matte]
      */
-    constructor(canvas, source, plate, person) {
+    constructor(canvas, source, plate, person, matte) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.clouddrift_new(retptr, addHeapObject(canvas), addHeapObject(source), addHeapObject(plate), addHeapObject(person));
+            wasm.clouddrift_new(retptr, addHeapObject(canvas), addHeapObject(source), addHeapObject(plate), addHeapObject(person), isLikeNone(matte) ? 0 : addHeapObject(matte));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

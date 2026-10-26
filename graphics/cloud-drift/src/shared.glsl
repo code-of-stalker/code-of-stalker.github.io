@@ -1,6 +1,8 @@
 uniform sampler2D u_source;
 uniform sampler2D u_plate;
 uniform sampler2D u_person;
+// Light paintings only: the floating visions, which sit on painted sky.
+uniform sampler2D u_matte;
 uniform vec4 u_camera;
 uniform vec4 u_hero;
 uniform vec4 u_cloth;
@@ -16,6 +18,13 @@ uniform vec3 u_background;
 const vec2 SIZE = vec2(1536.0, 1024.0);
 const float TAU = 6.28318530718;
 
+// The light paintings (Дюна): light ink and darker accents on a pale page.
+bool light_paintings() {return u_effects.w>0.5;}
+float vision(vec2 p) {
+    if(light_paintings())return texture(u_matte,p/SIZE).r;
+    vec3 c=texture(u_source,p/SIZE).rgb;
+    return smoothstep(0.035,0.16,max(c.r,c.g));
+}
 float edge_coverage(vec2 uv) {
     // Themed frames melt into the page after the recolor pass instead.
     if(u_viewport.z>0.5)return 1.0;
@@ -76,8 +85,7 @@ vec2 object_point(vec2 q,int i) {vec2 c=object_center(i);return turn(q-c-u_objec
 float object_coverage(vec2 p,int i) {
     float d=length((p-object_center(i))/object_radius(i));
     if(d>=1.0)return 0.0;
-    vec3 c=texture(u_source,p/SIZE).rgb;
-    return (1.0-smoothstep(0.86,1.0,d))*smoothstep(0.035,0.16,max(c.r,c.g));
+    return (1.0-smoothstep(0.86,1.0,d))*vision(p);
 }
 vec2 world_screen(vec2 q) {return (q-SIZE*0.5+u_camera.xy+u_control.yz)*u_camera.z+SIZE*0.5;}
 float scan_weight(vec2 q) {

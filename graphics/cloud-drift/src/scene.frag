@@ -55,12 +55,15 @@ vec3 dream(vec3 behind, vec2 q, vec2 center, vec2 radius, int index) {
     if (d >= 1.0) return behind;
     vec3 art = texture(u_source, p / SIZE).rgb;
     float edge = 1.0 - smoothstep(0.86, 1.0, d);
-    // These visions live in black air. Retain the engraved gold pixels without
-    // carrying a rectangular crop of the source into the reconstructed sky.
-    float coverage = smoothstep(0.035, 0.16, max(art.r, art.g)) * edge;
+    // These visions live in black air (the light paintings carry a matte).
+    // Retain the engraved gold pixels without carrying a rectangular crop of
+    // the source into the reconstructed sky.
+    float coverage = vision(p) * edge;
     float band = exp(-pow((p.x + p.y * 0.32 - center.x - center.y * 0.32
         - sin(u_camera.w + float(index)) * radius.x * 1.7) / 15.0, 2.0));
-    art *= motion.w + band * 0.16 * u_cloth.w;
+    // A pale painting brightened past white washes out: pulse it gently.
+    float pulse = light_paintings() ? 0.3 : 1.0;
+    art *= 1.0 + (motion.w - 1.0 + band * 0.16 * u_cloth.w) * pulse;
     return mix(behind, art, coverage);
 }
 
@@ -76,8 +79,14 @@ void main() {
     float cloud_light = sin(q.x * 0.003 - q.y * 0.002 + u_camera.w) * 0.05 * u_cloth.w;
     color *= 1.0 + cloud_light;
     float rain=matrix_rain(q)*u_effects.x*min(u_cloth.w,1.0);
-    rain*=1.0-smoothstep(0.10,0.48,color.r)*0.8;
-    color+=vec3(0.85,0.65,0.06)*(rain+wind_threads(q));
+    if(light_paintings()) {
+        // Amber ink on the pale sky, fading over the darker suit and clouds.
+        rain*=smoothstep(0.35,0.75,dot(color,vec3(0.2126,0.7152,0.0722)));
+        color*=1.0-vec3(0.07,0.38,0.78)*min((rain+wind_threads(q))*1.6,1.0);
+    } else {
+        rain*=1.0-smoothstep(0.10,0.48,color.r)*0.8;
+        color+=vec3(0.85,0.65,0.06)*(rain+wind_threads(q));
+    }
 
     color = dream(color, q, vec2(903.0, 109.0), vec2(128.0, 113.0), 0);
     color = dream(color, q, vec2(1211.0, 111.0), vec2(128.0, 114.0), 1);
@@ -93,13 +102,15 @@ void main() {
     }
     // Dim only the short trailing reveal so the etched contours read clearly.
     // The leading light is composited afterwards and retains the theme accent.
-    if(u_control.w<0.5)color*=1.0-scan_weight(q)*0.42;
+    if(u_control.w<0.5)color*=1.0-scan_weight(q)*(light_paintings()?0.12:0.42);
     float scan_distance=abs(u_scan.x-(q.x+q.y*0.24));
     float pixel_size=SIZE.x/max(u_viewport.x,1.0);
     float scan_core=1.0-smoothstep(pixel_size*0.4,pixel_size*1.25,scan_distance);
     float scan_halo=exp(-pow(scan_distance/(pixel_size*6.0),2.0))*0.16;
     float scan_light=(scan_core+scan_halo)*u_scan.y*u_effects.z;
-    color+=u_accent*scan_light;
+    // On the light paintings the scanner draws in ink instead of light.
+    if(light_paintings())color=mix(color,u_accent*0.6,min(scan_light,1.0));
+    else color+=u_accent*scan_light;
     if(u_control.w>0.5)color=vec3(0.0);
     out_color = vec4(mix(u_background,max(color,vec3(0.0)),edge_coverage(v_uv)), 1.0);
 }

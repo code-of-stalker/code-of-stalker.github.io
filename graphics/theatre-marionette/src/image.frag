@@ -10,6 +10,8 @@ uniform vec4 u_beams[3];
 uniform vec4 u_haze;
 uniform vec4 u_edge_widths;
 uniform vec4 u_backdrop;
+// 1 on Art's light paintings: added light washes a pale page into yellow.
+uniform float u_pale;
 out vec4 out_color;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){
@@ -48,7 +50,7 @@ void main() {
         float band=exp(-pow((screen.y-.83)/.13,2.0));
         float sides=.35+.65*abs(screen.x-.5)*2.0;
         float alpha=mist(v_position)*band*sides*u_haze.z*.7;
-        out_color=vec4(.68,.45,.09,alpha);
+        out_color=u_pale>0.5?vec4(1.0,.94,.80,alpha*.35):vec4(.68,.45,.09,alpha);
         return;
     }
     vec4 ink=texture(u_texture,v_uv);
@@ -61,7 +63,17 @@ void main() {
         vec2 p=(v_position-vec2(768.0,510.0))/vec2(470.0,800.0);
         float spot=exp(-dot(p,p));
         ink.rgb*=1.0+(u_light-1.0)*spot;
-        if(u_environment>0.0){
+        if(u_environment>0.0 && u_pale>0.5){
+            // The beams and haze are a warm veil over the light painting.
+            float light=beams(screen);
+            ink.rgb=mix(ink.rgb,vec3(1.0,.95,.82),clamp(light*.35,0.0,.5));
+            float bank=exp(-pow((screen.y-.72)/.17,2.0));
+            float center=exp(-pow((screen.x-.5)/.42,2.0));
+            ink.rgb=mix(ink.rgb,vec3(1.0,.93,.80),mist(v_position)*bank*center*u_haze.z*.25);
+            float floor=smoothstep(.83,.99,screen.y);
+            float reflection=exp(-pow((screen.x-u_beams[0].y)/.18,2.0));
+            ink.rgb=mix(ink.rgb,vec3(1.0,.90,.70),floor*reflection*mist(v_position)*u_haze.w*.3);
+        } else if(u_environment>0.0){
             float light=beams(screen);
             // Preserve the painted highlights; the added light occupies the
             // air and changes the illumination on the surrounding architecture.
@@ -77,7 +89,7 @@ void main() {
     } else if(u_kind<1.5 && u_environment>0.0){
         // Small moving highlights on the existing costume, without flattening
         // its black fabric or replacing the source illustration's gold edges.
-        ink.rgb*=1.0+beams(screen)*1.15;
+        ink.rgb*=1.0+beams(screen)*(u_pale>0.5?.3:1.15);
     }
     out_color=ink;
 }

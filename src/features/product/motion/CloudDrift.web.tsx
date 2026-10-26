@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useThemeColors } from '../ProductTheme';
 import { useEffectQualityLevel } from './EffectsQuality';
-import { paletteCode } from './graphicsPalette';
+import { isLightPalette, paletteCode } from './graphicsPalette';
 import { observeMotionVisibility } from './motion-visibility.web';
 import type { ArtProps } from './types';
 
@@ -13,7 +13,7 @@ type Renderer = {
   resize(width: number, height: number): void; frame(at: number): void;
   suspend(): void; dispose(): void; free(): void;
 };
-type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
+type Runtime = { mount(canvas: HTMLCanvasElement, options: { light: boolean }): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
 function loadRuntime() {
   return runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/cloud-drift/runtime.js')
@@ -30,7 +30,7 @@ export function CloudDrift(props: ArtProps) {
   useEffect(() => {
     const output = canvas.current;
     if (!output) return;
-    let disposed = false, visible = false, loading = false, lost = false, raf = 0, lastPaint = 0;
+    let disposed = false, visible = false, loading = false, lost = false, light = false, raf = 0, lastPaint = 0;
     let renderer: Renderer | undefined;
     const stop = () => { cancelAnimationFrame(raf); raf = 0; lastPaint = 0; renderer?.suspend(); output.dataset.running = 'false'; };
     const running = () => !disposed && !lost && visible && !document.hidden && latest.current.focused && latest.current.props.active !== false && !latest.current.props.reducedMotion;
@@ -50,6 +50,10 @@ export function CloudDrift(props: ArtProps) {
     };
     const update = () => {
       stop();
+      // Light and dark themes draw different paintings: swap the renderer.
+      if (renderer && light !== isLightPalette(paletteCode(latest.current.colors))) {
+        renderer.dispose(); renderer.free(); renderer = undefined; setReady(false);
+      }
       if (renderer) {
         const accent = latest.current.colors.accent;
         const background = latest.current.colors.background;
@@ -62,10 +66,12 @@ export function CloudDrift(props: ArtProps) {
         if (running()) raf = requestAnimationFrame(tick);
       } else if (visible && !loading && !lost && !disposed) {
         loading = true;
-        void loadRuntime().then(module => disposed ? undefined : module.mount(output)).then(value => {
+        const wanted = isLightPalette(paletteCode(latest.current.colors));
+        void loadRuntime().then(module => disposed ? undefined : module.mount(output, { light: wanted })).then(value => {
+          loading = false;
           if (!value) return;
-          if (disposed) { value.dispose(); value.free(); return; }
-          renderer = value; update(); setReady(true); latest.current.props.onReady?.();
+          if (disposed || wanted !== isLightPalette(paletteCode(latest.current.colors))) { value.dispose(); value.free(); update(); return; }
+          light = wanted; renderer = value; update(); setReady(true); latest.current.props.onReady?.();
         }).catch(error => {
           if (!disposed) { setFailed(true); output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Cloud scene:', error); }
         });
@@ -88,7 +94,7 @@ export function CloudDrift(props: ArtProps) {
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* The full-color poster is only a fallback: every theme recolors the scene. */}
-        <img src="/graphics/cloud-drift/assets/poster.png" alt="" aria-hidden loading="lazy" decoding="async"
+        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/cloud-drift/assets-light/original.webp' : '/graphics/cloud-drift/assets/poster.png'} alt="" aria-hidden loading="lazy" decoding="async"
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, display: failed ? 'block' : 'none' }} />
         <canvas ref={canvas} data-graphics="rust-cloud-drift" aria-hidden
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, visibility: ready ? 'visible' : 'hidden' }} />

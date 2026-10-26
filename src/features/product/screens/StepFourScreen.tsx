@@ -57,7 +57,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
             }
           }}
           hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: heroHeight }}>
-            <Art kind="grounding-here" height={heroHeight} active={active && focused} reducedMotion={reducedMotion} />
+            <Art kind="grounding-hero" height={heroHeight} active={active && focused} reducedMotion={reducedMotion} />
           </Reveal>}>
           {reading => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 4. ЗАЗЕМЛЕНИЕ" background="clear" expanded={open} onSelect={() => setOpen(value => !value)}

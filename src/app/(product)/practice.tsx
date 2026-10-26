@@ -5,6 +5,7 @@ import { ObservationFlow } from '../../features/product/ObservationFlow';
 import { useProduct } from '../../features/product/state/ProductProvider';
 import { canOpenFourthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
 import { ProductText, ScreenTransition } from '../../features/product/ui';
+import { stepThreePractice } from '../../features/product/stepThreePractice';
 
 export default function Practice() {
   const { progress, settings, updateProgress, completeSecondStep, error } = useProduct();
@@ -26,7 +27,16 @@ export default function Practice() {
   async function previousStep() {
     setReturnToEnd(true);
     try {
-      await updateProgress({ step: !previewing && progress.step >= 3 ? progress.step - 1 : 1, questionIndex: 3, practiceStage: progress.step === 4 ? 0 : 4 });
+      await updateProgress({
+        step: !previewing && progress.step >= 3 ? progress.step - 1 : 1,
+        questionIndex: 3,
+        practiceStage: progress.step === 4 ? 0 : 4,
+        // A backwards boundary crossing enters the end of the previous step,
+        // independently of whichever Step 3 bookmark was saved before it.
+        ...(!previewing && progress.step === 4 ? {
+          stepThreeReading: { chapter: 1 as const, page: stepThreePractice.length - 1, offset: 0, paged: true },
+        } : {}),
+      });
       if (previewing) router.replace({ pathname: '/practice', params: { entry: 'end' } });
     } catch { /* The provider reports persistence errors. */ }
   }

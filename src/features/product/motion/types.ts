@@ -11,7 +11,7 @@ export type StepThreeArtKind = 'thought-loop' | 'spoken-thought' | 'voice-origin
 export type StepFourArtKind = 'grounding-here' | 'grounding-drift' | 'grounding-trace' | 'grounding-contact' | 'grounding-voice' | 'grounding-persona' | 'grounding-signal' | 'grounding-presence';
 export type PracticeArtKind = 'practice-room' | 'practice-father' | 'practice-listening' | 'practice-trinity' | 'practice-awareness' | 'practice-thread' | 'home-shade';
 export type StepTwoTaskArtKind = 'hero-discernment' | 'life-book' | 'body-breath' | 'body-senses' | 'author-intention';
-export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind | StepFourArtKind;
+export type ArtKind = 'distance' | 'cells' | 'diary' | 'basic' | 'intensive' | 'guidance' | 'parallel' | 'comparison' | 'attention' | 'crowd' | 'gallery' | 'mirror' | 'voice-presence' | 'grounding-hero' | 'voice' | 'insight' | 'glass' | 'rain' | 'book' | 'reflections' | 'single-hero' | DreamArtKind | StepOneArtKind | StepTwoTaskArtKind | StepThreeArtKind | PracticeArtKind | StepFourArtKind;
 export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWith('dream');
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
@@ -50,6 +50,7 @@ export type ArtProps = {
 };
 export const artLabels: Record<ArtKind, string> = {
   'grounding-here': 'Сидящий человек у окна ощущает вес тела и опору ступней',
+  'grounding-hero': 'Световой человек сидит в матричном пространстве, обе ступни опираются на пол',
   'grounding-drift': 'Над телом движется сеть мыслей, внимание возвращается к опоре',
   'grounding-contact': 'Свет проходит через тело к ступням, плоскость пола становится ощутимой',
   'grounding-voice': 'Голос рождается из дыхания, человек слышит собственное состояние',

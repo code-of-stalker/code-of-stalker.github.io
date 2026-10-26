@@ -1027,6 +1027,7 @@ impl ProductRenderer {
             "gallery" => raster_gpu::Kind::Gallery,
             "mirror" => raster_gpu::Kind::Mirror,
             "voice-presence" => raster_gpu::Kind::VoicePresence,
+            "grounding-hero" => raster_gpu::Kind::GroundingHero,
             _ => return Err(err("Unknown raster scene")),
         };
         let mut raster = raster_gpu::RasterGpu::new(

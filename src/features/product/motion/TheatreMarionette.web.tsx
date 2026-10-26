@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useIsFocused } from 'expo-router';
+import { useThemeColors } from '../ProductTheme';
 import { useEffectsController } from './EffectsQuality';
 import { artworkBufferLayout, qualityDensity } from './effectQuality';
 import { observeMotionVisibility } from './motion-visibility.web';
@@ -10,6 +11,7 @@ type Renderer = {
   reduced(value: boolean): void; resize(width: number, height: number): void;
   frame(at: number): void; elapsed(): number; seek(seconds: number): void;
   frame_count(): number; gpu_error(): number; suspend(): void; dispose(): void; free(): void;
+  backdrop(red: number, green: number, blue: number): void;
 };
 type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
@@ -19,10 +21,10 @@ const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
  * frames; Rust owns the rig, lighting, parallax and half-speed rain. */
 export function TheatreMarionette(props: ArtProps) {
-  const controller = useEffectsController(), focused = useIsFocused();
+  const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
-  const latest = useRef({ props, focused }), [ready, setReady] = useState(false);
-  useLayoutEffect(() => { latest.current = { props, focused }; sync.current(); });
+  const latest = useRef({ props, focused, background: colors.background }), [ready, setReady] = useState(false);
+  useLayoutEffect(() => { latest.current = { props, focused, background: colors.background }; sync.current(); });
   useEffect(() => {
     const output = outputRef.current;
     if (!output || !controller) return;
@@ -77,6 +79,8 @@ export function TheatreMarionette(props: ArtProps) {
       const active = playing(), running = active && !latest.current.props.reducedMotion && !!renderer;
       controller.activity(id, active && !!renderer, running);
       if (renderer) {
+        const background = latest.current.background;
+        renderer.backdrop(...[1, 3, 5].map(start => parseInt(background.slice(start, start + 2), 16) / 255) as [number, number, number]);
         const nextReduced = !!latest.current.props.reducedMotion;
         if (nextReduced !== reduced) { renderer.reduced(nextReduced); reduced = nextReduced; }
         if (running && !removeJob) { renderer.suspend(); removeJob = controller.frameJob(tick); output.dataset.running = 'true'; report(); }

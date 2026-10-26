@@ -8,6 +8,8 @@ uniform float u_light;
 uniform float u_environment;
 uniform vec4 u_beams[3];
 uniform vec4 u_haze;
+uniform vec4 u_edge_widths;
+uniform vec4 u_backdrop;
 out vec4 out_color;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){
@@ -32,6 +34,14 @@ float beams(vec2 p){
 }
 void main() {
     vec2 screen=v_position/vec2(1536.0,1024.0);
+    if(u_kind>4.5){
+        // Composite after every scene layer, so rain and light cannot reveal
+        // the rectangular boundary. Widths are independent of buffer density.
+        vec4 distances=vec4(screen.x,1.0-screen.x,screen.y,1.0-screen.y);
+        vec4 fade=smoothstep(vec4(0.0),u_edge_widths,distances);
+        out_color=vec4(u_backdrop.rgb,1.0-fade.x*fade.y*fade.z*fade.w);
+        return;
+    }
     // Foreground is a separate, transparent bank of stage haze. Its field
     // translations and radiance arrive from Rust, just like the light targets.
     if(u_kind>3.5){

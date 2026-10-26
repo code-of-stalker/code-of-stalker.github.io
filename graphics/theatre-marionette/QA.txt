@@ -55,3 +55,11 @@ Assets: original artwork SHA-256 2331232219E83B53EC8A1BFA67C9D2C213B7D6E5B40B605
 WASM SHA-256 C1715DDD159FA0A4CE4AFC74BD034342F046E578433E27986A6390497421DE87.
 Native retains its existing scene. Physical Android/iOS, context-loss recovery and on-device reduced-motion acceptance are not validated in this integration.
 The previous MP4 remains the v2 reference; no new MP4 is claimed by this web release.
+
+2026-10-26 — Soft scene edges and Home card repair
+Web inline CloudDrift no longer intercepts the Home card adapter. After Step 4, the Architecture card completes its Rust scanner reveal and retains its button hit area.
+The theatre image shader composites a smooth page-color fade after all artwork, lighting, strings and rain. It also applies to reduced-motion output; density and resize do not change its proportions. No new textures or framebuffers are allocated.
+Verified: 12 existing motion tests, Rustfmt, host/WASM Clippy with warnings denied, release WASM, Expo lint, TypeScript and production export.
+Browser: production export in Chromium, normal desktop and 375x812. Home card visible with completed mask and working click into practice. Page 03/15 has soft edges on all four sides; resize continues elapsed time, GPU error 0, no console errors. Physical phones/tablets and performance were not measured in this check.
+WASM SHA-256 F4645E56CE82661DB520EC8D6952758EEB61CA67C43B776E53B617C0AE9E5ACC.
+Original artwork and motion/rain speed unchanged.

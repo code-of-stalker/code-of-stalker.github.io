@@ -95,6 +95,10 @@ pub struct Marionette {
     environment: Option<WebGlUniformLocation>,
     beams: Option<WebGlUniformLocation>,
     haze: Option<WebGlUniformLocation>,
+    edge_widths: Option<WebGlUniformLocation>,
+    backdrop_uniform: Option<WebGlUniformLocation>,
+    soft_edges: bool,
+    backdrop: [f32; 4],
     points: Vec<[f32; 2]>,
     mesh_data: Vec<f32>,
     line_data: Vec<f32>,
@@ -153,6 +157,8 @@ impl Marionette {
         let environment = gl.get_uniform_location(&image, "u_environment");
         let beams = gl.get_uniform_location(&image, "u_beams[0]");
         let haze = gl.get_uniform_location(&image, "u_haze");
+        let edge_widths = gl.get_uniform_location(&image, "u_edge_widths");
+        let backdrop_uniform = gl.get_uniform_location(&image, "u_backdrop");
         const COLS: usize = 68;
         const ROWS: usize = 88;
         let mut points = Vec::with_capacity((COLS + 1) * (ROWS + 1));
@@ -227,6 +233,10 @@ impl Marionette {
             environment,
             beams,
             haze,
+            edge_widths,
+            backdrop_uniform,
+            soft_edges: false,
+            backdrop: [0.0, 0.0, 0.0, 1.0],
             points,
             mesh_data,
             line_data: Vec::with_capacity(8000),
@@ -308,6 +318,29 @@ impl Marionette {
     pub fn atmosphere(&mut self, enabled: bool) {
         self.atmosphere_enabled = enabled;
         self.draw();
+    }
+    /// Embed the entire scene into the surrounding page, without changing its
+    /// choreography or rebuilding any GPU resources.
+    pub fn soft_edges(&mut self, enabled: bool) {
+        if self.soft_edges != enabled {
+            self.soft_edges = enabled;
+            self.draw();
+        }
+    }
+    pub fn backdrop(&mut self, red: f32, green: f32, blue: f32) {
+        if ![red, green, blue].iter().all(|value| value.is_finite()) {
+            return;
+        }
+        let color = [
+            red.clamp(0.0, 1.0),
+            green.clamp(0.0, 1.0),
+            blue.clamp(0.0, 1.0),
+            1.0,
+        ];
+        if self.backdrop != color {
+            self.backdrop = color;
+            self.draw();
+        }
     }
     pub fn frame_count(&self) -> u32 {
         self.frames
@@ -576,6 +609,19 @@ impl Marionette {
             } else {
                 self.draw_particles(&f, false);
             }
+            self.gl.disable(Gl::BLEND);
+        }
+        if self.soft_edges {
+            self.gl.use_program(Some(&self.image));
+            // Left, right, top, bottom: preserve the central heroine while
+            // letting the floor reflection fade gently into the page.
+            self.gl
+                .uniform4f(self.edge_widths.as_ref(), 0.12, 0.12, 0.14, 0.18);
+            self.gl
+                .uniform4fv_with_f32_array(self.backdrop_uniform.as_ref(), &self.backdrop);
+            self.gl.enable(Gl::BLEND);
+            self.gl.blend_func(Gl::SRC_ALPHA, Gl::ONE_MINUS_SRC_ALPHA);
+            self.quad(0, 5.0, 1.0);
             self.gl.disable(Gl::BLEND);
         }
         self.gl.disable_vertex_attrib_array(0);

@@ -17,6 +17,14 @@ export class Marionette {
     atmosphere(enabled) {
         wasm.marionette_atmosphere(this.__wbg_ptr, enabled);
     }
+    /**
+     * @param {number} red
+     * @param {number} green
+     * @param {number} blue
+     */
+    backdrop(red, green, blue) {
+        wasm.marionette_backdrop(this.__wbg_ptr, red, green, blue);
+    }
     dispose() {
         wasm.marionette_dispose(this.__wbg_ptr);
     }
@@ -100,6 +108,14 @@ export class Marionette {
      */
     seek(seconds) {
         wasm.marionette_seek(this.__wbg_ptr, seconds);
+    }
+    /**
+     * Embed the entire scene into the surrounding page, without changing its
+     * choreography or rebuilding any GPU resources.
+     * @param {boolean} enabled
+     */
+    soft_edges(enabled) {
+        wasm.marionette_soft_edges(this.__wbg_ptr, enabled);
     }
     /**
      * @param {number} value

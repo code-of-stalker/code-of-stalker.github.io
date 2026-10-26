@@ -11,5 +11,7 @@ export async function mount(canvas) {
   resources ??= Promise.all([init(), image('original'), image('background'), image('heroine')])
     .catch(error => { resources = undefined; throw error; });
   const [, source, background, heroine] = await resources;
-  return new Marionette(canvas, source, background, heroine);
+  const renderer = new Marionette(canvas, source, background, heroine);
+  renderer.soft_edges(true);
+  return renderer;
 }

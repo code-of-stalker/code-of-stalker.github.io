@@ -174,3 +174,9 @@ generated binary during conflict resolution.
   the light palette (alpha unchanged) and derives a quiet light frame without
   code, rings, voice or figure. Rings, waves, code rain and contact light are
   drawn as amber ink; the light scenes fade into the page instead of black.
+- Glasses scene, Art's notes 2026-10-26: in Дюна the ruins behind her sit on
+  the page's own yellow. The background layer is multiplied by page over the
+  painting's pale sky (`PAPER`), weighted toward the light tones and divided by
+  the bloom that adds light on top, so the sky lands on the page color; she
+  keeps her painted colors and there is no dark vignette. The edge fade into
+  the page is half as wide in every theme (`EDGES`).

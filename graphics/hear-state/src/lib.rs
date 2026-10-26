@@ -1,8 +1,10 @@
 //! «Услышь своё состояние»: Step 4, page 05/15. A seated, grounded person
-//! breathes in and speaks aloud. The voice is born inside, from a state:
-//! where it starts in the body, how far the breath reaches, how it trembles,
-//! flattens, thins out or repeats. It resonates in the chest, throat and head,
-//! the person hears it, and only then the state is noticed and named.
+//! breathes in and speaks aloud; the voice goes calmly into the room and the
+//! person hears it, outside and within. Then the page asks one word at a
+//! time — «Есть ли в нём уверенность? тревога? маска? отсутствие?
+//! автоматизм?» — and for each word a slow scan passes through the whole
+//! body, crown to soles. The scene never shows where a state lives: the
+//! person feels it and answers for themselves.
 //!
 //! Everything that moves is computed here, as pure functions of the loop
 //! time. The browser adapter only uploads the values and the shaders only
@@ -10,46 +12,51 @@
 #[cfg(target_arch = "wasm32")]
 mod browser;
 pub mod geometry;
+pub mod silhouette;
 
 use std::f32::consts::TAU;
 use watcher_scene_palette::Palette;
 
 /// Authored frame, 3 : 2 like the other Step 4 scenes.
 pub const SIZE: [f32; 2] = [1536.0, 1024.0];
-/// One spoken phrase: inhale, speech, listening, noticing, settle.
-pub const PHRASE: f32 = 9.6;
+/// One word: inhale, speak, listen, the question, the scan, settle.
+pub const PHRASE: f32 = 11.2;
 pub const PHRASES: usize = 5;
-/// The five states of the page text, one phrase each: a seamless 48 s loop.
+/// The five words of the page text, one each: a seamless 56 s loop.
 pub const LOOP_SECONDS: f32 = PHRASE * PHRASES as f32;
-/// Reduced motion holds this moment: a grounded voice, heard and named.
-pub const STILL: f32 = 7.0;
 
 /// The page asks: «Есть ли в нём уверенность, тревога, маска, отсутствие,
-/// автоматизм?» — in this order.
+/// автоматизм?» — in this order, one word per phrase.
 pub const STATES: [&str; 5] = [
-    "УВЕРЕННОСТЬ",
-    "ТРЕВОГА",
-    "МАСКА",
-    "ОТСУТСТВИЕ",
-    "АВТОМАТИЗМ",
+    "УВЕРЕННОСТЬ?",
+    "ТРЕВОГА?",
+    "МАСКА?",
+    "ОТСУТСТВИЕ?",
+    "АВТОМАТИЗМ?",
 ];
 /// Measured ink of each row in `labels.png` (x0, x1), rows are 128 px: the
-/// five states, then the question.
+/// five words, then the words that ask.
 pub const LABEL_INK: [[f32; 2]; 6] = [
+    [214.0, 803.0],
+    [315.0, 702.0],
+    [366.0, 651.0],
     [239.0, 778.0],
-    [340.0, 677.0],
-    [391.0, 626.0],
-    [264.0, 752.0],
-    [264.0, 753.0],
-    [11.0, 1006.0],
+    [239.0, 778.0],
+    [190.0, 828.0],
 ];
 pub const ATLAS_HEIGHT: f32 = 768.0;
 /// Label row band in the atlas (top, bottom); the caps are 44 px tall.
-pub const LABEL_ROW: [f32; 2] = [26.0, 98.0];
+pub const LABEL_ROW: [f32; 2] = [22.0, 98.0];
+/// The row of «ЕСТЬ ЛИ В НЁМ».
+pub const QUESTION: usize = 5;
 
-/// Speed of the voice in the room and of its resonance in the body.
-pub const VOICE_SPEED: f32 = 3.0;
-pub const BODY_SPEED: f32 = 0.6;
+/// The voice in the room: slow, and only a few fronts per phrase.
+pub const VOICE_SPEED: f32 = 2.2;
+pub const REACH: f32 = 8.0;
+/// Syllables per phrase; a front leaves on every other one.
+pub const SYLLABLES: usize = 6;
+/// The scan, crown to soles, in seconds.
+pub const SCAN_SECONDS: f32 = 3.6;
 
 /// The approved seated figure on the plane z = 0, feet on the floor.
 /// Its rectangle in world units: x0, y0 (floor), width, height.
@@ -66,145 +73,13 @@ pub const fn on_figure(x: f32, y: f32) -> [f32; 3] {
 pub const MOUTH: [f32; 3] = on_figure(131.0, 87.0);
 pub const EAR: [f32; 3] = on_figure(78.0, 50.0);
 pub const FEET: [f32; 3] = on_figure(262.0, 518.0);
-/// The shell of the mask in front of the face: center and radii (SVG px).
-pub const SHELL: [f32; 4] = [112.0, 70.0, 34.0, 52.0];
-/// Where a masked voice leaves: the front of the shell at the lips.
-pub const SHELL_FRONT: [f32; 3] = on_figure(146.0, 86.0);
-/// Caption row in the atlas, after the five states.
-pub const QUESTION: usize = 5;
-pub const QUESTION_TEXT: &str = "ИЗ КАКОГО СОСТОЯНИЯ?";
-/// The inner axis the breath travels and the voice rises along: nose and
-/// lips, throat, chest, belly, pelvis on the seat, thigh, knee, shin, sole.
-pub const CHANNEL: [[f32; 2]; 9] = [
-    [124.0, 84.0],
-    [98.0, 124.0],
-    [86.0, 176.0],
-    [86.0, 232.0],
-    [84.0, 290.0],
-    [168.0, 298.0],
-    [232.0, 302.0],
-    [242.0, 405.0],
-    [252.0, 505.0],
-];
-/// The point `at` (0 = lips … 8 = sole) along the inner axis, in world units.
-pub fn channel(at: f32) -> [f32; 3] {
-    let at = at.clamp(0.0, (CHANNEL.len() - 1) as f32);
-    let i = (at.floor() as usize).min(CHANNEL.len() - 2);
-    let t = at - i as f32;
-    let [a, b] = [CHANNEL[i], CHANNEL[i + 1]];
-    on_figure(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
-}
-
-/// How one state sounds and where it lives in the body.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Mood {
-    pub syllables: usize,
-    pub start: f32,
-    pub spacing: f32,
-    /// Irregular timing, 0..1 of the spacing.
-    pub jitter: f32,
-    pub amp: [f32; 2],
-    pub length: f32,
-    pub loud: f32,
-    /// Where the voice starts on the inner axis (0 lips … 3 belly).
-    pub source: f32,
-    /// How deep the inhale reaches (8 = down to the soles).
-    pub depth: f32,
-    /// Trembling, a flat clipped mask, a hollow middle, machine repetition.
-    pub tremor: f32,
-    pub clip: f32,
-    pub hollow: f32,
-    pub rigid: f32,
-    /// How far the voice carries into the room.
-    pub reach: f32,
-}
-pub const MOODS: [Mood; 5] = [
-    // Уверенность: from the belly, full breath down to the feet, even.
-    Mood {
-        syllables: 7,
-        start: 1.8,
-        spacing: 0.46,
-        jitter: 0.08,
-        amp: [0.82, 1.0],
-        length: 0.34,
-        loud: 1.0,
-        source: 2.6,
-        depth: 8.0,
-        tremor: 0.0,
-        clip: 0.0,
-        hollow: 0.0,
-        rigid: 0.0,
-        reach: 10.0,
-    },
-    // Тревога: from the throat, a shallow breath, fast and trembling.
-    Mood {
-        syllables: 12,
-        start: 1.75,
-        spacing: 0.26,
-        jitter: 0.35,
-        amp: [0.35, 0.95],
-        length: 0.15,
-        loud: 0.85,
-        source: 1.0,
-        depth: 1.4,
-        tremor: 1.0,
-        clip: 0.0,
-        hollow: 0.0,
-        rigid: 0.0,
-        reach: 7.0,
-    },
-    // Маска: made at the face, through a shell; even and flat.
-    Mood {
-        syllables: 8,
-        start: 1.8,
-        spacing: 0.4,
-        jitter: 0.0,
-        amp: [0.7, 0.72],
-        length: 0.3,
-        loud: 0.75,
-        source: 0.35,
-        depth: 1.8,
-        tremor: 0.0,
-        clip: 1.0,
-        hollow: 0.0,
-        rigid: 0.0,
-        reach: 8.0,
-    },
-    // Отсутствие: barely breathed, faint, with nobody inside.
-    Mood {
-        syllables: 5,
-        start: 2.0,
-        spacing: 0.62,
-        jitter: 0.25,
-        amp: [0.2, 0.36],
-        length: 0.3,
-        loud: 0.55,
-        source: 2.0,
-        depth: 0.8,
-        tremor: 0.0,
-        clip: 0.0,
-        hollow: 1.0,
-        rigid: 0.0,
-        reach: 4.5,
-    },
-    // Автоматизм: identical syllables on a metronome, from the throat.
-    Mood {
-        syllables: 9,
-        start: 1.8,
-        spacing: 0.38,
-        jitter: 0.0,
-        amp: [0.68, 0.68],
-        length: 0.2,
-        loud: 0.72,
-        source: 1.2,
-        depth: 1.6,
-        tremor: 0.0,
-        clip: 0.0,
-        hollow: 0.0,
-        rigid: 1.0,
-        reach: 8.0,
-    },
-];
+pub const THROAT: [f32; 3] = on_figure(98.0, 124.0);
+/// The breath goes in at the nose and settles low in the belly.
+pub const NOSE: [f32; 3] = on_figure(124.0, 80.0);
+pub const BELLY: [f32; 3] = on_figure(86.0, 240.0);
+/// Crown and soles in the figure's texture (0 top … 1 bottom).
+pub const CROWN: f32 = 0.025;
+pub const SOLES: f32 = 0.985;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera {
@@ -233,15 +108,12 @@ impl Camera {
     }
 }
 
-/// One spherical front of the voice in the room, or a ring of resonance
-/// inside the body.
+/// One spherical front of the voice in the room.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Wave {
     pub origin: [f32; 3],
     pub radius: f32,
     pub strength: f32,
-    pub mood: usize,
-    pub inner: bool,
 }
 
 /// All motion of one instant.
@@ -249,28 +121,26 @@ pub struct Wave {
 pub struct Frame {
     pub time: f32,
     pub camera: Camera,
-    /// The state of the current phrase.
-    pub mood: usize,
+    /// The word of the current phrase.
+    pub word: usize,
     /// Loudness at the lips, 0..1.
     pub voice: f32,
     /// Phase of the carrier inside the voice (for the ribbon).
     pub carrier: f32,
     pub breath: f32,
-    /// The inhale: the light's place on the inner axis and its alpha.
+    /// The inhale: 0 nose … 1 belly, and its alpha.
     pub inhale: [f32; 2],
-    /// Where the voice starts on the inner axis and how much it glows.
-    pub source: [f32; 2],
-    /// The voice rising from its source to the lips, 0..1.
-    pub rising: f32,
-    /// Light in the soles and on the floor: a voice from the ground.
-    pub ground: f32,
-    /// Hearing oneself: the sound around the head and inside it.
+    /// Hearing oneself: the sound at the ear and from within.
     pub heard: f32,
     pub listening: f32,
-    /// The state noticed and named, 0..1.
-    pub noticed: f32,
-    /// The shell in front of the face (Маска), 0..1.
-    pub mask: f32,
+    /// The question «ЕСТЬ ЛИ В НЁМ … ?», 0..1.
+    pub asked: f32,
+    /// The scan: crown 0 … soles 1, and its alpha.
+    pub scan: [f32; 2],
+    /// What the scan has passed stays a little more present.
+    pub felt: f32,
+    /// The scan has reached the soles: contact with the floor.
+    pub ground: f32,
     pub waves: Vec<Wave>,
     /// Ambient lift of the room while the voice sounds.
     pub ambient: f32,
@@ -299,20 +169,20 @@ pub struct Syllable {
     pub amp: f32,
     pub length: f32,
 }
-/// The syllables of one phrase, shaped by its state.
-pub fn syllables(phrase: usize) -> Vec<Syllable> {
-    let m = &MOODS[phrase % PHRASES];
-    (0..m.syllables)
-        .map(|j| {
-            let seed = (phrase * 31 + j * 7) as u32;
-            let shift = (hash(seed + 211) - 0.5) * m.jitter * m.spacing;
-            Syllable {
-                at: m.start + j as f32 * m.spacing + if j == 0 { 0.0 } else { shift },
-                amp: m.amp[0] + (m.amp[1] - m.amp[0]) * hash(seed),
-                length: m.length * (0.85 + 0.3 * hash(seed + 101) * (1.0 - m.rigid)),
-            }
-        })
-        .collect()
+/// An ordinary spoken phrase, a little different each time: two short
+/// groups of three syllables.
+pub fn syllables(phrase: usize) -> [Syllable; SYLLABLES] {
+    let mut at = 1.8;
+    std::array::from_fn(|j| {
+        let seed = (phrase * 31 + j * 7) as u32;
+        let s = Syllable {
+            at,
+            amp: 0.55 + 0.3 * hash(seed),
+            length: 0.26 + 0.1 * hash(seed + 101),
+        };
+        at += 0.36 + 0.1 * hash(seed + 211) + if j == 2 { 0.28 } else { 0.0 };
+        s
+    })
 }
 /// Loudness of one phrase at its local time.
 pub fn envelope(phrase: usize, local: f32) -> f32 {
@@ -322,66 +192,69 @@ pub fn envelope(phrase: usize, local: f32) -> f32 {
             s.amp
                 * bell(
                     local,
-                    s.at - 0.05,
-                    s.at + 0.06,
+                    s.at - 0.06,
+                    s.at + 0.08,
                     s.at + s.length * 0.5,
                     s.at + s.length,
                 )
         })
         .fold(0.0, f32::max)
-        * MOODS[phrase % PHRASES].loud
 }
-/// Where in time the phrase speaks: (first syllable, end of the last).
-pub fn speech(phrase: usize) -> (f32, f32) {
+/// (first syllable, end of the last, start of the scan) of one phrase.
+pub fn timing(phrase: usize) -> (f32, f32, f32) {
     let s = syllables(phrase);
-    let last = s.last().map_or(0.0, |s| s.at + s.length);
-    (s[0].at, last)
+    let last = s[SYLLABLES - 1].at + s[SYLLABLES - 1].length;
+    (s[0].at, last, last + 1.4)
+}
+/// Reduced motion holds this moment: the first word asked, the scan at the
+/// chest.
+pub fn still() -> f32 {
+    timing(0).2 + 1.2
 }
 
 /// Contributions of one phrase whose own clock reads `local` (may exceed the
 /// phrase: its voice keeps sounding into the next one).
 fn phrase(f: &mut Frame, index: usize, local: f32) {
-    let m = &MOODS[index];
-    let (first, last) = speech(index);
-    for s in syllables(index) {
+    let (first, last, scan) = timing(index);
+    for s in syllables(index).iter().step_by(2) {
         let age = local - s.at;
-        if age <= 0.0 {
-            continue;
-        }
         let radius = age * VOICE_SPEED;
-        if radius < m.reach {
-            let strength =
-                s.amp * m.loud * smooth(0.0, 0.2, radius) * (1.0 - radius / m.reach).powf(1.3);
+        if age > 0.0 && radius < REACH {
             f.waves.push(Wave {
-                origin: if m.clip > 0.5 { SHELL_FRONT } else { MOUTH },
+                origin: MOUTH,
                 radius,
-                strength,
-                mood: index,
-                inner: false,
-            });
-        }
-        // The same syllable resonates inside, around its source.
-        let inner = age * BODY_SPEED;
-        let span = 0.45 + 0.3 * (1.0 - m.hollow);
-        if inner < span {
-            f.waves.push(Wave {
-                origin: channel(m.source),
-                radius: inner,
-                strength: s.amp * m.loud * (1.0 - inner / span) * smooth(0.0, 0.08, inner),
-                mood: index,
-                inner: true,
+                strength: 0.8
+                    * s.amp
+                    * smooth(0.0, 0.25, radius)
+                    * (1.0 - radius / REACH).powf(1.5),
             });
         }
     }
-    let speaking = bell(local, first - 0.5, first + 0.2, last, last + 1.0);
-    f.source[1] += speaking * m.loud * (1.0 - 0.55 * m.hollow);
-    f.rising += speaking;
-    f.ground += bell(local, 1.0, 2.2, last + 2.0, last + 3.6) * smooth(3.0, 8.0, m.depth);
-    f.inhale[1] += bell(local, 0.1, 0.5, 1.6, 2.3);
-    f.listening += bell(local, first + 0.3, first + 1.0, last + 1.2, last + 2.6);
-    f.noticed += bell(local, last + 0.9, last + 1.7, 8.4, 9.3);
-    f.mask += m.clip * bell(local, 0.7, 1.5, last + 0.8, last + 2.2);
-    f.ambient += m.loud * bell(local, first, first + 0.6, last, last + 1.8);
+    f.inhale[1] += bell(local, 0.1, 0.5, 1.7, 2.4);
+    f.listening += bell(local, first + 0.3, first + 1.0, last + 0.8, last + 2.0);
+    f.asked += bell(
+        local,
+        last + 0.4,
+        last + 1.2,
+        scan + SCAN_SECONDS + 0.4,
+        scan + SCAN_SECONDS + 1.3,
+    );
+    let t = ((local - scan) / SCAN_SECONDS).clamp(0.0, 1.0);
+    let alpha = bell(
+        local,
+        scan - 0.2,
+        scan + 0.3,
+        scan + SCAN_SECONDS - 0.2,
+        scan + SCAN_SECONDS + 0.3,
+    );
+    if alpha > f.scan[1] {
+        // Mostly even speed, easing a little at both ends.
+        f.scan = [0.7 * t + 0.3 * t * t * (3.0 - 2.0 * t), alpha];
+    }
+    let end = scan + SCAN_SECONDS;
+    f.felt += bell(local, scan + 0.4, scan + 1.4, end + 0.6, end + 1.5);
+    f.ground += bell(local, end - 0.4, end + 0.1, end + 0.6, end + 1.5);
+    f.ambient += bell(local, first, first + 0.6, last, last + 1.8);
 }
 
 /// The whole choreography at `seconds` (wrapped to the loop).
@@ -394,37 +267,33 @@ pub fn compose(seconds: f32) -> Frame {
     let index = ((time / PHRASE) as usize).min(PHRASES - 1);
     let local = time - index as f32 * PHRASE;
     let previous = (index + PHRASES - 1) % PHRASES;
-    let m = &MOODS[index];
-    // The ear hears the lips a moment later.
     let heard = envelope(index, local - 0.12).max(envelope(previous, local + PHRASE - 0.12));
     let mut f = Frame {
         time,
         camera: camera(time, local),
-        mood: index,
+        word: index,
         voice: envelope(index, local).max(envelope(previous, local + PHRASE)),
-        carrier: time * 9.0,
+        // 36 turns per loop (about 4 rad/s), so the ribbon has no seam.
+        carrier: time / LOOP_SECONDS * 36.0 * TAU,
         breath: 0.5 - 0.5 * (local / PHRASE * TAU).cos(),
-        inhale: [smooth(0.2, 1.7, local) * m.depth, 0.0],
-        source: [m.source, 0.0],
-        rising: 0.0,
-        ground: 0.0,
+        inhale: [smooth(0.2, 1.8, local), 0.0],
         heard,
         listening: 0.0,
-        noticed: 0.0,
-        mask: 0.0,
-        waves: Vec::with_capacity(32),
+        asked: 0.0,
+        scan: [0.0; 2],
+        felt: 0.0,
+        ground: 0.0,
+        waves: Vec::with_capacity(8),
         ambient: 0.0,
     };
     phrase(&mut f, previous, local + PHRASE);
     phrase(&mut f, index, local);
     for v in [
         &mut f.inhale[1],
-        &mut f.source[1],
-        &mut f.rising,
-        &mut f.ground,
         &mut f.listening,
-        &mut f.noticed,
-        &mut f.mask,
+        &mut f.asked,
+        &mut f.felt,
+        &mut f.ground,
         &mut f.ambient,
         &mut f.heard,
         &mut f.voice,
@@ -438,12 +307,12 @@ pub fn compose(seconds: f32) -> Frame {
 /// Every term is periodic in the loop, so the seam is invisible.
 pub fn camera(time: f32, local: f32) -> Camera {
     let w = time / LOOP_SECONDS * TAU;
-    let push = bell(local, 1.2, 4.6, 6.6, 9.5);
+    let push = bell(local, 1.2, 4.8, 8.0, 11.0);
     Camera {
         eye: [
-            0.14 * w.sin() + 0.05 * (3.0 * w).sin(),
-            1.652 + 0.04 * (2.0 * w).sin(),
-            -3.95 + 0.2 * push,
+            0.12 * w.sin() + 0.04 * (3.0 * w).sin(),
+            1.652 + 0.035 * (2.0 * w).sin(),
+            -3.95 + 0.16 * push,
         ],
         focal: 1000.0,
         center: [SIZE[0] * 0.5, SIZE[1] * 0.5],
@@ -526,10 +395,10 @@ mod tests {
                 (x.voice, y.voice),
                 (x.heard, y.heard),
                 (x.ambient, y.ambient),
-                (x.noticed, y.noticed),
-                (x.mask, y.mask),
+                (x.asked, y.asked),
+                (x.felt, y.felt),
                 (x.ground, y.ground),
-                (x.source[1], y.source[1]),
+                (x.scan[1], y.scan[1]),
                 (x.inhale[1], y.inhale[1]),
                 (x.listening, y.listening),
             ] {
@@ -542,50 +411,52 @@ mod tests {
     }
 
     #[test]
-    fn every_state_speaks_then_is_heard_then_named() {
+    fn every_word_is_spoken_heard_asked_then_scanned() {
         for p in 0..PHRASES {
-            let (first, last) = speech(p);
-            assert!(first > 1.6 && last < 5.8, "phrase {p}: {first}..{last}");
+            let (first, last, scan) = timing(p);
+            assert!(first > 1.6 && last < 5.2, "phrase {p}: {first}..{last}");
+            assert!(scan + SCAN_SECONDS + 1.5 < PHRASE, "phrase {p} ends late");
             let at = |local: f32| compose(p as f32 * PHRASE + local);
             assert!(at(first + 0.05).voice > 0.1);
             assert!(at(last + 0.5).listening > 0.5);
-            assert!(at(last + 2.2).noticed > 0.95);
-            assert!(at(0.05).noticed < 0.05 && at(0.05).voice < 0.05);
+            // The question stands for the whole scan.
+            for k in 0..=10 {
+                let f = at(scan + 0.3 + k as f32 * 0.3);
+                assert!(f.asked > 0.95 && f.scan[1] > 0.9 && f.word == p);
+            }
+            // The scan goes down, crown to soles, and reaches the floor.
+            assert!(at(scan + 0.5).scan[0] < at(scan + 2.0).scan[0]);
+            assert!(at(scan + SCAN_SECONDS).scan[0] > 0.99);
+            assert!(at(scan + SCAN_SECONDS + 0.3).ground > 0.9);
+            assert!(at(0.05).asked < 0.05 && at(0.05).voice < 0.05);
         }
     }
 
     #[test]
-    fn states_differ_where_the_text_says() {
-        let confident = &MOODS[0];
-        // Only a grounded, confident voice reaches the feet.
-        assert!(confident.depth > 7.0 && MOODS[1..].iter().all(|m| m.depth < 2.0));
-        assert!(compose(STILL).ground > 0.9 && compose(PHRASE + STILL).ground < 0.05);
-        // Anxiety is quicker, absence quieter, automatism perfectly even.
-        assert!(MOODS[1].spacing < confident.spacing && MOODS[3].loud < 0.6);
-        let auto = syllables(4);
-        assert!(auto
-            .windows(2)
-            .all(|w| (w[1].at - w[0].at - MOODS[4].spacing).abs() < 1e-5));
-        assert!(auto.iter().all(|s| (s.amp - auto[0].amp).abs() < 1e-5));
-        // Only the mask builds the shell.
-        assert!(compose(2.0 * PHRASE + 3.0).mask > 0.9 && compose(3.0).mask == 0.0);
+    fn the_voice_is_calm_and_sparse() {
+        // Three fronts per phrase at most, never a crowd.
+        for i in 0..5600 {
+            let f = compose(i as f32 * 0.01);
+            assert!(f.waves.len() <= 4, "{} fronts at {}", f.waves.len(), f.time);
+        }
     }
 
     #[test]
     fn values_stay_finite_and_bounded() {
-        for i in 0..4800 {
+        for i in 0..5600 {
             let f = compose(i as f32 * 0.01);
             for v in [
                 f.voice,
                 f.heard,
                 f.breath,
                 f.ambient,
-                f.noticed,
-                f.mask,
+                f.asked,
+                f.felt,
                 f.ground,
-                f.rising,
                 f.listening,
-                f.source[1],
+                f.scan[0],
+                f.scan[1],
+                f.inhale[0],
                 f.inhale[1],
             ] {
                 assert!(v.is_finite() && (0.0..=1.0).contains(&v));

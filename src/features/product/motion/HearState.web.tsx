@@ -135,7 +135,7 @@ export function HearState(props: ArtProps) {
     };
   }, [controller]);
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    <div role="img" aria-label="Сидящий человек говорит вслух: голос волнами уходит в глубину комнаты, касается одного из состояний — уверенность, тревога, маска, отсутствие, автоматизм — и эхо возвращается к нему, он слышит своё состояние"
+    <div role="img" aria-label="Сидящий человек говорит вслух и слышит свой голос — ухом и изнутри. Затем вопрос: есть ли в нём уверенность? тревога? маска? отсутствие? автоматизм? — и для каждого слова спокойный скан проходит по всему телу, от макушки до ступней. Где это в теле, человек определяет сам."
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* Without WebGL2 the page keeps the product engine's vector study. */}

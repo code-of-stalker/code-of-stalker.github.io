@@ -13,4 +13,4 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 for (const file of ['figure.png', 'labels.png']) await copyFile(path.join(scene, 'assets', file), path.join(output, 'assets', file));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_hear_state_bg.wasm')))) throw new Error('Invalid hear-state WASM');
-console.log('Packaged Rust «Услышь своё состояние»: 48-second seamless loop.');
+console.log('Packaged Rust «Услышь своё состояние»: 56-second seamless loop.');

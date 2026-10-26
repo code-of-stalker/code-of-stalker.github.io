@@ -85,7 +85,8 @@ export class HearState {
         wasm.hearstate_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one composed moment: the voice has found its state.
+     * Reduced motion holds one composed moment: a word asked, the scan at
+     * the chest.
      * @param {boolean} value
      */
     reduced(value) {

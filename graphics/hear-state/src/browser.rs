@@ -1,7 +1,7 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
 //! from `compose` and the generators in `geometry`.
 use crate::geometry::{self, Mesh, Scene};
-use crate::{compose, look, Look, LOOP_SECONDS, SIZE, STILL};
+use crate::{compose, look, still, Look, LOOP_SECONDS, SIZE};
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
@@ -206,7 +206,7 @@ impl HearState {
         let figure_pass = Pass::new(
             &gl,
             include_str!("shaders/figure.frag"),
-            &["u_figure", "u_light"],
+            &["u_figure", "u_light", "u_scan"],
         )?;
         let inner = Pass::new(
             &gl,
@@ -342,7 +342,8 @@ impl HearState {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one composed moment: the voice has found its state.
+    /// Reduced motion holds one composed moment: a word asked, the scan at
+    /// the chest.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -499,7 +500,7 @@ impl HearState {
             return;
         }
         let px = width as f32 / SIZE[0];
-        let f = compose(if self.reduced { STILL } else { self.elapsed });
+        let f = compose(if self.reduced { still() } else { self.elapsed });
         let mut mesh = std::mem::take(&mut self.mesh);
         mesh.clear();
         let s = &self.scene;
@@ -559,9 +560,21 @@ impl HearState {
         gl.uniform4f(
             self.figure.at("u_light"),
             0.22 + 0.4 * f.voice,
-            0.45 + 0.25 * f.heard + 0.2 * f.noticed,
+            0.45 + 0.2 * f.heard + 0.15 * f.felt,
             0.0035,
             1.0,
+        );
+        gl.uniform4f(
+            self.figure.at("u_scan"),
+            // Once a scan is over, everything it passed stays felt.
+            if f.scan[1] > 0.002 {
+                geometry::scan_row(&f)
+            } else {
+                1.0
+            },
+            f.scan[1],
+            f.felt,
+            0.02,
         );
         self.draw_span(body);
         self.begin(&self.inner);

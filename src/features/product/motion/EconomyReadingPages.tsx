@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import type { StyleProp, TextStyle } from 'react-native';
 import { useThemeColors } from '../ProductTheme';
 import { fonts } from '../theme';
 import { ProductText } from '../ui';
@@ -54,7 +55,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step === 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.title}>{page.title}</ProductText>}
             <View testID="reading-page-copy" style={styles.copy}>
-              {page.paragraphs.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
+              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={textStyle} />)}
               {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{text}</ProductText>)}
               {page.after?.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
               {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{page.statement}</ProductText>}
@@ -74,8 +75,19 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       }} />
   </View>;
 }
+/** Lines starting with a dash are list items: wrapped lines hang under the text, not the dash. */
+function Paragraph({ text, style }: { text: string; style: StyleProp<TextStyle> }) {
+  const lines = text.split('\n');
+  if (!lines.some(line => line.startsWith('— '))) return <ProductText style={style}>{text}</ProductText>;
+  return <View style={styles.list}>
+    {lines.map(line => line.startsWith('— ')
+      ? <View key={line} style={styles.item}><ProductText style={style}>—</ProductText><ProductText style={[style, styles.itemText]}>{line.slice(2)}</ProductText></View>
+      : <ProductText key={line} style={style}>{line}</ProductText>)}
+  </View>;
+}
 const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0 },
+  list: { gap: 10 }, item: { flexDirection: 'row', gap: 12 }, itemText: { flex: 1 },
   count: { fontSize: 9, lineHeight: 13, letterSpacing: 1.8, marginBottom: 20 },
   title: { fontSize: 22, lineHeight: 30, textTransform: 'uppercase', marginBottom: 26 },
   heroArt: { paddingTop: 64, paddingBottom: 64 },

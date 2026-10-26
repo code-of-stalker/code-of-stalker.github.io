@@ -5,7 +5,7 @@
 //! one long tone whose waves reach it, and it fills with light. The ropes
 //! tremble with the tone and fall, the hall and the
 //! spot go out, and her light self steps out of the wall to face her:
-//! Spectator, Witness, Liberator, and at last Author.
+//! Spectator, Witness, Liberator.
 use crate::{practice_stage::*, step_three::Update};
 use std::{
     f64::consts::{PI, TAU},
@@ -35,7 +35,7 @@ const OPENING: f64 = 2.25;
 const VALANCE: f64 = 2.8;
 /// The hall, nearest row last: depth, head height and extent.
 const ROWS: [(f64, f64, f64, f64); 2] = [(-2.6, 0.1, -2.75, 2.9), (-3.4, 0.45, -2.35, 2.5)];
-const TURN: (f64, f64) = (6.1, 7.9);
+const TURN: (f64, f64) = (5.7, 8.4);
 const TOUCH: f64 = 10.6;
 const BREAK: f64 = 13.4;
 /// Her voice: one long tone, wave after wave crossing to the shadow every
@@ -74,11 +74,10 @@ const MURMURS: [(usize, &str, f64); 10] = [
 ];
 const FLIGHT: f64 = 1.7;
 /// Names on the wall: text, from, to, size.
-const WORDS: [(&str, f64, f64, f64); 4] = [
+const WORDS: [(&str, f64, f64, f64); 3] = [
     ("ЗРИТЕЛЬ", 7.4, 11., 8.),
     ("СВИДЕТЕЛЬ", 11., 13.8, 8.),
     ("ОСВОБОЖДАЮЩИЙ", 13.8, 17.6, 7.),
-    ("АВТОР", 21.8, 26.2, 12.),
 ];
 
 fn camera(t: f64) -> Camera {
@@ -498,9 +497,10 @@ fn defs() -> String {
         )
     };
     format!(
-        r#"{}{}<radialGradient id="sh-spill"><stop stop-color="var(--book-line)" stop-opacity=".3"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".12"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="sh-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="sh-beam" x1="1" y1="1" x2="0" y2=".15"><stop stop-color="var(--book-light)" stop-opacity=".22"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".07"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".02"/></linearGradient><radialGradient id="sh-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>{}{}{}"#,
+        r#"{}{}{}<radialGradient id="sh-spill"><stop stop-color="var(--book-line)" stop-opacity=".3"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".12"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="sh-pool"><stop stop-color="var(--book-light)" stop-opacity=".35"/><stop offset=".4" stop-color="var(--book-line)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><linearGradient id="sh-beam" x1="1" y1="1" x2="0" y2=".15"><stop stop-color="var(--book-light)" stop-opacity=".22"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".07"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".02"/></linearGradient><radialGradient id="sh-inner" gradientUnits="userSpaceOnUse" cx="{hx}" cy="{hy}" r="520"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>{}{}{}"#,
         glow_defs("sh"),
         edge_defs("sh"),
+        heroine_volume_defs("sh"),
         burn("burn1", 260.),
         burn("burn2", 560.),
         burn("burn3", 1100.),
@@ -547,7 +547,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         glows: &[(&burns[0], ramp(t, 10.7, 11.5)), (&burns[1], ramp(t, 11.5, 13.)), (&burns[2], ramp(t, 12.8, 15.2))],
         inks: &[(&ink, 0.3 * (1. - ramp(t, 15., 19.))), (&lit, 0.9 * ramp(t, 14.5, 18.5))],
     };
-    heroine_turn(c, |f| shadow(&cam, f), turn(t), 1., b, seen * leave, &shade);
+    heroine_turn(c, |f| shadow(&cam, f), turn(t), 1., b, seen * leave, &shade, None);
 
     // What binds it, on the wall over it: strings from above and ropes of
     // thought fed by the hall; the light cuts them and they fall.
@@ -586,12 +586,10 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     }
     let flash = ramp(t, TOUCH - 0.05, TOUCH + 0.6);
     c.sprite(heart, 3. + 24. * flash, "sh-glow", bell(t, TOUCH - 0.1, TOUCH + 0.05, TOUCH + 0.3, TOUCH + 1.3));
-    // Names on the wall, one after another; the last above the two of her.
-    let names = cam0.project([2.15, 2.9, WALL]);
-    let author = cam0.project([-0.45, 3.2, WALL]);
+    // Names on the wall, one after another.
+    let at = cam0.project([2.15, 2.9, WALL]);
     for &(text, from, to, size) in &WORDS {
         let a = bell(t, from, from + 0.8, to - 0.6, to);
-        let at = if text == "АВТОР" { author } else { names };
         let place = format!("translate({:.2} {:.2})", at.0, at.1 + 2. * (1. - a));
         c.words(text, || word(text, 0., 0., size), &fill(LINE), &place, a);
     }
@@ -628,7 +626,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         inks: &[(&lit, 0.95)],
     };
     let appear = ramp(t, STEP.0, STEP.0 + 1.);
-    heroine_turn(c, |f| heroine_world(feet, height, f).then(cam.plane(feet[2])), its_turn, -1., b, appear, &other);
+    heroine_turn(c, |f| heroine_world(feet, height, f).then(cam.plane(feet[2])), its_turn, -1., b, appear, &other, None);
 
     // She herself: code under her skin until her own light rises.
     let me = her(&cam, t);
@@ -640,7 +638,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
         glows: &[(&inner_fill, inner)],
         inks: &[(&ink, 1.), (&lit, 0.6 * end)],
     };
-    heroine_turn(c, |f| heroine_world(HER, HEIGHT, f).then(cam.plane(HER[2])), turn(t), 1., b, 1., &mine_look);
+    heroine_turn(c, |f| heroine_world(HER, HEIGHT, f).then(cam.plane(HER[2])), turn(t), 1., b, 1., &mine_look, Some(("sh", 0.4 + 0.6 * lamp)));
     c.sprite(heroine_mark(me, HEROINE_NOTCH, b), 4. + 2. * b, "sh-glow", 0.6 * speak);
     c.sprite(heroine_mark(me, HEROINE_HEART, b), 3. + 2. * b, "sh-glow", 0.15 * b * (1. - end) + end * (0.6 + 0.3 * b));
 
@@ -755,7 +753,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
 pub fn svg() -> String {
     let mut c = Canvas::build(
         "sh",
-        "Героиня стоит на сцене в луче прожектора перед залом, за ней на стене огромная тень, опутанная строками мыслей. Она отворачивается от зала к тени, её голос — долгий звук — волна за волной доходит до тени, и тень наполняется светом. Нити дрожат от звука и рвутся, зрители рассыпаются светом, прожектор гаснет, и из стены выходит её светлое отражение: Зритель, Свидетель, Освобождающий, Автор.",
+        "Героиня стоит на сцене в луче прожектора перед залом, за ней на стене огромная тень, опутанная строками мыслей. Она отворачивается от зала к тени, её голос — долгий звук — волна за волной доходит до тени, и тень наполняется светом. Нити дрожат от звука и рвутся, зрители рассыпаются светом, прожектор гаснет, и из стены выходит её светлое отражение: Зритель, Свидетель, Освобождающий.",
         &defs(),
     );
     draw(&mut c, REST, false);

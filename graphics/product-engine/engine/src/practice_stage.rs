@@ -744,7 +744,7 @@ pub(crate) fn heroine_world(feet: W, height: f64, facing: f64) -> Affine {
 /// How far each part of her has turned at `u` of a turn: the head and
 /// shoulders lead, the legs follow.
 fn part_turn(u: f64, upper: bool) -> f64 {
-    if upper { u / 0.86 } else { (u - 0.14) / 0.86 }.clamp(0., 1.)
+    if upper { u / 0.8 } else { (u - 0.2) / 0.8 }.clamp(0., 1.)
 }
 /// The upper body rising on a breath, about the hips.
 fn heroine_breath(breath: f64) -> Affine {
@@ -786,23 +786,91 @@ pub(crate) fn heroine(c: &mut Canvas, place: Affine, breath: f64, alpha: f64, lo
     }
     c.end();
 }
+/// Light and shade that give her body its round: a horizontal gradient over
+/// each of her parts, lit toward world +x. One for each way she can face, so
+/// the light stays where the lamp is while she turns under it.
+pub(crate) fn heroine_volume_defs(prefix: &str) -> String {
+    let half = HEROINE_RINGS
+        .iter()
+        .flat_map(|(_, rings)| rings.iter().flatten())
+        .map(|p| (p.0 - HEROINE_FEET.0).abs())
+        .fold(0., f64::max)
+        + 4.;
+    let stops = [(0., "cover", 0.62), (0.3, "cover", 0.28), (0.52, "cover", 0.), (0.74, "line", 0.12), (0.9, "line", 0.26), (1., "light", 0.42)];
+    let mut out = String::new();
+    for (name, flip) in [("volume", false), ("volume-r", true)] {
+        let _ = write!(
+            out,
+            r#"<linearGradient id="{prefix}-{name}" gradientUnits="userSpaceOnUse" x1="{:.1}" x2="{:.1}" y1="0" y2="0">"#,
+            HEROINE_FEET.0 - half,
+            HEROINE_FEET.0 + half
+        );
+        let ordered: Vec<_> = if flip { stops.iter().rev().map(|&(at, p, a)| (1. - at, p, a)).collect() } else { stops.to_vec() };
+        for (at, paint, alpha) in ordered {
+            let _ = write!(out, r#"<stop offset="{at:.2}" stop-color="var(--book-{paint})" stop-opacity="{alpha}"/>"#);
+        }
+        out.push_str("</linearGradient>");
+    }
+    out
+}
 /// She turns round over `u` from 0 to 1 as a body rather than a card. Her head
-/// and shoulders lead and the legs follow; each part narrows only to its
-/// depth, never to an edge; the drawing facing `from` stays solid until the
-/// one facing away is, so she is never see-through while her lines hand over.
+/// and shoulders lead and the legs follow, each part easing in and out; each
+/// narrows only a little, to its depth, never to an edge; the drawing facing
+/// `from` stays solid until the one facing away is, so she is never
+/// see-through while her lines hand over. With `volume`, a canvas prefix with
+/// `heroine_volume_defs` and a strength, a light from world +x models her
+/// round, fixed in the world while her lines turn beneath it: it rims the
+/// edge she shows the lamp, and halfway round, where neither drawing is
+/// true, her lines give way to that lit silhouette, as a body seen front on
+/// against the light, before the other side's lines come.
 /// `place` maps the art for a facing.
-pub(crate) fn heroine_turn(c: &mut Canvas, place: impl Fn(f64) -> Affine, u: f64, from: f64, breath: f64, alpha: f64, look: &Layers) {
+pub(crate) fn heroine_turn(
+    c: &mut Canvas,
+    place: impl Fn(f64) -> Affine,
+    u: f64,
+    from: f64,
+    breath: f64,
+    alpha: f64,
+    look: &Layers,
+    volume: Option<(&str, f64)>,
+) {
+    // Facing, solidity and share of the lines of each of the two drawings of
+    // a part, and how far that part is through its turn.
+    let drawings = |upper: bool| {
+        // Eased at its ends, steady through the middle, where she shows us her front.
+        let p = part_turn(u, upper);
+        let v = 0.5 * (p + ease(p));
+        let narrow = 1. - 0.18 * (PI * v).sin();
+        let (fade, rise) = if volume.is_some() {
+            (1. - 0.7 * ramp(v, 0.12, 0.42) - 0.3 * ramp(v, 0.42, 0.6), 0.3 * ramp(v, 0.4, 0.58) + 0.7 * ramp(v, 0.58, 0.88))
+        } else {
+            (1. - ramp(v, 0.3, 0.7), ramp(v, 0.3, 0.7))
+        };
+        ([(from * narrow, 1. - ramp(v, 0.55, 0.8), fade), (-from * narrow, ramp(v, 0.2, 0.45), rise)], v)
+    };
+    let map = |upper: bool, facing: f64| if upper { heroine_breath(breath).then(place(facing)) } else { place(facing) };
     c.group("", "", alpha);
+    // The lamp's rim: her lit silhouette a little toward the lamp, under her.
+    if let Some((_, strength)) = volume {
+        let tall = place(from).apply((HEROINE_FEET.0, HEROINE_TOP)).1 - place(from).apply(HEROINE_FEET).1;
+        let toward = Affine([1., 0., 0., 1., 0.012 * tall.abs(), 0.]);
+        for (id, d) in HEROINE.iter().filter(|(id, _)| id.ends_with("cover")) {
+            let upper = id.starts_with("upper");
+            let (pair, v) = drawings(upper);
+            let silhouette = bell(v, 0.12, 0.42, 0.58, 0.88);
+            for (facing, solid, _) in pair {
+                c.group("", &map(upper, facing).then(toward).svg(), 1.);
+                c.fixed(|| d.clone(), &fill(LIGHT), strength * solid * (0.35 + 0.5 * silhouette));
+                c.end();
+            }
+        }
+    }
     for (id, d) in HEROINE.iter() {
         let upper = id.starts_with("upper");
-        let v = part_turn(u, upper);
-        let narrow = 1. - 0.36 * (PI * v).sin();
-        let lines = ramp(v, 0.3, 0.7);
-        // Facing, solidity and share of the lines of each of the two drawings.
-        let drawings = [(from * narrow, 1. - ramp(v, 0.55, 0.8), 1. - lines), (-from * narrow, ramp(v, 0.2, 0.45), lines)];
-        for (facing, solid, share) in drawings {
-            let map = if upper { heroine_breath(breath).then(place(facing)) } else { place(facing) };
-            c.group("", &map.svg(), 1.);
+        let (pair, v) = drawings(upper);
+        let silhouette = bell(v, 0.12, 0.42, 0.58, 0.88);
+        for (facing, solid, share) in pair {
+            c.group("", &map(upper, facing).svg(), 1.);
             if id.ends_with("ink") {
                 for &(paint, alpha) in look.inks {
                     c.fixed(|| d.clone(), paint, alpha * share);
@@ -814,6 +882,10 @@ pub(crate) fn heroine_turn(c: &mut Canvas, place: impl Fn(f64) -> Affine, u: f64
                 }
                 for &(paint, alpha) in look.glows {
                     c.fixed(|| d.clone(), paint, alpha * share.sqrt());
+                }
+                if let Some((prefix, strength)) = volume {
+                    let gradient = if facing > 0. { "volume" } else { "volume-r" };
+                    c.fixed(|| d.clone(), &format!(r#"fill="url(#{prefix}-{gradient})""#), strength * solid * (1. + 0.7 * silhouette));
                 }
             }
             c.end();

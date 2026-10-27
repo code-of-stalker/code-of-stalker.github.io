@@ -897,7 +897,7 @@ pub fn scan_marks(m: &mut Mesh, f: &Frame) {
 }
 
 /// The card on screen: where it stands (top left, authored px).
-pub const CARD_AT: [f32; 2] = [892.0, 646.0];
+pub const CARD_AT: [f32; 2] = [878.0, 646.0];
 /// Widest text a card may hold (authored px), and its padding.
 pub const CARD_WIDTH: f32 = 440.0;
 pub const CARD_PAD: [f32; 2] = [24.0, 20.0];
@@ -946,8 +946,10 @@ pub fn card_layout(card: usize) -> (Vec<Line>, [f32; 4]) {
         match kind {
             Kind::Lead | Kind::Key => {
                 let cap = if *kind == Kind::Lead { lead } else { key };
-                if *kind == Kind::Key && !lines.is_empty() {
-                    y += 0.55 * cap;
+                // A quiet half sits close above its bright half; a new
+                // sentence part after a bright half gets a breath of space.
+                if *kind == Kind::Lead && lines.last().is_some_and(|l: &Line| l.kind == Kind::Key) {
+                    y += 0.6 * lead;
                 }
                 lines.push(Line {
                     row: *row,
@@ -956,7 +958,7 @@ pub fn card_layout(card: usize) -> (Vec<Line>, [f32; 4]) {
                     cap,
                 });
                 right = right.max(x + ink_width(*row) / 44.0 * cap);
-                y += cap * if *kind == Kind::Lead { 1.25 } else { 1.0 } + 0.45 * lead;
+                y += cap + if *kind == Kind::Lead { 0.7 } else { 0.6 } * lead;
             }
             Kind::Option(_) => {
                 if !options_started {

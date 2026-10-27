@@ -33,7 +33,7 @@ pub const SIZE: [f32; 2] = [1536.0, 1024.0];
 pub const LOOP_SECONDS: f32 = 62.0;
 /// Reduced motion holds this moment: the line and the person both sharp,
 /// «Есть ли факт, или это интерпретация?» on the card.
-pub const STILL: f32 = 43.9;
+pub const STILL: f32 = 43.6;
 
 /// Metres per unit of the approved figure (spoken-thought-person.svg): 1.3 m
 /// from the soles to the crown, as a seated adult.
@@ -159,7 +159,7 @@ pub const CARDS: [[f32; 2]; 5] = [
     [1.6, 9.4],
     [10.4, 20.8],
     [21.4, 32.4],
-    [33.0, 44.6],
+    [33.0, 44.8],
     [45.4, 57.0],
 ];
 /// The line dissolves (start, end).
@@ -269,7 +269,7 @@ const MOVES: [(f32, f32, Shot); 8] = [
     // person behind it, a wide lens that can only hold one of them sharp.
     (32.0, 35.0, shot([0.3, 1.0, -2.4], 1300.0, 290.0, 0.13)),
     // Then the lens closes: both are seen at once.
-    (42.6, 44.4, shot([0.3, 1.0, -2.45], 1300.0, 290.0, 0.012)),
+    (41.8, 43.4, shot([0.3, 1.0, -2.45], 1300.0, 290.0, 0.012)),
     // «Что я чувствую телом, пока думаю это?»: the whole body and the line.
     (45.0, 48.0, shot([0.2, 0.85, -3.3], 1450.0, 470.0, 0.02)),
     (56.6, 61.0, WIDE),
@@ -293,8 +293,8 @@ const FOCUS: [(f32, f32, f32); 7] = [
     (21.4, 23.4, LINE_Z),
     // Fact or interpretation: to the person, back to the line, between.
     (36.8, 38.8, 0.0),
-    (40.4, 42.2, LINE_Z),
-    (42.6, 44.4, LINE_Z * 0.45),
+    (39.6, 41.2, LINE_Z),
+    (41.8, 43.4, LINE_Z * 0.45),
     (44.6, 46.6, 0.0),
 ];
 
@@ -443,7 +443,6 @@ pub fn compose(seconds: f32) -> Frame {
     } else {
         0.0
     };
-    let fade = 1.0 - smooth(59.4, LOOP_SECONDS, t);
     let dissolve = smooth(DISSOLVE[0], DISSOLVE[1], t);
     // Gone once dissolved; the dissolving itself is drawn by the geometry.
     let standing = if t < DISSOLVE[1] { 1.0 } else { 0.0 };
@@ -816,7 +815,7 @@ mod tests {
     fn fact_or_interpretation_is_never_settled_by_the_lens() {
         // The focus visits the line and the person, and ends with both sharp.
         let on_line = compose(36.0).camera;
-        let on_person = compose(39.6).camera;
+        let on_person = compose(39.2).camera;
         let both = compose(STILL).camera;
         let line_depth = |c: &Camera| LINE_Z - c.eye[2];
         let person_depth = |c: &Camera| -c.eye[2];

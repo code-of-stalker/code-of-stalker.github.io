@@ -228,7 +228,7 @@ impl TuningQuestions {
                 "u_room",
                 "u_person",
                 "u_body",
-                "u_haze",
+                "u_lamp",
                 "u_backdrop",
                 "u_cone_a",
                 "u_cone_b",
@@ -610,7 +610,7 @@ impl TuningQuestions {
         gl.uniform3fv_with_f32_array(c.at("u_room"), &l.room);
         gl.uniform3fv_with_f32_array(c.at("u_person"), &l.person);
         gl.uniform3fv_with_f32_array(c.at("u_body"), &l.body);
-        gl.uniform3fv_with_f32_array(c.at("u_haze"), &l.haze);
+        gl.uniform3fv_with_f32_array(c.at("u_lamp"), &l.lamp);
         gl.uniform3fv_with_f32_array(c.at("u_backdrop"), &self.backdrop);
         let cone = geometry::cone(&f.camera);
         gl.uniform4fv_with_f32_array(c.at("u_cone_a"), &cone[..4]);

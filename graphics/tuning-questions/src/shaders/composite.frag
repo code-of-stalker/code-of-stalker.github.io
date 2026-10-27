@@ -10,7 +10,7 @@ uniform vec3 u_paper;
 uniform vec3 u_room;
 uniform vec3 u_person;
 uniform vec3 u_body;
-uniform vec3 u_haze;
+uniform vec3 u_lamp;    // the color of light on light pages
 uniform vec3 u_backdrop;
 uniform vec4 u_cone_a;  // apex x, y, apex half width, unused (authored px)
 uniform vec4 u_cone_b;  // floor x, y, floor half width, floor half height
@@ -65,17 +65,22 @@ void main() {
     float v = length((uv - 0.5) * vec2(1.25, 1.0));
     c *= 1.0 - u_post.y * smoothstep(0.32, 0.95, v);
   } else {
-    // On a light page the light of the cone is a paler page, light is ink.
-    c = mix(u_paper, u_body, fill);
-    c = mix(c, mix(u_paper, vec3(1.0), 0.65), clamp(a * 4.0, 0.0, 0.55));
-    // The body's light: whiter than the page, a breath of the room's color.
-    c = mix(c, mix(vec3(1.0), u_room, 0.1), clamp(glow * 1.6, 0.0, 0.92));
-    c = mix(c, u_haze, clamp((b.r + b.g) * 0.5, 0.0, 0.4));
+    // On a light page the scene's paper is the page itself: no haze, no
+    // beam, no paler body, nothing lighter than the page anywhere. Bodies,
+    // columns and the card are drawn by their ink alone (they already hide
+    // what lies behind them).
+    c = u_backdrop;
+    // Light is never white here: the scan and the rising wave ink the body
+    // in the lamp's color, with a soft halo around what glows.
+    c = mix(c, u_lamp, clamp(glow * 1.1, 0.0, 0.6));
+    c = mix(c, u_lamp, clamp(b.g * 0.5 * (1.0 - fill), 0.0, 0.22));
     c = mix(c, u_room, 1.0 - exp(-s.r * 1.5));
+    // The person's lines, the questions and the marks stay ink.
     c = mix(c, u_person, 1.0 - exp(-s.g * 2.2));
   }
   float g = hash(uv * vec2(1931.0, 1187.0) + u_post.z) - 0.5;
-  c += g * (u_post.x < 0.5 ? 0.018 : 0.012);
+  // Grain only in the dark rooms: a light page stays as flat as the page.
+  c += g * (u_post.x < 0.5 ? 0.018 : 0.0);
   if (u_post.w > 0.5) {
     float m = smoothstep(0.0, u_edges.x, uv.x) * smoothstep(0.0, u_edges.y, 1.0 - uv.x)
             * smoothstep(0.0, u_edges.z, 1.0 - uv.y) * smoothstep(0.0, u_edges.w, uv.y);

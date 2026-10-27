@@ -741,14 +741,15 @@ pub fn compose(seconds: f32) -> Frame {
 
 /// Colors for the composite pass: the page, the ink of the room and of the
 /// conclusion (red channel), the light of the person and of the questions
-/// (green), the person's body (blue) and the haze of the bloom on light pages.
+/// (green), the person's body (blue) and the color light takes on light
+/// pages (where white would vanish).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
     pub paper: [f32; 3],
     pub room: [f32; 3],
     pub person: [f32; 3],
     pub body: [f32; 3],
-    pub haze: [f32; 3],
+    pub lamp: [f32; 3],
     pub light: bool,
 }
 const fn rgb(v: u32) -> [f32; 3] {
@@ -770,7 +771,7 @@ pub fn look(code: u32) -> Look {
         room: accent,
         person: mix(highlight, [1.0; 3], 0.25),
         body: mix(paper, [0.0; 3], 0.45),
-        haze: accent,
+        lamp: accent,
         light: false,
     };
     match palette {
@@ -782,7 +783,8 @@ pub fn look(code: u32) -> Look {
                 room: rgb(0xC9601E),
                 person: rgb(0x8E3A00),
                 body: mix(paper, rgb(0xFFF4D0), 0.35),
-                haze: mix(paper, rgb(0xBE4C00), 0.35),
+                // A warm lamp light: visible on sand, kept inside the body.
+                lamp: rgb(0xE8912E),
                 light: true,
             }
         }
@@ -793,7 +795,12 @@ pub fn look(code: u32) -> Look {
                 room: c.accent,
                 person: c.highlight,
                 body: mix(c.paper, [1.0; 3], 0.3),
-                haze: mix(c.paper, c.detail, 0.5),
+                // Мираж glows in its blue, Рассвет in its copper.
+                lamp: if palette == Palette::Dawn {
+                    c.detail
+                } else {
+                    c.accent
+                },
                 light: true,
             },
             Some(c) => dark(c.paper, c.accent, c.highlight),

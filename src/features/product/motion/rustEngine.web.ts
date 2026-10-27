@@ -31,10 +31,20 @@ type Wasm = { default(options: { module_or_path: string }): Promise<unknown>; Pr
   panel_geometry(path: string, fromWidth: number, fromHeight: number, width: number, height: number): string;
   SvgTimeline: { create(root: Element, kind: string, card: boolean): SvgTimeline }; ElementTimeline: { create(root: HTMLElement): ElementTimeline } };
 let runtime: Promise<Wasm> | undefined;
+type EngineState = 'idle' | 'loading' | 'ready' | 'failed';
+let engineState: EngineState = 'idle';
+const engineListeners = new Set<() => void>();
+const engineChanged = (state: EngineState) => { engineState = state; engineListeners.forEach(listener => listener()); };
+/** Whether the shared engine has arrived; screens hold their place until it has. */
+export const graphicsEngine = {
+  state: () => engineState,
+  subscribe(listener: () => void) { engineListeners.add(listener); return () => { engineListeners.delete(listener); }; },
+};
 export function loadGraphics() { return runtime ??= (async () => {
+  engineChanged('loading');
   const module = await (Function('url', 'return import(url)') as (url: string) => Promise<Wasm>)('/graphics/pkg/watcher_graphics.js');
   await module.default({ module_or_path: '/graphics/pkg/watcher_graphics_bg.wasm' }); return module;
-})(); }
+})().then(module => { engineChanged('ready'); return module; }, problem => { engineChanged('failed'); throw problem; }); }
 async function openRenderer(forceGl:boolean){
   const module=await loadGraphics();let atlas=document.createElement('canvas');atlas.width=atlas.height=1;let renderer:Renderer;
   try{renderer=await module.ProductRenderer.create(atlas,forceGl);}

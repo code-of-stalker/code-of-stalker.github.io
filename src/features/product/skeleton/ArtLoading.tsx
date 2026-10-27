@@ -21,7 +21,8 @@ export function holdsPlace(props: ArtProps) {
 const framed = (props: ArtProps) => props.presentation !== 'card' && (!!props.webScene || props.kind === 'grounding-here');
 
 /** An illustration's place, held by a skeleton until its first frame is on
- * screen. The scene keeps its own layout inside the same box. */
+ * screen. The scene keeps its own layout inside the same box; the skeleton
+ * lies over it (cards draw an opaque glass first) and dissolves into it. */
 export function ArtLoading({ props, children }: { props: ArtProps; children(props: ArtProps): ReactNode }) {
   // A new kind or scene is a new load: its place is held again, while the
   // scene component itself stays mounted and swaps its own content.
@@ -31,12 +32,12 @@ export function ArtLoading({ props, children }: { props: ArtProps; children(prop
   const { onReady } = props;
   const scene = children({ ...props, style: undefined, onReady: () => { setLoaded(identity); onReady?.(); } });
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
+    <ArtSettle.Provider value={settle}>{scene}</ArtSettle.Provider>
     <SkeletonHost key={identity} ready={loaded === identity} reducedMotion={props.reducedMotion} testID="art-skeleton">
       {props.presentation === 'card' ? <SkeletonBlock style={StyleSheet.absoluteFill} />
         : framed(props) ? <View style={styles.center}><SkeletonBlock corners="panel" style={[styles.frame, { maxWidth: props.height * 1.5 }]} /></View>
           : <SkeletonBlock corners="panel" style={StyleSheet.absoluteFill} />}
     </SkeletonHost>
-    <ArtSettle.Provider value={settle}>{scene}</ArtSettle.Provider>
   </View>;
 }
 

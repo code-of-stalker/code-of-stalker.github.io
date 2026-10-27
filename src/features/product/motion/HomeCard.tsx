@@ -3,7 +3,7 @@ import type { PropsWithChildren } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Art } from './Art';
-import type { ArtKind } from './types';
+import type { ArtKind, WebScene } from './types';
 import { homeGlassShape } from './glassShape';
 import { NativePanelReveal, usePanelReveal } from './PanelReveal';
 import { useThemeColors } from '../ProductTheme';
@@ -13,7 +13,7 @@ import { ScanLight } from './ScanLight';
 import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
 
-export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { kind: ArtKind; onPress(): void; accessibilityLabel: string; reducedMotion?: boolean } }>) {
+export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { kind: ArtKind; webScene?: WebScene; onPress(): void; accessibilityLabel: string; reducedMotion?: boolean } }>) {
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const { ref, report, progress, initialStyle } = usePanelReveal(true, !!artwork.reducedMotion);

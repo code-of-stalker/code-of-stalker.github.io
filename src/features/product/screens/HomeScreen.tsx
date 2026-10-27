@@ -56,7 +56,8 @@ export function HomeScreen({
 
       <View style={[styles.cards, { gap: gutter, marginTop: gutter }]}>
         <Reveal delay={100} reducedMotion={reducedMotion} style={styles.cardSlot}>
-          <View style={styles.cardSlot}><HomeCard artwork={{ kind: started ? step === 4 ? 'grounding-here' : step === 3 ? 'thought-loop' : step === 2 ? 'book' : 'cells' : 'distance', reducedMotion, onPress: onArchitecture,
+          <View style={styles.cardSlot}><HomeCard artwork={{ kind: started ? step === 4 ? 'grounding-here' : step === 3 ? 'thought-loop' : step === 2 ? 'book' : 'cells' : 'distance',
+            webScene: started && step === 4 ? 'simple-practice' : undefined, reducedMotion, onPress: onArchitecture,
             accessibilityLabel: started ? `Архитектура наблюдения. ${levelLabel}, ${stepLabel}. Продолжить` : 'Архитектура наблюдения. Выбрать уровень' }}>
             <View pointerEvents="none" style={[styles.numberPosition, { top: inset, left: inset }]}><ProductText variant="label" style={styles.number}>01 /</ProductText></View>
             <HomeCardCopy inset={inset} gradient="architecture">

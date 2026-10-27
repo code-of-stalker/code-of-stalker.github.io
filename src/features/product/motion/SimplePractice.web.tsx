@@ -1,19 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import type { PointerEvent } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useThemeColors } from '../ProductTheme';
 import { useEffectsController } from './EffectsQuality';
 import { artworkBufferLayout, qualityDensity } from './effectQuality';
 import { paletteCode } from './graphicsPalette';
+import { RustGlass } from './RustGlass.web';
 import { RustVector } from './RustVector.web';
+import { useCardPress } from './useCardPress';
 import { observeMotionVisibility } from './motion-visibility.web';
-import type { ArtProps } from './types';
+import type { ArtController, ArtProps } from './types';
 
 type Renderer = {
   reduced(value: boolean): void; resize(width: number, height: number): void;
   frame(at: number): void; elapsed(): number; seek(seconds: number): void;
   frame_count(): number; gpu_error(): number; suspend(): void; dispose(): void; free(): void;
   backdrop(red: number, green: number, blue: number): void; palette(code: number): void;
+  cover(enabled: boolean): void; soft_edges(enabled: boolean): void;
 };
 type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
@@ -25,6 +29,10 @@ const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as 
  * and the colors of every theme (one set of inputs serves light and dark pages alike). */
 export function SimplePractice(props: ArtProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
+  // On a home card the scene covers the card's shape; on a page it melts into it.
+  const card = props.presentation === 'card';
+  const glass = useRef<ArtController | null>(null), origin = useRef<{ x: number; y: number } | null>(null);
+  const press = useCardPress(props.onPress, card, !!props.reducedMotion, focused && props.active !== false);
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
   const latest = useRef({ props, focused, background: colors.background, palette: paletteCode(colors) });
   const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
@@ -97,7 +105,8 @@ export function SimplePractice(props: ArtProps) {
           loading = false;
           if (!value) return;
           if (disposed) { value.dispose(); value.free(); return; }
-          renderer = value; renderer.seek(elapsed); resize(); update(); report();
+          renderer = value; renderer.cover(card); renderer.soft_edges(!card);
+          renderer.seek(elapsed); resize(); update(); report();
           setReady(true); output.dataset.ready = 'true'; latest.current.props.onReady?.();
         }).catch(error => {
           loading = false;
@@ -110,7 +119,7 @@ export function SimplePractice(props: ArtProps) {
       stop(); elapsed = renderer?.elapsed() ?? elapsed; renderer?.dispose(); renderer?.free(); renderer = undefined;
       reduced = undefined; setReady(false); update();
     };
-    const unregister = controller.register(id, 'Простая практика · 04/15', message => {
+    const unregister = controller.register(id, card ? 'Главная · Простая практика' : 'Простая практика · 04/15', message => {
       const type = (message as { type?: string }).type;
       if (type === 'watcher-quality') resize();
       if (type === 'watcher-quality-report') report();
@@ -133,7 +142,34 @@ export function SimplePractice(props: ArtProps) {
       output.removeEventListener('webglcontextlost', contextLost); output.removeEventListener('webglcontextrestored', contextRestored);
       renderer?.dispose(); renderer?.free();
     };
-  }, [controller]);
+  }, [controller, card]);
+  const contact = (target: HTMLElement, x: number, y: number, pressed: boolean) => {
+    const rect = target.getBoundingClientRect();
+    glass.current?.interact({ type: 'watcher-art-interaction', action: pressed ? 'glass-move' : 'glass-release', x: (x - rect.x) / rect.width, y: (y - rect.y) / rect.height });
+  };
+  const release = (event: PointerEvent<HTMLButtonElement>) => { origin.current = null; contact(event.currentTarget, event.clientX, event.clientY, false); };
+  if (card) return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
+    {/* Without WebGL2 the card keeps the product engine's vector study, its glass and its press. */}
+    {failed ? <RustVector {...props} webScene={undefined} /> : <>
+      {/* The card's glass drives its reveal and answers a touch; the scene
+          is opaque, so it lies beneath and the scene is the card's face. */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}><RustGlass {...props} kind="glass" controllerRef={glass} onPress={undefined} onReady={undefined} /></View>
+      <canvas ref={outputRef} data-graphics="rust-simple-practice" aria-hidden
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden', pointerEvents: 'none' }} />
+      {props.onPress ? <button type="button" aria-label={props.accessibilityLabel} disabled={props.active === false || !focused}
+        style={{ position: 'absolute', inset: 0, background: 'transparent', border: 0, cursor: 'pointer', touchAction: 'pan-y' }}
+        onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; origin.current = { x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId); contact(event.currentTarget, event.clientX, event.clientY, true); }}
+        onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) contact(event.currentTarget, event.clientX, event.clientY, true); }}
+        onPointerUp={event => {
+          const start = origin.current, rect = event.currentTarget.getBoundingClientRect();
+          const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+          if (start && inside && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 12) press();
+          release(event);
+        }}
+        onPointerCancel={release} onLostPointerCapture={release}
+        onClick={event => { if (event.detail === 0) press(); }} /> : null}
+    </>}
+  </View>;
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
     <div role="img" aria-label="Человек устойчиво сидит, взгляд опущен к полу: камера переходит к ступням, тяжесть ног уходит в опору пола, корпус наполняется весом и объёмом — формой Присутствия; образы зовут ум в голову, но он возвращается в тело, здесь"
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>

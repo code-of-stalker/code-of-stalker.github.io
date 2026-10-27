@@ -19,6 +19,13 @@ export class SimplePractice {
     backdrop(red, green, blue) {
         wasm.simplepractice_backdrop(this.__wbg_ptr, red, green, blue);
     }
+    /**
+     * Fill a card of any shape: crop the frame around its middle.
+     * @param {boolean} enabled
+     */
+    cover(enabled) {
+        wasm.simplepractice_cover(this.__wbg_ptr, enabled);
+    }
     dispose() {
         wasm.simplepractice_dispose(this.__wbg_ptr);
     }

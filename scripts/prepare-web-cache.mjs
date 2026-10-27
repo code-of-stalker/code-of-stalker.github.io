@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { prepareAppManifest } from './web-cache/app-manifest.mjs';
+import { secureShell } from './web-cache/shell-security.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -23,7 +24,7 @@ export async function prepareWebCache(outputDirectory) {
   const template = await fs.readFile(path.join(here, 'web-cache/worker.template.js'), 'utf8');
   const bootstrap = await fs.readFile(path.join(here, 'web-cache/bootstrap.js'), 'utf8');
   let html = await fs.readFile(htmlPath, 'utf8');
-  html = await prepareAppManifest(root, html);
+  html = await secureShell(await prepareAppManifest(root, html));
   html = html.replace(/<script id="watcher-graphics-cache"[^>]*><\/script>/g, '');
   if (!html.includes('</body>')) throw new Error('Export has no HTML body');
   html = html.replace('</body>', '<script id="watcher-graphics-cache" src="/graphics-cache-updates.js" data-release="__WATCHER_VERSION__" defer></script></body>');

@@ -160,5 +160,5 @@ export function textEditorDocument(config: Config, regularFont: string, boldFont
   <div class="tools">${[12,16,20,24].map(size => `<button data-size="${size}" aria-label="Размер ${size}" aria-pressed="false">${size}</button>`).join('')}
   <button data-format="bold" aria-label="Жирный" aria-pressed="false"><b>Ж</b></button><button data-format="italic" aria-label="Курсив" aria-pressed="false"><i>К</i></button><button data-format="underline" aria-label="Подчёркнутый" aria-pressed="false"><u>Ч</u></button><button data-format="clear" aria-label="Убрать оформление" title="Убрать оформление"><img alt="" src="${clear}" width="16" height="16"></button></div>
   <div class="palette">${inkButton('text', 'Цвет текста')}${inkButton('secondary', 'Дополнительный акцент')}${inkButton('muted', 'Приглушённый цвет')}${inkButton('faint', 'Мягкий цвет')}</div>
-  </div><div id="editor" role="textbox" aria-label="Большой редактор текста" aria-multiline="true" contenteditable="true" spellcheck="true"></div><script>${diaryTextEditorScript}\ntextEditorRuntime(${encoded});</script></body></html>`;
+  </div><div id="editor" role="textbox" aria-label="Большой редактор текста" aria-multiline="true" contenteditable="true" spellcheck="true"></div><script type="application/json" id="diary-editor-config">${encoded}</script><script>${diaryTextEditorScript}</script></body></html>`;
 }

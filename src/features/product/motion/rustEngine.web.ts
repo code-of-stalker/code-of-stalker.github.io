@@ -44,7 +44,12 @@ export function loadGraphics() { return runtime ??= (async () => {
   engineChanged('loading');
   const module = await (Function('url', 'return import(url)') as (url: string) => Promise<Wasm>)('/graphics/pkg/watcher_graphics.js');
   await module.default({ module_or_path: '/graphics/pkg/watcher_graphics_bg.wasm' }); return module;
-})().then(module => { engineChanged('ready'); return module; }, problem => { engineChanged('failed'); throw problem; }); }
+})().then(module => {
+  engineChanged('ready');
+  // A first visit's offline snapshot waits for this so it does not share the link with the engine.
+  window.dispatchEvent(new Event('watcher-graphics-ready'));
+  return module;
+}, problem => { engineChanged('failed'); throw problem; }); }
 async function openRenderer(forceGl:boolean){
   const module=await loadGraphics();let atlas=document.createElement('canvas');atlas.width=atlas.height=1;let renderer:Renderer;
   try{renderer=await module.ProductRenderer.create(atlas,forceGl);}

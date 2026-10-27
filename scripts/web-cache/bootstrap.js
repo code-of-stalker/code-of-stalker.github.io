@@ -71,6 +71,7 @@
       // another worker so its engine/assets cannot switch halfway through use.
       await initialStatus;
       await identify();
+      await installGate;
       registration = registration || await navigator.serviceWorker.getRegistration('/');
       var version = remote?.version || build;
       if (version) {
@@ -86,6 +87,21 @@
     } catch { /* Offline: keep the complete installed snapshot and retry on resume. */ }
     finally { checking = false; }
   }
+  // A first visit has no worker yet. Its snapshot downloads the whole release,
+  // so let the page fetch its own engine and finish device tuning first; the
+  // fallback still installs offline support if graphics never become ready.
+  var installGate = navigator.serviceWorker.controller ? Promise.resolve() : new Promise(function (resolve) {
+    var started = false;
+    function settle() {
+      if (started) return;
+      if (document.querySelector('[data-testid="device-optimization"]')) { window.setTimeout(settle, 2000); return; }
+      started = true;
+      if (window.requestIdleCallback) window.requestIdleCallback(function () { resolve(); }, { timeout: 5000 });
+      else resolve();
+    }
+    window.addEventListener('watcher-graphics-ready', settle, { once: true });
+    window.setTimeout(settle, 90000);
+  });
   function interaction() { interactedAt = Date.now(); apply(false); }
   window.watcherGraphicsUpdates = { check: function () { return check(true); }, apply: function () { apply(true); }, available: function () { return pending; } };
   var initialStatus = message('WATCHER_GRAPHICS_CACHE_STATUS').then(function (status) {

@@ -547,6 +547,7 @@ impl TuningQuestions {
         let front = span(&mut mesh, |m| {
             geometry::rings(m, &f, true);
             geometry::scan_marks(m, &f);
+            geometry::ripple(m, &f);
             geometry::voice(m, &f);
             geometry::conclusion(m, s, &f);
             geometry::trace(m, &f);

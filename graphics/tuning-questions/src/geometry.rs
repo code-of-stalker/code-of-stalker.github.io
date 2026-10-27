@@ -1114,6 +1114,35 @@ pub fn scan_marks(m: &mut Mesh, f: &Frame) {
     }
 }
 
+/// «Ощущение»: the rising fronts drawn across the body, rippled the same
+/// way as the light the figure shader wakes under them.
+pub fn ripple(m: &mut Mesh, f: &Frame) {
+    let cam = &f.camera;
+    for k in 0..2 {
+        let (row, a) = (f.ripple[2 * k], f.ripple[2 * k + 1]);
+        if a < 0.005 {
+            continue;
+        }
+        let Some([back, front]) = body_edges(row) else {
+            continue;
+        };
+        let (x0, x1) = (back / UNIT + ORIGIN_SVG, front / UNIT + ORIGIN_SVG);
+        let n = 48;
+        let points: Vec<[f32; 3]> = (0..=n)
+            .map(|i| {
+                let x = x0 + (x1 - x0) * i as f32 / n as f32;
+                let y = row + 5.0 * (x / 16.0 - f.time * 2.4 + k as f32 * 1.7).sin();
+                let p = on_figure(x, y);
+                [p[0], p[1], -0.01]
+            })
+            .collect();
+        polyline(m, cam, &points, 0.0016, 0.0, &|i, _| {
+            let s = i as f32 / n as f32;
+            person(0.7 * a * (PI * s).sin().max(0.0).sqrt())
+        });
+    }
+}
+
 /// The card on screen: where it stands (top left, authored px).
 pub const CARD_AT: [f32; 2] = [878.0, 646.0];
 /// Widest text a card may hold (authored px), and its padding.
@@ -1422,6 +1451,7 @@ mod tests {
             conclusion(&mut m, &s, &f);
             trace(&mut m, &f);
             sights(&mut m, &f);
+            ripple(&mut m, &f);
             start(&mut m, &f);
             image(&mut m, &f);
             thought(&mut m, &f);

@@ -113,7 +113,7 @@ impl Curves {
                 previous = at;
                 let format = r.count()?;
                 let count = formats.get(format).ok_or(CurveError::Format)?.len() - 1;
-                let mut numbers = Vec::new();
+                let mut numbers = Vec::with_capacity(count);
                 for _ in 0..count {
                     numbers.push(r.number()?);
                 }
@@ -198,13 +198,22 @@ pub struct Assets {
     pub full_still: &'static [u8],
     pub soft_still: &'static [u8],
 }
-macro_rules! assets {($kind:expr,$($name:literal),*)=>{match $kind{$($name=>Some(Assets{
-    svg:include_str!(concat!("../assets/reading/",$name,".svg")),
-    full:include_bytes!(concat!("../assets/reading/",$name,".full.wrc.z")),
-    soft:include_bytes!(concat!("../assets/reading/",$name,".soft.wrc.z")),
-    full_still:include_bytes!(concat!("../assets/reading/",$name,".full.still.wrc.z")),
-    soft_still:include_bytes!(concat!("../assets/reading/",$name,".soft.still.wrc.z"))}),)*_=>None}}}
-pub fn assets(kind: &str) -> Option<Assets> {
+/// The SVG and still poses stay in the binary; the motion curves are published
+/// beside the engine (`assets/external.txt`) and arrive with the scene.
+macro_rules! assets {($kind:expr,$($name:literal),*)=>{match $kind{$($name=>Some((
+    include_str!(concat!("../assets/reading/",$name,".svg")),
+    [concat!("reading/",$name,".full.wrc.z"), concat!("reading/",$name,".soft.wrc.z")],
+    include_bytes!(concat!("../assets/reading/",$name,".full.still.wrc.z")).as_slice(),
+    include_bytes!(concat!("../assets/reading/",$name,".soft.still.wrc.z")).as_slice())),)*_=>None}}}
+#[allow(clippy::type_complexity)]
+fn sources(
+    kind: &str,
+) -> Option<(
+    &'static str,
+    [&'static str; 2],
+    &'static [u8],
+    &'static [u8],
+)> {
     assets!(
         kind,
         "book",
@@ -217,6 +226,23 @@ pub fn assets(kind: &str) -> Option<Assets> {
         "dream-inward",
         "dreamer"
     )
+}
+/// Published motion curves of a reading scene; None for other kinds.
+pub fn external(kind: &str) -> Option<[&'static str; 2]> {
+    sources(kind).map(|(_, curves, _, _)| curves)
+}
+/// None for kinds that are not reading scenes; an error while curves are missing.
+pub fn assets(kind: &str) -> Result<Option<Assets>, String> {
+    let Some((svg, [full, soft], full_still, soft_still)) = sources(kind) else {
+        return Ok(None);
+    };
+    Ok(Some(Assets {
+        svg,
+        full: crate::asset_store::bytes(full)?,
+        soft: crate::asset_store::bytes(soft)?,
+        full_still,
+        soft_still,
+    }))
 }
 
 #[cfg(test)]
@@ -235,7 +261,7 @@ mod tests {
             "dream-inward",
             "dreamer",
         ] {
-            let a = assets(kind).unwrap();
+            let a = assets(kind).unwrap().unwrap();
             assert!(!a.svg.contains("<script"));
             assert!(!a.svg.contains("requestAnimationFrame"));
             let doc = roxmltree::Document::parse(a.svg).unwrap();
@@ -259,7 +285,7 @@ mod tests {
     #[test]
     fn malformed_input_is_rejected_without_panics() {
         let unpacked = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
-            assets("book").unwrap().full,
+            assets("book").unwrap().unwrap().full,
             16 * 1024 * 1024,
         )
         .unwrap();
@@ -330,7 +356,7 @@ mod tests {
     }
     #[test]
     fn compiled_book_pages_are_above_the_open_cover_in_both_palettes_and_still_pose() {
-        let asset = assets("book").unwrap();
+        let asset = assets("book").unwrap().unwrap();
         let doc = roxmltree::Document::parse(asset.svg).unwrap();
         let node = |surface: &str| {
             doc.descendants()

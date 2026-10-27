@@ -47,13 +47,14 @@ function storage() {
   };
   return result;
 }
-async function worker(root, caches, estimate, clients = []) {
+async function worker(root, caches, estimate, clients = [], httpCache = new Map()) {
   const listeners = new Map(), requests = [];
   let skipped = 0;
   const self = { location: { origin: 'https://watcher.test' }, skipWaiting: async () => { skipped++; }, clients: { claim: async () => {}, matchAll: async () => clients }, addEventListener: (name, fn) => listeners.set(name, fn) };
   if (estimate) self.navigator = { storage: { estimate: async () => estimate } };
-  const context = { self, caches, crypto: webcrypto, URL, Response, fetch: async url => {
+  const context = { self, caches, crypto: webcrypto, URL, Response, fetch: async (url, options = {}) => {
     const pathname = new URL(typeof url === 'string' ? url : url.url, self.location.origin).pathname;
+    if (options.cache === 'force-cache' && httpCache.has(pathname)) return new Response(httpCache.get(pathname));
     requests.push(pathname);
     return new Response(await fs.readFile(path.join(root, decodeURIComponent(pathname).slice(1))));
   } };
@@ -86,6 +87,7 @@ test('manifest is deterministic, excludes audio and versions any asset/engine ch
   assert.equal(JSON.parse(await fs.readFile(path.join(root, 'graphics-cache-version.json'), 'utf8')).version, release.version);
   assert.match(await fs.readFile(path.join(root, 'index.html'), 'utf8'), new RegExp(`data-release="${release.version}"`));
   assert.ok(isCacheAsset('_expo/static/js/web/voice-files.js'));
+  assert.ok(isCacheAsset('graphics/pkg/assets/insight.5cd3d1e53c3b.tracks.xml.z'));
   const app = JSON.parse(await fs.readFile(path.join(root, 'watcher.webmanifest'), 'utf8'));
   assert.equal(app.scope, '/'); assert.equal(app.start_url, '/'); assert.equal(app.display, 'standalone');
   for (const route of release.routes) assert.ok(new URL(route, 'https://watcher.test').href.startsWith(new URL(app.scope, 'https://watcher.test').href));
@@ -207,4 +209,13 @@ test('router and Retina icons download from portable paths and retain app URL al
   assert.ok(app.requests.some(url => url.startsWith('/graphics-cache-assets/')));
   assert.equal(await (await app.fetch('https://watcher.test/assets/icon%402x.png')).text(), 'retina-icon');
   assert.equal(await (await app.fetch('https://watcher.test/assets/node_modules/expo-router/error.png')).text(), 'router-icon');
+});
+test('install reuses what the page already downloaded and refreshes only stale copies', async t => {
+  const { root } = await fixture(t);
+  const http = new Map([['/graphics/gallery.webp', 'illustration-v1'], ['/graphics/pkg/engine.wasm', 'engine-v0']]);
+  const app = await worker(root, storage(), undefined, [], http);
+  await app.lifecycle('install');
+  assert.ok(!app.requests.includes('/graphics/gallery.webp'));
+  assert.deepEqual(app.requests.filter(url => url === '/graphics/pkg/engine.wasm'), ['/graphics/pkg/engine.wasm']);
+  assert.equal(await (await app.fetch('https://watcher.test/graphics/pkg/engine.wasm')).text(), 'engine-v1');
 });

@@ -1,0 +1,39 @@
+# Large immutable inputs published beside the engine instead of inside it
+# (graphics/pkg/assets/<name>.<content hash>.<ext>). Pages fetch them per scene;
+# the native runtime bundles them. Paths are relative to this folder.
+gallery-atlas.png
+gallery-sand-atlas.png
+mirror-atlas.png
+voice-presence.png
+voice-presence-sand.png
+voice-presence-environment.png
+voice-presence-sand-environment.png
+voice-presence-person.png
+voice-presence-sand-person.png
+grounding-hero.png
+grounding-hero-sand.png
+insight.tracks.xml.z
+parallel.tracks.xml.z
+diary.tracks.xml.z
+intensive.tracks.xml.z
+cells.tracks.xml.z
+distance.tracks.xml.z
+guidance.tracks.xml.z
+reading/book.full.wrc.z
+reading/book.soft.wrc.z
+reading/reflections.full.wrc.z
+reading/reflections.soft.wrc.z
+reading/single-hero.full.wrc.z
+reading/single-hero.soft.wrc.z
+reading/identity-imprints.full.wrc.z
+reading/identity-imprints.soft.wrc.z
+reading/lived-paths.full.wrc.z
+reading/lived-paths.soft.wrc.z
+reading/dream-world.full.wrc.z
+reading/dream-world.soft.wrc.z
+reading/dream-wake.full.wrc.z
+reading/dream-wake.soft.wrc.z
+reading/dream-inward.full.wrc.z
+reading/dream-inward.soft.wrc.z
+reading/dreamer.full.wrc.z
+reading/dreamer.soft.wrc.z

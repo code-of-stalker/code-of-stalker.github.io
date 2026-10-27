@@ -64,14 +64,20 @@ fn style(node: &Element, name: &str, value: impl ToString) {
         attr(node, "style", styles.join(";"));
     }
 }
-macro_rules! scene{($kind:expr,$($name:literal),*)=>{match $kind{$($name=>(include_str!(concat!("../assets/",$name,".svg")),include_str!(concat!("../assets/",$name,".tracks.xml"))),)*_=>return Err(error("Unknown Rust vector scene"))}}}
+macro_rules! scene{($kind:expr,$($name:literal),*)=>{match $kind{$($name=>include_str!(concat!("../assets/",$name,".svg")),)*_=>return Err(error("Unknown Rust vector scene"))}}}
+// Short track sets stay in the binary; long ones arrive with the scene (tracks::external).
+macro_rules! embedded_tracks{($kind:expr,$($name:literal),*)=>{match $kind{$($name=>Some(include_str!(concat!("../assets/",$name,".tracks.xml"))),)*_=>None}}}
 #[wasm_bindgen]
 impl SvgTimeline {
     pub(crate) fn model_root(&self) -> Element {
         self.root.clone()
     }
     pub fn create(root: Element, kind: &str, card: bool) -> Result<Self, JsValue> {
-        let reading_assets = crate::reading_curves::assets(kind);
+        let reading_assets = crate::reading_curves::assets(kind).map_err(error)?;
+        let published = crate::tracks::external(kind)
+            .map(crate::tracks::published)
+            .transpose()
+            .map_err(error)?;
         let task_svg = crate::grounding::svg(kind).or_else(|| crate::step_two_tasks::svg(kind)).or_else(|| crate::step_three::svg(kind));
         let (svg, source) = if let Some(svg) = task_svg.as_deref() {
             (svg, "<tracks duration=\"0\"></tracks>")
@@ -82,25 +88,30 @@ impl SvgTimeline {
                 include_str!("../assets/voice.html"),
                 "<tracks duration=\"0\"></tracks>",
             )
-        } else if kind == "insight" {
-            (
-                include_str!("../assets/insight.html"),
-                include_str!("../assets/insight.tracks.xml"),
-            )
         } else {
-            scene!(
-                kind,
-                "distance",
-                "cells",
-                "diary",
-                "basic",
-                "guidance",
-                "parallel",
-                "intensive",
-                "attention",
-                "comparison",
-                "crowd"
-            )
+            let svg = if kind == "insight" {
+                include_str!("../assets/insight.html")
+            } else {
+                scene!(
+                    kind,
+                    "distance",
+                    "cells",
+                    "diary",
+                    "basic",
+                    "guidance",
+                    "parallel",
+                    "intensive",
+                    "attention",
+                    "comparison",
+                    "crowd"
+                )
+            };
+            let tracks = match published.as_deref() {
+                Some(xml) => xml,
+                None => embedded_tracks!(kind, "basic", "attention", "comparison", "crowd")
+                    .ok_or_else(|| error("Missing Rust vector tracks"))?,
+            };
+            (svg, tracks)
         };
         root.set_inner_html(svg);
         attr(&root, "data-rust-scene", kind);

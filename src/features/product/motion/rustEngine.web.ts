@@ -11,7 +11,7 @@ type Renderer = { backend(): string; add(scan: boolean): number; add_rain(): num
   vector_pointer_move(id: number, at: number, dx: number, dy: number): void; vector_pointer_up(id: number, at: number, inside: boolean): boolean;
   resize(id: number, width: number, height: number, path: string, orbs: boolean): void; quality(density: number, cost: number, fps: number): void; quality_pending(): boolean;
   active(id: number, active: boolean, reduced: boolean): void; pointer(id: number, x: number, y: number, pressed: boolean): void;
-  palette(theme: number): void; benchmark(id: number, at: number): void;
+  palette(theme: number): void; palette_assets(theme: number): string[]; benchmark(id: number, at: number): void;
   snapshot(): unknown; restore(state:unknown):void; reset_clock(): void; frame(at: number): boolean; reveal(id: number): number; replay_scan(id: number): void; moving(id: number): boolean;
   commits(id:number):number; rect(id: number): Float64Array; metrics(id: number): Float64Array; dispose(): void };
 export type SvgTimeline = { active(value: boolean, reduced: boolean): void; resize(width: number, height: number): void; reset_clock(): void;
@@ -29,7 +29,8 @@ type Wasm = { default(options: { module_or_path: string }): Promise<unknown>; Pr
   panel_reveal(root: HTMLElement, progress: number, reduced: boolean): void;
   level_panel_geometry(root: HTMLElement, width: number, height: number, level: string): void;
   panel_geometry(path: string, fromWidth: number, fromHeight: number, width: number, height: number): string;
-  SvgTimeline: { create(root: Element, kind: string, card: boolean): SvgTimeline }; ElementTimeline: { create(root: HTMLElement): ElementTimeline } };
+  SvgTimeline: { create(root: Element, kind: string, card: boolean): SvgTimeline }; ElementTimeline: { create(root: HTMLElement): ElementTimeline };
+  scene_assets(kind: string, palette: number): string[]; provide_asset(file: string, bytes: Uint8Array): void };
 let runtime: Promise<Wasm> | undefined;
 type EngineState = 'idle' | 'loading' | 'ready' | 'failed';
 let engineState: EngineState = 'idle';
@@ -44,7 +45,33 @@ export function loadGraphics() { return runtime ??= (async () => {
   engineChanged('loading');
   const module = await (Function('url', 'return import(url)') as (url: string) => Promise<Wasm>)('/graphics/pkg/watcher_graphics.js');
   await module.default({ module_or_path: '/graphics/pkg/watcher_graphics_bg.wasm' }); return module;
-})().then(module => { engineChanged('ready'); return module; }, problem => { engineChanged('failed'); throw problem; }); }
+})().then(module => {
+  engineChanged('ready');
+  // A first visit's offline snapshot waits for this so it does not share the link with the engine.
+  window.dispatchEvent(new Event('watcher-graphics-ready'));
+  return module;
+}, problem => { engineChanged('failed'); throw problem; }); }
+// Paintings, long tracks and reading curves are published beside the engine
+// (graphics/pkg/assets); Rust names the files a scene reads and verifies them.
+const provided = new Map<string, Promise<void>>();
+function provideAssets(module: Wasm, files: string[]) {
+  return Promise.all(files.map(file => {
+    let pending = provided.get(file);
+    if (!pending) {
+      pending = fetch(`/graphics/pkg/assets/${file}`, { credentials: 'same-origin' })
+        .then(response => { if (!response.ok) throw new Error(`Graphics input ${file}: HTTP ${response.status}`); return response.arrayBuffer(); })
+        .then(bytes => module.provide_asset(file, new Uint8Array(bytes)));
+      pending.catch(() => provided.delete(file));
+      provided.set(file, pending);
+    }
+    return pending;
+  }));
+}
+/** Resolves once every input of a scene `kind` in the current palette has arrived. */
+export async function sceneAssets(kind: string) {
+  const module = await loadGraphics();
+  await provideAssets(module, module.scene_assets(kind, graphicsPalette.get()));
+}
 async function openRenderer(forceGl:boolean){
   const module=await loadGraphics();let atlas=document.createElement('canvas');atlas.width=atlas.height=1;let renderer:Renderer;
   try{renderer=await module.ProductRenderer.create(atlas,forceGl);}
@@ -68,9 +95,16 @@ export class RustSession {
   private referenceCount = 0; private detach: () => void; private qualityKey = '';
   private teardown?: ReturnType<typeof setTimeout>;
   private recovering=false;private recoveryAttempts=0;private disposed=false;private deferredSizes=new Map<number,GlassShape>();
+  private paletteRequest = 0;
   private constructor(private controller: EffectsController, private renderer: Renderer, private atlas: HTMLCanvasElement) {
     renderer.palette(graphicsPalette.get());
-    this.detachPalette = graphicsPalette.subscribe(light => { this.renderer.palette(light); this.pending = true; });
+    // Light and dark themes draw different paintings: fetch them, then switch.
+    this.detachPalette = graphicsPalette.subscribe(code => {
+      const request = ++this.paletteRequest;
+      void loadGraphics().then(module => provideAssets(module, this.renderer.palette_assets(code)))
+        .catch(problem => console.warn('Rust graphics palette inputs:', problem))
+        .then(() => { if (this.disposed || request !== this.paletteRequest) return; this.renderer.palette(code); this.pending = true; });
+    });
     this.detach = controller.frameJob(at => this.frame(at));
   }
   static async create(controller: EffectsController) {

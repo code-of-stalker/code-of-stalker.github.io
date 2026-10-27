@@ -7,16 +7,17 @@ pub const CODE_SECONDS: f64 = 48.0;
 /// those narrow bands in the cached GPU input, before adding the live glyph atlas.
 /// The original PNG, foreground, architecture outside the bands and floor remain
 /// unchanged. This preparation runs once, never in the per-frame render loop.
-pub fn prepared_artwork() -> tiny_skia::Pixmap {
-    prepare(include_bytes!("../assets/grounding-hero.png"))
+pub fn prepared_artwork() -> Result<tiny_skia::Pixmap, String> {
+    prepare("grounding-hero.png")
 }
 /// Art's light painting for Дюна. It follows the dark composition, so the same
 /// measured glyph columns and registered coverage apply.
-pub fn prepared_sand_artwork() -> tiny_skia::Pixmap {
-    prepare(include_bytes!("../assets/grounding-hero-sand.png"))
+pub fn prepared_sand_artwork() -> Result<tiny_skia::Pixmap, String> {
+    prepare("grounding-hero-sand.png")
 }
-fn prepare(png: &[u8]) -> tiny_skia::Pixmap {
-    let source = tiny_skia::Pixmap::decode_png(png).expect("validated grounding hero PNG");
+fn prepare(name: &str) -> Result<tiny_skia::Pixmap, String> {
+    let source = tiny_skia::Pixmap::decode_png(crate::asset_store::bytes(name)?)
+        .map_err(|e| format!("{name}: {e}"))?;
     let mut prepared = source.clone();
     let matte = coverage();
     // Measured column centers and half widths in the 1536 x 1024 source.
@@ -84,7 +85,7 @@ fn prepare(png: &[u8]) -> tiny_skia::Pixmap {
             }
         }
     }
-    prepared
+    Ok(prepared)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -236,7 +237,7 @@ mod tests {
     fn live_rain_preparation_preserves_foreground_and_floor() {
         let original =
             tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero.png")).unwrap();
-        let prepared = prepared_artwork();
+        let prepared = prepared_artwork().unwrap();
         let solid = coverage();
         let mut removed_energy = 0u64;
         for y in 0..original.height() {
@@ -261,7 +262,7 @@ mod tests {
             tiny_skia::Pixmap::decode_png(include_bytes!("../assets/grounding-hero-sand.png"))
                 .unwrap();
         assert_eq!([original.width(), original.height()], [1536, 1024]);
-        let prepared = prepared_sand_artwork();
+        let prepared = prepared_sand_artwork().unwrap();
         let solid = coverage();
         let mut lifted_ink = 0u64;
         for y in 0..original.height() {

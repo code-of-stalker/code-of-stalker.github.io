@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import { SvgNode, parseSvg, installAuthoringDom, matrix } from './svg-dom.mjs';
 import { compileCssMotion } from './css-motion.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), project = path.resolve(here, '../..');
@@ -66,7 +67,10 @@ for (const kind of ['guidance', 'parallel', 'intensive','distance','cells','diar
     '<field node="' + index + '" name="' + name + '">' + frames.map(([time, value]) => '<v t="' + time.toFixed(6) + '" value="' + escape(value) + '"/>').join('') + '</field>')).join('');
   await writeFile(path.join(assets, kind + '.svg'), svg.outerHTML);
   if (kind === 'insight') await writeFile(path.join(assets, 'insight.html'), '<style>' + css + '</style>' + authored.decoderMarkup().replace(/<svg\b[^>]*>.*?<\/svg>/s, svg.outerHTML));
-  await writeFile(path.join(assets, kind + '.tracks.xml'), '<tracks duration="' + animation.duration + '">' + fields + '</tracks>');
+  const trackXml = '<tracks duration="' + animation.duration + '">' + fields + '</tracks>';
+  await writeFile(path.join(assets, kind + '.tracks.xml'), trackXml);
+  // Long tracks are published beside the engine (assets/external.txt), compressed like the reading curves.
+  if (kind !== 'basic') await writeFile(path.join(assets, kind + '.tracks.xml.z'), deflateSync(trackXml, { level: 9 }));
   catalog.push({ kind, duration: animation.duration, sourceSha256: createHash('sha256').update(base).digest('hex'), vectors: svg.querySelectorAll('path,circle,ellipse,line,rect').length, fields: tracks.reduce((count, node) => count + [...node.values()].filter(f => new Set(f.map(v => v[1])).size > 1).length, 0), interpolation: 'Rust continuous timeline; 30 samples/second are build-time knots, not runtime FPS' });
   animation.dispose?.();authoringDom.clear();
 }

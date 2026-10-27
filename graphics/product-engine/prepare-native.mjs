@@ -13,7 +13,9 @@ function request(){if(!job&&active)job=requestAnimationFrame(tick);}
 window.NativeMotion={command(name,args){if(name==='observe_reading'||name==='drag_reading')args[2]=performance.now();core[name](...args);if(name==='active')active=args[0];if(!active){cancelAnimationFrame(job);job=0;}else request();},typography(text,effect,time,reduced){return boot.typography(text,effect,time,reduced);}};
 send({type:'ready'});</script>`;
 fs.writeFileSync('src/features/product/motion/nativeKernel.generated.ts',`// Generated Rust/WASM bridge. Do not add animation logic here.\nexport const nativeKernelHtml=${JSON.stringify(nativeKernelHtml)};\n`);
-const runtime=glue(pkg+'watcher_graphics.js',['initialize:__wbg_init','ProductRenderer','SvgTimeline','ElementTimeline','TextTimeline']);
+const runtime=glue(pkg+'watcher_graphics.js',['initialize:__wbg_init','ProductRenderer','SvgTimeline','ElementTimeline','TextTimeline','provide_asset']);
+// The web fetches the published inputs per scene; the native runtime bundles all of them.
+const inputs=Object.fromEntries(fs.readdirSync(pkg+'assets').sort().map(file=>[file,fs.readFileSync(pkg+'assets/'+file).toString('base64')]));
 const zipped=deflateSync(fs.readFileSync(pkg+'watcher_graphics_bg.wasm'),{level:9});
 const fonts=[['DisketMono','Disket-Mono-Regular.ttf'],['DisketMonoBold','Disket-Mono-Bold.ttf'],['Tektur','Tektur-Variable.ttf']].map(([family,file])=>`@font-face{font-family:${family};src:url(data:font/ttf;base64,${fs.readFileSync('assets/product/fonts/'+file).toString('base64')})}`).join('');
 const document=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none';script-src 'unsafe-inline' 'wasm-unsafe-eval';style-src 'unsafe-inline';img-src data:;font-src data:"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}#model,canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}</style></head><body><div id="model"></div><canvas id="output"></canvas><script>
@@ -21,6 +23,7 @@ const document=`<!doctype html><html><head><meta name="viewport" content="width=
 // Both compilation AND instantiation must be asynchronous above 8 MiB.
 // Use the installed wasm-bindgen initializer, without network access.
 await module.initialize({module_or_path:boot.inflate_runtime(decode('${zipped.toString('base64')}'))});
+for(const [file,bytes] of Object.entries(${JSON.stringify(inputs)}))module.provide_asset(file,decode(bytes));
 ${fs.readFileSync('graphics/product-engine/native-art-adapter.js','utf8')}
 })().catch(error=>window.ReactNativeWebView?.postMessage(JSON.stringify({type:'watcher-rust-error',message:String(error)})));
 </script></body></html>`;

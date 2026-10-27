@@ -13,14 +13,14 @@ import { StepOneConclusion } from './StepOneConclusion';
 import { ScrollGate } from './ScrollGate';
 import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
-import { fitArt, useProductLayout } from '../layout';
+import { useProductLayout } from '../layout';
 
 export type ReadingPagePosition = { index: number; count: number };
-export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
+export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
   step: 1 | 2 | 3 | 4; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
   endContent?: ReactNode;
   initialIndex?: number; initialOffset?: number;
-  reading: ReadingLayout; width: number; viewportHeight: number; reducedMotion: boolean;
+  reading: ReadingLayout; width: number; reducedMotion: boolean;
   onReady(value: boolean): void; onProgress(value: number): void;
   onAdvance(): void; onRetreat(): void; onPageChange(value: ReadingPagePosition): void;
 }) {
@@ -46,9 +46,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
         const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
-        const fullWidth = Math.max(1, width - 16) * wider, naturalHeight = kind ? (step === 4 ? fullWidth * 2 / 3 : step === 3 ? fullWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? fullWidth * 0.92 : fullWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
-        // The phone's proportions within 55% of the window: a capped picture narrows with it.
-        const { width: artWidth, height: artHeight } = fitArt(fullWidth, naturalHeight, viewportHeight * .55);
+        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? (step === 4 ? artWidth * 2 / 3 : step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
             startAtEnd={selected && position.end} initialOffset={selected ? position.offset : 0} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}

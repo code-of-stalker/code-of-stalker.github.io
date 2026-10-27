@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import type { ObservationNavigation } from './ObservationScreen';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
-import { productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
+import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
 import { stepFourBlocks, stepFourIndex, stepFourPlace, stepFourQuestions, type StepFourPart } from '../stepFourContent';
 import { useProduct } from '../state/ProductProvider';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
@@ -51,7 +51,8 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
   const sceneHeight = Math.max(1, viewport.height - gutter - (questions ? gutter : bottomInset));
   // Larger screens leave more air between the hero and the panel below it.
-  const { air } = useProductLayout(), hero = readingHero(Math.max(1, viewport.width - gutter * 2), Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
+  // An illustration spans the plate below it at every size; its height follows the width.
+  const { air } = useProductLayout(), heroWidth = Math.max(1, viewport.width - gutter * 2), hero = { width: heroWidth, height: heroWidth * 2 / 3 };
   const heroHeight = hero.height + (air - 1) * 32;
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const reportPage = useCallback((next: ReadingPagePosition) => {
@@ -124,7 +125,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
               <EconomyReadingPages key={reading.block} step={4} chapter={reading.block} active={focused && !questions} enabled={focused && !open && !questions}
                 initialIndex={reading.page} initialOffset={reading.offset} canAdvance={reading.block === 0 && !!renderQuestions} startAtEnd={reading.end}
-                reading={layout} width={width} viewportHeight={viewport.height} reducedMotion={reducedMotion}
+                reading={layout} width={width} reducedMotion={reducedMotion}
                 onReady={setReady} onProgress={setProgress} onAdvance={() => enter('questions')} onRetreat={retreat} onPageChange={reportPage} />
             </StepPanel>
           </Reveal>}

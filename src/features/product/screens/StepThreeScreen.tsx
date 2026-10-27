@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import { ProductScreen, ProductText } from '../ui';
 import { StepSignature } from '../motion/StepSignature';
-import { productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
+import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
 import { fonts } from '../theme';
 import { stepThreeBlocks } from '../stepThreeContent';
 import { stepThreePractice } from '../stepThreePractice';
@@ -78,7 +78,8 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
   // Larger screens leave more air between the hero and the panel below it.
-  const { air } = useProductLayout(), hero = readingHero(Math.max(1, viewport.width - gutter * 2), Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
+  // An illustration spans the plate below it at every size; its height follows the width.
+  const { air } = useProductLayout(), heroWidth = Math.max(1, viewport.width - gutter * 2), hero = { width: heroWidth, height: heroWidth * 2 / 3 };
   const heroHeight = hero.height + (air - 1) * 32;
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const artBounds = useRef<Partial<Record<StepThreeArtKind, Bounds>>>({});
@@ -140,7 +141,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
                   if (paged || part === 1) return <EconomyReadingPages step={3} chapter={part} active={current && focused && !open} enabled={enabled}
                     initialIndex={entry.chapter === part ? entry.page : 0} initialOffset={entry.chapter === part ? entry.offset : 0}
                     canAdvance={part === 0 || !!onNextStep} startAtEnd={part === 0 && returnToReading || part === 1 && startAtEnd && entry.chapter === 1 && entry.page === stepThreePractice.length - 1}
-                    reading={reading} width={width} viewportHeight={viewport.height} reducedMotion={reducedMotion}
+                    reading={reading} width={width} reducedMotion={reducedMotion}
                     onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => advance(part)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}
                     endContent={part === 1 ? <StepSignature active={current && focused && !open} reducedMotion={reducedMotion} /> : undefined} />;

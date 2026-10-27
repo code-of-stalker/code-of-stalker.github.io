@@ -36,20 +36,6 @@ export function useProductLayout() {
   return productLayout(width, height);
 }
 
-/** An illustration keeps the proportions it has at full width. When a height
- * cap applies, its width shrinks by the same factor, so it is never stretched. */
-export function fitArt(width: number, naturalHeight: number, maxHeight = Infinity) {
-  const height = Math.max(1, Math.min(naturalHeight, maxHeight));
-  return { width: Math.max(1, width * height / Math.max(1, naturalHeight)), height };
-}
-
-/** Reading heroes keep their phone proportions until they would take more than
- * 40% of the window, which only happens in wide windows (tablets in landscape,
- * desktops); there the whole illustration is scaled down into a shorter band. */
-export function readingHero(width: number, naturalHeight: number, viewportHeight: number) {
-  return fitArt(width, naturalHeight, viewportHeight * .4);
-}
-
 // Grow outer spacing on the 4px grid without stretching the mobile layout on desktop.
 // 320 / 360 / 400 / 440 / 480px -> 16 / 20 / 24 / 28 / 32px.
 export function productSpacing(width: number) {

@@ -7,11 +7,11 @@ import { fonts } from '../theme';
 import { Art } from './Art';
 import { ContentSwap } from './ContentSwap';
 import { ScrollGate } from './ScrollGate';
-import { fitArt, useProductLayout } from '../layout';
+import { useProductLayout } from '../layout';
 
 /** Application order only; the shared Rust transition and artwork own motion. */
-export function StepTwoTaskPage({ part, active, enabled, width, viewportHeight, reducedMotion, startAtEnd = false, onNext, onPrevious, onComplete, onReady, onProgress, onBackReady }: {
-  part: 1 | 2 | 4; active: boolean; enabled: boolean; width: number; viewportHeight: number; reducedMotion: boolean;
+export function StepTwoTaskPage({ part, active, enabled, width, reducedMotion, startAtEnd = false, onNext, onPrevious, onComplete, onReady, onProgress, onBackReady }: {
+  part: 1 | 2 | 4; active: boolean; enabled: boolean; width: number; reducedMotion: boolean;
   startAtEnd?: boolean;
   onNext(): void; onPrevious(): void; onComplete(): Promise<void>;
   onReady(value: boolean): void; onProgress(value: number): void;
@@ -42,11 +42,8 @@ export function StepTwoTaskPage({ part, active, enabled, width, viewportHeight, 
     return () => onBackReady(null);
   });
   const fontSize = width < 300 ? 16 : 18, extra = (useProductLayout().air - 1) * 48;
-  // The phone's proportions within 55% of the window, never stretched.
-  const art = (kind: string) => {
-    const natural = width * 210 / (kind === 'life-book' ? 272 : 288);
-    return fitArt(width, natural, Math.max(148, viewportHeight * .55));
-  };
+  // The art spans the page width at its phone proportions.
+  const art = (kind: string) => ({ width, height: width * 210 / (kind === 'life-book' ? 272 : 288) });
   return <View testID={part === 4 ? 'step-two-closing' : `step-two-task-${part}`} style={styles.fill}>
     <ContentSwap value={index} fill duration={520} exitDuration={220} reducedMotion={reducedMotion} onComplete={finishMotion} render={value => {
       const block = pages[value], selected = value === index, playing = selected && active;
@@ -58,7 +55,7 @@ export function StepTwoTaskPage({ part, active, enabled, width, viewportHeight, 
           {part === 4 && <ProductText variant="label" style={styles.count}>{value + 1} / {pages.length}</ProductText>}
           {!!block.title && <ProductText variant="title" style={styles.title}>{block.title}</ProductText>}
           <ProductText testID="step-two-task-copy" style={[styles.text, { fontSize, lineHeight: fontSize + 9 }, block.art === 'body-senses' && styles.emphasis]}>{block.text}</ProductText>
-          <View style={[styles.art, { paddingTop: 24 + extra, paddingBottom: 12 + extra }]} pointerEvents="none"><Art kind={block.art} {...art(block.art)} style={{ alignSelf: 'center' }} active={playing} reducedMotion={reducedMotion} /></View>
+          <View style={[styles.art, { paddingTop: 24 + extra, paddingBottom: 12 + extra }]} pointerEvents="none"><Art kind={block.art} {...art(block.art)} active={playing} reducedMotion={reducedMotion} /></View>
           {part === 4 && value === pages.length - 1 && <StepSignature active={playing} reducedMotion={reducedMotion} style={styles.signature} />}
         </ScrollGate>
       </View>;

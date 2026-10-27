@@ -34,7 +34,7 @@ import { StepThreeScreen } from './StepThreeScreen';
 import { StepFourScreen } from './StepFourScreen';
 import { fonts } from '../theme';
 import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
-import { fitArt, productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
+import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
@@ -58,8 +58,8 @@ type ReadingArtKind = typeof readingArtKinds[number];
 const readingMotionKinds = [...readingArtKinds, 'dream-reality', 'dream-conclusion', 'step-one-conclusion'] as const;
 type ReadingMotionKind = typeof readingMotionKinds[number];
 type ReadingArtBounds = { top: number; height: number };
-function ReadingArt({ kind, width, viewportHeight, active, reducedMotion, onMeasure, topInset = 0 }: {
-  kind: ReadingArtKind; width: number; viewportHeight: number; active: boolean; reducedMotion: boolean;
+function ReadingArt({ kind, width, active, reducedMotion, onMeasure, topInset = 0 }: {
+  kind: ReadingArtKind; width: number; active: boolean; reducedMotion: boolean;
   topInset?: number;
   onMeasure(kind: ReadingArtKind, bounds: ReadingArtBounds): void;
 }) {
@@ -82,16 +82,16 @@ function ReadingArt({ kind, width, viewportHeight, active, reducedMotion, onMeas
     schedule(); void document.fonts.ready.then(schedule);
     return () => { live = false; cancelAnimationFrame(frame); observer.disconnect(); };
   }, [kind, width, topInset]);
-  // The phone's proportions within 55% of the window; larger screens add air around the art.
+  // The art spans the plate at its phone proportions; larger screens add air around it.
   const natural = kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288);
-  const art = fitArt(width, natural, viewportHeight * .55), extra = (useProductLayout().air - 1) * 48;
+  const extra = (useProductLayout().air - 1) * 48;
   return <View ref={element} testID={`step-two-${kind}`} pointerEvents="none" style={{
     marginTop: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dreamer' ? 36 : kind === 'dream-world' ? 24 : kind === 'book' ? 4 : 0),
     marginBottom: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dream-world' ? 60 : kind === 'book' ? 0 : 20),
   }} onLayout={event => {
     if (Platform.OS !== 'web') onMeasure(kind, { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height });
   }}>
-    <Art kind={kind} width={art.width} height={art.height} style={{ alignSelf: 'center' }} active={active} reducedMotion={reducedMotion} />
+    <Art kind={kind} width={width} height={natural} active={active} reducedMotion={reducedMotion} />
   </View>;
 }
 export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
@@ -153,11 +153,11 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const { inset } = useProductSpacing();
   const illustrationWidth = Math.max(1, viewport.width - gutter * 2);
   // Larger screens leave more air between the hero and the panel below it.
-  const { air } = useProductLayout(), hero = readingHero(illustrationWidth, illustrationWidth * 206 / 288, viewport.height);
+  // An illustration spans the plate below it at every size; its height follows the width.
+  const { air } = useProductLayout(), hero = { width: illustrationWidth, height: illustrationWidth * 206 / 288 };
   const heroHeight = hero.height + (air - 1) * 32;
   const insightWidth = Math.max(1, illustrationWidth - inset * 2);
-  // Task illustrations keep their phone proportions, within half the window on wide screens.
-  const explanationArt = (art: string) => fitArt(illustrationWidth, illustrationWidth * (art === 'attention' ? 1 : 244 / 320), viewport.height * .55);
+  const explanationArt = (art: string) => ({ width: illustrationWidth, height: illustrationWidth * (art === 'attention' ? 1 : 244 / 320) });
   function checkReadingArtVisibility() {
     updateReadingPlayback(readingArtBounds.current, scrollWindow.current);
   }
@@ -283,7 +283,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                     const current = chapter === readingChapter;
                     if (pagedEconomy) return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused && !selectorOpen} enabled={canNavigate}
                       initialIndex={destination?.chapter === chapter ? destination.page : 0}
-                      canAdvance={canAdvance} startAtEnd={!destination?.section && (chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook)} reading={reading} width={insightWidth} viewportHeight={viewport.height} reducedMotion={reducedMotion}
+                      canAdvance={canAdvance} startAtEnd={!destination?.section && (chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook)} reading={reading} width={insightWidth} reducedMotion={reducedMotion}
                       onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight}
                       onAdvance={advance} onRetreat={retreat} onPageChange={reportEconomyPage} />;
                     return <ScrollGate enabled={current && canNavigate} allowAdvance={current && canAdvance} onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight} onAdvance={advance} onRetreat={retreat} fadeTop={24} fadeBottom={24}
@@ -302,22 +302,22 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                           {'conclusion' in block && <DreamConclusion text={block.conclusion} style={[styles.overviewText, styles.dreamConclusion]}
                             active={current && readingArtVisible['dream-conclusion'] && !selectorOpen && !changing && focused}
                             reducedMotion={reducedMotion} onLayout={current ? event => measureReadingArt('dream-conclusion', { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }) : undefined} />}
-                          <ReadingArt kind={block.art} width={insightWidth} viewportHeight={viewport.height} active={current && readingArtVisible[block.art] && !selectorOpen && !changing && focused}
+                          <ReadingArt kind={block.art} width={insightWidth} active={current && readingArtVisible[block.art] && !selectorOpen && !changing && focused}
                             reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />
                         </Fragment>)}
                       </> : <>
                       {stepDescriptions[currentStep].split('\n\n').map((text, index) => <Fragment key={text}>
                         <Reveal reducedMotion={reducedMotion} delay={220 + index * 65}><ProductText style={styles.overviewText}>{text}</ProductText></Reveal>
-                        {currentStep === 2 && (index === 1 || index === 2) && <ReadingArt kind={index === 1 ? 'reflections' : 'single-hero'} width={insightWidth} viewportHeight={viewport.height} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
+                        {currentStep === 2 && (index === 1 || index === 2) && <ReadingArt kind={index === 1 ? 'reflections' : 'single-hero'} width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
                           active={current && readingArtVisible[index === 1 ? 'reflections' : 'single-hero'] && !selectorOpen && !changing && stage === 0}
                           reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
-                        {currentStep === 1 && (index === 1 || index === 3) && <ReadingArt kind={index === 1 ? 'cells' : 'identity-imprints'} width={insightWidth} viewportHeight={viewport.height} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
+                        {currentStep === 1 && (index === 1 || index === 3) && <ReadingArt kind={index === 1 ? 'cells' : 'identity-imprints'} width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
                           active={current && readingArtVisible[index === 1 ? 'cells' : 'identity-imprints'] && !selectorOpen && !changing && stage === 0}
                           reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
                       </Fragment>)}
                       {currentStep === 1 && <StepOneConclusion active={current && readingArtVisible['step-one-conclusion'] && !selectorOpen && !changing && stage === 0} reducedMotion={reducedMotion}
                         onLayout={current ? event => measureReadingArt('step-one-conclusion', { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }) : undefined} />}
-                      {currentStep === 2 && <ReadingArt kind="book" width={insightWidth} viewportHeight={viewport.height} topInset={Number(reading.contentStyle.paddingTop ?? 0)} active={current && readingArtVisible.book && !selectorOpen && !changing && stage === 0}
+                      {currentStep === 2 && <ReadingArt kind="book" width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)} active={current && readingArtVisible.book && !selectorOpen && !changing && stage === 0}
                         reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
                       </>}
                     </ScrollGate>;
@@ -340,7 +340,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
             {currentStep === 2 ? <ContentSwap value={stage} fill dissolve duration={520} exitDuration={220} reducedMotion={reducedMotion} render={part => part === 3
               ? renderQuestions?.(stage === 3 && !changing, () => changeStage(2), registerNavigation, ignoreMeasuredHeight, !selectorOpen, () => changeStage(4))
               : <StepTwoTaskPage key={part} part={part === 4 ? 4 : part === 2 ? 2 : 1} active={stage > 0 && stage === part && focused && !selectorOpen} enabled={stage > 0 && stage === part && canNavigate}
-                width={illustrationWidth} viewportHeight={viewport.height} reducedMotion={reducedMotion} startAtEnd={startAtEnd && initialStage === 4} onNext={advance} onPrevious={() => changeStage(part === 4 ? 3 : part - 1)}
+                width={illustrationWidth} reducedMotion={reducedMotion} startAtEnd={startAtEnd && initialStage === 4} onNext={advance} onPrevious={() => changeStage(part === 4 ? 3 : part - 1)}
                 onComplete={onCompleteSecondStep ?? (async () => {})} onReady={part === stage ? setReady : ignoreMeasuredHeight} onProgress={part === stage ? setProgress : ignoreMeasuredHeight} onBackReady={registerStepTwoBack} />} />
             : <ContentSwap value={stage === questionStage ? 'recording' : 'explanation'} fill dissolve exitDuration={200} reducedMotion={reducedMotion} render={kind => kind === 'recording'
               ? renderQuestions?.(stage === 4, () => changeStage(3), registerNavigation, ignoreMeasuredHeight, !selectorOpen)

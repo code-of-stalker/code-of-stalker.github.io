@@ -127,14 +127,17 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
         : <PanelArtwork source={geometry.backing} />}
       <GlassHost style={[styles.fill, headerless && Platform.OS === 'web' && { clipPath: `path('${geometry.path}')` } as ViewStyle]} contour={contour} reducedMotion={reducedMotion} scanOnMount={false}>
       {!frameSize && <View ref={ref} pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout} />}
-      <PanelArtwork source={geometry.frame} />
+      {!headerless && <PanelArtwork source={geometry.frame} />}
       {!headerless && <Pressable ref={headerRef} onLayout={onHeaderLayout} accessibilityRole="button" accessibilityLabel="Свернуть выбор шага" accessibilityState={{ expanded: true }} aria-expanded
         onPress={onClose} style={[styles.trigger, { paddingHorizontal: inset }]}>
         <ProductText fitToWidth variant="label" style={styles.title}>{`ШАГ ${step}. ${productStepNames[step]}`}</ProductText>
         <StepChevron expanded />
       </Pressable>}
       {options}
-    </GlassHost></>}
+    </GlassHost>
+      {/* The reading menu's outline sits above its clip: clipped along its own centre line,
+          the bottom hairline vanished at fractional display scales such as 125%. */}
+      {headerless && <PanelArtwork source={geometry.frame} />}</>}
   </View>;
   return embedded ? <Reveal reducedMotion={reducedMotion} style={styles.embedded}>{content}</Reveal> : content;
 }

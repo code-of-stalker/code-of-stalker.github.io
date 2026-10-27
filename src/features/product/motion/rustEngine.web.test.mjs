@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 async function fixture(direct) {
-  let job, committed=0, copies=0, contexts=0, removed=0;
+  let job, committed=0, copies=0, contexts=0, removed=0; const signals=[];
   const renderer={backend:()=>direct?'Rust / wgpu BrowserWebGpu':'Rust / wgpu Gl',add:()=>1,present_to:()=>direct,
     quality(){},palette(){},resize(){},active(){},pointer(){},reset_clock(){},moving:()=>true,frame:()=>{committed++;return true;},
     rect:()=>[0,0,400,300],commits:()=>committed,reveal:()=>1,metrics:()=>[1,1,400,300,200,150,committed,0,0,0,0,1,5,10,400,300],
@@ -16,12 +16,14 @@ async function fixture(direct) {
   const exports={}, module={default:async()=>{},ProductRenderer:{create:async()=>renderer}};
   const code=ts.transpileModule(readFileSync(new URL('./rustEngine.web.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   vm.runInNewContext(code,{exports,require:()=>({qualityDensity:{high:2.5},glassRenderDensity:1,graphicsPalette:{get:()=>false,subscribe:()=>()=>{}}}),Function:()=>()=>Promise.resolve(module),
-    document:{createElement:()=>({width:1,height:1})},location:{search:''},URLSearchParams,console,clearTimeout(){},setTimeout:()=>0});
+    document:{createElement:()=>({width:1,height:1})},location:{search:''},URLSearchParams,console,clearTimeout(){},setTimeout:()=>0,
+    window:{dispatchEvent:event=>signals.push(event.type)},Event});
   const session=await exports.rustSession(controller),handle=session.add(output,false);handle.active(true,false);
-  return {handle,output,run:()=>job(1000),counts:()=>({copies,contexts,removed})};
+  return {handle,output,signals,run:()=>job(1000),counts:()=>({copies,contexts,removed})};
 }
 test('WebGPU presents directly without acquiring Canvas2D or overwriting its surface dimensions',async()=>{
   const f=await fixture(true);f.run();
+  assert.deepEqual(f.signals,['watcher-graphics-ready']); // The offline snapshot waits for this.
   assert.equal(f.output.dataset.graphicsPresentation,'direct-gpu');
   assert.deepEqual(f.counts(),{copies:0,contexts:0,removed:0});
   assert.equal(f.output.width,1); // The Rust surface, not JavaScript, owns these dimensions.

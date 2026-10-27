@@ -11,10 +11,15 @@ uniform float u_bloom;
 // Page over paper, and amount: the light painting's pale sky and stone take
 // the page's own color; the darks keep the painted ones.
 uniform vec4 u_page;
+// Where the paper lands: the sky glowing around her head is brighter than the
+// paper, and must not end up as a paler patch on the page.
+uniform vec3 u_sky;
+// Luminance from which a color counts as pale sky or stone.
+uniform vec2 u_pale;
 out vec4 out_color;
 vec3 on_page(vec3 c){
-    float w=smoothstep(.3,.8,dot(c,vec3(.2126,.7152,.0722)))*u_page.a;
-    return c*mix(vec3(1.0),u_page.rgb,w);
+    float w=smoothstep(u_pale.x,u_pale.y,dot(c,vec3(.2126,.7152,.0722)))*u_page.a;
+    return mix(c,min(c*u_page.rgb,u_sky),w);
 }
 void main(){
     vec4 c;

@@ -225,7 +225,14 @@ impl WorldInGlasses {
         let image = Pass::new(
             &gl,
             include_str!("shaders/image.frag"),
-            &["u_texture", "u_detail", "u_bloom", "u_page"],
+            &[
+                "u_texture",
+                "u_detail",
+                "u_bloom",
+                "u_page",
+                "u_sky",
+                "u_pale",
+            ],
         )?;
         let shape = Pass::new(
             &gl,
@@ -485,11 +492,28 @@ impl WorldInGlasses {
         self.begin(&self.image, at);
         self.gl.uniform1i(self.image.at("u_texture"), slot);
         self.gl.uniform1f(self.image.at("u_bloom"), bloom);
-        // In Дюна the ruins behind her sit on the page's own yellow.
-        let page = self.page.filter(|_| matches!(slot, BACKGROUND | ORIGINAL));
+        // In Дюна the ruins behind her sit on the page's own yellow. Her cut-out
+        // keeps a rim of the painted sky around the hair; only that palest cream
+        // goes onto the page, so her own highlights stay painted.
+        let page = self
+            .page
+            .filter(|_| matches!(slot, BACKGROUND | ORIGINAL | FIGURE | MOUTHS));
+        let pale = if matches!(slot, FIGURE | MOUTHS) {
+            [0.88, 0.95]
+        } else {
+            [0.3, 0.8]
+        };
+        self.gl.uniform2f(self.image.at("u_pale"), pale[0], pale[1]);
         let [r, g, b] = page.unwrap_or_default();
         self.gl
             .uniform4f(self.image.at("u_page"), r, g, b, f32::from(page.is_some()));
+        // The paper itself lands exactly on the page; a brighter sky stops there.
+        self.gl.uniform3f(
+            self.image.at("u_sky"),
+            r * PAPER[0],
+            g * PAPER[1],
+            b * PAPER[2],
+        );
         self.draw_span(layer);
     }
     fn shapes(&self, at: [f32; 4], layer: Span, clip: bool) {

@@ -20,6 +20,7 @@ SOURCES = {
     "simple-practice": ["figure"],
     "tuning-questions": ["figure", "labels"],
     "persona-dream": ["figure", "labels"],
+    "persona-program": ["figure", "labels"],
 }
 
 

@@ -5,10 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Only the deploy job may publish. The build job installs and runs third-party
+# packages, so it gets read access and nothing else.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -23,7 +23,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      # Install scripts are skipped: the web export needs none of them. They only
+      # fetch and check the Matrix SDK's Android binaries.
+      - run: npm ci --ignore-scripts
       # The Rust engine is prebuilt into public/graphics/pkg, so no Rust toolchain is needed here.
       - run: npm run export:web
         env:
@@ -37,6 +39,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

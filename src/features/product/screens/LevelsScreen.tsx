@@ -16,7 +16,7 @@ import { levelActionArtwork } from '../levelArtwork';
 import { productLevels } from '../content';
 import type { LevelId } from '../content';
 import { Art } from '../motion/Art';
-import { useProductSpacing } from '../layout';
+import { useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import type { ArtKind } from '../motion/types';
 
@@ -47,8 +47,8 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
     const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
     return () => subscription.remove();
   }, []);
-  const { inset, gutter } = useProductSpacing();
-  const contentWidth = Math.min(width, 480) - gutter * 2;
+  const { inset, gutter } = useProductSpacing(), { column } = useProductLayout();
+  const contentWidth = Math.min(width, column) - gutter * 2;
   const artHeight = Math.max(150, contentWidth * 150 / 288);
   const bodyHeight = Math.max(202, artHeight + (width >= 375 ? 94 : 52));
   const fade = useMemo(() => ({ uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="288" height="48"><defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${colors.background}" stop-opacity="0"/><stop offset=".44" stop-color="${colors.background}"/><stop offset="1" stop-color="${colors.background}"/></linearGradient></defs><rect width="288" height="48" fill="url(#fade)"/></svg>`)}` }), [colors.background]);

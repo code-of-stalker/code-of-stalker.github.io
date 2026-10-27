@@ -34,7 +34,7 @@ import { StepThreeScreen } from './StepThreeScreen';
 import { StepFourScreen } from './StepFourScreen';
 import { fonts } from '../theme';
 import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
-import { productSpacing, useProductSpacing } from '../layout';
+import { productSpacing, readingHeroHeight, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
@@ -149,8 +149,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const sceneHeight = Math.max(1, viewport.height - gutter - bottomInset);
   const { inset } = useProductSpacing();
   const illustrationWidth = Math.max(1, viewport.width - gutter * 2);
-  const heroHeight = illustrationWidth * 206 / 288;
+  const heroHeight = readingHeroHeight(illustrationWidth * 206 / 288, viewport.height);
   const insightWidth = Math.max(1, illustrationWidth - inset * 2);
+  // Task illustrations keep their phone proportions, within half the window on wide screens.
+  const explanationArtHeight = (art: string) => Math.min(illustrationWidth * (art === 'attention' ? 1 : 244 / 320), viewport.height * .55);
   function checkReadingArtVisibility() {
     updateReadingPlayback(readingArtBounds.current, scrollWindow.current);
   }
@@ -352,14 +354,14 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                     </ProductText>
                   </Animated.View>}
                   <View style={styles.explanationArt}>
-                    {presentation.artworkWrapper ? presentation.artworkWrapper(<View style={{ height: illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320), justifyContent: 'center' }}>
+                    {presentation.artworkWrapper ? presentation.artworkWrapper(<View style={{ height: explanationArtHeight(firstStepExplanations[index - 1].art), justifyContent: 'center' }}>
                       <Art kind={firstStepExplanations[index - 1].art} onReady={presentation.onReady}
-                        height={illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320)}
+                        height={explanationArtHeight(firstStepExplanations[index - 1].art)}
                         active={presentation.active} reducedMotion={reducedMotion} />
                     </View>) : <Animated.View style={presentation.artworkStyle ?? { opacity: presentation.artwork }}>
-                      <View style={{ height: illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320), justifyContent: 'center' }}>
+                      <View style={{ height: explanationArtHeight(firstStepExplanations[index - 1].art), justifyContent: 'center' }}>
                         <Art kind={firstStepExplanations[index - 1].art} onReady={presentation.onReady}
-                          height={illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320)}
+                          height={explanationArtHeight(firstStepExplanations[index - 1].art)}
                           active={presentation.active} reducedMotion={reducedMotion} />
                       </View>
                     </Animated.View>}

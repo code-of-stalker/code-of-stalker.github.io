@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { productMaxWidth, useProductSpacing } from '../layout';
+import { productLayout, useProductSpacing } from '../layout';
 import { productIconSize } from '../motion/glassShape';
 import { SkeletonBlock } from './Skeleton';
 
@@ -38,8 +38,8 @@ function TitledHeader({ right = true, subtitle = false }: { right?: boolean; sub
   </View>;
 }
 
-function Home({ gutter, inset, wide }: Layout) {
-  const title = wide ? 32 : 24;
+function Home({ gutter, inset, wide, large, columns }: Layout) {
+  const title = large ? 36 : wide ? 32 : 24, cardTitle = large ? 28 : wide ? 24 : 20;
   return <View style={[styles.fill, { padding: gutter }]}>
     <View style={styles.homeHeader}>
       <View style={styles.fill}>
@@ -48,13 +48,13 @@ function Home({ gutter, inset, wide }: Layout) {
       </View>
       <Icon />
     </View>
-    <View style={[styles.fill, { gap: gutter, marginTop: gutter }]}>
+    <View style={[styles.fill, { gap: gutter, marginTop: gutter }, columns === 2 && styles.cardRow]}>
       {[0, 1].map(card => <View key={card} style={styles.fill}>
         <SkeletonBlock corners="card" style={StyleSheet.absoluteFill} />
         <Line width={38} size={wide ? 12 : 8} style={{ position: 'absolute', top: inset, left: inset }} />
         <View style={{ position: 'absolute', left: inset, right: inset + 28, bottom: inset, gap: 4 }}>
-          <Line width="68%" size={wide ? 24 : 20} />
-          <Line width={card ? '46%' : '62%'} size={wide ? 24 : 20} />
+          <Line width="68%" size={cardTitle} />
+          <Line width={card ? '46%' : '62%'} size={cardTitle} />
           <Line width="40%" size={wide ? 12 : 8} line={14} />
         </View>
         <SkeletonBlock style={{ position: 'absolute', right: 16, bottom: 16, width: 12, height: 12 }} />
@@ -64,9 +64,9 @@ function Home({ gutter, inset, wide }: Layout) {
   </View>;
 }
 
-function Levels({ gutter, inset, width }: Layout) {
+function Levels({ gutter, inset, width, column }: Layout) {
   // The levels screen always opens one level, the first unless another was chosen.
-  const content = Math.min(width, productMaxWidth) - gutter * 2, art = Math.max(150, content * 150 / 288);
+  const content = Math.min(width, column) - gutter * 2, art = Math.max(150, content * 150 / 288);
   const body = Math.max(202, art + (width >= 375 ? 94 : 52));
   return <View style={styles.fill}>
     <View style={{ paddingTop: 16, paddingHorizontal: gutter }}><TitledHeader /></View>
@@ -154,22 +154,24 @@ function Practice({ gutter, inset, height }: Layout) {
   </View>;
 }
 
-type Layout = { gutter: number; inset: number; wide: boolean; width: number; height: number };
+type Layout = { gutter: number; inset: number; wide: boolean; large: boolean; width: number; height: number; column: number; columns: 1 | 2 };
 const screens: Record<SkeletonScreen, (layout: Layout) => ReactNode> = { home: Home, levels: Levels, practice: Practice, diary: Diary, settings: Settings };
 
 /** The place of a whole screen while the app and its graphics engine load:
  * the same safe area, width and spacing as ProductScreen, in still shapes. */
 export function ScreenSkeleton({ screen }: { screen: SkeletonScreen }) {
   const { width, height } = useWindowDimensions(), { gutter, inset } = useProductSpacing();
+  const sizes = productLayout(width, height), maxWidth = screen === 'home' ? sizes.wide : sizes.column;
   return <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.fill}>
-    <View style={styles.column}>{screens[screen]({ gutter, inset, wide: width >= 375, width, height })}</View>
+    <View style={[styles.column, { maxWidth }]}>{screens[screen]({ gutter, inset, wide: width >= 375, large: sizes.kind !== 'phone', width, height, column: sizes.column, columns: sizes.columns })}</View>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0 },
-  column: { flex: 1, width: '100%', maxWidth: productMaxWidth, alignSelf: 'center' },
+  column: { flex: 1, width: '100%', alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center' },
+  cardRow: { flexDirection: 'row' },
   homeHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', minHeight: 52 },
   titled: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 46, gap: 8 },
   titleCopy: { flex: 1 },

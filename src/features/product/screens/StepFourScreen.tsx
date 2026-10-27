@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import type { ObservationNavigation } from './ObservationScreen';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
-import { productSpacing, useProductSpacing } from '../layout';
+import { productSpacing, readingHeroHeight, useProductSpacing } from '../layout';
 import { stepFourBlocks, stepFourIndex, stepFourPlace, stepFourQuestions, type StepFourPart } from '../stepFourContent';
 import { useProduct } from '../state/ProductProvider';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
@@ -50,7 +50,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
   const sceneHeight = Math.max(1, viewport.height - gutter - (questions ? gutter : bottomInset));
-  const heroHeight = Math.max(1, viewport.width - gutter * 2) * 2 / 3;
+  const heroHeight = readingHeroHeight(Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const reportPage = useCallback((next: ReadingPagePosition) => {
     setPage(previous => previous.index === next.index && previous.count === next.count ? previous : next);

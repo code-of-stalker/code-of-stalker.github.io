@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import { ProductScreen, ProductText } from '../ui';
 import { StepSignature } from '../motion/StepSignature';
-import { productSpacing, useProductSpacing } from '../layout';
+import { productSpacing, readingHeroHeight, useProductSpacing } from '../layout';
 import { fonts } from '../theme';
 import { stepThreeBlocks } from '../stepThreeContent';
 import { stepThreePractice } from '../stepThreePractice';
@@ -75,7 +75,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
   const blurTarget = useRef<View>(null);
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
-  const heroHeight = Math.max(1, viewport.width - gutter * 2) * 2 / 3;
+  const heroHeight = readingHeroHeight(Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const artBounds = useRef<Partial<Record<StepThreeArtKind, Bounds>>>({});
   const window = useRef({ offset: 0, height: 0 });

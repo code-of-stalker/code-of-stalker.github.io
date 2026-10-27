@@ -94,7 +94,7 @@ export function CloudDrift(props: ArtProps) {
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* The full-color poster is only a fallback: every theme recolors the scene. */}
-        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/cloud-drift/assets-light/original.webp' : '/graphics/cloud-drift/assets/poster.png'} alt="" aria-hidden loading="lazy" decoding="async"
+        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/cloud-drift/assets-light/original.webp' : '/graphics/cloud-drift/assets/poster.webp'} alt="" aria-hidden loading="lazy" decoding="async"
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, display: failed ? 'block' : 'none' }} />
         <canvas ref={canvas} data-graphics="rust-cloud-drift" aria-hidden
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, visibility: ready ? 'visible' : 'hidden' }} />

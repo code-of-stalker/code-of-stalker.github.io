@@ -9,14 +9,16 @@ export function Marquee({ text, active, reducedMotion, style, textStyle }: {
   text: string; active: boolean; reducedMotion: boolean; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>;
 }) {
   const [{ width: copyWidth, height }, setSize] = useState({ width: 560, height: 12 });
+  // Enough copies to cover a wide window: one copy scrolls out while the rest fill it.
+  const [viewport, setViewport] = useState(0), copies = Math.max(2, Math.ceil(viewport / Math.max(1, copyWidth)) + 1);
   if (reducedMotion) return <ProductText variant="label" style={[styles.staticText, textStyle]}>{text}</ProductText>;
-  return <View style={[styles.viewport, { height }, style]} accessible accessibilityLabel={text}>
+  return <View style={[styles.viewport, { height }, style]} accessible accessibilityLabel={text} onLayout={event => setViewport(event.nativeEvent.layout.width)}>
     <RustMotion aria-hidden active={active} loop={{ width: copyWidth, speed: 28 }} style={{ position: 'absolute', left: 0, top: 0, display: 'flex', width: 'max-content', willChange: 'transform' }}>
       <ProductText variant="label" numberOfLines={1} style={[styles.copy, textStyle]} onLayout={event => {
         const { width, height } = event.nativeEvent.layout;
         setSize(old => old.width === width && old.height === height ? old : { width, height });
       }}>{text} · </ProductText>
-      <ProductText variant="label" numberOfLines={1} style={[styles.copy, textStyle]}>{text} · </ProductText>
+      {Array.from({ length: copies - 1 }, (_, index) => <ProductText key={index} variant="label" numberOfLines={1} style={[styles.copy, textStyle]}>{text} · </ProductText>)}
     </RustMotion>
   </View>;
 }

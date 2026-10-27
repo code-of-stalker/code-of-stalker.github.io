@@ -13,6 +13,7 @@ import { StepOneConclusion } from './StepOneConclusion';
 import { ScrollGate } from './ScrollGate';
 import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
+import { fitArt, useProductLayout } from '../layout';
 
 export type ReadingPagePosition = { index: number; count: number };
 export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, viewportHeight, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
@@ -26,6 +27,8 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
   const pages = readingPages(step, chapter), colors = useThemeColors();
   const [position, setPosition] = useState(() => ({ index: startAtEnd ? pages.length - 1 : Math.min(initialIndex, pages.length - 1), end: startAtEnd, offset: initialOffset }));
   const [moving, setMoving] = useState(true), locked = useRef(true);
+  // Larger screens leave more air between the copy and its illustration.
+  const extra = (useProductLayout().air - 1) * 48;
   const index = position.index;
   useLayoutEffect(() => { onPageChange({ index, count: pages.length }); }, [index, pages.length, onPageChange]);
   const finish = useCallback((value: number) => { if (value === index) { locked.current = false; setMoving(false); } }, [index]);
@@ -43,7 +46,9 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
         const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
-        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? Math.min(viewportHeight * .55, step === 4 ? artWidth * 2 / 3 : step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 0;
+        const fullWidth = Math.max(1, width - 16) * wider, naturalHeight = kind ? (step === 4 ? fullWidth * 2 / 3 : step === 3 ? fullWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? fullWidth * 0.92 : fullWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
+        // The phone's proportions within 55% of the window: a capped picture narrows with it.
+        const { width: artWidth, height: artHeight } = fitArt(fullWidth, naturalHeight, viewportHeight * .55);
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
             startAtEnd={selected && position.end} initialOffset={selected ? position.offset : 0} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
@@ -65,7 +70,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             {kind && <View testID={`reading-page-art-${kind}`} pointerEvents="none" style={[styles.art,
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
-              { marginHorizontal: -reading.contentInset - 8 }]}>
+              { marginHorizontal: -reading.contentInset - 8 }, extra > 0 && (kind === 'reflections' || kind === 'single-hero' || kind === 'dream-inward' ? { paddingTop: 64 + extra, paddingBottom: 64 + extra } : { paddingTop: 40 + extra, paddingBottom: 36 + extra })]}>
               <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}

@@ -34,7 +34,7 @@ import { StepThreeScreen } from './StepThreeScreen';
 import { StepFourScreen } from './StepFourScreen';
 import { fonts } from '../theme';
 import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
-import { productSpacing, useProductSpacing } from '../layout';
+import { fitArt, productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
@@ -82,13 +82,16 @@ function ReadingArt({ kind, width, viewportHeight, active, reducedMotion, onMeas
     schedule(); void document.fonts.ready.then(schedule);
     return () => { live = false; cancelAnimationFrame(frame); observer.disconnect(); };
   }, [kind, width, topInset]);
+  // The phone's proportions within 55% of the window; larger screens add air around the art.
+  const natural = kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288);
+  const art = fitArt(width, natural, viewportHeight * .55), extra = (useProductLayout().air - 1) * 48;
   return <View ref={element} testID={`step-two-${kind}`} pointerEvents="none" style={{
-    marginTop: kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dreamer' ? 36 : kind === 'dream-world' ? 24 : kind === 'book' ? 4 : 0,
-    marginBottom: kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dream-world' ? 60 : kind === 'book' ? 0 : 20,
+    marginTop: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dreamer' ? 36 : kind === 'dream-world' ? 24 : kind === 'book' ? 4 : 0),
+    marginBottom: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dream-world' ? 60 : kind === 'book' ? 0 : 20),
   }} onLayout={event => {
     if (Platform.OS !== 'web') onMeasure(kind, { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height });
   }}>
-    <Art kind={kind} height={Math.min(viewportHeight * .55, kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288))} active={active} reducedMotion={reducedMotion} />
+    <Art kind={kind} width={art.width} height={art.height} style={{ alignSelf: 'center' }} active={active} reducedMotion={reducedMotion} />
   </View>;
 }
 export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
@@ -149,8 +152,12 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const sceneHeight = Math.max(1, viewport.height - gutter - bottomInset);
   const { inset } = useProductSpacing();
   const illustrationWidth = Math.max(1, viewport.width - gutter * 2);
-  const heroHeight = illustrationWidth * 206 / 288;
+  // Larger screens leave more air between the hero and the panel below it.
+  const { air } = useProductLayout(), hero = readingHero(illustrationWidth, illustrationWidth * 206 / 288, viewport.height);
+  const heroHeight = hero.height + (air - 1) * 32;
   const insightWidth = Math.max(1, illustrationWidth - inset * 2);
+  // Task illustrations keep their phone proportions, within half the window on wide screens.
+  const explanationArt = (art: string) => fitArt(illustrationWidth, illustrationWidth * (art === 'attention' ? 1 : 244 / 320), viewport.height * .55);
   function checkReadingArtVisibility() {
     updateReadingPlayback(readingArtBounds.current, scrollWindow.current);
   }
@@ -259,14 +266,14 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
           <PracticeEntryTransition showTask={stage > 0} scanning={entryScanning} height={sceneHeight}
             reducedMotion={reducedMotion} onComplete={finishEntryScan} intro={motion.frame(coolingDown ?
             <PracticeCooldown title={`ШАГ ${currentStep}. ${productStepNames[currentStep]}`} time={remainingTime(deadline, now)} deadline={deadline} now={now}
-              heroHeight={heroHeight} gutter={gutter} inset={inset} expanded={selectorOpen} menu={selectorOpen ? menu : undefined} menuContentHeight={menuContentHeight}
+              heroHeight={hero.height} heroWidth={hero.width} gutter={gutter} inset={inset} expanded={selectorOpen} menu={selectorOpen ? menu : undefined} menuContentHeight={menuContentHeight}
               reducedMotion={reducedMotion} active={!changing} onBack={onBack} onClose={onClose}
               onRetreat={retreat} onReady={setReady} onProgress={setProgress}
               onSelect={() => setSelectorOpen(value => !value)} onDiary={onDiary} /> : <ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
                 reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate} continued={!!destination?.section || readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
                 onViewportChange={value => { scrollWindow.current = value; checkReadingArtVisibility(); }}
-                hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: heroHeight }}>
-                  <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} height={heroHeight} active={active && !changing && focused} reducedMotion={reducedMotion} />
+                hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
+                  <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} width={hero.width} height={hero.height} active={active && !changing && focused} reducedMotion={reducedMotion} />
                 </Reveal>}>
             {reading => motion.panel(<>
               <Reveal delay={160} reducedMotion={reducedMotion} style={styles.panelSpace}>
@@ -320,7 +327,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
             </>, styles.panelSpace)}
           </ReadingExpansion>, styles.panelSpace, changing)}>
             {selectorOpen && stage > 0 && <Pressable accessibilityLabel="Закрыть выбор шага" style={[StyleSheet.absoluteFill, { zIndex: 10 }]} onPress={() => setSelectorOpen(false)} />}
-            <Reveal reducedMotion={reducedMotion} style={styles.header}>
+            <Reveal reducedMotion={reducedMotion} style={[styles.header, { marginBottom: 12 + (air - 1) * 24 }]}>
               <ProductIconButton icon="back" onPress={() => {
                 if (stage === questionStage && observationNavigation.current) observationNavigation.current.back();
                 else if (!changing) { if (currentStep === 2 && stage > 0) retreat(); else if (stage > 0) changeStage(stage - 1); else onBack(); }
@@ -352,14 +359,14 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                     </ProductText>
                   </Animated.View>}
                   <View style={styles.explanationArt}>
-                    {presentation.artworkWrapper ? presentation.artworkWrapper(<View style={{ height: illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320), justifyContent: 'center' }}>
+                    {presentation.artworkWrapper ? presentation.artworkWrapper(<View style={{ height: explanationArt(firstStepExplanations[index - 1].art).height, justifyContent: 'center', alignItems: 'center' }}>
                       <Art kind={firstStepExplanations[index - 1].art} onReady={presentation.onReady}
-                        height={illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320)}
+                        width={explanationArt(firstStepExplanations[index - 1].art).width} height={explanationArt(firstStepExplanations[index - 1].art).height}
                         active={presentation.active} reducedMotion={reducedMotion} />
                     </View>) : <Animated.View style={presentation.artworkStyle ?? { opacity: presentation.artwork }}>
-                      <View style={{ height: illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320), justifyContent: 'center' }}>
+                      <View style={{ height: explanationArt(firstStepExplanations[index - 1].art).height, justifyContent: 'center', alignItems: 'center' }}>
                         <Art kind={firstStepExplanations[index - 1].art} onReady={presentation.onReady}
-                          height={illustrationWidth * (firstStepExplanations[index - 1].art === 'attention' ? 1 : 244 / 320)}
+                          width={explanationArt(firstStepExplanations[index - 1].art).width} height={explanationArt(firstStepExplanations[index - 1].art).height}
                           active={presentation.active} reducedMotion={reducedMotion} />
                       </View>
                     </Animated.View>}

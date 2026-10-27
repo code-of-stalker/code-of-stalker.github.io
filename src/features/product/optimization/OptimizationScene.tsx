@@ -5,13 +5,15 @@ import type { ArtController } from '../motion/types';
 import { cutPanelPath } from '../motion/glassShape';
 import { usePanelSize } from '../motion/usePanelSize';
 import { useEffectsController } from '../motion/EffectsQuality';
-import { productMaxWidth, productSpacing } from '../layout';
+import { productLayout, productSpacing } from '../layout';
 
 /** Onscreen, fully sized and covered by opaque UI. Never hidden/display:none:
  * intersection/renderer lifecycle must keep doing real representative work. */
 export function OptimizationScene({ active, onReady }: { active: boolean; onReady(): void }) {
   const controller = useEffectsController(), glassController = useRef<ArtController | null>(null);
-  const { width: screenWidth, height } = useWindowDimensions(), width = Math.min(screenWidth, productMaxWidth);
+  // Measure the work the screens really do here: a full-window backdrop and
+  // illustrations at this window's column width.
+  const { width: screenWidth, height } = useWindowDimensions(), width = Math.min(screenWidth, productLayout(screenWidth, height).column);
   const gutter = productSpacing(width).gutter, artWidth = width - gutter * 2, mirrorHeight = artWidth * 206 / 288;
   const ready = useRef(new Set<string>());
   const mark = useCallback((kind: string) => { ready.current.add(kind); if (ready.current.size === 4) onReady(); }, [onReady]);
@@ -25,8 +27,8 @@ export function OptimizationScene({ active, onReady }: { active: boolean; onRead
     return controller?.frameJob(at => glassController.current?.interact({ type: 'watcher-art-interaction', action: 'benchmark', at }));
   }, [active, controller]);
   return <View testID="device-optimization-scene" pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={StyleSheet.absoluteFill}>
-    <View style={{ width, height, alignSelf: 'center' }}>
-      <Art kind="rain" width={width} height={height} active={active} scanOnMount={false} onReady={rainReady} />
+    <Art kind="rain" width={screenWidth} height={height} active={active} scanOnMount={false} onReady={rainReady} />
+    <View style={{ position: 'absolute', top: 0, left: (screenWidth - width) / 2, width, height }}>
       <View style={{ position: 'absolute', top: gutter, left: gutter }}>
         <Art kind="mirror" width={artWidth} height={mirrorHeight} active={active} scanOnMount={false} onReady={mirrorReady} />
       </View>

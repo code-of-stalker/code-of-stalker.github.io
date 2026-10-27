@@ -5,7 +5,7 @@ import { ReadingDragSurface } from './ReadingDragSurface';
 import type { ReadingGesture, ScrollGateController } from './ScrollGate.types';
 import { useReadingMotion } from './useReadingMotion';
 import { readingControlsTop, type ReadingCloseButton } from './reading-controls';
-import { productIconSize } from './glassShape';
+import { useProductLayout } from '../layout';
 
 type Window = { offset: number; height: number };
 export type ReadingLayout = {
@@ -34,7 +34,7 @@ export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewp
   paged?: boolean;
   onRetreat?(): void; onRetreatProgress?(value: number): void; onRetreatReady?(value: boolean): void;
 }) {
-  const controllerRef = useRef<ScrollGateController | null>(null);
+  const controllerRef = useRef<ScrollGateController | null>(null), productIconSize = useProductLayout().icon;
   const { layout, drag, observe } = useReadingMotion([gutter, bottomInset, inset, heroHeight, viewportHeight, Number(reducedMotion), Number(continued), readingControlsTop, productIconSize.buttonHeight, productIconSize.height, Number(paged)], () => {});
   const readingDistance = layout?.[1] ?? 0;
   const lastArticleOffset = useRef(0);

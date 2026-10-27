@@ -8,7 +8,7 @@ import type { StyleProp, TextProps, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fonts } from './theme';
-import { productMaxWidth, useProductSpacing } from './layout';
+import { useProductLayout, useProductSpacing } from './layout';
 import { GlassHost } from './motion/GlassHost';
 import { cutPanelPath, productIconPath, productIconSize } from './motion/glassShape';
 import { PanelArtwork } from './motion/PanelArtwork';
@@ -107,6 +107,8 @@ const iconLabels = { back: 'Назад', close: 'Закрыть', settings: 'Н�
 export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons; onPress: () => void }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
+  // Tablets and desktops get one step larger buttons; the glass contour is refitted, the glyph scales with it.
+  const size = useProductLayout().icon, scale = size.width / productIconSize.width;
   const complete = icon === 'back' || icon === 'close';
   const note = useMemo(() => iconSource(notebookPath, colors.accent, 16), [colors.accent]);
   // expo-image retains its decoded image and web SVG tint filter while this
@@ -114,31 +116,36 @@ export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons;
   // including the return to an untinted source; leave the button and GPU face alive.
   const imageIdentity = icon + ':' + (colors.iconTint ?? 'source') + ':' + colors.accent;
   return <Pressable accessibilityRole="button" accessibilityLabel={iconLabels[icon]} onPress={onPress}
-    style={styles.iconButton} hitSlop={2}>
+    style={[styles.iconButton, { width: size.width, minHeight: size.buttonHeight }]} hitSlop={2}>
     {icon === 'diary' ?
-      <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42, height: 28 }} contentFit="contain" /> :
-      <GlassHost style={[styles.iconPanel, { alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
-        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: productIconSize.width, height: productIconSize.height } : icon === 'notes' ? { width: 16, height: 16 } : { width: 24, height: 24 }} contentFit="contain" />
+      <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42 * scale, height: 28 * scale }} contentFit="contain" /> :
+      <GlassHost style={[styles.iconPanel, { width: size.width, height: size.height, alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
+        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale }} contentFit="contain" />
       </GlassHost>}
   </Pressable>;
 }
 
-export function ProductScreen({ children, scroll = true, style, contentStyle, background, header, headerStyle, headerFillOnScroll=false }: PropsWithChildren<{
+export function ProductScreen({ children, scroll = true, style, contentStyle, background, header, headerStyle, headerFillOnScroll=false, layout = 'column' }: PropsWithChildren<{
   scroll?: boolean; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle>; background?: ReactNode;
   header?: ReactNode; headerStyle?: StyleProp<ViewStyle>;
   headerFillOnScroll?:boolean;
+  /** `wide` lets a screen place panels side by side on landscape tablets and desktops. */
+  layout?: 'column' | 'wide';
 }>) {
   const styles = useThemeStyles(createStyles);
-  const { gutter } = useProductSpacing();
+  const { gutter } = useProductSpacing(), sizes = useProductLayout();
+  const maxWidth = layout === 'wide' ? sizes.wide : sizes.column;
   const [scrolled,setScrolled]=useState(false),pastTop=useRef(false);
   return <SafeAreaView testID="product-screen" edges={['top', 'left', 'right', 'bottom']} style={[styles.screen, style]}>
     {background && <View pointerEvents="none" style={StyleSheet.absoluteFill}><View style={styles.background}>{background}</View></View>}
-    {header && <View style={[styles.fixedHeader, { paddingHorizontal: gutter, paddingTop: gutter },headerFillOnScroll&&{backgroundColor:'transparent'}, headerStyle]}>
-      {headerFillOnScroll&&<Fade opacity={scrolled?1:0} style={StyleSheet.absoluteFill}><View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:styles.screen.backgroundColor}]} /></Fade>}{header}</View>}
-    {scroll ? <ProductScroll fadeTop={!!header} style={styles.scroll} contentContainerStyle={[styles.content, { padding: gutter }, contentStyle]}
+    {/* The header's fill spans the window, so the backdrop never shows a column-shaped box behind it. */}
+    {header && <View style={[styles.fixedHeader, headerFillOnScroll&&{backgroundColor:'transparent'}]}>
+      {headerFillOnScroll&&<Fade opacity={scrolled?1:0} style={StyleSheet.absoluteFill}><View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:styles.screen.backgroundColor}]} /></Fade>}
+      <View style={[styles.headerColumn, { maxWidth, paddingHorizontal: gutter, paddingTop: gutter }, headerStyle]}>{header}</View></View>}
+    {scroll ? <ProductScroll fadeTop={!!header} style={styles.scroll} contentContainerStyle={[styles.content, { maxWidth, padding: gutter }, contentStyle]}
       onScroll={headerFillOnScroll?event=>{const next=event.nativeEvent.contentOffset.y>1;if(next!==pastTop.current){pastTop.current=next;setScrolled(next);}}:undefined}
       keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ProductScroll> :
-      <View testID="product-workspace" style={[styles.content, { flex: 1, padding: gutter }, contentStyle]}>{children}</View>}
+      <View testID="product-workspace" style={[styles.content, { maxWidth, flex: 1, padding: gutter }, contentStyle]}>{children}</View>}
   </SafeAreaView>;
 }
 
@@ -150,10 +157,12 @@ const typography: Record<'title' | 'body' | 'label', TextStyle> = {
 const createStyles = (colors: ProductColors) => StyleSheet.create({
   text: { color: colors.text, includeFontPadding: false },
   screen: { flex: 1, backgroundColor: colors.background },
-  background: { flex: 1, width: '100%', maxWidth: productMaxWidth, alignSelf: 'center', overflow: 'hidden' },
+  // Backdrops fill the whole window; only the content keeps to its column.
+  background: { flex: 1, width: '100%', overflow: 'hidden' },
   scroll: { flex: 1 },
-  fixedHeader: { flexShrink: 0, width: '100%', maxWidth: productMaxWidth, alignSelf: 'center', backgroundColor: colors.background, zIndex: 50 },
-  content: { flexGrow: 1, width: '100%', maxWidth: productMaxWidth, alignSelf: 'center' },
+  fixedHeader: { flexShrink: 0, width: '100%', backgroundColor: colors.background, zIndex: 50 },
+  headerColumn: { width: '100%', alignSelf: 'center' },
+  content: { flexGrow: 1, width: '100%', alignSelf: 'center' },
   panel: { padding: 12, backgroundColor: colors.background },
   button: { minHeight: 44, paddingVertical: 12, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },
   primary: { backgroundColor: colors.accent },

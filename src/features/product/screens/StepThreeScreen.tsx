@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import { ProductScreen, ProductText } from '../ui';
 import { StepSignature } from '../motion/StepSignature';
-import { productSpacing, useProductSpacing } from '../layout';
+import { productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
 import { fonts } from '../theme';
 import { stepThreeBlocks } from '../stepThreeContent';
 import { stepThreePractice } from '../stepThreePractice';
@@ -50,7 +50,9 @@ function MeasuredArt({ kind, width, active, reducedMotion, topInset, onMeasure }
     observer.observe(node); observer.observe(parent); schedule(); void document.fonts.ready.then(schedule);
     return () => { live = false; cancelAnimationFrame(frame); observer.disconnect(); };
   }, [kind, width, topInset]);
-  return <View ref={ref} testID={`step-three-art-${kind}`} pointerEvents="none" style={styles.art}
+  // Larger screens leave more air between the copy and its illustration.
+  const extra = (useProductLayout().air - 1) * 48;
+  return <View ref={ref} testID={`step-three-art-${kind}`} pointerEvents="none" style={[styles.art, extra > 0 && { marginTop: 12 + extra, marginBottom: 52 + extra }]}
     onLayout={event => { if (Platform.OS !== 'web') onMeasure(kind, { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }); }}>
     <Art kind={kind} height={width * (kind === 'thought-loop' ? 210 / 288 : 192 / 320)} active={active} reducedMotion={reducedMotion} />
   </View>;
@@ -75,7 +77,9 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
   const blurTarget = useRef<View>(null);
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
-  const heroHeight = Math.max(1, viewport.width - gutter * 2) * 2 / 3;
+  // Larger screens leave more air between the hero and the panel below it.
+  const { air } = useProductLayout(), hero = readingHero(Math.max(1, viewport.width - gutter * 2), Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
+  const heroHeight = hero.height + (air - 1) * 32;
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const artBounds = useRef<Partial<Record<StepThreeArtKind, Bounds>>>({});
   const window = useRef({ offset: 0, height: 0 });
@@ -120,8 +124,8 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
               position.current = { chapter, page: page.index, offset: value.offset }; record({ ...position.current, paged });
             }
           }}
-          hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: heroHeight }}>
-            <Art kind="voice-presence" height={heroHeight} active={active && focused} reducedMotion={reducedMotion} />
+          hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
+            <Art kind="voice-presence" width={hero.width} height={hero.height} active={active && focused} reducedMotion={reducedMotion} />
           </Reveal>}>
           {reading => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 3. ГОЛОС КАК МОСТ" background="clear" expanded={open} onSelect={() => setOpen(value => !value)}

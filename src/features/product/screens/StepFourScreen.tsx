@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import type { ObservationNavigation } from './ObservationScreen';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
-import { productSpacing, useProductSpacing } from '../layout';
+import { productSpacing, readingHero, useProductLayout, useProductSpacing } from '../layout';
 import { stepFourBlocks, stepFourIndex, stepFourPlace, stepFourQuestions, type StepFourPart } from '../stepFourContent';
 import { useProduct } from '../state/ProductProvider';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
@@ -50,7 +50,9 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
   const sceneHeight = Math.max(1, viewport.height - gutter - (questions ? gutter : bottomInset));
-  const heroHeight = Math.max(1, viewport.width - gutter * 2) * 2 / 3;
+  // Larger screens leave more air between the hero and the panel below it.
+  const { air } = useProductLayout(), hero = readingHero(Math.max(1, viewport.width - gutter * 2), Math.max(1, viewport.width - gutter * 2) * 2 / 3, viewport.height);
+  const heroHeight = hero.height + (air - 1) * 32;
   const width = Math.max(1, viewport.width - gutter * 2 - inset * 2);
   const reportPage = useCallback((next: ReadingPagePosition) => {
     setPage(previous => previous.index === next.index && previous.count === next.count ? previous : next);
@@ -110,8 +112,8 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
               position.current = { page: stepFourIndex(reading.block, page.index), offset: value.offset }; record(position.current);
             }
           }}
-          hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: heroHeight }}>
-            <Art kind="grounding-hero" height={heroHeight} active={active && focused && !questions} reducedMotion={reducedMotion} />
+          hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
+            <Art kind="grounding-hero" width={hero.width} height={hero.height} active={active && focused && !questions} reducedMotion={reducedMotion} />
           </Reveal>}>
           {layout => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 4. ЗАЗЕМЛЕНИЕ" background="clear" expanded={open && !questions} onSelect={() => setOpen(value => !value)}
@@ -128,7 +130,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
           </Reveal>}
         </ReadingExpansion>}>
           {open && <Pressable accessibilityLabel="Закрыть выбор шага" style={[StyleSheet.absoluteFill, { zIndex: 10 }]} onPress={() => setOpen(false)} />}
-          <Reveal reducedMotion={reducedMotion} style={styles.header}>
+          <Reveal reducedMotion={reducedMotion} style={[styles.header, { marginBottom: 12 + (air - 1) * 24 }]}>
             <ProductIconButton icon="back" onPress={() => { if (observation.current) observation.current.back(); else enter(0, true); }} />
             <ProductText variant="title">ЗАДАНИЕ</ProductText>
             <ProductIconButton icon="close" onPress={() => { if (observation.current) observation.current.close(); else close(); }} />

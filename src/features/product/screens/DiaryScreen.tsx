@@ -13,7 +13,7 @@ import { productLevels, productStepNames } from '../content';
 import { useProduct } from '../state/ProductProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
 import { DIARY_TEXT_LIMIT, type DiaryCategory, type Observation } from '../state/model';
-import { useProductSpacing } from '../layout';
+import { useProductLayout, useProductSpacing } from '../layout';
 import { Panel, ProductButton, ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { DiaryGlass } from '../diary/DiaryGlass';
 import { useBackSwipe, useBackSwipeBlocked } from '../navigation/BackSwipeProvider';
@@ -42,7 +42,7 @@ function dayLabel(time: number) {
 }
 
 export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps) {
-  const colors = useThemeColors(), styles = useThemeStyles(createStyles), { gutter } = useProductSpacing(), { width, height } = useWindowDimensions();
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles), { gutter } = useProductSpacing(), { width, height } = useWindowDimensions(), { air, icon } = useProductLayout();
   const { observations, diaryEntries = [], listenLater = [], settings, ready, resetting, error: storageError, retryLoad, updateSettings, saveDiaryText, deleteObservation, setListenLater } = useProduct();
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
@@ -154,12 +154,12 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
   return <>
     <ProductScreen scroll={false} contentStyle={styles.screen} background={<View testID="diary-background" pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: .32 }]}><MatrixBackdrop active={focused && foreground} reducedMotion={settings.reducedMotion} /></View>}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined} style={[styles.screen, keyboard.visible && { paddingBottom: keyboard.bottomInset }]}>
-        <View style={[styles.header, { paddingHorizontal: gutter }]}>
+        <View style={[styles.header, { paddingHorizontal: gutter }, air > 1 && { paddingBottom: 10 + (air - 1) * 32 }]}>
           <ProductIconButton icon="back" onPress={back} />
           <ProductText variant="title" style={styles.title}>{'ДНЕВНИК\nСТАЛКЕРА'}</ProductText>
-          <Pressable accessibilityRole="button" accessibilityLabel="Архитектура наблюдения" onPress={() => leave(onArchitecture)} style={styles.architectureButton}><DiaryGlass shape="icon" style={{top:1,bottom:1}} /><DiaryAsset name="collection" transparentBackground /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Архитектура наблюдения" onPress={() => leave(onArchitecture)} style={[styles.architectureButton, { width: icon.width, height: icon.buttonHeight }]}><DiaryGlass shape="icon" style={{top:1,bottom:1}} /><DiaryAsset name="collection" transparentBackground size={icon} /></Pressable>
         </View>
-        {!keyboard.visible && <><View style={[styles.tools, { marginHorizontal: gutter }]}>
+        {!keyboard.visible && <><View style={[styles.tools, { marginHorizontal: gutter }, air > 1 && { marginBottom: (air - 1) * 16 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Выбрать даты записей" onPress={() => open('filters')} style={styles.dates}><DiaryAsset name="calendar" /><ProductText style={styles.dateLabel}>{filter.from || filter.to ? 'ПЕРИОД' : 'ВСЕ ДАТЫ'}</ProductText></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={newest ? 'Сначала новые. Показать сначала старые' : 'Сначала старые. Показать сначала новые'} onPress={() => { void changeSettings({ diaryNewestFirst: !newest }); }} style={styles.sort}><DiaryGlass /><PanelBorder color={colors.accent} /><DiaryAsset name="chevron" /><ProductText style={styles.sortLabel}>{newest ? 'СНАЧАЛА НОВЫЕ' : 'СНАЧАЛА СТАРЫЕ'}</ProductText></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Фильтры дневника" accessibilityState={{ expanded: sheet === 'filters' }} onPress={() => open('filters')} style={styles.filterButton}><DiaryIcon name="filter" size={18} />{activeFilter && <View style={styles.filterDot} />}</Pressable>
@@ -173,7 +173,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
           <ProductText style={styles.count}>{collection ? listenLater.length : observations.length}</ProductText>
           <Pressable accessibilityRole="button" accessibilityLabel={collection ? 'Вся лента дневника' : `К прослушиванию: ${listenLater.length}`} accessibilityState={{ selected: collection }} onPress={switchCollection} style={styles.collectionButton}><DiaryIcon name="bookmark" filled={collection} size={16} />{listenLater.length > 0 && !collection && <ProductText style={styles.badge}>{listenLater.length}</ProductText>}</Pressable>
         </View>
-        {!collection && <Pressable accessibilityRole="button" accessibilityLabel="Добавить отчёт о динамике" disabled={!ready} onPress={() => open('report')} style={[styles.reportPrompt, { marginHorizontal: gutter }]}>
+        {!collection && <Pressable accessibilityRole="button" accessibilityLabel="Добавить отчёт о динамике" disabled={!ready} onPress={() => open('report')} style={[styles.reportPrompt, { marginHorizontal: gutter }, air > 1 && { marginTop: (air - 1) * 16, marginBottom: 8 * air }]}>
           <DiaryGlass shape="panel" /><PanelArtwork source={frames.prompt} /><DiaryAsset name="sparkle" /><View style={styles.reportCopy}><ProductText variant="title" style={styles.reportTitle}>{reportsToday ? 'Сегодняшнее наблюдение сохранено' : 'Что ощутили сегодня?'}</ProductText><ProductText style={styles.reportHint}>{reportsToday ? 'ДОПОЛНИТЬ ОТЧЁТ О ДИНАМИКЕ' : 'ДОБАВИТЬ ОТЧЁТ ДИНАМИКИ'}</ProductText></View><DiaryIcon name="plus" />
         </Pressable>}
         {activeFilter && <Pressable accessibilityRole="button" accessibilityLabel="Сбросить активные фильтры" onPress={() => { setFilter({ ...emptyDiaryFilter }); setSelected(null); }} style={[styles.applied, { marginHorizontal: gutter }]}><ProductText style={styles.small}>ФИЛЬТРЫ · {entries.length} ЗАПИСЕЙ</ProductText><DiaryIcon name="close" size={14} /></Pressable>}</>}

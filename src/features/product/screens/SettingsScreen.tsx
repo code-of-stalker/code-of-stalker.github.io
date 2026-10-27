@@ -8,6 +8,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import type { ProductSettings } from '../content';
 import { Panel, ProductButton, ProductIconButton, ProductScreen, ProductText, ProductTypography } from '../ui';
+import { useProductLayout } from '../layout';
 import { useEffectsDiagnostics } from '../motion/EffectsQuality';
 import { diagnosticsPreference } from '../motion/EffectsController';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
@@ -79,7 +80,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
   const styles = useThemeStyles(createStyles);
   const [confirmReset, setConfirmReset] = useState(false), [resetError, setResetError] = useState('');
   useBackSwipe(() => { if (confirmReset) setConfirmReset(false); else onBack(); });
-  const effectDiagnostics = useEffectsDiagnostics();
+  const effectDiagnostics = useEffectsDiagnostics(), { air, icon } = useProductLayout();
   async function reset() {
     if (resetting) return;
     setResetError('');
@@ -94,9 +95,9 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
           <ProductText variant="title" numberOfLines={1} style={styles.title}>НАСТРОЙКИ</ProductText>
           <ProductText variant="label" style={styles.subtitle}>ТВОЕГО РИТМА</ProductText>
         </View>
-        <View style={styles.headerBalance} />
+        <View style={[styles.headerBalance, { width: icon.width }]} />
       </View>}>
-      <View style={styles.settings}>
+      <View style={[styles.settings, air > 1 && { marginTop: 8 * air * 2, gap: 16 * air }]}>
         <View style={styles.divider} />
         <View style={styles.section}>
           <SectionHeading title="Тема" icon={assets.theme} />

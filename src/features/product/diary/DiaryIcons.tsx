@@ -13,8 +13,8 @@ const assets = {
   chevron: require('../../../../assets/product/diary/chevron.svg'),
 };
 const sizes = { calendar: [24,24], sparkle: [32,32], info: [20,20], collection: [44,42], chevron: [7,7] } as const;
-export function DiaryAsset({ name, dim = false, transparentBackground = false }: { name: keyof typeof assets; dim?: boolean; transparentBackground?: boolean }) {
-  const colors = useThemeColors(), [width, height] = sizes[name];
+export function DiaryAsset({ name, dim = false, transparentBackground = false, size }: { name: keyof typeof assets; dim?: boolean; transparentBackground?: boolean; size?: { width: number; height: number } }) {
+  const colors = useThemeColors(), [width, height] = size ? [size.width, size.height] : sizes[name];
   const themed = name === 'collection' || name === 'calendar';
   const source = useMemo(() => name === 'info' ? { uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="${colors.accent}" stroke-width=".75"/><circle cx="10" cy="6.25" r=".8" fill="${colors.accent}"/><path d="M8.75 9H10v5.5m-1.25 0h2.5" fill="none" stroke="${colors.accent}" stroke-width=".75" stroke-linecap="round" stroke-linejoin="round"/></svg>`)}` } : themed ? diaryArtwork(name as 'collection' | 'calendar', colors, transparentBackground) : assets[name], [themed, name, colors, transparentBackground]);
   return <Image pointerEvents="none" testID={`diary-icon-${name}`} source={source} tintColor={themed || name === 'info' ? undefined : dim ? colors.faint : colors.accent} contentFit="contain" style={{ width, height, flexShrink: 0, opacity: themed && dim ? .5 : 1 }} />;

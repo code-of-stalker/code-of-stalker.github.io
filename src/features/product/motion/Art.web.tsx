@@ -8,6 +8,7 @@ import { useSystemReducedMotion } from './useSystemReducedMotion.web';
 import { CloudDrift } from './CloudDrift.web';
 import { HearState } from './HearState.web';
 import { TuningQuestions } from './TuningQuestions.web';
+import { PersonaDream } from './PersonaDream.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
   const systemReduced = useSystemReducedMotion();
@@ -20,6 +21,7 @@ function scene(props: ArtProps) {
   if (props.webScene === 'simple-practice') return <SimplePractice {...props} />;
   if (props.webScene === 'hear-state') return <HearState {...props} />;
   if (props.webScene === 'tuning-questions') return <TuningQuestions {...props} />;
+  if (props.webScene === 'persona-dream') return <PersonaDream {...props} />;
   // Inline films do not own card geometry, scanner reveal or button hit areas.
   if(props.kind==='grounding-here' && props.presentation!=='card')return <CloudDrift {...props}/>;
   if(props.kind==='glass'||props.kind==='rain'||props.kind==='gallery'||props.kind==='mirror'||props.kind==='voice-presence'||props.kind==='grounding-hero')return <RustGlass {...props}/>;

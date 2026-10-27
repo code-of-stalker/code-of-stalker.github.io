@@ -1,4 +1,4 @@
-import { questionsForStep, observationHint, secondStepHint, stepDescriptions } from '../content';
+import { questionsForStep, hintForStep, stepDescriptions } from '../content';
 import type { AudioRecord, DiaryEntry, Observation, ProductLevel } from '../state/model';
 
 export type FeedEntry = DiaryEntry | Observation;
@@ -45,8 +45,7 @@ export function diaryQuestion(entry: Observation) {
 }
 export function diaryMaterial(entry: Observation): string | null {
   if (entry.level !== 'basic') return null;
-  if (entry.step === 1) return observationHint;
-  if (entry.step === 2) return secondStepHint;
+  if (entry.step === 1 || entry.step === 2 || entry.step === 4) return hintForStep(entry.step);
   return stepDescriptions[entry.step as keyof typeof stepDescriptions] ?? null;
 }
 export function diaryClock(ms: number) {

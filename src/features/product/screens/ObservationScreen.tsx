@@ -33,7 +33,7 @@ import { DiaryGlass } from '../diary/DiaryGlass';
 import { PanelBorder } from '../PanelBorder';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 
-import { questionsForStep, observationHint, secondStepHint } from '../content';
+import { questionsForStep, hintForStep } from '../content';
 function clock(milliseconds: number) {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -74,7 +74,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const { inset } = useProductSpacing();
   const { observations, progress, settings, ready, error: storageError, saveObservation, loadPlayback, discardPlayback, deleteObservation, updateProgress } = useProduct();
-  const questions = questionsForStep(progress.step), questionHint = progress.step === 2 ? secondStepHint : observationHint;
+  const questions = questionsForStep(progress.step), questionHint = hintForStep(progress.step);
   const recorder = useObservationRecorder();
   const [sheet, setSheet] = useState<'hint' | 'recordings' | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -215,8 +215,9 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
   const hasSavedAnswer = !!selected, canAdvance = hasSavedAnswer || freeMove;
   const canNavigate = active && effectsActive && !busy && !isRecording && !review && !sheet && !selectorOpen;
   const cueVisible = scrollReady && canNavigate && (scrollProgress < 0 || canAdvance);
-  const cueLabel = scrollProgress < 0 ? 'ПРОКРУТИ НАЗАД К ЗАДАНИЮ' : question < 3 ? 'ПРОКРУТИ К СЛЕДУЮЩЕМУ ВОПРОСУ'
-    : missingQuestion() < 0 || freeMove ? 'ПРОКРУТИ ДЛЯ ЗАВЕРШЕНИЯ' : 'ПРОКРУТИ К ОСТАВШИМСЯ ОТВЕТАМ';
+  // Step 4 reads on after its questions, so its cue doesn't speak of a task or of finishing.
+  const cueLabel = scrollProgress < 0 ? progress.step === 4 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ НАЗАД К ЗАДАНИЮ' : question < 3 ? 'ПРОКРУТИ К СЛЕДУЮЩЕМУ ВОПРОСУ'
+    : missingQuestion() < 0 || freeMove ? progress.step === 4 ? 'ПРОКРУТИ ДАЛЬШЕ' : 'ПРОКРУТИ ДЛЯ ЗАВЕРШЕНИЯ' : 'ПРОКРУТИ К ОСТАВШИМСЯ ОТВЕТАМ';
   useBackSwipe(() => {
     if (saving) return;
     previousQuestion();

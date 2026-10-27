@@ -1,4 +1,5 @@
 import type { ProductLevel } from './state/model';
+import { stepFourHint, stepFourQuestions } from './stepFourContent';
 
 export type LevelId = ProductLevel;
 export type { ProductSettings } from './state/model';
@@ -29,7 +30,8 @@ export const secondStepClosing = [
 ] as const;
 
 export const secondStepHint = secondStepTasks.map(block => `${block.title}:\n${block.text}`).join('\n\n');
-export const questionsForStep = (step: number): readonly string[] => step === 2 ? secondStepQuestions : observationQuestions;
+export const questionsForStep = (step: number): readonly string[] => step === 4 ? stepFourQuestions : step === 2 ? secondStepQuestions : observationQuestions;
+export const hintForStep = (step: number) => step === 4 ? stepFourHint : step === 2 ? secondStepHint : observationHint;
 
 export const productStepNames = {
   1: 'ОЩУТИ СЕБЯ',

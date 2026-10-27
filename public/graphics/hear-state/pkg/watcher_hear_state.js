@@ -152,6 +152,12 @@ function __wbg_get_imports() {
         __wbg_bufferData_ec7957bcbbf38591: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
         },
+        __wbg_clearColor_796427e8ac60fe14: function(arg0, arg1, arg2, arg3, arg4) {
+            getObject(arg0).clearColor(arg1, arg2, arg3, arg4);
+        },
+        __wbg_clear_cb96796cc568b7c8: function(arg0, arg1) {
+            getObject(arg0).clear(arg1 >>> 0);
+        },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
         },

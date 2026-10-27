@@ -540,17 +540,23 @@ impl HearState {
         // The scene: light channels and body coverage, premultiplied.
         self.render_to(Some(&targets[0]));
         gl.disable(Gl::BLEND);
-        self.begin(&self.air);
-        let key = geometry::key_light(&f);
-        gl.uniform4f(
-            self.air.at("u_air"),
-            f.time / LOOP_SECONDS * std::f32::consts::TAU,
-            f.ambient,
-            f.camera.eye[0],
-            f.camera.eye[1] - 1.652,
-        );
-        gl.uniform4fv_with_f32_array(self.air.at("u_key"), &key);
-        self.draw_span(air);
+        if self.look.light {
+            // A light page has no room air: the page itself is the paper.
+            gl.clear_color(0.0, 0.0, 0.0, 0.0);
+            gl.clear(Gl::COLOR_BUFFER_BIT);
+        } else {
+            self.begin(&self.air);
+            let key = geometry::key_light(&f);
+            gl.uniform4f(
+                self.air.at("u_air"),
+                f.time / LOOP_SECONDS * std::f32::consts::TAU,
+                f.ambient,
+                f.camera.eye[0],
+                f.camera.eye[1] - 1.652,
+            );
+            gl.uniform4fv_with_f32_array(self.air.at("u_key"), &key);
+            self.draw_span(air);
+        }
         gl.enable(Gl::BLEND);
         gl.blend_func(Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
         self.begin(&self.soft);

@@ -1,8 +1,8 @@
 #version 300 es
 precision highp float;
-// The air of the room (the cone of the top light, the haze of the depth),
-// then the theme: dark themes add light to a dark room, light themes lay
-// ink on the page. Bloom, grain and the soft edges into the page.
+// The theme: dark themes add light and the air of the room (the cone of the
+// top light, the haze of the depth) to a dark room, light themes lay ink on
+// the page itself. Bloom, grain and the soft edges into the page.
 uniform sampler2D u_scene;
 uniform sampler2D u_bloom;
 uniform sampler2D u_wide;
@@ -56,12 +56,12 @@ void main() {
   vec2 px = u_frame.xy + vec2(uv.x, 1.0 - uv.y) * u_frame.zw;
   vec4 s = texture(u_scene, uv);
   vec2 b = texture(u_bloom, uv).rg * 0.85 + texture(u_wide, uv).rg * 0.75;
-  vec2 room_air = air(px) * (1.0 - clamp(s.a, 0.0, 1.0));
-  float a = room_air.x + room_air.y;
   vec3 c;
   float fill = clamp(s.b * 2.0, 0.0, 1.0);
   float glow = clamp(s.b * 2.0 - 1.0, 0.0, 1.0);
   if (u_post.x < 0.5) {
+    vec2 room_air = air(px) * (1.0 - clamp(s.a, 0.0, 1.0));
+    float a = room_air.x + room_air.y;
     vec3 base = mix(u_paper, u_body, fill);
     vec3 light = u_room * (s.r * 1.2 + b.r + a) + u_person * (s.g * 1.2 + glow * 1.2 + b.g);
     c = base + (1.0 - base) * (1.0 - exp(-light * 1.35));
@@ -69,15 +69,10 @@ void main() {
     c *= 1.0 - u_post.y * smoothstep(0.32, 0.95, v);
   } else {
     // On a light page the scene's paper is the page itself: no haze, no
-    // lighter rectangle; only the beam of the top light is a paler streak.
+    // beam of the top light, nothing lighter than the page anywhere.
     // Bodies and columns are drawn by their ink alone (they already hide
     // what lies behind them), so nothing paints a paler shape on the page.
-    // The top light is a soft brightening that dies out well inside the
-    // frame, so the page shows no lighter rectangle.
-    vec3 paper = u_backdrop;
-    float inner = smoothstep(0.0, 0.32, uv.x) * smoothstep(0.0, 0.32, 1.0 - uv.x)
-                * smoothstep(0.0, 0.32, uv.y) * smoothstep(0.0, 0.32, 1.0 - uv.y);
-    c = mix(paper, vec3(1.0), clamp(room_air.y * 1.6, 0.0, 0.2) * inner);
+    c = u_backdrop;
     // Light is never white here: like the effects of Art's light paintings it
     // inks the page in the lamp's color, a wash inside the body and a soft
     // halo around it.

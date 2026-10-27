@@ -4,7 +4,7 @@ import { MotionModal } from '../motion/MotionModal';
 import { Image } from 'expo-image';
 import type { ImageSource } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import type { ProductSettings } from '../content';
 import { Panel, ProductButton, ProductIconButton, ProductScreen, ProductText, ProductTypography } from '../ui';
@@ -127,7 +127,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
             selected={(settings.effectQuality ?? 'high') === quality} onPress={() => onChange({ effectQuality: quality })} />)}
         </View>
         <View style={styles.divider} />
-        <ToggleRow label="Плавность" detail={(settings.smoothness ?? true) ? `ЦЕЛЬ — ${settings.effectTargetFps ?? 60} FPS. КАЧЕСТВО ЭФФЕКТОВ ПОДСТРАИВАЕТСЯ АВТОМАТИЧЕСКИ` : 'ФИКСИРОВАННОЕ КАЧЕСТВО ЭФФЕКТОВ. ЦЕЛЬ — 60 FPS'} enabled={settings.smoothness ?? true} onToggle={() => onChange({ smoothness: !(settings.smoothness ?? true) })} />
+        <ToggleRow label="Плавность" detail={(settings.smoothness ?? true) ? `${Platform.OS === 'web' ? 'МЯГКАЯ ПРОКРУТКА. ' : ''}ЦЕЛЬ — ${settings.effectTargetFps ?? 60} FPS. КАЧЕСТВО ЭФФЕКТОВ ПОДСТРАИВАЕТСЯ АВТОМАТИЧЕСКИ` : 'ФИКСИРОВАННОЕ КАЧЕСТВО ЭФФЕКТОВ. ЦЕЛЬ — 60 FPS'} enabled={settings.smoothness ?? true} onToggle={() => onChange({ smoothness: !(settings.smoothness ?? true) })} />
         {(settings.smoothness ?? true) && <View accessibilityRole="radiogroup" accessibilityLabel="Целевая плавность">
           {([60,90,120] as const).map(fps=><RadioRow key={fps} label={`${fps} FPS`} selected={(settings.effectTargetFps ?? 60)===fps} onPress={()=>onChange({effectTargetFps:fps})}/>)}</View>}
         <View style={styles.divider} />

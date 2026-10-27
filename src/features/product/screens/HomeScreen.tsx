@@ -43,11 +43,14 @@ export function HomeScreen({
     const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
     return () => subscription.remove();
   }, []);
-  const { gutter, inset } = useProductSpacing(), { kind, columns, wide } = useProductLayout();
+  const { gutter, inset } = useProductSpacing(), { kind, columns, wide, air } = useProductLayout();
   // The motto runs from window edge to window edge, past the centered content.
   const { width: windowWidth } = useWindowDimensions(), outside = gutter + Math.max(0, windowWidth - wide) / 2;
   // Tablet and desktop cards are two to three times the phone's; their type grows one step.
   const large = kind !== 'phone';
+  // Side by side, each card is wide enough to carry its name on one line.
+  const oneLine = columns === 2, titleStyle = [styles.cardTitle, large && styles.cardTitleLarge];
+  const arrowImage = <Image source={arrow} tintColor={colors.iconTint} style={large ? styles.arrowLarge : styles.arrowImage} contentFit="contain" />;
   return (
     <ProductScreen scroll={false} layout="wide" background={<MatrixBackdrop active={focused && foreground} reducedMotion={!!reducedMotion} />}>
       <Reveal reducedMotion={reducedMotion} style={styles.header}>
@@ -59,35 +62,35 @@ export function HomeScreen({
       </Reveal>
 
       {/* Landscape tablets and desktops place the two cards side by side. */}
-      <View style={[styles.cards, { gap: gutter, marginTop: gutter }, columns === 2 && styles.cardRow]}>
+      <View style={[styles.cards, { gap: gutter, marginTop: gutter * air }, columns === 2 && styles.cardRow]}>
         <Reveal delay={100} reducedMotion={reducedMotion} style={styles.cardSlot}>
           <View style={styles.cardSlot}><HomeCard artwork={{ kind: started ? step === 4 ? 'grounding-here' : step === 3 ? 'thought-loop' : step === 2 ? 'book' : 'cells' : 'distance',
             webScene: started && step === 4 ? 'simple-practice' : undefined, reducedMotion, onPress: onArchitecture,
             accessibilityLabel: started ? `Архитектура наблюдения. ${levelLabel}, ${stepLabel}. Продолжить` : 'Архитектура наблюдения. Выбрать уровень' }}>
             <View pointerEvents="none" style={[styles.numberPosition, { top: inset, left: inset }]}><ProductText variant="label" style={styles.number}>01 /</ProductText></View>
-            <HomeCardCopy inset={inset} gradient="architecture">
-              <ProductText variant="title" style={[styles.cardTitle, large && styles.cardTitleLarge]}>{'АРХИТЕКТУРА\nНАБЛЮДЕНИЯ'}</ProductText>
+            <HomeCardCopy inset={inset} gradient="architecture" style={large && styles.copyLarge}>
+              <ProductText variant="title" fitToWidth={oneLine} minFontSize={20} style={titleStyle}>{oneLine ? 'АРХИТЕКТУРА НАБЛЮДЕНИЯ' : 'АРХИТЕКТУРА\nНАБЛЮДЕНИЯ'}</ProductText>
               <ProductText variant="label" style={styles.cardCaption}>
                 {started ? `${levelLabel} · ${stepLabel}` : 'ВЫСТАВЬ ДИСТАНЦИЮ'}
               </ProductText>
             </HomeCardCopy>
-            <View pointerEvents="none" style={styles.arrow}><Image source={arrow} tintColor={colors.iconTint} style={styles.arrowImage} contentFit="contain" /></View>
+            <View pointerEvents="none" style={[styles.arrow, large && styles.arrowLarge]}>{arrowImage}</View>
           </HomeCard></View>
         </Reveal>
 
         <Reveal delay={220} reducedMotion={reducedMotion} style={styles.cardSlot}>
           <HomeCard artwork={{ kind: 'diary', reducedMotion, onPress: onDiary, accessibilityLabel: 'Дневник сталкера' }}>
             <View pointerEvents="none" style={[styles.numberPosition, { top: inset, left: inset }]}><ProductText variant="label" style={styles.number}>02 /</ProductText></View>
-            <HomeCardCopy inset={inset} gradient="diary">
-              <ProductText variant="title" style={[styles.cardTitle, large && styles.cardTitleLarge]}>{'ДНЕВНИК\nСТАЛКЕРА'}</ProductText>
+            <HomeCardCopy inset={inset} gradient="diary" style={large && styles.copyLarge}>
+              <ProductText variant="title" fitToWidth={oneLine} minFontSize={20} style={titleStyle}>{oneLine ? 'ДНЕВНИК СТАЛКЕРА' : 'ДНЕВНИК\nСТАЛКЕРА'}</ProductText>
               <ProductText variant="label" style={styles.cardCaption}>СОХРАНИ НАБЛЮДЕНИЯ</ProductText>
             </HomeCardCopy>
-            <View pointerEvents="none" style={styles.arrow}><Image source={arrow} tintColor={colors.iconTint} style={styles.arrowImage} contentFit="contain" /></View>
+            <View pointerEvents="none" style={[styles.arrow, large && styles.arrowLarge]}>{arrowImage}</View>
           </HomeCard>
         </Reveal>
       </View>
 
-      <View style={[styles.mottoContainer, { marginTop: gutter + 8, marginHorizontal: -outside }]}>
+      <View style={[styles.mottoContainer, { marginTop: (gutter + 8) * air, marginHorizontal: -outside }]}>
         <Marquee text="НЕТ ПРАВИЛЬНЫХ ОТВЕТОВ, ЕСТЬ ТОЛЬКО ТВОЁ НАБЛЮДЕНИЕ" active={focused && foreground}
           reducedMotion={!!reducedMotion} style={{ marginTop: 0, marginBottom: 0 }} textStyle={styles.motto} />
       </View>
@@ -111,6 +114,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   cardCaption: { fontSize: 8, lineHeight: 10, color: colors.muted },
   arrow: { position: 'absolute', bottom: 16, right: 16, width: 16, height: 16, zIndex: 2 },
   arrowImage: { width: 16, height: 16 },
+  arrowLarge: { width: 22, height: 22 },
+  copyLarge: { right: 40 },
   mottoContainer: { marginTop: 24, minHeight: 24, justifyContent: 'center' },
   motto: { color: colors.muted, fontSize: 8, lineHeight: 16, letterSpacing: 2.1, textAlign: 'center' },
 });

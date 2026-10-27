@@ -25,7 +25,7 @@ import { TaskProgress } from '../motion/TaskProgress';
 import { ObservationActionButton, ObservationIcon } from '../ObservationControls';
 import { createRecordingHold } from '../audio/recording-hold';
 import { useProduct } from '../state/ProductProvider';
-import { useProductSpacing } from '../layout';
+import { useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { StepSignature } from '../motion/StepSignature';
 import { RecordingReview } from '../RecordingReview';
@@ -72,7 +72,7 @@ export function ObservationScreen(props: ObservationScreenProps) {
 function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onBack, onClose, onNavigationReady, onQuestionHeight, embedded = false, active = true, effectsActive = true, startAtEnd = false }: ObservationScreenProps) {
   const styles = useThemeStyles(createStyles);
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
-  const { inset } = useProductSpacing();
+  const { inset } = useProductSpacing(), { air } = useProductLayout();
   const { observations, progress, settings, ready, error: storageError, saveObservation, loadPlayback, discardPlayback, deleteObservation, updateProgress } = useProduct();
   const questions = questionsForStep(progress.step), questionHint = hintForStep(progress.step);
   const recorder = useObservationRecorder();
@@ -236,11 +236,11 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ProductText variant="title" style={styles.title}>ЗАДАНИЕ</ProductText>
         <ProductIconButton icon="close" onPress={() => leave(onClose)} />
       </View>}
-      <TaskProgress part={question + 1} total={questions.length} segmented label="Вопрос" reducedMotion={settings.reducedMotion} />
+      <View style={!embedded && { marginTop: (air - 1) * 48 }}><TaskProgress part={question + 1} total={questions.length} segmented label="Вопрос" reducedMotion={settings.reducedMotion} /></View>
       <ScrollGate fadeTop={24} fill resetKey={question} startAtEnd={startAtEnd} allowAdvance={canAdvance} enabled={canNavigate} onReady={setScrollReady} onProgress={setScrollProgress}
         onAdvance={nextQuestion} onRetreat={previousQuestion} onViewportChange={value => { if (value.height > 0) setRecordingHeight(previous => Math.abs(previous - value.height) < 1 ? previous : value.height); }}>
       <View onLayout={event => { setQuestionHeight(event.nativeEvent.layout.height); onQuestionHeight?.(event.nativeEvent.layout.height); }}>
-      <Reveal reducedMotion={settings.reducedMotion} delay={140} style={[styles.questionBlock, recordingHeight < 420 && { paddingTop: 12, minHeight: 96 }]}>
+      <Reveal reducedMotion={settings.reducedMotion} delay={140} style={[styles.questionBlock, air > 1 && { paddingTop: 30 * air }, recordingHeight < 420 && { paddingTop: 12, minHeight: 96 }]}>
         <ProductText variant="title" maxFontSize={screenWidth >= 375 ? 14 : 10} style={styles.prompt}>ЗАПИШИ ДЛЯ СЕБЯ СВОИ НАБЛЮДЕНИЯ:</ProductText>
         <ContentSwap value={question} reducedMotion={settings.reducedMotion} style={styles.questionButton} render={index =>
           <Pressable accessibilityRole="button" accessibilityLabel={`Подсказка: ${questions[index]}`}

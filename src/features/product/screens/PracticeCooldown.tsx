@@ -28,9 +28,9 @@ function openingTime(deadline: number, now: number) {
 
 /** A single live illustration and the unavailable copy sit behind the blur.
  * Navigation, timer and diary action belong to the sharp foreground. */
-export function PracticeCooldown({ title, time, deadline, now, heroHeight, gutter, inset, expanded, menu, menuContentHeight, reducedMotion, active,
+export function PracticeCooldown({ title, time, deadline, now, heroHeight, heroWidth, gutter, inset, expanded, menu, menuContentHeight, reducedMotion, active,
   onBack, onClose, onSelect, onDiary, onRetreat, onReady, onProgress }: {
-  title: string; time: string; deadline: number; now: number; heroHeight: number; gutter: number; inset: number;
+  title: string; time: string; deadline: number; now: number; heroHeight: number; heroWidth?: number; gutter: number; inset: number;
   expanded: boolean; menu?: ReactNode; menuContentHeight?: number; reducedMotion: boolean; active: boolean;
   onBack(): void; onClose(): void; onSelect(): void; onDiary(): void;
   onRetreat(): void; onReady(ready: boolean): void; onProgress(value: number): void;
@@ -52,7 +52,7 @@ export function PracticeCooldown({ title, time, deadline, now, heroHeight, gutte
           composited Rust canvas from a sibling backdrop-filter's snapshot. */}
       <BlurTargetView testID="cooldown-blurred-content" ref={blurTarget} style={[StyleSheet.absoluteFill, { overflow: 'hidden' },
         Platform.OS === 'web' && { filter: `saturate(${colors === neutralColors || colors === violetColors ? 100 : 180}%) blur(${material.backgroundBlur}px)` } as ViewStyle]}>
-        <Art kind="gallery" height={heroHeight} active={active && !expanded} reducedMotion={reducedMotion} />
+        <Art kind="gallery" width={heroWidth} height={heroHeight} style={{ alignSelf: 'center' }} active={active && !expanded} reducedMotion={reducedMotion} />
         <View style={[styles.unavailableCopy, { padding: inset, marginTop: gutter }]}>
           <ProductText style={styles.previewText}>{stepDescriptions[2]}</ProductText>
         </View>

@@ -107,6 +107,8 @@ const iconLabels = { back: 'Назад', close: 'Закрыть', settings: 'Н�
 export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons; onPress: () => void }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
+  // Tablets and desktops get one step larger buttons; the glass contour is refitted, the glyph scales with it.
+  const size = useProductLayout().icon, scale = size.width / productIconSize.width;
   const complete = icon === 'back' || icon === 'close';
   const note = useMemo(() => iconSource(notebookPath, colors.accent, 16), [colors.accent]);
   // expo-image retains its decoded image and web SVG tint filter while this
@@ -114,11 +116,11 @@ export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons;
   // including the return to an untinted source; leave the button and GPU face alive.
   const imageIdentity = icon + ':' + (colors.iconTint ?? 'source') + ':' + colors.accent;
   return <Pressable accessibilityRole="button" accessibilityLabel={iconLabels[icon]} onPress={onPress}
-    style={styles.iconButton} hitSlop={2}>
+    style={[styles.iconButton, { width: size.width, minHeight: size.buttonHeight }]} hitSlop={2}>
     {icon === 'diary' ?
-      <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42, height: 28 }} contentFit="contain" /> :
-      <GlassHost style={[styles.iconPanel, { alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
-        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: productIconSize.width, height: productIconSize.height } : icon === 'notes' ? { width: 16, height: 16 } : { width: 24, height: 24 }} contentFit="contain" />
+      <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42 * scale, height: 28 * scale }} contentFit="contain" /> :
+      <GlassHost style={[styles.iconPanel, { width: size.width, height: size.height, alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
+        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale }} contentFit="contain" />
       </GlassHost>}
   </Pressable>;
 }

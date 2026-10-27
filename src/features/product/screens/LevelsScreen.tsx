@@ -47,7 +47,7 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
     const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
     return () => subscription.remove();
   }, []);
-  const { inset, gutter } = useProductSpacing(), { column } = useProductLayout();
+  const { inset, gutter } = useProductSpacing(), { column, air } = useProductLayout();
   const contentWidth = Math.min(width, column) - gutter * 2;
   const artHeight = Math.max(150, contentWidth * 150 / 288);
   const bodyHeight = Math.max(202, artHeight + (width >= 375 ? 94 : 52));
@@ -62,8 +62,8 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
           <ProductIconButton icon="notes" onPress={onDiary} />
         </View>}>
 
-        <ProductText variant="label" style={styles.choose}>ВЫБЕРИ УРОВЕНЬ</ProductText>
-        <View style={styles.levels}>
+        <ProductText variant="label" style={[styles.choose, air > 1 && { marginTop: 24 * air, marginBottom: 16 * air }]}>ВЫБЕРИ УРОВЕНЬ</ProductText>
+        <View style={[styles.levels, air > 1 && { gap: 24 * air }]}>
           {productLevels.map((level,index) => {
             const expanded = selectedLevel === level.id;
             return (

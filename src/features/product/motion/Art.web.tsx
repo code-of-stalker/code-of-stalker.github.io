@@ -8,9 +8,13 @@ import { useSystemReducedMotion } from './useSystemReducedMotion.web';
 import { CloudDrift } from './CloudDrift.web';
 import { HearState } from './HearState.web';
 import { TuningQuestions } from './TuningQuestions.web';
+import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
   const systemReduced = useSystemReducedMotion();
   const props = systemReduced ? { ...input, reducedMotion: true } : input;
+  return holdsPlace(props) ? <ArtLoading props={props}>{scene}</ArtLoading> : scene(props);
+}
+function scene(props: ArtProps) {
   if (props.webScene === 'theatre-marionette') return <TheatreMarionette {...props} />;
   if (props.webScene === 'world-in-glasses') return <WorldInGlasses {...props} />;
   if (props.webScene === 'simple-practice') return <SimplePractice {...props} />;

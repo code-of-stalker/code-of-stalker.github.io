@@ -11,9 +11,10 @@
 //! sharp whatever the lens does.
 use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK, SILHOUETTE};
 use crate::{
-    card_rows, curve, hash, lerp3, route, smooth, stop_at, thread_length, word_span, Camera, Frame,
-    Kind, Projected, BEND, DOT_RADIUS, FIGURE, FLOOR_SVG, LINE_Y, LINE_Z, LOOP_SECONDS, MOUTH,
-    ORIGIN_SVG, START, UNIT, WORDS, WORD_HALF,
+    card_rows, curve, hash, lerp3, on_figure, route, smooth, stop_at, thread_length, thread_share,
+    wave, word_span, Camera, Frame, Kind, Projected, BEND, DOT_RADIUS, FIGURE, FLOOR_SVG, LINE_Y,
+    LINE_Z, LOOP_SECONDS, MOUTH, ORIGIN_SVG, SIGHTS, START, THOUGHT_AT, UNIT, WAVELENGTH, WAVE_AMP,
+    WORDS,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -615,35 +616,37 @@ fn on_route(x: f32) -> f32 {
     let total = thread + stop_at()[0] - START[0];
     (thread + x - START[0]) / total
 }
-/// The axis of a word from `x0` to `x1` as a capsule: rounded ends, an
-/// even body. Points and their half heights.
-fn capsule(x0: f32, x1: f32, half: f32) -> (Vec<[f32; 3]>, Vec<f32>) {
-    let half = half.min((x1 - x0) * 0.5).max(1e-5);
-    let mut points = Vec::with_capacity(20);
-    let mut widths = Vec::with_capacity(20);
-    for i in 0..=5 {
-        let a = i as f32 / 5.0 * PI * 0.5;
-        points.push([x0 + half * (1.0 - a.cos()), LINE_Y, LINE_Z]);
-        widths.push(half * a.sin().max(0.15));
+/// A strand of the conclusion's wave from `x0` to `x1`, fine enough for
+/// its wavelength, `dz` nearer the camera.
+fn wave_points(x0: f32, x1: f32, strand: u32, dz: f32) -> Vec<[f32; 3]> {
+    let n = (((x1 - x0) / (WAVELENGTH / 10.0)).ceil() as usize).max(2);
+    (0..=n)
+        .map(|k| {
+            let x = x0 + (x1 - x0) * k as f32 / n as f32;
+            [x, LINE_Y + wave(x, strand), LINE_Z + dz]
+        })
+        .collect()
+}
+/// How far along the line the conclusion is laid (world x), if at all.
+fn laid(f: &Frame) -> Option<f32> {
+    if f.stop > 0.0 {
+        return Some(stop_at()[0]);
     }
-    for i in 1..8 {
-        points.push([
-            x0 + half + (x1 - x0 - 2.0 * half) * i as f32 / 8.0,
-            LINE_Y,
-            LINE_Z,
-        ]);
-        widths.push(half);
-    }
-    for i in 0..=5 {
-        let a = i as f32 / 5.0 * PI * 0.5;
-        points.push([x1 - half + half * a.sin(), LINE_Y, LINE_Z]);
-        widths.push(half * a.cos().max(0.15));
-    }
-    (points, widths)
+    // The words are laid in order: the last one begun is the furthest.
+    f.written
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, w)| **w > 0.0)
+        .map(|(i, w)| {
+            let [x0, x1] = word_span(i);
+            x0 + (x1 - x0) * w
+        })
 }
 
 /// The conclusion: the voice's way from the lips, the words laid along the
-/// line one by one, the full stop and its landing; at the end it falls
+/// line one by one as a sound wave (one swell per syllable, silence
+/// between words), the full stop and its landing; at the end it falls
 /// apart into grains that drift away.
 pub fn conclusion(m: &mut Mesh, s: &Scene, f: &Frame) {
     let cam = &f.camera;
@@ -674,19 +677,34 @@ pub fn conclusion(m: &mut Mesh, s: &Scene, f: &Frame) {
         }
     }
     let brightness = f.line * gone;
+    // The silence the words are laid on: a faint axis, as far as said.
+    if let Some(end) = laid(f).filter(|_| brightness > 0.002) {
+        segment(
+            m,
+            cam,
+            START,
+            [end, LINE_Y, LINE_Z],
+            24,
+            0.0006,
+            room(0.16 * brightness),
+        );
+    }
     for (i, w) in f.written.iter().enumerate() {
         if *w < 0.002 || brightness < 0.002 {
             continue;
         }
         let [x0, x1] = word_span(i);
         let tip = x0 + (x1 - x0) * w;
-        let (points, widths) = capsule(x0, tip, WORD_HALF);
-        profile(m, cam, &points, &widths, 0.0, &|_, _| {
-            room(0.85 * brightness)
+        // A quieter overtone a little behind the voice, then the voice.
+        let overtone = wave_points(x0, tip, 1, 0.004);
+        polyline(m, cam, &overtone, 0.0007, 0.0, &|_, _| {
+            room(0.32 * brightness)
         });
+        let voice = wave_points(x0, tip, 0, 0.0);
+        polyline(m, cam, &voice, 0.0011, 0.0, &|_, _| room(0.9 * brightness));
         // The tip that is still being laid glows.
         if *w < 1.0 {
-            if let Some(q) = cam.project([tip, LINE_Y, LINE_Z - 0.002]) {
+            if let Some(q) = cam.project([tip, LINE_Y + wave(tip, 0), LINE_Z - 0.002]) {
                 let coc = cam.coc(q.depth);
                 m.glow(q.at, 0.03 * q.scale + coc, room(0.25));
                 m.disc(q.at, 0.006 * q.scale, coc, [0.9, 0.3, 0.0, 0.0]);
@@ -719,7 +737,8 @@ pub fn conclusion(m: &mut Mesh, s: &Scene, f: &Frame) {
         for g in &s.grains {
             let base = if g.word < WORDS.len() {
                 let [x0, x1] = word_span(g.word);
-                [x0 + (x1 - x0) * g.along, LINE_Y, LINE_Z]
+                let x = x0 + (x1 - x0) * g.along;
+                [x, LINE_Y + wave(x, 0), LINE_Z]
             } else {
                 stop
             };
@@ -740,26 +759,37 @@ pub fn conclusion(m: &mut Mesh, s: &Scene, f: &Frame) {
 }
 
 /// «Откуда пришёл этот вывод?»: the light going back from the full stop to
-/// the lips. What it has passed stays lit for a while; at the lips it rests
-/// and goes out. Nothing beyond the lips.
+/// the lips, a playhead over the wave while it is on it. What it has passed
+/// stays lit for a while; at the lips it rests and goes out. Nothing beyond
+/// the lips.
 pub fn trace(m: &mut Mesh, f: &Frame) {
     let cam = &f.camera;
     let [u, alpha] = f.trace;
+    let share = thread_share();
     if f.traced > 0.005 {
-        // The lit way: from the light back up to the full stop.
-        let n = 64;
-        let way: Vec<[f32; 3]> = (0..=n)
-            .map(|i| {
-                let v = u + (1.0 - u) * i as f32 / n as f32;
-                let mut p = route(v);
-                p[2] -= 0.003;
-                p
-            })
-            .collect();
-        polyline(m, cam, &way, 0.0013, 0.0, &|i, _| {
-            let v = i as f32 / n as f32;
-            person(0.3 * f.traced * (0.45 + 0.55 * (1.0 - v)))
-        });
+        // The wave it has passed over, lit.
+        let from = route(u.max(share))[0];
+        let end = stop_at()[0];
+        if end - from > 1e-3 {
+            let passed = wave_points(from, end, 0, -0.003);
+            polyline(m, cam, &passed, 0.0012, 0.0, &|_, _| {
+                person(0.42 * f.traced)
+            });
+        }
+        // And the voice's way, down to the light.
+        if u < share {
+            let n = 32;
+            let way: Vec<[f32; 3]> = (0..=n)
+                .map(|i| {
+                    let mut p = route(u + (share - u) * i as f32 / n as f32);
+                    p[2] -= 0.003;
+                    p
+                })
+                .collect();
+            polyline(m, cam, &way, 0.0013, 0.0, &|i, _| {
+                person(0.3 * f.traced * (0.45 + 0.55 * (1.0 - i as f32 / n as f32)))
+            });
+        }
     }
     if alpha > 0.005 {
         let tail: Vec<[f32; 3]> = (0..14)
@@ -774,6 +804,20 @@ pub fn trace(m: &mut Mesh, f: &Frame) {
         });
         let mut head = route(u);
         head[2] -= 0.006;
+        // The playhead: across the whole height of the wave.
+        let on_wave = alpha * smooth(share, share + 0.03, u);
+        if on_wave > 0.005 {
+            let h = WAVE_AMP * 1.5;
+            segment(
+                m,
+                cam,
+                [head[0], LINE_Y - h, head[2]],
+                [head[0], LINE_Y + h, head[2]],
+                6,
+                0.0008,
+                person(0.7 * on_wave),
+            );
+        }
         if let Some(q) = cam.project(head) {
             let coc = cam.coc(q.depth);
             m.glow(q.at, 0.045 * q.scale + coc, person(0.16 * alpha));
@@ -786,6 +830,65 @@ pub fn trace(m: &mut Mesh, f: &Frame) {
             m.glow(q.at, 0.06 * q.scale + coc, person(0.12 * f.lips));
             m.disc(q.at, 0.005 * q.scale, coc, person(0.7 * f.lips));
         }
+    }
+}
+
+/// Then the sights over the body: four corners that close in as the sight
+/// settles on a point, a small cross, a ring once as it arrives; a faint
+/// mark stays where it has looked.
+pub fn sights(m: &mut Mesh, f: &Frame) {
+    let cam = &f.camera;
+    for (k, mark) in f.marks.iter().enumerate() {
+        if *mark < 0.005 {
+            continue;
+        }
+        let p = on_figure(SIGHTS[k][0], SIGHTS[k][1]);
+        let at = [p[0], p[1], -0.02];
+        if let Some(q) = cam.project(at) {
+            m.disc(q.at, 0.004 * q.scale, cam.coc(q.depth), person(0.7 * mark));
+        }
+        polyline(m, cam, &upright(at, 0.015, 24), 0.0008, 0.0, &|_, _| {
+            person(0.5 * mark)
+        });
+    }
+    let Some(s) = f.sight else {
+        return;
+    };
+    let r = 0.06 * (1.0 + 0.35 * (1.0 - s.settle));
+    let a = s.alpha * (0.75 + 0.25 * s.settle);
+    let z = s.at[2];
+    for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+        let c = [s.at[0] + sx * r, s.at[1] + sy * r];
+        let arm = 0.4 * r;
+        let corner = [
+            [c[0], c[1] - sy * arm, z],
+            [c[0], c[1], z],
+            [c[0] - sx * arm, c[1], z],
+        ];
+        polyline(m, cam, &corner, 0.0016, 1.0, &|_, _| person(1.1 * a));
+    }
+    for k in 0..4 {
+        let d = k as f32 * PI * 0.5;
+        let (c, n) = (d.cos(), d.sin());
+        segment(
+            m,
+            cam,
+            [s.at[0] + 0.2 * r * c, s.at[1] + 0.2 * r * n, z],
+            [s.at[0] + 0.5 * r * c, s.at[1] + 0.5 * r * n, z],
+            2,
+            0.0011,
+            person(0.75 * a),
+        );
+    }
+    if let Some(q) = cam.project(s.at) {
+        m.disc(q.at, 0.004 * q.scale, cam.coc(q.depth), person(1.1 * a));
+        m.glow(q.at, 1.6 * r * q.scale, person(0.05 * a * s.settle));
+    }
+    if s.lock > 0.0 {
+        let ring = upright(s.at, r * (0.9 + 0.8 * s.lock.sqrt()), 48);
+        polyline(m, cam, &ring, 0.0012, 0.8, &|_, _| {
+            person(0.7 * a * (1.0 - s.lock).powi(2))
+        });
     }
 }
 
@@ -816,6 +919,121 @@ pub fn start(m: &mut Mesh, f: &Frame) {
             person(0.45 * r.strength * f.start)
         });
     }
+}
+
+/// Where a thought leaves the head: the back of the crown.
+const HEAD: [f32; 3] = on_figure(70.0, 30.0);
+/// «Образ»: the image beside the head (width, height, m).
+pub const IMAGE_SIZE: [f32; 2] = [0.32, 0.23];
+/// «Мысль»: capital height of the phrase beside the head (m), and its
+/// atlas row.
+pub const PHRASE_CAP: f32 = 0.04;
+pub const PHRASE_ROW: usize = 15;
+fn phrase_width() -> f32 {
+    ink_width(PHRASE_ROW) / 44.0 * PHRASE_CAP
+}
+/// Three small rings rising from the head towards a thought, shown in
+/// turn as `k` grows.
+fn bubbles(m: &mut Mesh, cam: &Camera, to: [f32; 3], k: f32, a: f32) {
+    for i in 0..3 {
+        let p = lerp3(HEAD, to, (i + 1) as f32 / 4.0);
+        let r = 0.006 + 0.004 * i as f32;
+        let shown = smooth(i as f32 * 0.25, i as f32 * 0.25 + 0.3, k);
+        polyline(m, cam, &upright(p, r, 20), 0.0007, 0.0, &|_, _| {
+            person(0.6 * a * shown)
+        });
+    }
+}
+/// The first part of a polyline, `k` of its length.
+fn partial(points: &[[f32; 3]], k: f32) -> Vec<[f32; 3]> {
+    let lengths: Vec<f32> = points
+        .windows(2)
+        .map(|w| {
+            ((w[1][0] - w[0][0]).powi(2)
+                + (w[1][1] - w[0][1]).powi(2)
+                + (w[1][2] - w[0][2]).powi(2))
+            .sqrt()
+        })
+        .collect();
+    let mut left = k.clamp(0.0, 1.0) * lengths.iter().sum::<f32>();
+    let mut out = vec![points[0]];
+    for (i, l) in lengths.iter().enumerate() {
+        if left >= *l {
+            out.push(points[i + 1]);
+            left -= l;
+        } else {
+            out.push(lerp3(points[i], points[i + 1], left / l.max(1e-6)));
+            break;
+        }
+    }
+    out
+}
+/// «Образ»: from the head a few small rings, then a framed image drawn
+/// line by line beside it: mountains and a sun, any image.
+pub fn image(m: &mut Mesh, f: &Frame) {
+    let [a, reveal] = f.image;
+    if a < 0.005 {
+        return;
+    }
+    let cam = &f.camera;
+    let [w, h] = IMAGE_SIZE;
+    let o = THOUGHT_AT;
+    let at = |u: f32, v: f32| [o[0] + (u - 0.5) * w, o[1] + (v - 0.5) * h, o[2]];
+    bubbles(m, cam, at(1.0, 0.15), smooth(0.0, 0.3, reveal), a);
+    let corners = [at(1.0, 0.0), at(0.0, 0.0), at(0.0, 1.0), at(1.0, 1.0)];
+    let screen: Option<Vec<[f32; 2]>> = corners
+        .iter()
+        .map(|p| cam.project(*p).map(|q| q.at))
+        .collect();
+    let opened = smooth(0.25, 0.55, reveal);
+    if let Some(s) = screen {
+        let glow = person(0.06 * a * opened);
+        m.gradient(
+            [s[0], s[1], s[2], s[3]],
+            [glow, scale(glow, 0.6), scale(glow, 0.8), glow],
+        );
+    }
+    let mut frame = corners.to_vec();
+    frame.push(corners[0]);
+    polyline(m, cam, &partial(&frame, opened), 0.0011, 0.0, &|_, _| {
+        person(0.8 * a)
+    });
+    let drawn = smooth(0.5, 1.0, reveal);
+    if drawn <= 0.0 {
+        return;
+    }
+    let ridge = [
+        [0.06, 0.2],
+        [0.3, 0.62],
+        [0.44, 0.42],
+        [0.62, 0.74],
+        [0.94, 0.2],
+    ];
+    let sun: Vec<[f32; 2]> = (0..=16)
+        .map(|i| {
+            let t = i as f32 / 16.0 * TAU;
+            [0.78 + 0.08 * t.cos(), 0.7 + 0.08 * w / h * t.sin()]
+        })
+        .collect();
+    for line in [ridge.to_vec(), sun] {
+        let points: Vec<[f32; 3]> = line
+            .iter()
+            .map(|u| at(0.1 + 0.8 * u[0], 0.1 + 0.8 * u[1]))
+            .collect();
+        polyline(m, cam, &partial(&points, drawn), 0.0009, 0.0, &|_, _| {
+            person(0.7 * a)
+        });
+    }
+}
+/// «Мысль»: from the head a few small rings towards the short phrase
+/// written beside it (its letters come with the labels).
+pub fn thought(m: &mut Mesh, f: &Frame) {
+    let [a, typed] = f.phrase;
+    if a < 0.005 {
+        return;
+    }
+    let to = [THOUGHT_AT[0] + 0.25, THOUGHT_AT[1] - 0.035, THOUGHT_AT[2]];
+    bubbles(m, &f.camera, to, smooth(-0.45, 0.0, typed), a);
 }
 
 /// The voice in the air: a few calm fronts on the side the face turns to.
@@ -1042,8 +1260,10 @@ pub fn card(m: &mut Mesh, f: &Frame) {
     }
 }
 /// The card's words: textured quads for the text program, wiped in from
-/// the left as the card opens. `local` holds the atlas coordinates.
+/// the left as the card opens. `local` holds the atlas coordinates. Also
+/// the phrase beside the head, written letter by letter.
 pub fn labels(m: &mut Mesh, f: &Frame) {
+    phrase(m, f);
     let a = f.shown;
     if a < 0.005 {
         return;
@@ -1086,6 +1306,57 @@ pub fn labels(m: &mut Mesh, f: &Frame) {
             );
         }
     }
+}
+
+/// The atlas band of a row, cut into `slices` of its ink, each with its own
+/// light, as screen quads from `left`, `top` at `per` px per atlas px.
+fn text_row(m: &mut Mesh, row: usize, left: f32, top: f32, per: f32, light: &[f32]) {
+    let [ink0, ink1] = LABEL_INK[row];
+    let pad = 6.0;
+    let height = (LABEL_BAND[1] - LABEL_BAND[0]) * per;
+    let width = (ink1 - ink0 + 2.0 * pad) * per;
+    let v0 = (row as f32 * 128.0 + LABEL_BAND[0]) / ATLAS[1];
+    let v1 = (row as f32 * 128.0 + LABEL_BAND[1]) / ATLAS[1];
+    let u0 = (ink0 - pad) / ATLAS[0];
+    let u1 = (ink1 + pad) / ATLAS[0];
+    let slices = light.len() - 1;
+    for s in 0..slices {
+        let (s0, s1) = (s as f32 / slices as f32, (s + 1) as f32 / slices as f32);
+        let (c0, c1) = (person(light[s]), person(light[s + 1]));
+        let (xa, xb) = (left + width * s0, left + width * s1);
+        let (ua, ub) = (u0 + (u1 - u0) * s0, u0 + (u1 - u0) * s1);
+        m.quad(
+            [[xa, top], [xb, top], [xb, top + height], [xa, top + height]],
+            [[ua, v0], [ub, v0], [ub, v1], [ua, v1]],
+            [c0, c1, c1, c0],
+            [[0.0; 3]; 4],
+        );
+    }
+}
+/// «Мысль»: the phrase in the air beside the head, letter after letter.
+fn phrase(m: &mut Mesh, f: &Frame) {
+    let [a, typed] = f.phrase;
+    if a < 0.005 {
+        return;
+    }
+    let Some(q) = f.camera.project(THOUGHT_AT) else {
+        return;
+    };
+    let cap = PHRASE_CAP * q.scale;
+    let per = cap / 44.0;
+    // It ends where the image would: close beside the head.
+    let left = q.at[0] + (0.26 - phrase_width()) * q.scale;
+    let top = q.at[1] - 0.5 * cap - (42.0 - LABEL_BAND[0]) * per;
+    // Monospaced: each letter has the same share of the ink.
+    let letters = 13.0;
+    let n = 104;
+    let light: Vec<f32> = (0..=n)
+        .map(|i| {
+            let x = i as f32 / n as f32 * letters;
+            0.9 * a * ((typed * letters - x.floor()) / 0.6).clamp(0.0, 1.0)
+        })
+        .collect();
+    text_row(m, PHRASE_ROW, left, top, per, &light);
 }
 
 /// Key light for the air: the projected cone of the top light (apex,
@@ -1140,7 +1411,9 @@ mod tests {
     #[test]
     fn a_frame_builds_without_gaps() {
         let s = Scene::new();
-        for t in [0.0, 5.0, 6.8, 14.0, 27.0, 39.0, 50.0, 58.0] {
+        for t in [
+            0.0, 5.0, 6.8, 14.0, 20.0, 29.0, 33.0, 37.0, 46.0, 58.0, 66.0,
+        ] {
             let f = crate::compose(t);
             let mut m = Mesh::new(1000);
             floor(&mut m, &f);
@@ -1148,7 +1421,10 @@ mod tests {
             dust(&mut m, &s, &f, false);
             conclusion(&mut m, &s, &f);
             trace(&mut m, &f);
+            sights(&mut m, &f);
             start(&mut m, &f);
+            image(&mut m, &f);
+            thought(&mut m, &f);
             voice(&mut m, &f);
             scan_marks(&mut m, &f);
             card(&mut m, &f);

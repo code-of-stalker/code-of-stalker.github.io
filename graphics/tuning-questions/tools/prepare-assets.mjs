@@ -18,12 +18,14 @@ const font = (await readFile(path.join(engine, 'fonts/Disket-Mono-Regular.ttf'))
 // The page's words, in the order of the film: the instruction, then each
 // question split where it breathes (a quiet half, a bright half); the three
 // possible starting points; «факт» and «интерпретация» get the same weight.
+// Last, not on the card: the short thought that appears beside the head.
 const words = [
   'СКАЖИ ВСЛУХ', 'ЛЮБОЙ ВЫВОД',
   'ОТКУДА ПРИШЁЛ', 'ЭТОТ ВЫВОД?',
   'ЧТО ЯВИЛОСЬ', 'СТАРТОВОЙ ТОЧКОЙ?', 'ОЩУЩЕНИЕ,', 'ОБРАЗ,', 'МЫСЛЬ?',
   'ЕСТЬ ЛИ', 'ФАКТ,', 'ИЛИ ЭТО', 'ИНТЕРПРЕТАЦИЯ?',
   'ЧТО Я ЧУВСТВУЮ ТЕЛОМ,', 'ПОКА ДУМАЮ ЭТО?',
+  'ЭТО ЗНАЧИТ...',
 ];
 // 4 px per SVG unit: the close-ups on the face stay crisp.
 const K = 4, W = 335 * K, H = 530 * K, ATLAS = 1536;

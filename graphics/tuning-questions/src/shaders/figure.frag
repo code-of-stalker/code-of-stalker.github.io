@@ -3,11 +3,13 @@ precision highp float;
 // Art's approved seated figure: red = opaque cover (chair included),
 // green = ink contour, blue = the body alone. The lens blurs it by its
 // circle of confusion. The scan wakes the contour and a quiet light inside
-// the body row by row, crown to soles; it never stops anywhere.
+// the body row by row, crown to soles; it never stops anywhere. «Ощущение»
+// is a wave that rises through the whole body, soles to crown.
 uniform sampler2D u_figure;
 uniform vec4 u_mode;  // 0 body, 1 reflection; alpha; blur radius (uv x, y)
 uniform vec4 u_light; // contour, breath, time (s), exposure
 uniform vec4 u_scan;  // scan row (SVG), its alpha, what has been felt, half width (SVG)
+uniform vec4 u_wave;  // the rising wave: two fronts, each SVG row and alpha
 in vec2 v_local;
 out vec4 o;
 const vec2 SVG = vec2(335.0, 530.0);
@@ -59,9 +61,16 @@ void main() {
   float wake = (d < 0.0 ? exp(d / 38.0) : 0.0) * u_scan.y;
   float passed = (1.0 - smoothstep(-6.0, 3.0, d)) * u_scan.z;
   float n = 0.6 * noise(p / 22.0 + vec2(t * 0.1, 0.0)) + 0.4 * noise(p / 8.0 - vec2(0.0, t * 0.15));
-  float felt = body * ((0.3 + 0.1 * n) * band + 0.1 * wake + (0.05 + 0.03 * n) * passed);
+  // The rising wave: a rippled front with a soft glow trailing below it.
+  float ripple = 0.0;
+  for (int k = 0; k < 2; k++) {
+    vec2 w = k == 0 ? u_wave.xy : u_wave.zw;
+    float e = p.y - w.x - 5.0 * sin(p.x / 16.0 - t * 2.4 + float(k) * 1.7);
+    ripple += (exp(-e * e / 150.0) + 0.3 * (e > 0.0 ? exp(-e / 45.0) : 0.0)) * w.y;
+  }
+  float felt = body * ((0.3 + 0.1 * n) * band + 0.1 * wake + (0.05 + 0.03 * n) * passed + (0.4 + 0.1 * n) * ripple);
   float contour = u_light.x * ink * (1.0 + 0.04 * u_light.y);
-  float woken = ink * mix(0.25, 1.0, body) * (1.3 * band + 0.35 * passed);
+  float woken = ink * mix(0.25, 1.0, body) * (1.3 * band + 0.35 * passed + 1.4 * ripple);
   float exposure = u_light.w;
   float room = (0.42 * contour * chair + 0.28 * rim) * exposure;
   float person = (contour * (1.0 - chair) + woken) * mix(0.55, 1.0, exposure);

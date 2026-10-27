@@ -209,7 +209,7 @@ impl TuningQuestions {
         let figure_pass = Pass::new(
             &gl,
             include_str!("shaders/figure.frag"),
-            &["u_figure", "u_mode", "u_light", "u_scan"],
+            &["u_figure", "u_mode", "u_light", "u_scan", "u_wave"],
         )?;
         let text = Pass::new(&gl, include_str!("shaders/text.frag"), &["u_atlas"])?;
         let blur = Pass::new(
@@ -550,7 +550,10 @@ impl TuningQuestions {
             geometry::voice(m, &f);
             geometry::conclusion(m, s, &f);
             geometry::trace(m, &f);
+            geometry::sights(m, &f);
             geometry::start(m, &f);
+            geometry::image(m, &f);
+            geometry::thought(m, &f);
             geometry::dust(m, s, &f, true);
             geometry::card(m, &f);
         });
@@ -579,6 +582,7 @@ impl TuningQuestions {
             f.light,
         );
         gl.uniform4f(self.figure.at("u_scan"), f.scan[0], f.scan[1], f.felt, 9.0);
+        gl.uniform4fv_with_f32_array(self.figure.at("u_wave"), &f.ripple);
         for d in &figures {
             self.figure_draw(&f, d);
         }

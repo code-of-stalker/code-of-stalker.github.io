@@ -71,9 +71,9 @@ pub const SILHOUETTE: [[f32; 2]; 65] = [
 ];
 
 /// The labels' atlas: its width and height (px), rows of 128 px.
-pub const ATLAS: [f32; 2] = [1536.0, 1920.0];
+pub const ATLAS: [f32; 2] = [1536.0, 2048.0];
 /// Ink of every row (x0, x1, px), in the order of `tools/prepare-assets.mjs`.
-pub const LABEL_INK: [[f32; 2]; 15] = [
+pub const LABEL_INK: [[f32; 2]; 16] = [
     [29.0, 569.0],
     [29.0, 569.0],
     [29.0, 670.0],
@@ -89,6 +89,7 @@ pub const LABEL_INK: [[f32; 2]; 15] = [
     [29.0, 721.0],
     [29.0, 1061.0],
     [29.0, 771.0],
+    [29.0, 656.0],
 ];
 /// The rows' common ink band (top, bottom, px inside a row), accents and
 /// commas included. Capitals stand 44 px tall in it.

@@ -1,6 +1,6 @@
 //! «Вопросы настройки»: Step 4, page 06/15. «Теперь — скажи вслух любой
 //! вывод. И задай себе вопросы». The seated person of pages 04 and 05 says
-//! a conclusion aloud; the voice lays it high in the air as a sound wave,
+//! a conclusion aloud; the voice lays it in the air at the lips' height as a sound wave,
 //! one swell per syllable, with a full stop — any conclusion, so no letters.
 //! Then the page's four questions, one at a time:
 //! «Откуда пришёл этот вывод?» — a light goes back along the wave, from the
@@ -65,10 +65,10 @@ pub const HEEL: [f32; 3] = on_figure(234.0, FLOOR_SVG);
 pub const BALL: [f32; 3] = on_figure(296.0, FLOOR_SVG);
 pub const CHAIR_LEGS: [[f32; 3]; 2] = [on_figure(20.0, FLOOR_SVG), on_figure(176.0, FLOOR_SVG)];
 
-/// The conclusion: a sound wave high in the air before the face, above
-/// the crown, a little nearer the camera than the person, so the lens can
+/// The conclusion: a sound wave in the air before the face, at the height
+/// of the lips, a little nearer the camera than the person, so the lens can
 /// tell them apart. Its axis: height, depth, where it starts.
-pub const LINE_Y: f32 = 1.36;
+pub const LINE_Y: f32 = MOUTH[1];
 pub const LINE_Z: f32 = -0.55;
 pub const LINE_X: f32 = 0.17;
 /// The wave: its greatest height off the axis and its wavelength (m), and
@@ -91,8 +91,8 @@ pub const WORDS: [(f32, f32, f32); 5] = [
 pub const SYLLABLES: [u32; 5] = [2, 3, 1, 3, 2];
 /// The full stop lands.
 pub const STOP_AT: f32 = 6.62;
-/// Where the voice leaves the lips and rises towards the line (a quadratic curve).
-pub const BEND: [f32; 3] = [0.03, 1.3, -0.3];
+/// Where the voice leaves the lips towards the line (a quadratic curve).
+pub const BEND: [f32; 3] = [0.05, 1.125, -0.3];
 
 /// The start and end (world x) of word `i` on the line.
 pub fn word_span(i: usize) -> [f32; 2] {
@@ -321,9 +321,13 @@ const MOVES: [(f32, f32, Shot); 9] = [
     // «Скажи вслух любой вывод»: the face and the air above it.
     (1.2, 4.6, shot([0.32, 1.2, -2.4], 1500.0, 460.0, 0.035)),
     // «Откуда пришёл этот вывод?»: close, the whole wave and the face.
-    (9.6, 12.0, shot([0.38, 1.24, -1.8], 1550.0, 470.0, 0.05)),
+    (9.6, 12.0, shot([0.38, 1.15, -1.8], 1550.0, 430.0, 0.05)),
     // Drifting back with the light, towards the lips.
-    (12.0, TRACE[1], shot([0.2, 1.2, -1.65], 1550.0, 470.0, 0.05)),
+    (
+        12.0,
+        TRACE[1],
+        shot([0.2, 1.13, -1.65], 1550.0, 450.0, 0.05),
+    ),
     // The sights: the whole body, the wave above it.
     (17.2, 19.6, shot([0.15, 0.85, -2.9], 1350.0, 455.0, 0.02)),
     // «Что явилось стартовой точкой?»: the start of the wave, the whole
@@ -332,9 +336,9 @@ const MOVES: [(f32, f32, Shot); 9] = [
     // «Есть ли факт, или это интерпретация?»: close, the wave large and
     // near, the person behind it, a wide lens that can only hold one of
     // them sharp.
-    (40.0, 43.0, shot([0.38, 1.3, -1.6], 1300.0, 300.0, 0.07)),
+    (40.0, 43.0, shot([0.38, 1.15, -1.6], 1300.0, 330.0, 0.07)),
     // Then the lens closes: both are seen at once.
-    (49.8, 51.4, shot([0.38, 1.3, -1.62], 1300.0, 300.0, 0.007)),
+    (49.8, 51.4, shot([0.38, 1.15, -1.62], 1300.0, 330.0, 0.007)),
     // «Что я чувствую телом, пока думаю это?»: the whole body and the wave.
     (53.0, 56.0, shot([0.2, 0.85, -3.3], 1450.0, 470.0, 0.02)),
     (64.6, 69.0, WIDE),
@@ -1055,8 +1059,8 @@ mod tests {
                 .fold(0.0, f32::max);
             assert!(loudest > 0.4 * WAVE_AMP && loudest <= WAVE_AMP, "word {i}");
         }
-        // High in the air: above the crown.
-        assert!(LINE_Y - WAVE_AMP > on_figure(85.0, CROWN_SVG)[1]);
+        // Level with the lips.
+        assert!(close(LINE_Y, MOUTH[1], 1e-4));
     }
 
     #[test]

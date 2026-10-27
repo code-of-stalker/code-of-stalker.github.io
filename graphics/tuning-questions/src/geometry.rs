@@ -1430,6 +1430,35 @@ mod tests {
     }
 
     #[test]
+    fn the_wave_never_runs_under_the_card() {
+        for i in 0..(crate::LOOP_SECONDS * 10.0) as usize {
+            let f = crate::compose(i as f32 * 0.1);
+            if f.shown < 0.02 {
+                continue;
+            }
+            let (_, [x0, y0, x1, y1]) = card_layout(f.card);
+            let n = 40;
+            for k in 0..=n {
+                let x = START[0] + (stop_at()[0] - START[0]) * k as f32 / n as f32;
+                for dy in [-WAVE_AMP, WAVE_AMP] {
+                    let Some(q) = f.camera.project([x, LINE_Y + dy, LINE_Z]) else {
+                        continue;
+                    };
+                    let under = q.at[0] > x0 - 8.0
+                        && q.at[0] < x1 + 8.0
+                        && q.at[1] > y0 - 8.0
+                        && q.at[1] < y1 + 8.0;
+                    assert!(
+                        !under,
+                        "at {} s the wave runs under card {}",
+                        f.time, f.card
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn the_body_has_edges_where_the_scan_passes() {
         for row in [40.0, 120.0, 250.0, 400.0, 500.0] {
             let [back, front] = body_edges(row).unwrap();

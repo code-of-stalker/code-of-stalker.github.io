@@ -915,14 +915,17 @@ impl ProductRenderer {
                 ));
             }
             if let Some(kind) = s.raster {
-                n.raster = Some(raster_gpu::RasterGpu::new(
-                    &self.device,
-                    &self.queue,
-                    &self.raster_library,
-                    &self.rain_atlas,
-                    kind,
-                    self.palette,
-                ));
+                n.raster = Some(
+                    raster_gpu::RasterGpu::new(
+                        &self.device,
+                        &self.queue,
+                        &self.raster_library,
+                        &self.rain_atlas,
+                        kind,
+                        self.palette,
+                    )
+                    .map_err(err)?,
+                );
             }
             if let Some(model) = s.vector_motion {
                 n.vector = Some(vector_gpu::VectorGpu::new(
@@ -977,6 +980,19 @@ impl ProductRenderer {
         self.nodes.insert(id, node);
         self.layout_dirty = true;
         id
+    }
+    /// Published paintings the live scenes need in the palette with `code`; the
+    /// page provides them before it switches the palette.
+    pub fn palette_assets(&self, code: u32) -> Vec<String> {
+        let mut files: Vec<String> = Vec::new();
+        for raster in self.nodes.values().filter_map(|n| n.raster.as_ref()) {
+            for file in crate::asset_store::scene_inputs(raster.kind.name(), Palette::from_code(code)) {
+                if !files.iter().any(|known| known == file) {
+                    files.push(file.into());
+                }
+            }
+        }
+        files
     }
     /// Presentation palette changes preserve timelines, geometry and allocation.
     pub fn palette(&mut self, code: u32) {
@@ -1037,7 +1053,8 @@ impl ProductRenderer {
             &self.rain_atlas,
             kind,
             self.palette,
-        );
+        )
+        .map_err(err)?;
         raster.palette(
             self.palette,
             &self.device,

@@ -125,6 +125,27 @@ impl Track {
         a.value.blend(&b.value, p)
     }
 }
+/// Long track sets are published beside the engine (`assets/external.txt`),
+/// zlib-compressed like the reading curves; short ones stay in the binary.
+pub fn external(kind: &str) -> Option<&'static str> {
+    Some(match kind {
+        "insight" => "insight.tracks.xml.z",
+        "parallel" => "parallel.tracks.xml.z",
+        "diary" => "diary.tracks.xml.z",
+        "intensive" => "intensive.tracks.xml.z",
+        "cells" => "cells.tracks.xml.z",
+        "distance" => "distance.tracks.xml.z",
+        "guidance" => "guidance.tracks.xml.z",
+        _ => return None,
+    })
+}
+/// The authored XML of a published track set.
+pub fn published(name: &str) -> Result<String, String> {
+    let bytes = crate::asset_store::bytes(name)?;
+    let xml = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(bytes, 64 * 1024 * 1024)
+        .map_err(|e| format!("{name}: {e:?}"))?;
+    String::from_utf8(xml).map_err(|e| format!("{name}: {e}"))
+}
 pub fn parse(source: &str) -> Result<Vec<Track>, String> {
     let doc = roxmltree::Document::parse(source).map_err(|e| e.to_string())?;
     let root = doc.root_element();
@@ -215,6 +236,18 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn published_tracks_are_the_authored_xml() {
+        for kind in ["insight", "parallel", "diary", "intensive", "cells", "distance", "guidance"] {
+            let authored = std::fs::read_to_string(format!(
+                "{}/assets/{kind}.tracks.xml",
+                env!("CARGO_MANIFEST_DIR")
+            ))
+            .unwrap();
+            assert_eq!(published(external(kind).unwrap()).unwrap(), authored, "{kind}");
+        }
+        assert!(external("basic").is_none());
     }
     #[test]
     fn compiled_original_tracks_are_valid() {

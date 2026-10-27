@@ -145,7 +145,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || !['https:', 'http:'].includes(url.protocol)) return;
   const navigation = request.mode === 'navigate' && RELEASE.routes.includes(pathname);
   const staticPath = pathname === '/graphics-cache-updates.js' || pathname === '/graphics-cache-bootstrap.js' || pathname === '/favicon.ico'
-    || /^(?:\/graphics\/|\/graphics-cache-assets\/|\/assets\/|\/_expo\/static\/).*\.(?:js|css|wasm|bin|svg|png|jpe?g|webp|gif|avif|ico|ttf|otf|woff2?)$/i.test(pathname);
+    || /^(?:\/graphics\/|\/graphics-cache-assets\/|\/assets\/|\/_expo\/static\/).*\.(?:js|css|wasm|bin|z|svg|png|jpe?g|webp|gif|avif|ico|ttf|otf|woff2?)$/i.test(pathname);
   if (!navigation && !staticPath) return; // Audio, APIs and the version probe pass through.
   event.respondWith(staticResponse(event, pathname));
 });

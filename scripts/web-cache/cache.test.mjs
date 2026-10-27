@@ -87,6 +87,7 @@ test('manifest is deterministic, excludes audio and versions any asset/engine ch
   assert.equal(JSON.parse(await fs.readFile(path.join(root, 'graphics-cache-version.json'), 'utf8')).version, release.version);
   assert.match(await fs.readFile(path.join(root, 'index.html'), 'utf8'), new RegExp(`data-release="${release.version}"`));
   assert.ok(isCacheAsset('_expo/static/js/web/voice-files.js'));
+  assert.ok(isCacheAsset('graphics/pkg/assets/insight.5cd3d1e53c3b.tracks.xml.z'));
   const app = JSON.parse(await fs.readFile(path.join(root, 'watcher.webmanifest'), 'utf8'));
   assert.equal(app.scope, '/'); assert.equal(app.start_url, '/'); assert.equal(app.display, 'standalone');
   for (const route of release.routes) assert.ok(new URL(route, 'https://watcher.test').href.startsWith(new URL(app.scope, 'https://watcher.test').href));

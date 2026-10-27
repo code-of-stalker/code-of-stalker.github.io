@@ -6,24 +6,22 @@ pub const ARTWORK_SIZE: [f32; 2] = [1536.0, 1024.0];
 
 /// Exact user-edited RGBA source. Decoding only premultiplies RGB for the GPU;
 /// alpha is copied unchanged, including new coverage outside the old footprint.
-pub fn user_portrait() -> tiny_skia::Pixmap {
-    let portrait =
-        tiny_skia::Pixmap::decode_png(include_bytes!("../assets/voice-presence-person.png"))
-            .expect("validated user portrait PNG");
-    assert_eq!([portrait.width(), portrait.height()], [1536, 1024]);
-    portrait
+pub fn user_portrait() -> Result<tiny_skia::Pixmap, String> {
+    portrait("voice-presence-person.png")
 }
 /// The same portrait in Art's light palette for Дюна (`prepare-sand-rasters.py`
 /// maps its colors through the dark and light paintings); the alpha is identical.
-pub fn user_portrait_sand() -> tiny_skia::Pixmap {
-    let portrait =
-        tiny_skia::Pixmap::decode_png(include_bytes!("../assets/voice-presence-sand-person.png"))
-            .expect("validated sand portrait PNG");
+pub fn user_portrait_sand() -> Result<tiny_skia::Pixmap, String> {
+    portrait("voice-presence-sand-person.png")
+}
+fn portrait(name: &str) -> Result<tiny_skia::Pixmap, String> {
+    let portrait = tiny_skia::Pixmap::decode_png(crate::asset_store::bytes(name)?)
+        .map_err(|e| format!("{name}: {e}"))?;
     assert_eq!([portrait.width(), portrait.height()], [1536, 1024]);
-    portrait
+    Ok(portrait)
 }
 /// Export compatibility: coverage now comes directly from the supplied PNG.
-pub fn portrait_matte() -> tiny_skia::Pixmap {
+pub fn portrait_matte() -> Result<tiny_skia::Pixmap, String> {
     user_portrait()
 }
 
@@ -236,18 +234,17 @@ pub fn original_portrait_coverage() -> tiny_skia::Pixmap {
 /// Independent channels packed into one immutable GPU texture: generated
 /// environment RGB and registered portrait coverage A. This is deliberately
 /// raw channel data, not a premultiplied color image.
-pub fn environment_layers() -> Vec<u8> {
-    pack_environment(include_bytes!("../assets/voice-presence-environment.png"))
+pub fn environment_layers() -> Result<Vec<u8>, String> {
+    pack_environment("voice-presence-environment.png")
 }
 /// Дюна's quiet frame, drawn from Art's light painting. Unlike the generated
 /// dark plate it is registered in the artwork's own coordinates.
-pub fn environment_layers_sand() -> Vec<u8> {
-    pack_environment(include_bytes!(
-        "../assets/voice-presence-sand-environment.png"
-    ))
+pub fn environment_layers_sand() -> Result<Vec<u8>, String> {
+    pack_environment("voice-presence-sand-environment.png")
 }
-fn pack_environment(png: &[u8]) -> Vec<u8> {
-    let background = tiny_skia::Pixmap::decode_png(png).expect("validated clean environment");
+fn pack_environment(name: &str) -> Result<Vec<u8>, String> {
+    let background = tiny_skia::Pixmap::decode_png(crate::asset_store::bytes(name)?)
+        .map_err(|e| format!("{name}: {e}"))?;
     assert_eq!([background.width(), background.height()], [1536, 1024]);
     let matte = original_portrait_coverage();
     let mut pixels = background.data().to_vec();
@@ -259,21 +256,21 @@ fn pack_environment(png: &[u8]) -> Vec<u8> {
     {
         pixel[3] = coverage[3];
     }
-    pixels
+    Ok(pixels)
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn sand_layers_keep_the_portrait_coverage_and_light_air() {
-        let dark = super::user_portrait();
-        let sand = super::user_portrait_sand();
+        let dark = super::user_portrait().unwrap();
+        let sand = super::user_portrait_sand().unwrap();
         assert!(dark
             .pixels()
             .iter()
             .zip(sand.pixels())
             .all(|(a, b)| a.alpha() == b.alpha()));
-        let layers = super::environment_layers_sand();
+        let layers = super::environment_layers_sand().unwrap();
         assert_eq!(layers.len(), 1536 * 1024 * 4);
         // Where the figure stood, the quiet frame is pale air: no dark moat.
         for (x, y) in [(768, 300), (740, 500), (790, 600)] {
@@ -285,7 +282,7 @@ mod tests {
 
     #[test]
     fn user_portrait_retains_every_supplied_alpha_value_without_legacy_clipping() {
-        let portrait = super::user_portrait();
+        let portrait = super::user_portrait().unwrap();
         let source =
             tiny_skia::Pixmap::decode_png(include_bytes!("../assets/voice-presence-person.png"))
                 .unwrap();
@@ -389,7 +386,7 @@ mod tests {
             (first.seconds, first.breath, first.voice, first.restore),
             (0., 0., 0., 0.)
         );
-        let layers = environment_layers();
+        let layers = environment_layers().unwrap();
         let foot = (885 * 1536 + 768) * 4;
         let floor = (970 * 1536 + 768) * 4;
         assert!(layers[foot + 3] > 240);

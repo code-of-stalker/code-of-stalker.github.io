@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useIsFocused } from 'expo-router';
 import { View } from 'react-native';
 import { useEffectsController } from './EffectsQuality';
-import { rustSession } from './rustEngine.web';
+import { rustSession, sceneAssets } from './rustEngine.web';
 import type { RustSession } from './rustEngine.web';
 import type { ArtProps } from './types';
 import { ArtUnavailable } from './ArtUnavailable';
@@ -22,7 +22,8 @@ export function RustGlass(props: ArtProps) {
   useEffect(()=>{
     if(failed||!controller||!canvas.current)return;
     let cancelled=false;const output=canvas.current;
-    void rustSession(controller).then(session=>{
+    // A painted scene waits for its published paintings; other effects need none.
+    void Promise.all([rustSession(controller),sceneAssets(latest.current.kind)]).then(([session])=>{
       if(cancelled)return;
       const current=latest.current,node=session.add(output,current.scanOnMount!==false,value=>latest.current.onRevealProgress?.(value),()=>latest.current.onReady?.(),current.kind==='rain',current.kind==='attention',undefined,current.kind==='gallery'||current.kind==='mirror'||current.kind==='voice-presence'||current.kind==='grounding-hero'?current.kind:undefined);
       handle.current=node;if(current.glass)node.resize(current.glass);else if(current.kind!=='glass'){const {width,height}=output.getBoundingClientRect();if(width>0&&height>0)node.resize({width,height,path:`M0 0H${width}V${height}H0Z`,background:'clear'});}node.active(activity.current.active,activity.current.reduced);

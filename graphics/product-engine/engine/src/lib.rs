@@ -1,3 +1,4 @@
+pub mod asset_store;
 pub mod atlas;
 pub mod clock;
 pub mod contour;

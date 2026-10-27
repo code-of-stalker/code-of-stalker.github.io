@@ -8,7 +8,8 @@ import { secureShell } from './web-cache/shell-security.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const imageOrFont = /\.(?:svg|png|jpe?g|webp|gif|avif|ico|ttf|otf|woff2?)$/i;
-const graphics = /\.(?:js|wasm|bin|svg|png|jpe?g|webp|gif|avif)$/i;
+// `.z`: zlib-compressed engine inputs (tracks, reading curves) in graphics/pkg/assets.
+const graphics = /\.(?:js|wasm|bin|z|svg|png|jpe?g|webp|gif|avif)$/i;
 export function isCacheAsset(name) {
   return name === 'index.html' || name === 'graphics-cache-updates.js' || name === 'favicon.ico'
     || name === 'watcher.webmanifest' || name === 'watcher-app-icon.png'

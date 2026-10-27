@@ -57,6 +57,11 @@ export class ProductRenderer {
      * Presentation palette changes preserve timelines, geometry and allocation.
      */
     palette(code: number): void;
+    /**
+     * Published paintings the live scenes need in the palette with `code`; the
+     * page provides them before it switches the palette.
+     */
+    palette_assets(code: number): string[];
     pointer(id: number, x: number, y: number, down: boolean): void;
     present_to(id: number, canvas: HTMLCanvasElement): boolean;
     quality(density: number, cost: number, fps: number): void;
@@ -128,6 +133,16 @@ export function panel_geometry(path: string, from_width: number, from_height: nu
 
 export function panel_reveal(root: HTMLElement, progress: number, reduced: boolean): void;
 
+/**
+ * Hands the engine one published input fetched by the page.
+ */
+export function provide_asset(file: string, bytes: Uint8Array): void;
+
+/**
+ * Published files a scene of `kind` reads in the palette with `code`.
+ */
+export function scene_assets(kind: string, code: number): string[];
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
@@ -171,6 +186,7 @@ export interface InitOutput {
     readonly productrenderer_metrics: (a: number, b: number, c: number) => void;
     readonly productrenderer_moving: (a: number, b: number) => number;
     readonly productrenderer_palette: (a: number, b: number) => void;
+    readonly productrenderer_palette_assets: (a: number, b: number, c: number) => void;
     readonly productrenderer_pointer: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly productrenderer_present_to: (a: number, b: number, c: number, d: number) => void;
     readonly productrenderer_quality: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -189,6 +205,8 @@ export interface InitOutput {
     readonly productrenderer_vector_pointer_down: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly productrenderer_vector_pointer_move: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly productrenderer_vector_pointer_up: (a: number, b: number, c: number, d: number) => number;
+    readonly provide_asset: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly scene_assets: (a: number, b: number, c: number, d: number) => void;
     readonly svgtimeline_active: (a: number, b: number, c: number) => void;
     readonly svgtimeline_audio: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
     readonly svgtimeline_create: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -210,12 +228,12 @@ export interface InitOutput {
     readonly texttimeline_frame: (a: number, b: number) => number;
     readonly texttimeline_reset_clock: (a: number) => void;
     readonly texttimeline_resize: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_2093: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2093_77: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2093_78: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_7967: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_7988: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2097: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2121: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2121_80: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2121_81: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8005: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8026: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2125: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

@@ -1295,7 +1295,10 @@ pub fn card(m: &mut Mesh, f: &Frame) {
         [x0 + cut, y1],
         [x0, y1 - cut],
     ];
-    m.polygon(&outline, [0.0, 0.02 * a, 0.5 * a, 0.5 * a]);
+    // Nearly opaque, like the tags: the picture's words pass behind the
+    // card in the later shots and must not show through it.
+    let k = 0.88 * a;
+    m.polygon(&outline, [0.0, 0.02 * a, 0.5 * k, k]);
     let mut ring = outline.to_vec();
     ring.push(outline[0]);
     // Densify, so the outline can be drawn around little by little.

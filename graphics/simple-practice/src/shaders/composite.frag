@@ -78,10 +78,11 @@ void main() {
     float inner = smoothstep(0.0, 0.32, uv.x) * smoothstep(0.0, 0.32, 1.0 - uv.x)
                 * smoothstep(0.0, 0.32, uv.y) * smoothstep(0.0, 0.32, 1.0 - uv.y);
     c = mix(paper, vec3(1.0), clamp(room_air.y * 1.6, 0.0, 0.2) * inner);
-    // Light is whiter than the page at its core, with a halo of the lamp's
-    // color around it: visible on a light page without flooding it.
-    c = mix(c, mix(u_lamp, vec3(1.0), 0.85), clamp(glow * 3.0, 0.0, 0.9));
-    c = mix(c, u_lamp, clamp(b.g * 0.8 * (1.0 - fill), 0.0, 0.35));
+    // Light is never white here: like the effects of Art's light paintings it
+    // inks the page in the lamp's color, a wash inside the body and a soft
+    // halo around it.
+    c = mix(c, u_lamp, clamp(glow * 1.1, 0.0, 0.6));
+    c = mix(c, u_lamp, clamp(b.g * 0.5 * (1.0 - fill), 0.0, 0.22));
     c = mix(c, u_room, 1.0 - exp(-s.r * 1.5));
     // The person's own lines stay ink; the light that leaves the body (rings,
     // the gaze, the lines of support, the spark) is drawn in the lamp's color.

@@ -1,18 +1,25 @@
 //! Typed, continuous authored curves and morphs. Build-time samples are knots,
 //! never runtime frames. A 90/120 Hz presentation evaluates between the knots.
 use crate::scene_model::ease;
+use std::rc::Rc;
 #[derive(Clone, Debug)]
 pub struct Value {
     pub numbers: Vec<f32>,
-    pub literals: Vec<String>,
+    /// Text around the numbers; the knots of one curve share a single copy.
+    pub literals: Rc<[String]>,
 }
 impl Value {
     pub fn parse(text: &str) -> Self {
+        Self::parse_like(text, None)
+    }
+    /// Parses `text`, reusing `previous` when its literals are the same.
+    fn parse_like(text: &str, previous: Option<&Rc<[String]>>) -> Self {
         let bytes = text.as_bytes();
         let mut cursor = 0;
         let mut begin = 0;
-        let mut numbers = Vec::new();
-        let mut literals = Vec::new();
+        // A curve's knots usually share one shape: size for it up front.
+        let mut numbers = Vec::with_capacity(previous.map_or(0, |shared| shared.len() - 1));
+        let mut literals = Vec::with_capacity(previous.map_or(0, |shared| shared.len()));
         while cursor < bytes.len() {
             let c = bytes[cursor];
             if c.is_ascii_digit()
@@ -44,7 +51,7 @@ impl Value {
                     }
                 }
                 if let Ok(value) = text[start..cursor].parse::<f32>() {
-                    literals.push(text[begin..start].into());
+                    literals.push(&text[begin..start]);
                     numbers.push(value);
                     begin = cursor;
                 }
@@ -52,14 +59,19 @@ impl Value {
                 cursor += 1;
             }
         }
-        literals.push(text[begin..].into());
+        literals.push(&text[begin..]);
+        let literals = match previous {
+            Some(shared) if shared.iter().eq(literals.iter().copied()) => shared.clone(),
+            _ => literals.into_iter().map(String::from).collect(),
+        };
         Self { numbers, literals }
     }
     pub fn string(&self) -> String {
         self.blend(self, 0.)
     }
     pub fn blend(&self, next: &Self, t: f32) -> String {
-        if self.literals != next.literals || self.numbers.len() != next.numbers.len() {
+        let same = Rc::ptr_eq(&self.literals, &next.literals) || self.literals == next.literals;
+        if !same || self.numbers.len() != next.numbers.len() {
             return if t < 0.5 { self } else { next }.string_direct();
         }
         let mut out = String::new();
@@ -183,20 +195,19 @@ pub fn parse(source: &str) -> Result<Vec<Track>, String> {
             } else {
                 None
             };
-            let knots = n
-                .children()
-                .filter(|v| v.has_tag_name("v"))
-                .map(|v| {
-                    Ok(Knot {
-                        at: v
-                            .attribute("t")
-                            .ok_or("Missing knot time")?
-                            .parse()
-                            .map_err(|_| "Invalid knot time")?,
-                        value: Value::parse(v.attribute("value").ok_or("Missing knot value")?),
-                    })
-                })
-                .collect::<Result<Vec<_>, String>>()?;
+            let mut knots: Vec<Knot> = Vec::new();
+            for v in n.children().filter(|v| v.has_tag_name("v")) {
+                let at = v
+                    .attribute("t")
+                    .ok_or("Missing knot time")?
+                    .parse()
+                    .map_err(|_| "Invalid knot time")?;
+                let value = Value::parse_like(
+                    v.attribute("value").ok_or("Missing knot value")?,
+                    knots.last().map(|k| &k.value.literals),
+                );
+                knots.push(Knot { at, value });
+            }
             if knots.is_empty() {
                 return Err("Empty authored curve".into());
             }
@@ -306,6 +317,6 @@ mod tests {
     fn units_and_negative_exponents_survive() {
         let value = Value::parse("translate(-1.3e-4px, 20%)");
         assert_eq!(value.numbers, vec![-0.00013, 20.]);
-        assert_eq!(value.literals, vec!["translate(", "px, ", "%)"]);
+        assert_eq!(*value.literals, ["translate(", "px, ", "%)"]);
     }
 }

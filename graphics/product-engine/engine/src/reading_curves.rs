@@ -113,7 +113,7 @@ impl Curves {
                 previous = at;
                 let format = r.count()?;
                 let count = formats.get(format).ok_or(CurveError::Format)?.len() - 1;
-                let mut numbers = Vec::new();
+                let mut numbers = Vec::with_capacity(count);
                 for _ in 0..count {
                     numbers.push(r.number()?);
                 }

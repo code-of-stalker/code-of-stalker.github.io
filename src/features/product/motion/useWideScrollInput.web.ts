@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
+import { softScrollBy } from './softScroll.web';
 
 type Input = {
   wheel(event: WheelEvent): void;
@@ -26,7 +27,7 @@ export function useWideScrollInput(ref: RefObject<HTMLDivElement | null>, enable
     const wheel = (event: WheelEvent) => {
       if (!usable() || event.defaultPrevented || event.ctrlKey || !outside(event.target, event.clientX)) return;
       latest.current.input.wheel(event);
-      if (!event.defaultPrevented) el.scrollTop += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1);
+      if (!event.defaultPrevented && !softScrollBy(el, event.deltaY, event.deltaMode)) el.scrollTop += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1);
       event.preventDefault();
     };
     const start = (event: TouchEvent) => {

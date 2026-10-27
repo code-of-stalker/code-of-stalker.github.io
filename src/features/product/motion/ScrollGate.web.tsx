@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useWideScrollInput } from './useWideScrollInput.web';
+import { releaseSoftScroll } from './softScroll.web';
 import { consumesReadingInput } from './reading-boundary-input';
 import { createScrollGate } from './scroll-gate-model';
 import type { ScrollGateProps } from './ScrollGate.types';
@@ -72,9 +73,10 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     el.addEventListener('touchmove', block, { passive: false });
     el.addEventListener('keydown', block);
     if (controllerRef) controllerRef.current = {
-      scrollTo: offset => el.scrollTo({ top: offset, behavior: 'instant' }),
+      scrollTo: offset => { releaseSoftScroll(el); el.scrollTo({ top: offset, behavior: 'instant' }); },
       setScrollLocked: locked => {
         scrollLocked.current = locked;
+        if (locked) releaseSoftScroll(el);
         gate.block(); interacted.current = false; callbacks.current.onReady(false);
         el.style.overflowY = locked ? 'hidden' : 'auto';
         el.style.touchAction = locked ? 'none' : 'pan-y';
@@ -91,6 +93,7 @@ export function ScrollGate({ children, enabled, onReady, onProgress, onAdvance, 
     if (entry.current.key !== resetKey) entry.current = { key: resetKey, end: false, offset: 0 };
     interacted.current = false; intent.current = 1; gate.reset();
     viewport.current?.style.setProperty('--scroll-fade-top', '0px');
+    releaseSoftScroll(viewport.current);
     viewport.current?.scrollTo({ top: entry.current.end ? viewport.current.scrollHeight : entry.current.offset, behavior: 'instant' }); callbacks.current.onReady(false);
   }, [resetKey, gate]);
   // Permission changes must not turn reading momentum or a held touch into navigation.

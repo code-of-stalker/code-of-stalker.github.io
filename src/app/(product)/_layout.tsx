@@ -7,6 +7,7 @@ import { ProductButton, ProductScreen, ProductText } from '../../features/produc
 import { ProductThemeProvider, useThemeColors } from '../../features/product/ProductTheme';
 import { isLightTheme } from '../../features/product/theme';
 import { EffectsQualityProvider } from '../../features/product/motion/EffectsQuality';
+import { SoftScroll } from '../../features/product/motion/SoftScroll';
 import { useProductFonts } from '../../features/product/useProductFonts';
 import { BackSwipeProvider } from '../../features/product/navigation/BackSwipeProvider';
 import { DeviceOptimizationGate, type DeviceOptimizationMode } from '../../features/product/optimization/DeviceOptimizationGate';
@@ -39,7 +40,7 @@ function ProductStack() {
 }
 function ThemedProduct() {
   const { settings } = useProduct();
-  return <ProductThemeProvider theme={settings.theme}><EffectsQualityProvider><BackSwipeProvider><ProductStack /></BackSwipeProvider></EffectsQualityProvider></ProductThemeProvider>;
+  return <ProductThemeProvider theme={settings.theme}><EffectsQualityProvider><SoftScroll enabled={settings.smoothness ?? true} /><BackSwipeProvider><ProductStack /></BackSwipeProvider></EffectsQualityProvider></ProductThemeProvider>;
 }
 export default function ProductLayout() {
   return <ProductProvider><ThemedProduct /></ProductProvider>;

@@ -17,6 +17,8 @@ export function ObservationFlow({ embedded = false, active = true, effectsActive
     if (!embedded && active && focused && (progress.step === 1 || progress.step === 2)) void updateProgress({ practiceStage: progress.step === 2 ? 3 : 4 }).catch(() => {});
   }, [embedded, active, focused, progress.step, updateProgress]);
   async function done() {
+    // Step 4 continues with its second reading block.
+    if (progress.step === 4) { onAnswered?.(); return; }
     try {
       if (progress.step === 2) {
         await updateProgress({ practiceStage: 4 });

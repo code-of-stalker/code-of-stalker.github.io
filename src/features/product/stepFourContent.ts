@@ -1,7 +1,7 @@
 import type { ReadingPage } from './motion/readingPages';
 
 /** Authored reading order. Each page has one focal scene and keeps the supplied text. */
-export const stepFourPages: readonly ReadingPage[] = [
+const pages: readonly ReadingPage[] = [
   { id: 'grounding-default', title: 'Практика заземления и прямого узнавания', art: 'grounding-drift', webScene: 'world-in-glasses', paragraphs: [
     'Мысли думают человека.\nПарадигмы живут им — по умолчанию.',
     'Ментал контролирует, воображение рисует образы, в которые он верит больше, чем в тело.',
@@ -28,9 +28,6 @@ export const stepFourPages: readonly ReadingPage[] = [
   { id: 'grounding-questions-origin', title: 'Вопросы настройки', art: 'grounding-trace', webScene: 'tuning-questions', paragraphs: [
     'Теперь — скажи вслух любой вывод. И задай себе вопросы:',
     '— Откуда пришёл этот вывод?\n— Что явилось стартовой точкой? (ощущение, образ, мысль?)\n— Есть ли факт, или это интерпретация?\n— Что я чувствую телом, пока думаю это?',
-  ] },
-  { id: 'grounding-questions-presence', title: 'Наблюдение или мысль?', art: 'grounding-signal', paragraphs: [
-    '— Кто внутри меня решил, что это — истина?\n— Где находится моё внимание сейчас — в голове, в теле, в ощущении?\n— Есть ли Наблюдение, есть ли Присутствие в моменте — или только мысленный процесс, мысленное «я»?\n— Кто находится впереди механизма мышления? Ощущается ли предтеча?',
   ] },
   { id: 'grounding-character', title: 'Персонаж: сон, в который поверил Абсолют', art: 'grounding-persona', paragraphs: [
     'Человек живёт не собой, а персонажем — ментальной конструкцией, собранной из образов, заимствованных установок, страхов и памяти.',
@@ -66,6 +63,38 @@ export const stepFourPages: readonly ReadingPage[] = [
     'И пока ты не ощутил ступни, не услышал голос, не отследил, как мысль делает вывод, ты не проснулся.',
   ], statement: 'Но как только возникло Истинное Видение, Истинное Распознавание и Различение — возникает Ты Абсолютный, Ты Настоящий.' },
 ];
+
+/** Page 07 is answered, not read: four questions with the hint and voice answer of steps 1–2. */
+export const stepFourQuestionsTitle = 'Наблюдение или мысль?';
+export const stepFourQuestions = [
+  'Кто внутри меня решил, что это — истина?',
+  'Где находится моё внимание сейчас — в голове, в теле, в ощущении?',
+  'Есть ли Наблюдение, есть ли Присутствие в моменте — или только мысленный процесс, мысленное «я»?',
+  'Кто находится впереди механизма мышления? Ощущается ли предтеча?',
+] as const;
+/** Like the step 2 hint, it repeats the practice that leads into the questions. */
+export const stepFourHint = pages.slice(3, 6).map(page => `${page.title}:\n${page.paragraphs.join('\n\n')}`).join('\n\n');
+
+/** The reading before and after the questions. Each block counts its own pages
+ * (01 / 06, then 01 / 08), like the material and practice of step 3. */
+export const stepFourBlocks = [pages.slice(0, 6), pages.slice(6)] as const;
+
+/** One place index runs through the whole step (0–14): 0–5 the first block, 6 the
+ * questions, 7–14 the second block. The bookmark and the sections menu keep it, so a
+ * place saved by the earlier single 15-page reader still opens the same text. */
+export const stepFourQuestionsAt = 6;
+export type StepFourPart = 0 | 'questions' | 1;
+export function stepFourPlace(index: number): { part: StepFourPart; page: number } {
+  if (index < stepFourQuestionsAt) return { part: 0, page: Math.max(0, index) };
+  if (index === stepFourQuestionsAt) return { part: 'questions', page: 0 };
+  return { part: 1, page: Math.min(index - stepFourQuestionsAt - 1, stepFourBlocks[1].length - 1) };
+}
+export const stepFourIndex = (part: StepFourPart, page = 0) =>
+  part === 0 ? page : part === 'questions' ? stepFourQuestionsAt : stepFourQuestionsAt + 1 + page;
+export const stepFourTitle = (index: number) => {
+  const { part, page } = stepFourPlace(index);
+  return part === 'questions' ? stepFourQuestionsTitle : stepFourBlocks[part][page].title!;
+};
 
 export const stepFourGroups = [
   { title: 'Прямое узнавание', pages: [0, 1, 2] },

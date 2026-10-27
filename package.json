@@ -43,7 +43,7 @@
     "web": "expo start --web",
     "export:web": "expo export --platform web --output-dir .expo-rust-web-export && node scripts/prepare-web-cache.mjs .expo-rust-web-export",
     "prepare:site": "node scripts/prepare-site-source.mjs",
-    "test:web-cache": "node --test scripts/web-cache/cache.test.mjs scripts/web-cache/bootstrap.test.mjs",
+    "test:web-cache": "node --test scripts/web-cache/cache.test.mjs scripts/web-cache/bootstrap.test.mjs scripts/web-cache/shell-security.test.mjs",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",

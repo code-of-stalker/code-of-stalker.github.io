@@ -25,6 +25,10 @@ async function verifiedResponse(asset) {
     const hit = await (await caches.open(name)).match(asset.url);
     if (await validResponse(hit, asset)) return hit;
   }
+  // The page has usually just downloaded the same bytes; take them from the HTTP
+  // cache when they still match, and only then go to the network for a fresh copy.
+  const cached = await fetch(asset.url, { cache: 'force-cache', credentials: 'same-origin' }).catch(() => null);
+  if (await validResponse(cached, asset)) return cached;
   const response = await fetch(asset.url, { cache: 'reload', credentials: 'same-origin' });
   if (!await validResponse(response, asset)) throw new Error('Incomplete asset or release changed while downloading: ' + asset.url);
   return response;
@@ -141,7 +145,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || !['https:', 'http:'].includes(url.protocol)) return;
   const navigation = request.mode === 'navigate' && RELEASE.routes.includes(pathname);
   const staticPath = pathname === '/graphics-cache-updates.js' || pathname === '/graphics-cache-bootstrap.js' || pathname === '/favicon.ico'
-    || /^(?:\/graphics\/|\/graphics-cache-assets\/|\/assets\/|\/_expo\/static\/).*\.(?:js|css|wasm|bin|svg|png|jpe?g|webp|gif|avif|ico|ttf|otf|woff2?)$/i.test(pathname);
+    || /^(?:\/graphics\/|\/graphics-cache-assets\/|\/assets\/|\/_expo\/static\/).*\.(?:js|css|wasm|bin|z|svg|png|jpe?g|webp|gif|avif|ico|ttf|otf|woff2?)$/i.test(pathname);
   if (!navigation && !staticPath) return; // Audio, APIs and the version probe pass through.
   event.respondWith(staticResponse(event, pathname));
 });

@@ -140,7 +140,7 @@ export function TheatreMarionette(props: ArtProps) {
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* The full-color poster is only a fallback: every theme recolors the scene. */}
-        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/theatre-marionette/assets-light/original.webp' : '/graphics/theatre-marionette/assets/original.png'} alt="" aria-hidden loading="lazy" decoding="async"
+        <img src={isLightPalette(paletteCode(colors)) ? '/graphics/theatre-marionette/assets-light/original.webp' : '/graphics/theatre-marionette/assets/original.webp'} alt="" aria-hidden loading="lazy" decoding="async"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: failed ? 'block' : 'none' }} />
         <canvas ref={outputRef} data-graphics="rust-theatre-marionette" data-strength="1.5" data-rain-speed="0.5" aria-hidden
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

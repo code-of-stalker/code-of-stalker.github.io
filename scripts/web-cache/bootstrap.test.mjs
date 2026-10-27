@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 const script = await fs.readFile(new URL('./bootstrap.js', import.meta.url), 'utf8');
 const flush = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(); };
-function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false } = {}) {
+function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false, firstVisit = false } = {}) {
   let now = 100000, nextTimer = 0, remote = 'new-1', active = legacy ? 'old-9' : 'new-1', reloads = 0, dialog = false;
   const timers = new Map(), intervals = [], checks = [], registrations = [], pinned = [], events = [];
   const window = new EventTarget(), document = new EventTarget(), serviceWorker = new EventTarget();
@@ -26,7 +26,7 @@ function fixture({ legacy = false, registered = true, readyState = 'complete', o
     } };
   }
   const reg = { active: { scriptURL: 'https://watcher.test/graphics-cache-worker.js?release=new-1' }, update: async () => {} };
-  serviceWorker.controller = controller();
+  serviceWorker.controller = firstVisit ? null : controller();
   serviceWorker.getRegistration = async () => registered ? reg : undefined;
   serviceWorker.register = async url => {
     registrations.push(url); registered = true; active = remote; reg.active.scriptURL = new URL(url, location.href).href;
@@ -96,4 +96,18 @@ test('legacy migration aligns new shell and engine only after the new worker tak
   const app = fixture({ legacy: true, registered: false }); app.busy(true); await flush();
   assert.equal(app.window.watcherGraphicsUpdates.available(), true); assert.equal(app.reloads(), 0);
   await app.advance(10000); assert.equal(app.reloads(), 0); app.busy(false); await app.advance(1); assert.equal(app.reloads(), 1);
+});
+
+test('a first visit installs the offline snapshot only after the engine and device tuning', async () => {
+  const app = fixture({ registered: false, firstVisit: true }); app.dialog(true); await flush();
+  assert.equal(app.checks.length, 1); assert.equal(app.registrations.length, 0);
+  app.window.dispatchEvent(new Event('watcher-graphics-ready')); await flush();
+  await app.advance(2000); assert.equal(app.registrations.length, 0);
+  app.dialog(false); await app.advance(2000);
+  assert.deepEqual(app.registrations, ['/graphics-cache-worker.js?release=new-1']);
+});
+test('a first visit still installs offline support when graphics never become ready', async () => {
+  const app = fixture({ registered: false, firstVisit: true }); await flush();
+  await app.advance(89999); assert.equal(app.registrations.length, 0);
+  await app.advance(1); assert.deepEqual(app.registrations, ['/graphics-cache-worker.js?release=new-1']);
 });

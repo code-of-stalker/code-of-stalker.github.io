@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useIsFocused } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useEffectsController } from './EffectsQuality';
-import { loadGraphics } from './rustEngine.web';
+import { loadGraphics, sceneAssets } from './rustEngine.web';
 import type { SvgTimeline } from './rustEngine.web';
 import { ArtUnavailable } from './ArtUnavailable';
 import { RustGlass } from './RustGlass.web';
@@ -40,7 +40,7 @@ export function RustSvg(props: ArtProps) {
     let disposed = false, detach = () => {}, unregister = () => {}, stopDecoder = () => {};
     const stopVisibility = observeMotionVisibility(host, value => { visible.current = value; });
     const resize = new ResizeObserver(() => { const rect = host.getBoundingClientRect(); motion.current?.resize(rect.width, rect.height); }); resize.observe(host);
-    void loadGraphics().then(module => {
+    void Promise.all([loadGraphics(), sceneAssets(latest.current.kind)]).then(([module]) => {
       if (disposed) return;
       const node = module.SvgTimeline.create(element, latest.current.kind, latest.current.presentation === 'card'); motion.current = node;
       const current = latest.current, spectrum = current.audioSource?.read() ?? current.spectrum, level = current.audioSource ? 0 : current.level ?? 0;

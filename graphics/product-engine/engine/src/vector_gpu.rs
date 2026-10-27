@@ -77,35 +77,42 @@ fn css(n: &Element) -> Result<Style, JsValue> {
         "stop-color",
         "stop-opacity",
     ];
+    // Each value crosses from the browser once; the parent is asked only when
+    // the node declares nothing itself.
+    let values: BTreeMap<String, String> = keys
+        .iter()
+        .map(|key| Ok((key.to_string(), computed.get_property_value(key)?)))
+        .collect::<Result<_, JsValue>>()?;
+    let attributes: BTreeMap<String, String> = keys
+        .iter()
+        .map(|key| (key.to_string(), attr(n, key)))
+        .collect();
+    let style = attr(n, "style");
     let parent = n
         .parent_element()
         .and_then(|p| web_sys::window()?.get_computed_style(&p).ok().flatten());
     let own = keys
         .iter()
         .filter(|key| {
-            !attr(n, key).is_empty()
-                || inline(n, key).is_some()
+            !attributes[**key].is_empty()
+                || declared(&style, key).is_some()
                 || parent.as_ref().is_none_or(|p| {
-                    p.get_property_value(key).unwrap_or_default()
-                        != computed.get_property_value(key).unwrap_or_default()
+                    p.get_property_value(key).unwrap_or_default() != values[**key]
                 })
         })
         .map(|v| v.to_string())
         .collect();
     Ok(Style {
         own,
-        values: keys
-            .iter()
-            .map(|key| Ok((key.to_string(), computed.get_property_value(key)?)))
-            .collect::<Result<_, JsValue>>()?,
-        attributes: keys
-            .iter()
-            .map(|key| (key.to_string(), attr(n, key)))
-            .collect(),
+        values,
+        attributes,
     })
 }
 fn inline(n: &Element, key: &str) -> Option<String> {
-    attr(n, "style").split(';').find_map(|line| {
+    declared(&attr(n, "style"), key)
+}
+fn declared(style: &str, key: &str) -> Option<String> {
+    style.split(';').find_map(|line| {
         let (k, v) = line.split_once(':')?;
         if k.trim() == key {
             Some(v.trim().to_owned())
@@ -901,17 +908,18 @@ impl VectorGpu {
         ]
         .contains(&tag.as_str())
         {
-            let base = css(&node)?;
+            // The node's State captured this exact style a moment ago.
+            let base = &self.states[id].base;
             let source = shape(&node);
-            let stroke_width = property(&node, &base, "stroke-width")
+            let stroke_width = property(&node, base, "stroke-width")
                 .trim_end_matches("px")
                 .parse()
                 .unwrap_or(1.);
-            let even = property(&node, &base, "fill-rule") == "evenodd";
-            let round = property(&node, &base, "stroke-linecap") == "round";
+            let even = property(&node, base, "fill-rule") == "evenodd";
+            let round = property(&node, base, "stroke-linecap") == "round";
             let fill = vector_geometry::mesh(&source, None, even, round).map_err(error)?;
             let dash =
-                crate::tracks::Value::parse(&property(&node, &base, "stroke-dasharray")).numbers;
+                crate::tracks::Value::parse(&property(&node, base, "stroke-dasharray")).numbers;
             let dash_offset = number(&node, "stroke-dashoffset", 0.);
             let path_length = number(&node, "pathLength", 0.);
             let stroke = vector_geometry::dashed_mesh(

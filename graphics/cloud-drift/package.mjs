@@ -7,7 +7,8 @@ const compiled = path.join(scene, '../../output/motion/man-in-clouds/pkg');
 const output = path.join(app, 'public/graphics/cloud-drift');
 await fs.mkdir(path.join(output, 'assets'), { recursive: true });
 await fs.mkdir(path.join(output, 'pkg'), { recursive: true });
-for (const name of ['original.png', 'background-clean.png', 'hero.png', 'poster.png']) await fs.copyFile(path.join(scene, 'assets', name), path.join(output, 'assets', name));
+// Lossless WebP copies of the authored PNGs (graphics/lossless-webp.py): same pixels, smaller download.
+for (const name of ['original.webp', 'background-clean.webp', 'hero.webp', 'poster.webp']) await fs.copyFile(path.join(scene, 'assets', name), path.join(output, 'assets', name));
 // Light themes draw the light paintings.
 await fs.mkdir(path.join(output, 'assets-light'), { recursive: true });
 for (const name of ['original.webp', 'background-clean.webp', 'hero.webp', 'objects.webp']) await fs.copyFile(path.join(scene, 'assets-light', name), path.join(output, 'assets-light', name));

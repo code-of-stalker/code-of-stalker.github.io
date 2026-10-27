@@ -10,7 +10,8 @@ for (const file of ['watcher_simple_practice.js', 'watcher_simple_practice_bg.wa
 }
 // One input for every theme: color is applied in Rust's composite pass.
 await mkdir(path.join(output, 'assets'), { recursive: true });
-await copyFile(path.join(scene, 'assets/figure.png'), path.join(output, 'assets/figure.png'));
+// Lossless WebP copy of the authored PNG (graphics/lossless-webp.py): same pixels, smaller download.
+await copyFile(path.join(scene, 'assets/figure.webp'), path.join(output, 'assets/figure.webp'));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_simple_practice_bg.wasm')))) throw new Error('Invalid simple-practice WASM');
 console.log('Packaged Rust «Простая практика»: 44-second seamless loop.');

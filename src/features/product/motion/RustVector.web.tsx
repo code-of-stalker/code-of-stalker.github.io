@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useIsFocused } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { rustSession } from './rustEngine.web';
+import { rustSession, sceneAssets } from './rustEngine.web';
 import type { RustSession } from './rustEngine.web';
 import { useEffectsController } from './EffectsQuality';
 import { RustGlass } from './RustGlass.web';
@@ -43,7 +43,7 @@ export function RustVector(props: ArtProps) {
     const resize = () => { const bounds = output.getBoundingClientRect(); if (bounds.width > 0 && bounds.height > 0) handle.current?.resize({ width: bounds.width, height: bounds.height, path: `M0 0H${bounds.width}V${bounds.height}H0Z`, background: 'clear' }); };
     const size = new ResizeObserver(resize); size.observe(output);
     const stopVisibility = observeMotionVisibility(output, visible => { active.current.visible = visible; activity(); });
-    void rustSession(controller).then(session => {
+    void Promise.all([rustSession(controller), sceneAssets(latest.current.kind)]).then(([session]) => {
       if (disposed) return;
       const node = session.add(output, false, undefined, () => latest.current.onReady?.(), false, false, { root: element, kind: latest.current.kind, card: latest.current.presentation === 'card' });
       handle.current = node; resize(); activity(); sendAudio(); node.decoder(latest.current.decoderVisible ?? false);

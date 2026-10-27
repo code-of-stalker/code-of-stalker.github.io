@@ -4,7 +4,7 @@ import init, { CloudDrift } from './pkg/watcher_cloud_drift.js';
 const resources = {};
 async function image(folder, name) {
   const node = new Image();
-  node.src = new URL(`./${folder}/${name}.${folder === 'assets' ? 'png' : 'webp'}`, import.meta.url).href;
+  node.src = new URL(`./${folder}/${name}.webp`, import.meta.url).href;
   await node.decode();
   return node;
 }

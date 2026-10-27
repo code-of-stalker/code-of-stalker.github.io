@@ -3,7 +3,7 @@ import init, { TuningQuestions } from './pkg/watcher_tuning_questions.js';
 let resources;
 async function image(name) {
   const node = new Image();
-  node.src = new URL(`./assets/${name}.png`, import.meta.url).href;
+  node.src = new URL(`./assets/${name}.webp`, import.meta.url).href;
   await node.decode();
   return node;
 }

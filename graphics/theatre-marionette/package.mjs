@@ -9,7 +9,8 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 for (const file of ['watcher_theatre_marionette.js', 'watcher_theatre_marionette_bg.wasm']) {
   await copyFile(path.join(root, 'output/motion/theatre-marionette/pkg', file), path.join(output, 'pkg', file));
 }
-for (const file of ['original.png', 'background.png', 'heroine.png']) {
+// Lossless WebP copies of the authored PNGs (graphics/lossless-webp.py): same pixels, smaller download.
+for (const file of ['original.webp', 'background.webp', 'heroine.webp']) {
   await copyFile(path.join(scene, 'assets', file), path.join(output, 'assets', file));
 }
 // Light themes draw the light paintings, in the original pose.

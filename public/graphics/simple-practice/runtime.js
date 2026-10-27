@@ -3,7 +3,7 @@ import init, { SimplePractice } from './pkg/watcher_simple_practice.js';
 let resources;
 async function image(name) {
   const node = new Image();
-  node.src = new URL(`./assets/${name}.png`, import.meta.url).href;
+  node.src = new URL(`./assets/${name}.webp`, import.meta.url).href;
   await node.decode();
   return node;
 }

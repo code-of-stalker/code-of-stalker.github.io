@@ -21,6 +21,8 @@ if ($RefreshAssets) {
 }
 $network = if ($Offline) { @('--offline') } else { @() }
 $manifest = @('--manifest-path', 'graphics/product-engine/Cargo.toml')
+# Paintings, long tracks and reading curves are published beside the engine (engine/assets/external.txt).
+Invoke-Checked -Program $cargo -Arguments (@('run') + $network + $manifest + @('-p', 'watcher-graphics', '--example', 'publish_assets', '--', 'public/graphics/pkg/assets'))
 Invoke-Checked -Program $cargo -Arguments (@('test') + $network + $manifest + @('-p', 'watcher-graphics'))
 Invoke-Checked -Program $cargo -Arguments (@('run') + $network + $manifest + @('-p', 'watcher-shader-compiler', '--', 'graphics/product-engine/engine/shaders'))
 Invoke-Checked -Program $cargo -Arguments (@('build') + $network + $manifest + @('-p', 'watcher-graphics', '--target', 'wasm32-unknown-unknown', '--release'))

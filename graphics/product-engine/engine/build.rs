@@ -336,8 +336,41 @@ fn prepare_spoken_glyphs(dest: &std::path::Path, face: &ttf_parser::Face<'_>) {
     fs::write(dest.join("spoken_glyphs.rs"), output).unwrap();
 }
 
+/// 64-bit FNV-1a: names each published input by its content and lets the
+/// engine reject bytes from another build. Same function as `asset_store::fnv`.
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+/// Inputs listed in assets/external.txt stay out of the WASM binary; the page
+/// fetches them per scene from graphics/pkg/assets under content-addressed names.
+fn prepare_external(dest: &std::path::Path) {
+    println!("cargo:rerun-if-changed=assets/external.txt");
+    let list = fs::read_to_string("assets/external.txt").unwrap();
+    let mut table = String::from("pub const EXTERNAL: &[External] = &[\n");
+    for name in list.lines().map(str::trim) {
+        if name.is_empty() || name.starts_with('#') {
+            continue;
+        }
+        println!("cargo:rerun-if-changed=assets/{name}");
+        let bytes = fs::read(format!("assets/{name}")).unwrap();
+        let hash = fnv(&bytes);
+        let flat = name.replace('/', "-");
+        let (stem, extension) = flat.split_once('.').expect("asset has an extension");
+        table.push_str(&format!(
+            "    External {{ name: {name:?}, file: \"{stem}.{:012x}.{extension}\", bytes: {}, hash: {hash:#018x} }},\n",
+            hash >> 16,
+            bytes.len()
+        ));
+    }
+    table.push_str("];\n");
+    fs::write(dest.join("external_assets.rs"), table).unwrap();
+}
+
 fn main() {
     let dest = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    prepare_external(&dest);
     println!("cargo:rerun-if-changed=assets/fonts");
     prepare_observer(&dest);
     // Same bundled fonts in Canvas reference and Rust. No OS-specific fallback.

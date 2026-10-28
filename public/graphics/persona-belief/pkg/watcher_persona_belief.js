@@ -51,13 +51,12 @@ export class PersonaBelief {
     }
     /**
      * @param {HTMLCanvasElement} canvas
-     * @param {HTMLImageElement} figure
      * @param {HTMLImageElement} labels
      */
-    constructor(canvas, figure, labels) {
+    constructor(canvas, labels) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.personabelief_new(retptr, addHeapObject(canvas), addHeapObject(figure), addHeapObject(labels));
+            wasm.personabelief_new(retptr, addHeapObject(canvas), addHeapObject(labels));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -85,8 +84,8 @@ export class PersonaBelief {
         wasm.personabelief_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one composed moment: the tablet on its thread,
-     * the chain of those who said it traced into the dark.
+     * Reduced motion holds one composed moment: the chain of the same
+     * imprint traced into the dark, the lens back on our own.
      * @param {boolean} value
      */
     reduced(value) {
@@ -151,12 +150,6 @@ function __wbg_get_imports() {
         },
         __wbg_bufferData_ec7957bcbbf38591: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
-        },
-        __wbg_clearColor_796427e8ac60fe14: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).clearColor(arg1, arg2, arg3, arg4);
-        },
-        __wbg_clear_cb96796cc568b7c8: function(arg0, arg1) {
-            getObject(arg0).clear(arg1 >>> 0);
         },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
@@ -314,6 +307,9 @@ function __wbg_get_imports() {
         __wbg_uniform2f_a92b5bb95dc5b4d9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform2f(getObject(arg1), arg2, arg3);
         },
+        __wbg_uniform2fv_319c49f0ce340f26: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniform2fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
+        },
         __wbg_uniform3fv_055ea5ac38af4fce: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform3fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
         },
@@ -339,6 +335,10 @@ function __wbg_get_imports() {
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
+            return addHeapObject(ret);
+        },
+        __wbindgen_object_clone_ref: function(arg0) {
+            const ret = getObject(arg0);
             return addHeapObject(ret);
         },
         __wbindgen_object_drop_ref: function(arg0) {

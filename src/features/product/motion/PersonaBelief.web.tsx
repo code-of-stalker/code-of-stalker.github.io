@@ -21,10 +21,9 @@ const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as 
   .catch(error => { runtime = undefined; throw error; });
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
- * frames; Rust owns the camera and its focus, the shell and its circuit, the
- * tablet of belief and what is written on it, the chain of those who said it,
- * the card and the colors of every theme (one set of inputs serves light and
- * dark pages alike). */
+ * frames; Rust owns the lens and its focus, the sand and its light, the seals
+ * and their imprints, the chain of the same imprint, the caption and the colors
+ * of every theme (one input, the words, serves light and dark pages alike). */
 export function PersonaBelief(props: ArtProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
@@ -50,10 +49,10 @@ export function PersonaBelief(props: ArtProps) {
         p95: sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * .95) - 1)], samples: sorted.length,
       } : undefined;
       controller.report(id, { level: snapshot.level, surface: 'artwork', density: output.width / Math.max(1, rect.width),
-        buffer: [output.width, output.height], source: [1536, 1024], blur: [output.width / 4, output.height / 4], draws: renderer.frame_count(),
-        sourceUpdates: 1, blurUpdates: 4, contourUpdates: 0, idle: !removeJob, cadence,
-        backend: 'Rust · persona belief WebGL2', textures: 6,
-        textureBytes: (1340 * 2120 + 1536 * 2304) * 4 * 4 / 3 + output.width * output.height * 4 * (2 + 1 / 8 + 1 / 64) });
+        buffer: [output.width, output.height], source: [1536, 1024], blur: [output.width, output.height], draws: renderer.frame_count(),
+        sourceUpdates: 1, blurUpdates: 1, contourUpdates: 0, idle: !removeJob, cadence,
+        backend: 'Rust · persona belief WebGL2', textures: 3,
+        textureBytes: 1536 * 2304 * 4 * 4 / 3 + 1024 * 1024 * 4 + output.width * output.height * 4 * 2 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);
@@ -137,7 +136,7 @@ export function PersonaBelief(props: ArtProps) {
     };
   }, [controller]);
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    <div role="img" aria-label="Человек сидит в оболочке из пластин, под ними схема, по которой бежит импульс. На груди висит табличка веры со строками без букв, тёплая и светлая, и импульс проходит через неё, как через любой другой узел. Каждый раз, когда он проходит, на табличке пишется другое, а её форма и место остаются теми же. Камера отворачивается. Потом она возвращается и задаёт три вопроса: живой свет поднимается в теле и проступает во всех швах, но не сквозь табличку, она тёмная; табличка отходит от груди и качается на нити; нить ведёт к человеку в глубине комнаты, от его таблички к следующему и дальше, в темноту. Камера проходит по цепочке и возвращается к человеку"
+    <div role="img" aria-label="Песок с волнами от ветра под низкой лампой, снятый вблизи. Печать опускается, вдавливается в песок и поднимается, остаётся оттиск из колец и строк без букв. Песок заживает, и другая печать другой формы ложится ровно туда же тем же движением, и так шесть раз. Лампа поднимается, рельеф почти пропадает, камера уходит в сторону. Потом лампа опускается низко: волны песка оживают и блестят, а у края оттиска замирают. Камера спускается к самым песчинкам, к валику, выдавленному сверху, и находит над оттиском ту же печать. Печать уходит, и свет бежит от оттиска по цепочке точно таких же оттисков в темноту. Камера идёт за ним и возвращается к своему оттиску"
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* Without WebGL2 the page keeps the product engine's vector study. */}

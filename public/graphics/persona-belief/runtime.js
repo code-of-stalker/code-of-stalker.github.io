@@ -1,4 +1,4 @@
-// Platform bridge only: decode the immutable inputs and construct the Rust renderer.
+// Platform bridge only: decode the immutable input and construct the Rust renderer.
 import init, { PersonaBelief } from './pkg/watcher_persona_belief.js';
 let resources;
 async function image(name) {
@@ -8,10 +8,10 @@ async function image(name) {
   return node;
 }
 export async function mount(canvas) {
-  resources ??= Promise.all([init(), image('figure'), image('labels')])
+  resources ??= Promise.all([init(), image('labels')])
     .catch(error => { resources = undefined; throw error; });
-  const [, figure, labels] = await resources;
-  const renderer = new PersonaBelief(canvas, figure, labels);
+  const [, labels] = await resources;
+  const renderer = new PersonaBelief(canvas, labels);
   renderer.soft_edges(true);
   return renderer;
 }

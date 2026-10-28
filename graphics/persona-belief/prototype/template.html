@@ -144,8 +144,14 @@ const chips = document.getElementById('themes');
 const themeName = document.getElementById('theme-name');
 let scene;
 
+// On the prototypes site the page sits in a frame under the site's bar,
+// whose theme picker drives it and hears back each change.
+const embedded = window.parent !== window;
+if (embedded) chips.hidden = true;
+
 function applyTheme(next) {
   theme = next;
+  if (embedded) window.parent.postMessage({ type: 'prototype-theme', theme: next[0] }, '*');
   const root = document.documentElement.style;
   TOKENS.forEach((token, i) => root.setProperty(token, next[3 + i]));
   root.setProperty('color-scheme', LIGHT.has(next[0]) ? 'light' : 'dark');
@@ -165,6 +171,11 @@ for (const t of THEMES) {
   chips.append(b);
 }
 applyTheme(theme);
+window.addEventListener('message', event => {
+  if (event.source !== window.parent || event.data?.type !== 'prototype-theme') return;
+  const next = THEMES.find(t => t[0] === event.data.theme);
+  if (next) applyTheme(next);
+});
 
 const fmt = s => {
   const m = Math.floor(s / 60), r = s - m * 60;

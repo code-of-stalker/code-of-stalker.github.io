@@ -58,3 +58,9 @@ tools/prepare-assets.mjs через Playwright:
 Результат кладётся в public/graphics/persona-belief/; сайт подхватывает его
 на странице 03/08 второго блока шага 4. В нативном приложении остаётся
 прежняя сцена.
+
+Прототип для сайта прототипов
+  node graphics/persona-belief/prototype/build.mjs <папка>/index.html
+Собирает одну страницу, в которую вшиты собранная сцена, надписи и шрифты:
+пауза, перемотка, переход к каждой фразе и все семь тем. Тему можно задать
+адресом: ?theme=neutral|dark|light|violet|matrix|mirage|dawn.

@@ -1,0 +1,264 @@
+<title>Оттиск</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* One column like the app's step page: the scene on the plate, its clock under it, then the beats of the page text. Tokens are the app's theme colours; Тишина until a theme is chosen. */
+@font-face { font-family: "Disket Mono"; src: url(data:font/ttf;base64,__DISKET__) format("truetype"); font-display: swap; }
+@font-face { font-family: "Tektur"; src: url(data:font/ttf;base64,__TEKTUR__) format("truetype"); font-weight: 500; font-display: swap; }
+:root {
+  --page: #0D1520;
+  --surface: #15212E;
+  --accent: #86C9C7;
+  --text: #E4E7DD;
+  --muted: #A1B0B5;
+  --faint: #8199A6;
+  --border: #3B5361;
+  --title: "Tektur", "Arial Narrow", system-ui, sans-serif;
+  --body: "Disket Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html { background: var(--page); }
+[hidden] { display: none !important; }
+body {
+  background: var(--page); color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; max-width: 720px; }
+.eyebrow { color: var(--faint); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+h1 { font-family: var(--title); font-weight: 500; font-size: clamp(24px, 4.2vw, 36px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.note { color: var(--muted); margin: 0; max-width: 64ch; }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 3 / 2; }
+canvas { display: block; width: 100%; height: 100%; }
+.status {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+  color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.status.error { text-transform: none; letter-spacing: 0; color: var(--text); font-size: 13px; }
+.status.error p { max-width: 52ch; margin: 0; }
+.transport { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
+button {
+  font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#play { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; }
+#play svg { width: 16px; height: 16px; fill: var(--accent); }
+.clock { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.track { position: relative; height: 28px; display: grid; align-items: center; }
+.beats-bar { position: absolute; left: 0; right: 0; top: 50%; height: 4px; transform: translateY(-50%); }
+.beats-bar span { position: absolute; top: 0; height: 100%; background: var(--border); border-radius: 2px; }
+.beats-bar span.on { background: var(--accent); }
+input[type="range"] { position: relative; width: 100%; margin: 0; background: transparent; appearance: none; -webkit-appearance: none; height: 28px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+input[type="range"]::-moz-range-track { height: 4px; background: transparent; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--text); border: 2px solid var(--page); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 2px solid var(--page); }
+ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+ol button {
+  width: 100%; height: 100%; text-align: left; border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; align-content: start;
+  background: transparent;
+}
+ol button .at { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+ol button .what { min-width: 0; }
+ol button .how { color: var(--muted); font-size: 12px; }
+ol button[aria-current="true"] { background: var(--surface); border-color: var(--accent); }
+ol button[aria-current="true"] .at { color: var(--accent); }
+.themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.themes button { padding: 7px 12px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; }
+.themes button[aria-pressed="true"] { color: var(--page); background: var(--accent); border-color: var(--accent); }
+@media (max-width: 760px) { ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) {
+  ol { grid-template-columns: minmax(0, 1fr); }
+  .transport { grid-template-columns: auto 1fr; }
+  .clock { grid-column: 1 / -1; order: 3; }
+}
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Шаг 4 · блок 2 · страница 03 / 08 · тема <span id="theme-name">Тишина</span></div>
+    <h1>Я это действительно знаю?</h1>
+    <p class="note">Живой прототип сцены «Оттиск». Её считает видеокарта твоего устройства тем же кодом, что пойдёт на сайт, поэтому здесь видно настоящую плавность. Петля длится 64 секунды.</p>
+  </header>
+
+  <div class="themes" id="themes" role="group" aria-label="Тема"></div>
+
+  <div class="stage">
+    <canvas id="scene" role="img" aria-label="Песок под низкой лампой. Печать вдавливается в песок и оставляет оттиск, на каждое имя веры ложится другая печать в то же место. Потом свет меняется под три вопроса, и в конце свет бежит по цепочке таких же оттисков в темноту."></canvas>
+    <div class="status" id="status">Загружаю сцену…</div>
+  </div>
+
+  <div class="transport">
+    <button id="play" type="button" aria-label="Пауза"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="icon" d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+    <div class="track">
+      <div class="beats-bar" id="bar" aria-hidden="true"></div>
+      <input id="time" type="range" min="0" max="64" step="0.1" value="0" aria-label="Время в петле, секунды">
+    </div>
+    <div class="clock" id="clock">00:00,0 / 01:04</div>
+  </div>
+
+  <ol id="beats"></ol>
+</main>
+
+<script type="module">
+__GLUE__
+
+const LOOP = 64;
+// The page's words and when the scene shows each (CARDS in lib.rs).
+const BEATS = [
+  [1.0, 9.0, 'Даже вера — является программой', 'Печать опускается и оставляет чистый оттиск.'],
+  [9.4, 30.8, 'Человек может верить в Бога, в Аллаха, в Будду, в Кришну, в правильность молитвы или мантры', 'На каждое имя песок заживает, и другая печать ложится в то же место.'],
+  [31.4, 37.2, 'Но никогда не задаваться вопросом', 'Лампа поднимается, рельеф почти пропадает.'],
+  [37.8, 44.4, 'А я это чувствую как Истину?', 'Свет вскользь: песок живёт, оттиск неподвижен.'],
+  [45.0, 51.0, 'Я это действительно Знаю?', 'Камера у песчинок, над оттиском та же печать.'],
+  [51.6, 61.4, 'Или мне просто так сказали, и я поверил?', 'Свет бежит по цепочке таких же оттисков.'],
+];
+const WASM = '__WASM__';
+const LABELS = 'data:image/webp;base64,__LABELS__';
+// The app's themes: settings id, name, graphicsPalette code, page / surface / accent / text / muted / faint / border.
+const THEMES = [
+  ['neutral', 'Тишина', 2, '#0D1520', '#15212E', '#86C9C7', '#E4E7DD', '#A1B0B5', '#8199A6', '#3B5361'],
+  ['dark', 'Искра', 0, '#000000', '#080900', '#F5DD07', '#F5DD07', '#B69D4B', '#655E46', '#575007'],
+  ['light', 'Дюна', 1, '#FAE18F', '#F7D985', '#FF6600', '#BE4C00', '#BE4C00', '#BE4C00', '#BE4C00'],
+  ['violet', 'Астрал', 3, '#0D1426', '#192641', '#6296F5', '#8DB5F0', '#7897C6', '#57739F', '#45638E'],
+  ['matrix', 'Матрица', 4, '#000000', '#000A03', '#00FF41', '#00FF41', '#4FB868', '#3F6B4A', '#0A5C22'],
+  ['mirage', 'Мираж', 5, '#F1DFB8', '#EBD6A9', '#2E5BD5', '#263B6B', '#3E5288', '#6E6A9C', '#5468B4'],
+  ['dawn', 'Рассвет', 6, '#F3D8C7', '#EDCBB6', '#9C3857', '#603346', '#7A4559', '#9A7068', '#A2546C'],
+];
+const LIGHT = new Set(['light', 'mirage', 'dawn']);
+const TOKENS = ['--page', '--surface', '--accent', '--text', '--muted', '--faint', '--border'];
+const asked = new URLSearchParams(location.search).get('theme');
+let theme = THEMES.find(t => t[0] === asked) ?? THEMES[0];
+
+const canvas = document.getElementById('scene');
+const status = document.getElementById('status');
+const range = document.getElementById('time');
+const clock = document.getElementById('clock');
+const play = document.getElementById('play');
+const icon = document.getElementById('icon');
+const list = document.getElementById('beats');
+const bar = document.getElementById('bar');
+const chips = document.getElementById('themes');
+const themeName = document.getElementById('theme-name');
+let scene;
+
+function applyTheme(next) {
+  theme = next;
+  const root = document.documentElement.style;
+  TOKENS.forEach((token, i) => root.setProperty(token, next[3 + i]));
+  root.setProperty('color-scheme', LIGHT.has(next[0]) ? 'light' : 'dark');
+  themeName.textContent = next[1];
+  for (const b of chips.children) b.setAttribute('aria-pressed', b.dataset.id === next[0] ? 'true' : 'false');
+  if (scene) {
+    scene.palette(next[2]);
+    scene.backdrop(...[1, 3, 5].map(i => parseInt(next[3].slice(i, i + 2), 16) / 255));
+  }
+}
+for (const t of THEMES) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.id = t[0];
+  b.textContent = t[1];
+  b.addEventListener('click', () => applyTheme(t));
+  chips.append(b);
+}
+applyTheme(theme);
+
+const fmt = s => {
+  const m = Math.floor(s / 60), r = s - m * 60;
+  return `${String(m).padStart(2, '0')}:${r.toFixed(1).padStart(4, '0').replace('.', ',')}`;
+};
+const items = BEATS.map(([from, , words, how]) => {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.innerHTML = `<span class="at">${fmt(from)}</span><span class="what"></span><span class="how"></span>`;
+  b.querySelector('.what').textContent = words;
+  b.querySelector('.how').textContent = how;
+  li.append(b);
+  list.append(li);
+  return b;
+});
+const marks = BEATS.map(([from, to]) => {
+  const s = document.createElement('span');
+  s.style.left = `${from / LOOP * 100}%`;
+  s.style.width = `${(to - from) / LOOP * 100}%`;
+  bar.append(s);
+  return s;
+});
+
+function fail(text) {
+  status.className = 'status error';
+  status.innerHTML = '<p></p>';
+  status.firstChild.textContent = text;
+  status.hidden = false;
+}
+
+async function start() {
+  if (!document.createElement('canvas').getContext('webgl2')) {
+    fail('Этот браузер не даёт WebGL2, а сцена рисуется на нём. Открой страницу в свежем Chrome, Safari или Firefox.');
+    return;
+  }
+  const bytes = Uint8Array.from(atob(WASM), c => c.charCodeAt(0));
+  try {
+    await __wbg_init({ module_or_path: bytes });
+  } catch (error) {
+    fail(`Страница не смогла запустить WebAssembly: ${error && error.message ? error.message : error}`);
+    return;
+  }
+  const labels = new Image();
+  labels.src = LABELS;
+  await labels.decode();
+  scene = new PersonaBelief(canvas, labels);
+  scene.soft_edges(true);
+  applyTheme(theme);
+
+  let playing = true, dragging = false;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  if (reduce.matches) {
+    playing = false;
+    scene.seek(58.6);
+  }
+  const fit = () => {
+    const r = canvas.getBoundingClientRect();
+    const k = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(2, Math.min(1536, Math.round(r.width * k)));
+    scene.resize(w, Math.round(w * 2 / 3));
+  };
+  new ResizeObserver(fit).observe(canvas);
+  fit();
+  const show = () => {
+    const t = scene.elapsed();
+    if (!dragging) range.value = t.toFixed(1);
+    clock.textContent = `${fmt(t)} / 01:04`;
+    BEATS.forEach(([from, to], i) => {
+      const on = t >= from - 0.4 && t < to + 0.6;
+      items[i].setAttribute('aria-current', on ? 'true' : 'false');
+      marks[i].classList.toggle('on', on);
+    });
+  };
+  const setPlaying = value => {
+    playing = value;
+    scene.pause(!value);
+    icon.setAttribute('d', value ? 'M3 2h3.5v12H3zM9.5 2H13v12H9.5z' : 'M4 2l10 6-10 6z');
+    play.setAttribute('aria-label', value ? 'Пауза' : 'Играть');
+  };
+  setPlaying(playing);
+  play.addEventListener('click', () => setPlaying(!playing));
+  range.addEventListener('pointerdown', () => { dragging = true; });
+  range.addEventListener('pointerup', () => { dragging = false; });
+  range.addEventListener('input', () => { scene.seek(Number(range.value)); show(); });
+  items.forEach((b, i) => b.addEventListener('click', () => { scene.seek(BEATS[i][0] - 0.6); setPlaying(true); show(); }));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) scene.suspend(); });
+  status.hidden = true;
+  const tick = now => {
+    scene.frame(now);
+    show();
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+start().catch(error => fail(`Сцена не запустилась: ${error && error.message ? error.message : error}`));
+</script>

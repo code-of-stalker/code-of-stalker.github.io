@@ -11,6 +11,7 @@ import { TuningQuestions } from './TuningQuestions.web';
 import { PersonaDream } from './PersonaDream.web';
 import { PersonaProgram } from './PersonaProgram.web';
 import { Awakening } from './Awakening.web';
+import { Witnessing } from './Witnessing.web';
 import { PersonaBelief } from './PersonaBelief.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
@@ -27,6 +28,7 @@ function scene(props: ArtProps) {
   if (props.webScene === 'persona-dream') return <PersonaDream {...props} />;
   if (props.webScene === 'persona-program') return <PersonaProgram {...props} />;
   if (props.webScene === 'awakening') return <Awakening {...props} />;
+  if (props.webScene === 'witnessing') return <Witnessing {...props} />;
   if (props.webScene === 'persona-belief') return <PersonaBelief {...props} />;
   // Inline films do not own card geometry, scanner reveal or button hit areas.
   if(props.kind==='grounding-here' && props.presentation!=='card')return <CloudDrift {...props}/>;

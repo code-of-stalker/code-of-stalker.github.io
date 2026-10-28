@@ -52,7 +52,7 @@ const pages: readonly ReadingPage[] = [
     'Пробуждение — это не «счастье» и не «успех».',
     'Это разотождествление с персонажем, с менталом, с образом себя и о себе, с ментальной обусловленностью и потребностью иметь подобную зависимость.',
   ] },
-  { id: 'grounding-witnessing', title: 'Живое Осознавание', art: 'grounding-trace', paragraphs: [
+  { id: 'grounding-witnessing', title: 'Живое Осознавание', art: 'grounding-trace', webScene: 'witnessing', paragraphs: [
     'Это возвращение в Живое Осознавание, где ты не просто делаешь вывод — а становишься мониторингом всего процесса, Слышанием, Ощущением — становишься Свидетельствованием.',
   ] },
   { id: 'grounding-recognition', title: 'Сущностные ощущения', art: 'grounding-contact', paragraphs: [

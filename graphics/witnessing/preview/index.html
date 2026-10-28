@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Живое Осознавание · Код Сталкера</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1520;color:#86c9c7;font:14px system-ui}main{max-width:1200px;margin:auto;padding:24px}header{display:flex;gap:16px;align-items:center;flex-wrap:wrap}h1{font-size:21px;font-weight:500;margin:4px 0;flex:1}select,button,input{font:inherit;color:inherit;background:transparent;border:1px solid currentColor;padding:8px}option{background:#19212a;color:#d3d9db}.stage{width:min(100%,calc((100dvh - 220px)*1.5));aspect-ratio:3/2;position:relative;margin:20px auto}canvas{display:block;width:100%;height:100%}.controls{display:flex;align-items:center;gap:16px}input[type=range]{flex:1;min-width:80px}output{font-variant-numeric:tabular-nums;white-space:nowrap}label{display:flex;gap:8px;align-items:center;margin-top:18px}#status{font-size:12px;opacity:.65;min-height:1.5em}@media(max-width:600px){main{padding:20px 12px}h1{flex-basis:100%;font-size:19px}.stage{width:100%;margin:36px 0}.controls{gap:10px}}
+</style>
+<style>
+.stage{width:min(100%,calc((100dvh - 360px)*1.5))}.phases{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}.phases button{font-size:12px;padding:7px 10px;opacity:.65}.phases button[aria-pressed=true]{opacity:1;box-shadow:inset 0 -2px currentColor}#caption{font-size:14px;line-height:1.5;min-height:3em;margin:12px 0 20px;opacity:.85}@media(max-width:600px){.stage{width:100%;margin:28px 0}.phases{gap:6px}.phases button{font-size:11px;padding:6px 8px}#caption{font-size:13px}}
+</style>
+<main><header><h1>Живое Осознавание</h1><select id="theme" aria-label="Тема"><option value="2">Тишина</option><option value="0">Искра</option><option value="1">Дюна</option><option value="3">Астрал</option><option value="4">Матрица</option><option value="5">Мираж</option><option value="6">Рассвет</option></select></header>
+<div class="stage"><canvas role="img" aria-label="Касание руки разрушает отражённый в воде мир; капля возвращается в успокоившуюся воду"></canvas></div>
+<nav class="phases" aria-label="Этапы анимации"><button data-time="0" aria-pressed="true">Мир в воде</button><button data-time="4" aria-pressed="false">Приближение</button><button data-time="8" aria-pressed="false">Касание</button><button data-time="12" aria-pressed="false">Распад</button><button data-time="17" aria-pressed="false">Ясность</button><button data-time="21.5" aria-pressed="false">Подъём</button><button data-time="23" aria-pressed="false">Капля</button><button data-time="28" aria-pressed="false">Возвращение</button></nav>
+<p id="caption" aria-live="polite">Образы мира отражаются на поверхности воды.</p>
+<div class="controls"><button id="pause">Пауза</button><input id="time" aria-label="Время анимации" type="range" min="0" max="32" step=".1" value="0"><output id="at">0.0</output></div>
+<label><input id="reduce" type="checkbox">Спокойный кадр</label><p id="status" role="status">Загрузка…</p></main>
+<script type="module">
+const $ = id => document.getElementById(id), canvas = document.querySelector('canvas');
+const themes = [['#000000','#f5dd07'],['#fae18f','#ba4a00'],['#0d1520','#86c9c7'],['#0d1426','#6296f5'],['#000000','#00ff41'],['#f1dfb8','#2e5bd5'],['#f3d8c7','#9c3857']];
+const phaseButtons = [...document.querySelectorAll('.phases button')];
+const captions = ['Образы мира отражаются на поверхности воды.','Рука приближается. Отражение ещё кажется цельным.','Одно касание — и привычный образ начинает меняться.','Волна разбирает отражение на тонкие световые следы.','Образ исчезает. Остаётся живая поверхность воды.','Рука поднимается. На кончике пальца собирается капля.','Капля возвращается в воду и оставляет новый след.','Вода успокаивается, и отражение постепенно появляется снова.'];
+let renderer, paused = false, lost = false, disposed = false, generation = 0, raf = 0, reported = 0, paintMs = 0, appliedTheme = '2';
+const active = () => !disposed && !lost && !document.hidden;
+function report() { if (!renderer) return; const t = $('reduce').checked ? 17 : renderer.elapsed(); $('at').value = t.toFixed(1); $('time').value = t; let phase = 0; phaseButtons.forEach((button, i) => { if (t >= +button.dataset.time) phase = i; }); phaseButtons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === phase))); if ($('caption').textContent !== captions[phase]) $('caption').textContent = captions[phase]; $('status').textContent = `${canvas.width} × ${canvas.height} · GPU ${renderer.gpu_error()} · ${renderer.frame_count()} кадров · кадр ${paintMs.toFixed(1)} мс`; }
+function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; renderer?.suspend(); }
+function schedule() { if (renderer && active() && !paused && !$('reduce').checked && !raf) raf = requestAnimationFrame(frame); }
+function frame(at) { raf = 0; if (!renderer || !active() || paused || $('reduce').checked) return; const start = performance.now(); renderer.frame(at); paintMs = performance.now() - start; if (at - reported > 500) { reported = at; report(); } schedule(); }
+function palette() { const [paper, ink] = themes[+$('theme').value]; renderer?.palette(+$('theme').value); renderer?.backdrop(...[1,3,5].map(i => parseInt(paper.slice(i,i+2),16)/255)); document.body.style.background = paper; document.body.style.color = ink; appliedTheme = $('theme').value; report(); }
+function resize() { if (!renderer || lost) return; const r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio,2); renderer.resize(Math.round(r.width*d),Math.round(r.height*d)); report(); }
+async function mount() { const token = ++generation, elapsed = renderer?.elapsed() || 0; stop(); renderer?.dispose(); renderer?.free(); renderer = undefined; $('status').textContent = 'Загрузка…'; try { const module = await import('/graphics/witnessing/runtime.js'); const value = await module.mount(canvas); if (disposed || token !== generation) { value.dispose(); value.free(); return; } renderer = value; renderer.seek(elapsed); palette(); resize(); renderer.pause(paused); renderer.reduced($('reduce').checked); report(); schedule(); } catch (error) { if (!disposed) { $('status').textContent = String(error); console.error(error); } } }
+$('theme').onchange = () => { try { palette(); } catch (error) { $('theme').value = appliedTheme; $('status').textContent = String(error); console.error(error); } };
+$('pause').onclick = () => { paused = !paused; stop(); renderer?.pause(paused); $('pause').textContent = paused ? 'Продолжить' : 'Пауза'; report(); schedule(); };
+function seek(at) { stop(); $('reduce').checked = false; renderer?.reduced(false); renderer?.seek(at); report(); schedule(); }
+$('time').oninput = () => seek(+$('time').value);
+phaseButtons.forEach(button => { button.onclick = () => seek(+button.dataset.time); });
+$('reduce').onchange = () => { stop(); renderer?.reduced($('reduce').checked); report(); schedule(); };
+document.addEventListener('visibilitychange', () => { stop(); schedule(); });
+canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); lost = true; stop(); $('status').textContent = 'Восстановление изображения…'; });
+canvas.addEventListener('webglcontextrestored', () => { lost = false; mount(); });
+const observer = new ResizeObserver(resize); observer.observe(canvas);
+window.addEventListener('pagehide', event => { stop(); if (event.persisted) return; disposed = true; ++generation; observer.disconnect(); renderer?.dispose(); renderer?.free(); renderer = undefined; });
+window.addEventListener('pageshow', event => { if (event.persisted && !disposed) { renderer?.suspend(); resize(); schedule(); } });
+const params = new URLSearchParams(location.search); if (params.has('theme') && themes[+params.get('theme')]) $('theme').value = params.get('theme');
+mount();
+</script></html>

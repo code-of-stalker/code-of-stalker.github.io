@@ -11,6 +11,7 @@ import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { isLightTheme, neutralColors, violetColors } from '../theme';
 import { ProductIconButton, ProductText } from '../ui';
+import { useStepPanelSpacing } from '../layout';
 import { Art } from '../motion/Art';
 import { useEffectQualityLevel } from '../motion/EffectsQuality';
 import { Reveal } from '../motion/Reveal';
@@ -38,10 +39,11 @@ export function PracticeCooldown({ title, time, deadline, now, heroHeight, heroW
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const blurTarget = useRef<View | null>(null);
   const quality = useEffectQualityLevel();
+  const { gap: panelGap } = useStepPanelSpacing();
   const [availableHeight, setAvailableHeight] = useState(0), [navigationHeight, setNavigationHeight] = useState(60);
   const [contentHeight, setContentHeight] = useState(300), [panelHeaderHeight, setPanelHeaderHeight] = useState(36), [footerHeight, setFooterHeight] = useState(66);
   const compact = availableHeight > 0 && availableHeight < 600;
-  const panelNeeded = panelHeaderHeight + 8 + contentHeight + inset * 2 + 16 + 24 + footerHeight;
+  const panelNeeded = panelHeaderHeight + panelGap + contentHeight + inset * 2 + 16 + 24 + footerHeight;
   // Keep the illustration's full size behind the foreground; move only the panel.
   const foregroundHeroHeight = availableHeight ? Math.min(heroHeight, Math.max(navigationHeight + 12, availableHeight - gutter - panelNeeded)) : heroHeight;
   // Composite the fades after blur, so neither blur nor saturation recolors the edge.

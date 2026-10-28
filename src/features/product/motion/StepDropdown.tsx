@@ -6,6 +6,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import type { ViewStyle } from 'react-native';
 import { productStepNames } from '../content';
 import { ProductText } from '../ui';
+import { useStepPanelSpacing } from '../layout';
 import { Reveal } from './Reveal';
 import { StepChevron } from './StepChevron';
 import { GlassHost } from './GlassHost';
@@ -90,17 +91,18 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
   const {ref,size:measuredSize,onLayout}=usePanelSize({width:288,height:314});
   const {ref:headerRef,size:headerSize,onLayout:onHeaderLayout}=usePanelSize({width:288,height:25});
   const headerHeight=headerSize.height;
+  const { headerPadding, gap } = useStepPanelSpacing();
   const [contentHeight, setContentHeight] = useState(0);
-  const topInset = headerless ? 8 : headerHeight + 33, bottomInset = headerless ? 8 : inset;
+  const topInset = headerless ? 8 : headerHeight + gap + 25, bottomInset = headerless ? 8 : inset;
   useEffect(() => {
     if (contentHeight > 0) onNaturalHeight?.(embedded ? contentHeight : topInset + contentHeight + bottomInset);
   }, [contentHeight, topInset, bottomInset, embedded, onNaturalHeight]);
-  const contour=useCallback((width:number,height:number)=>headerless ? readingMenuPath(width,height,cutout) : stepPanelPaths(width,height,headerHeight).path,[headerHeight,headerless,cutout]);
+  const contour=useCallback((width:number,height:number)=>headerless ? readingMenuPath(width,height,cutout) : stepPanelPaths(width,height,headerHeight,gap).path,[headerHeight,gap,headerless,cutout]);
   const size = frameSize ?? measuredSize;
   // Preserve Figma's top notch and draw one bottom edge at the actual height.
   // A rotated fixed-size body left a second edge below shorter menus.
   const geometry = useMemo(() => {
-    const w = size.width, h = size.height, paths = stepPanelPaths(w, h, headerHeight);
+    const w = size.width, h = size.height, paths = stepPanelPaths(w, h, headerHeight, gap);
     const path = headerless ? readingMenuPath(w,h,cutout) : paths.path;
     const light = colors.background === '#FAE18F', border = light ? colors.accent : colors.border, stroke = '.25';
     const svg = (content: string) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${content}</svg>`)}`;
@@ -109,7 +111,7 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
       backing: { uri: svg(`<path d="${path}" fill="${colors.background}"/>`) },
       frame: { uri: svg(headerless ? `<path d="${path}" fill="none" stroke="${border}" stroke-width="${stroke}"/>` : `<path d="${paths.top}" fill="${colors.accent}" fill-opacity=".1" stroke="${border}" stroke-width="${stroke}"/><path d="${paths.body}" fill="none" stroke="${border}" stroke-width="${stroke}"/>`) },
     };
-  }, [size.width, size.height, headerHeight, headerless, cutout, colors]);
+  }, [size.width, size.height, headerHeight, gap, headerless, cutout, colors]);
   const options = <ScrollView accessibilityLabel="Доступные и закрытые шаги" onContentSizeChange={(_, height) => setContentHeight(previous => previous === height ? previous : height)} style={embedded ? styles.embeddedList : [styles.list, { top: topInset, bottom: bottomInset }]}
     contentContainerStyle={[styles.options, embedded && { paddingTop: 18, paddingBottom: inset }]} showsVerticalScrollIndicator={false}>
     {steps.map(value => {
@@ -129,7 +131,7 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
       {!frameSize && <View ref={ref} pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout} />}
       {!headerless && <PanelArtwork source={geometry.frame} />}
       {!headerless && <Pressable ref={headerRef} onLayout={onHeaderLayout} accessibilityRole="button" accessibilityLabel="Свернуть выбор шага" accessibilityState={{ expanded: true }} aria-expanded
-        onPress={onClose} style={[styles.trigger, { paddingHorizontal: inset }]}>
+        onPress={onClose} style={[styles.trigger, { paddingHorizontal: inset, paddingVertical: headerPadding }]}>
         <ProductText fitToWidth variant="label" style={styles.title}>{`ШАГ ${step}. ${productStepNames[step]}`}</ProductText>
         <StepChevron expanded />
       </Pressable>}

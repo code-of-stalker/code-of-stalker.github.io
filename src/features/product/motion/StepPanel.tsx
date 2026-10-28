@@ -1,23 +1,24 @@
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { PropsWithChildren, ReactNode, RefObject } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { ProductText } from '../ui';
 import { StepChevron } from './StepChevron';
 import { GlassHost } from './GlassHost';
-import { stepPanelPaths } from './glassShape';
+import { stepPanelBodyPath, stepPanelPaths } from './glassShape';
 import type { GlassShape } from './glassShape';
 import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
 import { useBackSwipeBlocked } from '../navigation/BackSwipeProvider';
 import { PanelBorder } from '../PanelBorder';
-import { productSpacing } from '../layout';
+import { productSpacing, stepPanelSpacing } from '../layout';
 import material from '../../../../assets/product/motion/laboratory-glass.json';
 import { DiaryGlass } from '../diary/DiaryGlass';
 import { TaskStepSelector } from './TaskStepSelector';
 import { StepDropdown } from './StepDropdown';
+import { ReadingStepMenu } from './ReadingStepMenu';
 import { readingControlsTop, readingMenuGap, type ReadingCloseButton } from './reading-controls';
 import type { productStepNames } from '../content';
 
@@ -34,15 +35,17 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
   readingCloseButton?: ReadingCloseButton;
 }>) {
   const colors = useThemeColors();
-  // Only the fully opened reader has the floating rectangular menu.
-  // Before zoom, options belong inside the original notched panel body.
+  // Before scrolling, the title sits below the illustration: open above it.
+  // Once the reader is expanded, the compact top control opens downwards.
   const usesSelector = readingStep !== undefined && !!readingSelection && readingProgress >= .88;
-  const replacesBody = expanded && !usesSelector;
+  const opensAbove = readingStep !== undefined && !!readingSelection && !usesSelector;
+  const replacesBody = expanded && !usesSelector && !opensAbove;
   useBackSwipeBlocked(expanded && !usesSelector);
   const styles = useThemeStyles(createStyles);
   const {ref,size,onLayout}=usePanelSize({width:288,height:314});
   const {ref:headerRef,size:headerSize,onLayout:onHeaderLayout}=usePanelSize({width:288,height:25});
   const { width: deviceWidth } = useWindowDimensions();
+  const { headerPadding, gap } = stepPanelSpacing(deviceWidth);
   const progress = readingStep === undefined ? 0 : readingProgress;
   const compactWidth = deviceWidth >= 375 ? 136 : 106;
   const buttonInset = contentInset + (productSpacing(deviceWidth).inset - contentInset) * progress;
@@ -60,20 +63,22 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
   // The original title keeps its measured contour while dissolving. Its
   // compact button floats above the reader and reserves no full-width strip.
   const headerHeight=headerSize.height + 32 * progress;
-  const headerSpace = (headerSize.height + 8) * (1 - progress);
-  const contour=useCallback((width:number,height:number)=>flat ? `M0 0H${width}V${height}H0Z` : stepPanelPaths(width,height,headerHeight).path,[flat,headerHeight]);
+  const headerSpace = (headerSize.height + gap) * (1 - progress);
+  useEffect(() => { onHeaderHeight?.(headerHeight); }, [headerHeight, onHeaderHeight]);
+  const contour=useCallback((width:number,height:number)=>flat ? `M0 0H${width}V${height}H0Z` : stepPanelPaths(width,height,headerHeight,gap).path,[flat,headerHeight,gap]);
   const shape = useMemo(() => {
-    const w = size.width, h = size.height, r = 1, anchor = w - 136;
-    const { top, body } = stepPanelPaths(w, h, headerHeight);
+    const w = size.width, h = size.height;
+    const { top, body, bodyTop } = stepPanelPaths(w, h, headerHeight, gap);
     const light = colors.background === '#FAE18F', border = light ? colors.accent : colors.border, stroke = '.25';
     return {
       headerFrame: { uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${top}" fill="${colors.accent}" fill-opacity=".1" stroke="${border}" stroke-width="${stroke}"/></svg>`)}` },
       frame: { uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${top}" fill="${colors.accent}" fill-opacity="${expanded ? '.1' : '.025'}" stroke="${border}" stroke-width="${stroke}"/><path d="${body}" fill="none" stroke="${border}" stroke-width="${stroke}"/></svg>`)}` },
       glass: Platform.OS === 'web' ? { clipPath: `path('${top} ${body}')` } as ViewStyle : undefined,
-      // Body starts at 33px. Clip the scroll contents under the double notch.
-      content: Platform.OS === 'web' && !flat ? { clipPath: `polygon(0 1px, ${anchor}px 1px, ${anchor+12*r}px ${13*r}px, ${anchor+48*r}px ${13*r}px, ${anchor+60*r}px 1px, ${w-29*r}px 1px, 100% ${33*r}px, 100% 100%, 0 100%)` } as ViewStyle : undefined,
+      // Use the same body anchors in the content's local coordinates, including
+      // the measured header, responsive gap and intermediate reading expansion.
+      content: Platform.OS === 'web' && !flat ? { clipPath: `path('${stepPanelBodyPath(w, h - headerSpace, bodyTop - headerSpace)}')` } as ViewStyle : undefined,
     };
-  }, [size, headerHeight, expanded, colors, flat]);
+  }, [size, headerHeight, headerSpace, gap, expanded, colors, flat]);
   const trigger = <Pressable testID="reading-step-trigger" accessibilityRole="button" accessibilityLabel={`Выбрать шаг. ${title}`} accessibilityState={{ expanded }} aria-expanded={expanded} onPress={onSelect} hitSlop={progress > .8 ? { top: 9, bottom: 9 } : undefined}
         style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
         {readingStep !== undefined && <View testID="reading-step-glass" pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blend(.18, .65, progress) }]}>
@@ -81,8 +86,8 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
             backgroundColor: `${colors.background}a6`, backdropFilter: `blur(${material.backgroundBlur}px)`, WebkitBackdropFilter: `blur(${material.backgroundBlur}px)`,
           } as ViewStyle]} /> : <DiaryGlass />}
         </View>}
-        <View ref={headerRef} onLayout={event => { onHeaderLayout(event); onHeaderHeight?.(event.nativeEvent.layout.height + 32 * progress); }} pointerEvents="none"
-          style={[styles.header, { position: 'absolute', top: 0, left: 0, width: size.width, paddingHorizontal: contentInset, opacity: 1 - blend(.08, .48, progress), transform: [{ translateY: -4 * progress }] }]}>
+        <View ref={headerRef} onLayout={onHeaderLayout} pointerEvents="none"
+          style={[styles.header, { position: 'absolute', top: 0, left: 0, width: size.width, paddingHorizontal: contentInset, paddingVertical: headerPadding, opacity: 1 - blend(.08, .48, progress), transform: [{ translateY: -4 * progress }] }]}>
           <ProductText fitToWidth variant="label" style={styles.title}>{title}</ProductText>
           <View style={{ width: 7, height: 5 }} />
         </View>
@@ -92,7 +97,7 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
         <View pointerEvents="none" style={{ position: 'absolute', right: buttonInset, top: 0, bottom: 0, justifyContent: 'center' }}><StepChevron expanded={expanded} /></View>
         {readingStep !== undefined && <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blend(.18, .65, progress) }]}><PanelBorder /></View>}
       </Pressable>;
-  return <GlassHost contour={contour} background={background} reducedMotion={reducedMotion} scanOnMount={scanOnMount} decorationOpacity={decorationOpacity} touchEnabled={progress < .2} style={[styles.panel, replacesBody && !!menuContentHeight && { flex: 0, flexShrink: 1, flexBasis: 'auto', height: headerHeight + 8 + menuContentHeight, maxHeight: '100%' }]}>
+  return <GlassHost contour={contour} background={background} reducedMotion={reducedMotion} scanOnMount={scanOnMount} decorationOpacity={decorationOpacity} touchEnabled={progress < .2} style={[styles.panel, replacesBody && !!menuContentHeight && { flex: 0, flexShrink: 1, flexBasis: 'auto', height: headerHeight + gap + menuContentHeight, maxHeight: '100%' }]}>
     <View ref={ref} pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout} />
     <View pointerEvents="none" style={{ height: headerSpace, flexShrink: 0 }} />
     {usesSelector && expanded && <Pressable accessibilityRole="button" accessibilityLabel="Закрыть выбор шага" onPress={onSelect} style={[StyleSheet.absoluteFill, { zIndex: 1 }]} />}
@@ -112,6 +117,11 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
     </View>}
     {usesSelector && expanded && <PanelArtwork source={shape.headerFrame} style={{ opacity: frameOpacity }} />}
     <PanelArtwork source={shape.frame} style={{ opacity: decorationOpacity }} />
+    {expanded && opensAbove && readingStep !== undefined && readingSelection && <ReadingStepMenu
+      anchorRef={ref} anchorTop={readingControlsTop * progress} anchorHeight={buttonHeight} allowBelow={progress > 0}
+      reservedTop={readingCloseButton ? readingCloseButton.top + readingCloseButton.height + gap : 0} step={readingStep}
+      availableAt={readingSelection.availableAt} testUnlockAll={readingSelection.testUnlockAll}
+      reducedMotion={reducedMotion} inset={contentInset} onClose={onSelect} onSelect={readingSelection.onSelectStep} />}
   </GlassHost>;
 }
 const createStyles = (colors: ProductColors) => StyleSheet.create({

@@ -108,11 +108,12 @@ export function stepPanelBodyPath(width: number, height: number, top = 33.75) {
   return `M.25 ${top}H${anchor}L${anchor+12} ${top+12}H${anchor+48}L${anchor+60} ${top}H${width-29}L${width-.25} ${top+32}V${height-.25}H.25Z`;
 }
 
-export function stepPanelPaths(width: number, height: number, headerHeight = 25) {
+export function stepPanelPaths(width: number, height: number, headerHeight = 25, gap = 8) {
   const anchor = width - 136, offset = headerHeight - 25;
   // Grow the straight header to its measured copy; translate the notch and
-  // diagonal together, preserving their dimensions and the 8.5px separation.
+  // diagonal together. Gap moves the body without scaling either contour.
   const top = `M.25 .25H${width-.25}V${57.5+offset}L${width-29} ${25.25+offset}H${anchor+60}L${anchor+48} ${37.25+offset}H${anchor+12}L${anchor} ${25.25+offset}H.25Z`;
-  const body = stepPanelBodyPath(width, height, 33.75 + offset);
-  return { top, body, path: top + body };
+  const bodyTop = headerHeight + gap + .75;
+  const body = stepPanelBodyPath(width, height, bodyTop);
+  return { top, body, bodyTop, path: top + body };
 }

@@ -48,3 +48,12 @@ export function useProductSpacing() {
   // Insets follow the device width, even when the content is capped at its column.
   return productSpacing(width);
 }
+
+/** The paired reading plates gain room at the same breakpoint as the wider column. */
+export function stepPanelSpacing(width: number) {
+  return width >= 600 ? { headerPadding: 11.5, gap: 16 } : { headerPadding: 5.5, gap: 8 };
+}
+
+export function useStepPanelSpacing() {
+  return stepPanelSpacing(useWindowDimensions().width);
+}

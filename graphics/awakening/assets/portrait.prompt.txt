@@ -1,0 +1,19 @@
+Tool: built-in image_gen. New asset, not an edit of the approved product figures.
+Generated file: exec-93f4b785-32e3-4d89-830b-395b414c0760.png
+Copied unchanged to portrait.png. Rust handles tint, lighting and articulation.
+
+Prompt:
+Create ONE exquisite stylized illustration asset for a premium contemplative cyber-noir animation called Awakening. Landscape 3:2, preferably1536x1024. Pure black background with absolutely no objects or lettering or symbols. A very large anatomically beautiful MALE HEAD and upper neck, in a composed three-quarter view looking toward the RIGHT of frame, slightly lifted but not proud; open calm intelligent eyes; strong elegant cheekbones, beautifully shaped nose, slightly parted natural lips, clean-shaven, dark swept-back medium length hair with distinct sculptural strands. He is an adult around35. His head occupies approx x400..900 y120..810 in a1536x1024frame. Crown fully inside frame. Neck and a simple dark tailored high collar taper and fade softly into black by y980. Rightmost quarter of image completely black negative space for an animated detachable mask. Not a seated person, NO full body, NO chair. Entire image is MONOCHROME neutral grayscale, absolutely no color. STYLE: lavish hand-crafted graphic novel / high-end editorial illustration, sleek dark sculptural forms with sharply selected luminous silver contour edges and restrained engraved hatching, subtle matte graphite planes, 3 deliberate tonal steps with elegant controlled gradients only on cheek and forehead. Strong chiaroscuro, face illuminated from upper right, thin rim around silhouette. Facial anatomy and hair are extremely refined. It must look like a sophisticated designed illustration, NOT a photograph, NOT cheap 3D, NOT an AI beauty portrait, NOT plastic, NOT a cartoon, NOT a basic line drawing. No pores or photoreal skin microtexture. Large readable sculpted forms with detailed eyebrow, eyelids, iris, lips, hair locks; superb clean draughtsmanship. Expression alert, quiet, lucid. Grayscale material contrast: dark graphite recesses, medium-grey planes, silver edges, no white blown out surfaces. No frame, no text, no UI, no glowing aura, no glasses, no smoke, no particles, no duplicate face and no mask already present; we animate a separate mask in code. Deliver only this single clean illustration.
+
+Inspection: the generated crown touches the top edge (the frame fades in Rust),
+and the face lands farther left than requested. The mask geometry was authored
+against the actual face landmarks, not the requested positions.
+
+Transparent cutout edit: built-in image_gen, transparent_background=true.
+Reference: assets/portrait.png.
+Generated file: exec-43754ef3-e0db-4f89-9f54-a34289214af5.png.
+Copied unchanged to assets/portrait-cutout.png (1536x1024 RGBA).
+Read-only pixel verification: alpha=0 at (1400,500) and (50,50), alpha=253 at (450,200) and (700,500).
+
+Edit prompt:
+Remove ONLY the pure black backdrop of this exact grayscale illustrated male portrait, returning a true RGBA transparent-background cutout. Preserve exactly the existing facial identity, every facial landmark, the drawing, shading, dark hair, collar and all dark internal shadow regions. Preserve exact1536x1024 landscape canvas, exact position, scale and camera crop. The face must NOT shift or resize: visible left eye at670,310; nose tip at858,408; chin at792,680. Do not redraw or beautify, do not add anything. Retain all dark hair and black material INSIDE the silhouette as opaque, remove black only OUTSIDE the hair, head, neck and collar. Retain wispy hair edges. At the bottom fade the shoulder/collar cutout gradually into transparency. NO checkerboard painted into pixels. True transparent background, unchanged monochrome art. This is a precise production cutout for an animation with geometry already fitted to the original.

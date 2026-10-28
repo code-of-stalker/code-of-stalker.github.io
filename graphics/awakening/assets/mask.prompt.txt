@@ -1,0 +1,15 @@
+Tool: built-in image_gen; transparent_background=true.
+Reference: assets/portrait-cutout.png.
+Source: exec-ed4324ce-41ae-4aaa-b723-bb1e91b72664.png.
+Copied unchanged to assets/mask.png.
+The generator enlarged the mask. Rust fits the immutable source to the portrait;
+the source UV remains untouched and deformation is owned by the Rust mesh.
+
+Prompt:
+Create ONE production RGBA overlay asset using the attached portrait as an exact fitting reference. This is a premium opaque sculpted facial MASK which will initially sit directly OVER the man's face and then peel away in animation.
+
+Keep the exact 1536x1024 landscape canvas, the identical three-quarter camera angle looking right, identical position and scale of the facial landmarks. Reference landmarks on this canvas: main eye center (670,310), far eye (825,340), nose tip (858,408), lips (780,535), chin (792,680), left cheek extends to x445 and forehead starts at y108. The mask must cover the ENTIRE skin of the face from the hairline through the temples and cheeks to the jaw/chin, like a precise full-face mould fitted over this exact man. Preserve the reference's nose, lips, cheekbone, brow, chin anatomy and camera angle EXACTLY. Do not center the object or zoom into it. It occupies the same region of the canvas as the reference's facial skin, approximately x425..875 y95..715. The rest of the canvas is transparent.
+
+Show ONLY the removable facial shell, no actual person, no hair, no ear, no neck, no torso, no background. Its eye areas are elegantly sculpted CLOSED eyelids, solid opaque material, no holes, no irises, no pupils and no eyeballs. Mouth closed with naturally sculpted lips, no hole. It truly hides the face underneath, not transparent glass.
+
+Style: exquisite dark polished graphite / satin obsidian sculptural illustration, restrained engraved texture, smooth flowing anatomical planes, finely machined curved edge with visible thin bevel, subtle carved details at the eyelids, brow, nose, lips and cheeks. Art-directed premium graphic-novel illustration matching the attached portrait's craftsmanship. Strong controlled grayscale chiaroscuro, reflective edges, thoughtful large shapes. Rich and tactile but not photoreal, not plastic, not a generic theatre mask, no polygon facets, no wireframe, no angular cut-out. Absolutely monochrome neutral grayscale: graphite shadows, silver-grey highlights. No added decoration, no symbols, no lettering, no cracks, no diamonds or bolts, no straps. No bright white surface. Smooth antialiased silhouette. No cast shadow outside the object; shading is inside the mask itself. Every interior pixel is opaque, outside the shell is true transparency. Do not paint a checkerboard. One mask, exact original canvas alignment, transparent background.

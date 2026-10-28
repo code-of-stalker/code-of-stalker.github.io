@@ -123,7 +123,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
               readingSelection={{ availableAt, testUnlockAll, onSelectStep: select }}
               menu={open && !questions ? <StepDropdown step={4} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion}
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
-              <EconomyReadingPages key={reading.block} step={4} chapter={reading.block} active={focused && !questions} enabled={focused && !open && !questions}
+              <EconomyReadingPages key={reading.block} step={4} chapter={reading.block} active={focused && !open && !questions} enabled={focused && !open && !questions}
                 initialIndex={reading.page} initialOffset={reading.offset} canAdvance={reading.block === 0 && !!renderQuestions} startAtEnd={reading.end}
                 reading={layout} width={width} reducedMotion={reducedMotion}
                 onReady={setReady} onProgress={setProgress} onAdvance={() => enter('questions')} onRetreat={retreat} onPageChange={reportPage} />

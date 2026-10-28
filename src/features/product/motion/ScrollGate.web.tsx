@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useWideScrollInput } from './useWideScrollInput.web';
-import { releaseSoftScroll } from './softScroll.web';
+import { releaseSoftScroll } from './softScrollDriver.web';
 import { consumesReadingInput } from './reading-boundary-input';
 import { createScrollGate } from './scroll-gate-model';
 import type { ScrollGateProps } from './ScrollGate.types';

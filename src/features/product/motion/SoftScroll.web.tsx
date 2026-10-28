@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { setSoftScroll } from './softScroll.web';
+import { setSoftScroll } from './softScrollDriver.web';
 import { useSystemReducedMotion } from './useSystemReducedMotion.web';
 
 /** «Плавность» glides wheel scrolling in Rust; reduced motion keeps it native. */

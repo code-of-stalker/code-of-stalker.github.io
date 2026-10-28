@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Пробуждение · Код Сталкера</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1520;color:#86c9c7;font:14px system-ui}main{max-width:1100px;margin:auto;padding:20px}header{display:flex;gap:14px;align-items:center;flex-wrap:wrap}h1{font-size:19px;font-weight:500;flex:1;margin:6px 0}select,button,input{font:inherit;color:inherit;background:transparent;border:1px solid currentColor;padding:8px}option{background:#19212a;color:#d3d9db}.stage{width:min(100%,calc((100dvh - 220px)*1.5));aspect-ratio:3/2;margin:16px auto;position:relative}canvas{width:100%;height:100%;display:block}.controls{display:flex;align-items:center;gap:16px}input[type=range]{flex:1;min-width:80px}output{font-variant-numeric:tabular-nums;white-space:nowrap}#status{opacity:.65;font-size:12px;margin:16px 0}label{display:flex;gap:7px;align-items:center;font-size:12px}@media(max-width:600px){main{padding:16px 10px}.stage{width:100%;margin:32px 0}h1{flex-basis:100%}select{max-width:48%}}
+</style>
+<main><header><h1>Пробуждение</h1><select id="scene" aria-label="Сцена">
+<option value="awakening">Пробуждение</option><option value="persona-dream">Персонаж</option><option value="persona-program">Обусловленность</option><option value="simple-practice">Простая практика</option></select>
+<select id="variant" aria-label="Вариант маски"><option value="0">Отслаивание</option><option value="1">Трещины и отслаивание</option></select>
+<select id="theme" aria-label="Тема"><option value="2">Тишина</option><option value="0">Искра</option><option value="1">Дюна</option><option value="3">Астрал</option><option value="4">Матрица</option><option value="5">Мираж</option><option value="6">Рассвет</option></select></header>
+<div class="stage"><canvas aria-label="Анимация пробуждения"></canvas></div>
+<div class="controls"><button id="pause">Пауза</button><input aria-label="Время анимации" id="time" type="range" min="0" max="36" value="0" step=".1"><output id="at">0.0</output></div>
+<p><label><input id="reduce" type="checkbox">Спокойный кадр</label></p><p id="status" role="status">Загрузка…</p></main>
+<script type="module">
+const $=id=>document.getElementById(id), canvas=document.querySelector('canvas');
+const themes=[['#000000','#f5dd07'],['#fae18f','#ba4a00'],['#0d1520','#86c9c7'],['#0d1426','#6296f5'],['#000000','#00ff41'],['#f1dfb8','#2e5bd5'],['#f3d8c7','#9c3857']];
+let renderer, paused=false, active=true, mounted=0;
+function palette(){const [paper,ink]=themes[+$('theme').value];document.body.style.background=paper;document.body.style.color=ink;renderer?.palette(+$('theme').value);renderer?.backdrop(...[1,3,5].map(i=>parseInt(paper.slice(i,i+2),16)/255));}
+function resize(){if(!renderer)return;const rect=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio,2);renderer.resize(Math.round(rect.width*d),Math.round(rect.height*d));}
+async function mount(){const token=++mounted;renderer?.dispose();renderer?.free();renderer=undefined;$('status').textContent='Загрузка…';const name=$('scene').value;$('variant').hidden=name!=='awakening';try{const module=await import(`/graphics/${name}/runtime.js?v=awakening1`);const r=await module.mount(canvas);if(token!==mounted){r.dispose();r.free();return;}renderer=r;renderer.variation?.(+$('variant').value);palette();resize();renderer.pause(paused);renderer.reduced($('reduce').checked);$('time').max=({'persona-dream':66,'persona-program':58,'simple-practice':44,awakening:36})[name];$('status').textContent='Готово';}catch(e){$('status').textContent=String(e);console.error(e);}}
+$('theme').addEventListener('change',palette);$('scene').addEventListener('change',mount);
+$('variant').addEventListener('change',()=>{renderer?.variation?.(+$('variant').value);$('time').value='0';$('at').value='0.0';});
+$('pause').onclick=()=>{paused=!paused;renderer?.pause(paused);$('pause').textContent=paused?'Продолжить':'Пауза';};
+$('time').oninput=()=>{renderer?.seek(+$('time').value);$('at').value=(+$('time').value).toFixed(1);};
+$('reduce').onchange=()=>renderer?.reduced($('reduce').checked);
+document.addEventListener('visibilitychange',()=>{active=!document.hidden;renderer?.suspend();});
+new ResizeObserver(resize).observe(canvas);
+let reported=0,paintMs=0;function frame(at){if(renderer&&active){if(!paused&&!$('reduce').checked){const start=performance.now();renderer.frame(at);paintMs=performance.now()-start;}if(at-reported>500){reported=at;$('at').value=renderer.elapsed().toFixed(1);if(!paused)$('time').value=renderer.elapsed();$('status').textContent=`${canvas.width} × ${canvas.height} · GPU ${renderer.gpu_error()} · ${renderer.frame_count()} кадров · кадр ${paintMs.toFixed(1)} мс`;}}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+const params=new URLSearchParams(location.search);
+if(params.get('scene'))$('scene').value=params.get('scene');
+if(params.get('theme')&&themes[+params.get('theme')])$('theme').value=params.get('theme');
+if(params.get('variant')==='cracks')$('variant').value='1';
+mount();
+</script></html>

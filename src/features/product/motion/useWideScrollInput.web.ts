@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
-import { softScrollBy } from './softScroll.web';
+import { softScrollBy } from './softScrollDriver.web';
 
 type Input = {
   wheel(event: WheelEvent): void;

@@ -144,8 +144,8 @@ const chips = document.getElementById('themes');
 const themeName = document.getElementById('theme-name');
 let scene;
 
-// On the prototypes site the page sits in a frame under the site's bar,
-// whose theme picker drives it and hears back each change.
+// Framed under a host page's bar, the host's theme picker drives the page
+// and hears back each change.
 const embedded = window.parent !== window;
 if (embedded) chips.hidden = true;
 

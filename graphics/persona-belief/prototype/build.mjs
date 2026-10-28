@@ -1,5 +1,5 @@
-// Builds the live prototype for the prototypes site: one self-contained page
-// with the built renderer, the label atlas and the fonts inlined.
+// Builds the live prototype: one self-contained page that opens straight from
+// disk, with the built renderer, the label atlas and the fonts inlined.
 //   node graphics/persona-belief/prototype/build.mjs <out>/index.html
 // Run the scene's build script first so public/graphics/persona-belief is fresh.
 import { readFileSync, writeFileSync } from 'node:fs';

@@ -29,11 +29,15 @@ fn spot(p: vec2<f32>, center: vec2<f32>, radius: vec2<f32>) -> f32 {
         // Gallery, voice and grounding rasters are Art's light (sand)
         // paintings here: a gradient map, as in scene-palette's recolor.frag.
         // Shadows in the text ink, the middle in the accent, the glow in the
-        // detail color and the brightest light becomes the page.
+        // detail color. The sand the painting stands on lands exactly on the
+        // page and nothing lighter shows, so no tinted block sits behind the
+        // art. The voice painting stands on Дюна's own page (luma .88), the
+        // grounding city on a darker sand.
         if (palette.mode.y > .5 && (palette.mode.y < 1.5 || palette.mode.y > 2.5)) {
-            let level = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)) / max(pixel.a, .0001), 0., 1.);
+            let ground = select(.875, .82, palette.mode.y > 3.5);
+            let level = clamp(dot(pixel.rgb, vec3(.2126, .7152, .0722)) / max(pixel.a, .0001) * .875 / ground, 0., 1.);
             let soft = mix(detail, palette.paper.rgb, .35);
-            var mapped = mix(soft, palette.paper.rgb, (level - .72) / .28);
+            var mapped = mix(soft, palette.paper.rgb, min((level - .72) / .155, 1.));
             if (level < .4) { mapped = mix(text, palette.accent.rgb, level / .4); }
             else if (level < .72) { mapped = mix(palette.accent.rgb, soft, (level - .4) / .32); }
             return vec4(mapped * pixel.a, pixel.a);

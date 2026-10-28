@@ -26,7 +26,9 @@ vec3 recolor(vec3 c) {
         vec3 soft = mix(u_detail, u_paper, .35);
         if (level < .4) return mix(u_highlight, u_accent, level / .4);
         if (level < .72) return mix(u_accent, soft, (level - .4) / .32);
-        return mix(soft, u_paper, (level - .72) / .28);
+        // Дюна's page (luma .88) is the paper of the light paintings: it lands
+        // exactly on this page, and nothing in the painting gets paler.
+        return mix(soft, u_paper, min((level - .72) / .155, 1.));
     }
     float level = clamp(dot(c, LUMA), 0., 1.);
     float ink = pow(level, 1.3) * .74;

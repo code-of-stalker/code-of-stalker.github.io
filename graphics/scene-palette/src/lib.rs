@@ -133,8 +133,9 @@ impl Palette {
             Self::Dark | Self::Matrix => accent.map(|value| value * dot(color).clamp(0.0, 1.0)),
             Self::Mirage | Self::Dawn => {
                 // A gradient map of the light painting: shadows in the text
-                // ink, the middle in the accent, the glow in the detail color,
-                // the brightest light becomes the page.
+                // ink, the middle in the accent, the glow in the detail color.
+                // Дюна's page, the painting's paper, and anything lighter
+                // become this page.
                 let level = dot(color).clamp(0.0, 1.0);
                 let soft = mix(detail, paper, 0.35);
                 if level < 0.4 {
@@ -142,7 +143,7 @@ impl Palette {
                 } else if level < 0.72 {
                     mix(accent, soft, (level - 0.4) / 0.32)
                 } else {
-                    mix(soft, paper, (level - 0.72) / 0.28)
+                    mix(soft, paper, ((level - 0.72) / 0.155).min(1.0))
                 }
             }
             _ => {
@@ -213,6 +214,9 @@ mod tests {
             assert_eq!(palette.recolor([0.0; 3]), colors.highlight);
             let page = palette.recolor([1.0; 3]);
             assert!((0..3).all(|i| (page[i] - colors.paper[i]).abs() < 1e-5));
+            // Дюна's page is the paper of the light paintings.
+            let dune = palette.recolor(rgb(250, 225, 143));
+            assert!((0..3).all(|i| (dune[i] - colors.paper[i]).abs() < 1e-5));
             let luma = |[r, g, b]: [f32; 3]| r * LUMA[0] + g * LUMA[1] + b * LUMA[2];
             let mut previous = -1.0;
             for step in 4..=10 {

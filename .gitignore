@@ -97,3 +97,7 @@ secrets.*.json
 /assets/product/concepts/
 /assets/product/rust/graphics-runtime.unseal-next.html
 /graphics/product-engine/preview/
+
+# Claude Code: personal settings and notes stay local
+/.claude/settings.local.json
+/CLAUDE.local.md

@@ -497,10 +497,11 @@ pub fn compose(seconds: f32) -> Frame {
         _ => [0.0; 6],
     };
     let listed = match card {
+        // The names are there, quiet, as soon as the card opens.
         1 => bell(
             t,
-            passes(FIRST_BELIEF) - 1.0,
-            passes(FIRST_BELIEF),
+            CARDS[1][0] + 0.4,
+            CARDS[1][0] + 1.4,
             CARDS[1][1] - 1.0,
             CARDS[1][1],
         ),
@@ -794,7 +795,7 @@ mod tests {
             assert_eq!(f.tablet.writing[1], k);
             assert!(f.tablet.change > 0.99);
         }
-        assert!(passes(FIRST_BELIEF) > CARDS[1][0] + 1.0);
+        assert!(passes(FIRST_BELIEF) > CARDS[1][0] + 1.4);
         assert!(passes(FIRST_BELIEF + 6) < CARDS[1][1]);
         assert_eq!(
             compose(passes(FIRST_BELIEF + 6) + 1.0).tablet.writing[1],

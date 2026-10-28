@@ -21,6 +21,7 @@ SOURCES = {
     "tuning-questions": ["figure", "labels"],
     "persona-dream": ["figure", "labels"],
     "persona-program": ["figure", "labels"],
+    "persona-belief": ["labels"],
 }
 
 

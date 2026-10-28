@@ -260,7 +260,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
 
   return <>
     {motion.clock}
-    <ProductScreen scroll={false} contentStyle={styles.root}>
+    <ProductScreen scroll={false} contentStyle={styles.root} layout="reading">
       <View style={styles.viewport} onLayout={event => setViewport(event.nativeEvent.layout)}>
         <View style={[styles.scene, { padding: gutter, paddingBottom: bottomInset }]}>
           <PracticeEntryTransition showTask={stage > 0} scanning={entryScanning} height={sceneHeight}

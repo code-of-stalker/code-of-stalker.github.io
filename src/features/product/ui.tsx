@@ -130,11 +130,13 @@ export function ProductScreen({ children, scroll = true, style, contentStyle, ba
   header?: ReactNode; headerStyle?: StyleProp<ViewStyle>;
   headerFillOnScroll?:boolean;
   /** `wide` lets a screen place panels side by side on landscape tablets and desktops. */
-  layout?: 'column' | 'wide';
+  layout?: 'column' | 'wide' | 'reading';
 }>) {
   const styles = useThemeStyles(createStyles);
   const { gutter } = useProductSpacing(), sizes = useProductLayout();
   const maxWidth = layout === 'wide' ? sizes.wide : sizes.column;
+  // Practice screens already own their page and control gutters.
+  const padding = layout === 'reading' && sizes.kind === 'phone' ? 0 : gutter;
   const [scrolled,setScrolled]=useState(false),pastTop=useRef(false);
   return <SafeAreaView testID="product-screen" edges={['top', 'left', 'right', 'bottom']} style={[styles.screen, style]}>
     {background && <View pointerEvents="none" style={StyleSheet.absoluteFill}><View style={styles.background}>{background}</View></View>}
@@ -142,10 +144,10 @@ export function ProductScreen({ children, scroll = true, style, contentStyle, ba
     {header && <View style={[styles.fixedHeader, headerFillOnScroll&&{backgroundColor:'transparent'}]}>
       {headerFillOnScroll&&<Fade opacity={scrolled?1:0} style={StyleSheet.absoluteFill}><View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:styles.screen.backgroundColor}]} /></Fade>}
       <View style={[styles.headerColumn, { maxWidth, paddingHorizontal: gutter, paddingTop: gutter }, headerStyle]}>{header}</View></View>}
-    {scroll ? <ProductScroll fadeTop={!!header} style={styles.scroll} contentContainerStyle={[styles.content, { maxWidth, padding: gutter }, contentStyle]}
+    {scroll ? <ProductScroll fadeTop={!!header} style={styles.scroll} contentContainerStyle={[styles.content, { maxWidth, padding }, contentStyle]}
       onScroll={headerFillOnScroll?event=>{const next=event.nativeEvent.contentOffset.y>1;if(next!==pastTop.current){pastTop.current=next;setScrolled(next);}}:undefined}
       keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ProductScroll> :
-      <View testID="product-workspace" style={[styles.content, { maxWidth, flex: 1, padding: gutter }, contentStyle]}>{children}</View>}
+      <View testID="product-workspace" style={[styles.content, { maxWidth, flex: 1, padding }, contentStyle]}>{children}</View>}
   </SafeAreaView>;
 }
 

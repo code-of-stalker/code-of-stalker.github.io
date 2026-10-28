@@ -113,7 +113,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
   useWebUpdateBlock(focused && (expanded || chapter === 1 || page.index > 0));
   const select = (step: number) => { setOpen(false); if (step !== 3) onSelectStep(step); };
   const more = (paged || chapter === 1) && page.index < page.count - 1;
-  return <ProductScreen scroll={false} contentStyle={styles.fill}>
+  return <ProductScreen scroll={false} contentStyle={styles.fill} layout="reading">
     <View testID="step-three-reading" style={styles.fill} onLayout={event => setViewport(event.nativeEvent.layout)}>
       <View style={[styles.fill, { padding: gutter, paddingBottom: bottomInset }]}>
         <ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}

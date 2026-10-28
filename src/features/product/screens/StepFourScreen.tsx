@@ -99,7 +99,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
   const lastPage = page.index >= page.count - 1;
   const questionCue = <ScrollCue visible={!!recordingCue?.visible && !open && !scanning} progress={recordingCue?.progress ?? 0}
     label={recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ'} reducedMotion={reducedMotion} style={{ left: 0, right: 0, bottom: 5 }} />;
-  return <ProductScreen scroll={false} contentStyle={styles.fill}>
+  return <ProductScreen scroll={false} contentStyle={styles.fill} layout="reading">
     <View testID="step-four-reading" style={styles.fill} onLayout={event => setViewport(event.nativeEvent.layout)}>
       <View style={[styles.fill, { padding: gutter, paddingBottom: questions ? gutter : bottomInset }]}>
         <PracticeEntryTransition showTask={questions} scanning={scanning} height={sceneHeight} reducedMotion={reducedMotion}

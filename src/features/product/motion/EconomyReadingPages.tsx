@@ -28,7 +28,8 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
   const [position, setPosition] = useState(() => ({ index: startAtEnd ? pages.length - 1 : Math.min(initialIndex, pages.length - 1), end: startAtEnd, offset: initialOffset }));
   const [moving, setMoving] = useState(true), locked = useRef(true);
   // Larger screens leave more air between the copy and its illustration.
-  const extra = (useProductLayout().air - 1) * 48;
+  const productLayout = useProductLayout(), phone = productLayout.kind === 'phone';
+  const extra = (productLayout.air - 1) * 48, pageInset = phone ? 0 : 8;
   const index = position.index;
   useLayoutEffect(() => { onPageChange({ index, count: pages.length }); }, [index, pages.length, onPageChange]);
   const finish = useCallback((value: number) => { if (value === index) { locked.current = false; setMoving(false); } }, [index]);
@@ -54,10 +55,10 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             controllerRef={selected ? reading.controllerRef : undefined}
             readingGesture={selected && value === 0 ? reading.readingGesture : undefined}
             onViewportChange={selected ? reading.onViewportChange : undefined}
-            contentStyle={[reading.contentStyle, { paddingHorizontal: reading.contentInset + 8, paddingBottom: Math.max(Number(reading.contentStyle.paddingBottom), 28) }]}>
-            <ProductText testID="reading-page-count" variant="label" style={[styles.count, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
-            {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.title}>{page.title}</ProductText>}
-            <View testID="reading-page-copy" style={styles.copy}>
+            contentStyle={[reading.contentStyle, { paddingHorizontal: reading.contentInset + pageInset, paddingBottom: Math.max(Number(reading.contentStyle.paddingBottom), 28) }]}>
+            <ProductText testID="reading-page-count" variant="label" style={[styles.count, phone && { marginBottom: 16 }, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
+            {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{page.title}</ProductText>}
+            <View testID="reading-page-copy" style={[styles.copy, phone && { gap: 20 }]}>
               {page.paragraphs.map(text => <Paragraph key={text} text={text} style={textStyle} />)}
               {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{text}</ProductText>)}
               {page.after?.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
@@ -68,7 +69,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             {kind && <View testID={`reading-page-art-${kind}`} pointerEvents="none" style={[styles.art,
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
-              { marginHorizontal: -reading.contentInset - 8 }, extra > 0 && (kind === 'reflections' || kind === 'single-hero' || kind === 'dream-inward' ? { paddingTop: 64 + extra, paddingBottom: 64 + extra } : { paddingTop: 40 + extra, paddingBottom: 36 + extra })]}>
+              { marginHorizontal: -reading.contentInset - pageInset }, extra > 0 && (kind === 'reflections' || kind === 'single-hero' || kind === 'dream-inward' ? { paddingTop: 64 + extra, paddingBottom: 64 + extra } : { paddingTop: 40 + extra, paddingBottom: 36 + extra })]}>
               <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}

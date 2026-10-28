@@ -20,8 +20,8 @@ export type ReadingLayout = {
 };
 
 /** A minimum runway lets even short articles finish opening. The header's
- * reserved space disappears as its controls become an overlay. Counter-insets
- * keep the text column fixed while the actual frame edges move.
+ * reserved space disappears as its controls become an overlay. Rust widens the
+ * phone text to the page gutter while keeping the original inset in the plate.
  */
 export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewportHeight, reducedMotion, hero, children, onClose, onViewportChange, onExpandedChange, enabled, continued = false, paged = false, onRetreat, onRetreatProgress, onRetreatReady }: {
   gutter: number; bottomInset: number; inset: number; heroHeight: number; viewportHeight: number; reducedMotion: boolean;
@@ -34,8 +34,9 @@ export function ReadingExpansion({ gutter, bottomInset, inset, heroHeight, viewp
   paged?: boolean;
   onRetreat?(): void; onRetreatProgress?(value: number): void; onRetreatReady?(value: boolean): void;
 }) {
-  const controllerRef = useRef<ScrollGateController | null>(null), productIconSize = useProductLayout().icon;
-  const { layout, drag, observe } = useReadingMotion([gutter, bottomInset, inset, heroHeight, viewportHeight, Number(reducedMotion), Number(continued), readingControlsTop, productIconSize.buttonHeight, productIconSize.height, Number(paged)], () => {});
+  const controllerRef = useRef<ScrollGateController | null>(null), productLayout = useProductLayout(), productIconSize = productLayout.icon;
+  const phone = productLayout.kind === 'phone';
+  const { layout, drag, observe } = useReadingMotion([gutter, bottomInset, inset, heroHeight, viewportHeight, Number(reducedMotion), Number(continued), readingControlsTop, productIconSize.buttonHeight, productIconSize.height, Number(paged || phone), phone ? gutter : inset + gutter, phone ? 12 : 16], () => {});
   const readingDistance = layout?.[1] ?? 0;
   const lastArticleOffset = useRef(0);
   const opened = continued || layout?.[0] === 1 && layout?.[16] === 0;

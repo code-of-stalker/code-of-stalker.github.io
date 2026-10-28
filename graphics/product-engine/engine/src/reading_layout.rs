@@ -150,11 +150,16 @@ impl Reading {
         let eased = progress * progress * (3. - 2. * progress);
         let side = gutter * (1. - eased);
         let bottom = bottom_inset * (1. - eased);
-        let content = inset + gutter - side;
+        // Optional adapter targets preserve old clients and the wide layout.
+        // Phones expand the text to a single page gutter instead of retaining
+        // both the panel's inner padding and the outer page gutter.
+        let expanded_inset = self.values.get(11).copied().unwrap_or(inset + gutter);
+        let controls_gap = self.values.get(12).copied().unwrap_or(16.);
+        let content = inset + (expanded_inset - inset) * eased;
         let panel_top = distance - travel;
         let button_top = gutter + (controls_top - gutter) * eased;
         let page_top = if self.values.get(10).copied().unwrap_or(0.) > 0. {
-            (controls_top + button_height + 16.) * eased
+            (controls_top + button_height + controls_gap) * eased
         } else {
             0.
         };
@@ -272,5 +277,25 @@ mod tests {
         values[6] = 1.;
         r.configure(values);
         assert_eq!(r.layout(false)[12], 84.);
+    }
+    #[test]
+    fn phone_reading_expands_to_one_gutter_and_keeps_controls_clear() {
+        let mut r = setup();
+        r.values.extend([1., 20., 12.]);
+        let preview = r.layout(false);
+        assert_eq!(preview[3] + preview[5], 36.);
+        r.frame(0.);
+        r.drag(80., 10.);
+        let middle = r.frame(200.).unwrap();
+        assert!(middle[5] >= 16. && middle[5] <= 20.);
+        let opened = r.frame(1000.).unwrap();
+        assert_eq!(opened[3], 0.);
+        assert_eq!(opened[5], 20.);
+        assert_eq!(opened[12], 80.);
+        let mut continued = r.values.clone();
+        continued[6] = 1.;
+        r.configure(continued);
+        assert_eq!(r.layout(false)[5], 20.);
+        assert_eq!(r.layout(false)[12], 80.);
     }
 }

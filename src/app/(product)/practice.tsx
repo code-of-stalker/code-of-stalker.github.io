@@ -43,13 +43,16 @@ export default function Practice() {
     } catch { /* The provider reports persistence errors. */ }
   }
   async function nextStep() {
-    if (previewing || progress.step !== 3) return;
+    if (previewing || progress.step !== 3 && progress.step !== 4) return;
     setReturnToEnd(false);
     try {
-      // A forwards boundary crossing enters the start of Step 4, like the
-      // backwards one enters the end of Step 3.
-      await updateProgress({ step: 4, practiceStage: 0, questionIndex: 0, stepFourReading: { page: 0, offset: 0 },
-        ...(!settings.testUnlockAll ? { fourthStepUnlocked: true } : {}) });
+      // A forwards boundary crossing enters the start of the next step, like the
+      // backwards one enters the end of the previous step.
+      await updateProgress(progress.step === 3
+        ? { step: 4, practiceStage: 0, questionIndex: 0, stepFourReading: { page: 0, offset: 0 },
+          ...(!settings.testUnlockAll ? { fourthStepUnlocked: true } : {}) }
+        : { step: 5, practiceStage: 0, stepFiveReading: { page: 0, offset: 0 },
+          ...(!settings.testUnlockAll ? { fifthStepUnlocked: true } : {}) });
     } catch { /* The provider reports persistence errors. */ }
   }
   return <ScreenTransition reducedMotion={settings.reducedMotion}>

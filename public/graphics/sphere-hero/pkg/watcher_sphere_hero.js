@@ -19,6 +19,13 @@ export class SphereHero {
     backdrop(red, green, blue) {
         wasm.spherehero_backdrop(this.__wbg_ptr, red, green, blue);
     }
+    /**
+     * Cover a frame of any shape with a crop of the painting (a home card).
+     * @param {boolean} enabled
+     */
+    cover(enabled) {
+        wasm.spherehero_cover(this.__wbg_ptr, enabled);
+    }
     dispose() {
         wasm.spherehero_dispose(this.__wbg_ptr);
     }

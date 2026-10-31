@@ -1,7 +1,7 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
 //! from `compose`; the shader composes the layers and paints the wave, and
 //! the theme's recolor (scene-palette) maps the finished frame.
-use crate::{compose, look, Look, GEOMETRY, LOOP_SECONDS, SIZE, STILL};
+use crate::{compose, look, window, Look, GEOMETRY, LOOP_SECONDS, SIZE, STILL};
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
 use web_sys::{
@@ -95,6 +95,8 @@ pub struct SphereHero {
     /// Drawn from Art's light paintings (`assets-light`).
     light: bool,
     soft_edges: bool,
+    /// A home card: crop the painting to cover the card's shape.
+    cover: bool,
     backdrop: [f32; 3],
     elapsed: f32,
     last_time: Option<f64>,
@@ -136,6 +138,7 @@ impl SphereHero {
             "u_deep",
             "u_mid",
             "u_geo[0]",
+            "u_window",
         ];
         let uniforms = names
             .iter()
@@ -167,6 +170,7 @@ impl SphereHero {
             look: look(2),
             light,
             soft_edges: false,
+            cover: false,
             backdrop: [0.0; 3],
             elapsed: 0.0,
             last_time: None,
@@ -227,6 +231,13 @@ impl SphereHero {
     pub fn soft_edges(&mut self, enabled: bool) {
         if self.soft_edges != enabled {
             self.soft_edges = enabled;
+            self.draw();
+        }
+    }
+    /// Cover a frame of any shape with a crop of the painting (a home card).
+    pub fn cover(&mut self, enabled: bool) {
+        if self.cover != enabled {
+            self.cover = enabled;
             self.draw();
         }
     }
@@ -310,6 +321,8 @@ impl SphereHero {
         let [r, g, b] = self.look.mid;
         gl.uniform4f(self.at("u_mid"), r, g, b, self.look.keep);
         gl.uniform4fv_with_f32_array(self.at("u_geo[0]"), &GEOMETRY);
+        let view = window(self.cover, width as f32, height as f32);
+        gl.uniform4fv_with_f32_array(self.at("u_window"), &view);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.bind_vertex_array(None);
         if offscreen {

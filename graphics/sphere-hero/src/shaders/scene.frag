@@ -17,13 +17,12 @@ uniform vec3 u_glow;     // the wave's light, or its ink on the light paintings
 uniform vec3 u_deep;     // the light print's deepest ink
 uniform vec4 u_mid;      // its middle ink, and how much painted colour stays
 uniform vec4 u_geo[7];   // GEOMETRY in lib.rs
+uniform vec4 u_window;   // painting px shown: centre, size (window() in lib.rs)
 in vec2 v_uv;
 out vec4 o;
 
 const vec2 SIZE = vec2(1536.0, 1024.0);
 const float PI = 3.14159265;
-// The frame crops the painting a little so the drift never shows its edge.
-const float ZOOM = 0.972;
 // Art px a layer moves per unit of nearness off the feet's, at full drift.
 const float SWING = 60.0;
 // Nearness (1 / depth) of the far world and of the branch and bird.
@@ -165,7 +164,7 @@ vec2 frontSource(vec2 q) {
 }
 
 void main() {
-  vec2 q = SIZE * 0.5 + (vec2(v_uv.x, 1.0 - v_uv.y) - 0.5) * SIZE * ZOOM;
+  vec2 q = u_window.xy + (vec2(v_uv.x, 1.0 - v_uv.y) - 0.5) * u_window.zw;
   float w = u_motion.x;
   vec3 c = world(q);
 

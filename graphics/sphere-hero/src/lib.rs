@@ -40,6 +40,28 @@ pub const BIRD: [f32; 2] = [1028.0, 244.0];
 pub const RIVER: [f32; 4] = [1120.0, 525.0, 120.0, 50.0];
 /// The sphere's outline: centre and radii.
 pub const SPHERE: [f32; 4] = [762.0, 500.0, 640.0, 500.0];
+/// The share of the painting the page hero shows: the rest is the drift's margin.
+pub const ZOOM: f32 = 0.972;
+
+/// The painting window a canvas shows, in painting px: centre x, y, width,
+/// height. The 3:2 page hero shows the whole window; a home card of another
+/// shape covers itself with a crop of it, kept on the figure's feet.
+pub fn window(cover: bool, width: f32, height: f32) -> [f32; 4] {
+    let full = [SIZE[0] * ZOOM, SIZE[1] * ZOOM];
+    let mid = [SIZE[0] * 0.5, SIZE[1] * 0.5];
+    if !cover || !(width > 0.0 && height > 0.0) {
+        return [mid[0], mid[1], full[0], full[1]];
+    }
+    let scale = (width / full[0]).max(height / full[1]);
+    let view = [width / scale, height / scale];
+    let room = ((full[0] - view[0]) * 0.5).max(0.0);
+    [
+        FEET[0].clamp(mid[0] - room, mid[0] + room),
+        mid[1],
+        view[0],
+        view[1],
+    ]
+}
 
 /// Seconds after the wave leaves the feet: the floor ring starts, and its
 /// speed over the floor in floor units (eye heights) per second.
@@ -432,6 +454,41 @@ mod tests {
                 assert!(level + 1e-4 >= last, "{code} {v}");
                 last = level;
             }
+        }
+    }
+
+    #[test]
+    fn a_card_crops_the_painting_without_stretching_it() {
+        let full = window(false, 300.0, 400.0);
+        assert_eq!(full, [768.0, 512.0, SIZE[0] * ZOOM, SIZE[1] * ZOOM]);
+        assert_eq!(window(true, 0.0, 400.0), full);
+        for (width, height) in [
+            (300.0, 400.0),
+            (640.0, 330.0),
+            (1536.0, 1024.0),
+            (900.0, 300.0),
+        ] {
+            let [x, y, w, h] = window(true, width, height);
+            assert!(close(w / h, width / height, 1e-4), "{width}×{height}");
+            // The crop stays inside the hero's window, so the drift never shows an edge.
+            assert!(
+                x - w * 0.5 >= full[0] - full[2] * 0.5 - 1e-3,
+                "{width}×{height}"
+            );
+            assert!(
+                x + w * 0.5 <= full[0] + full[2] * 0.5 + 1e-3,
+                "{width}×{height}"
+            );
+            assert!(
+                y - h * 0.5 >= full[1] - full[3] * 0.5 - 1e-3,
+                "{width}×{height}"
+            );
+            assert!(
+                y + h * 0.5 <= full[1] + full[3] * 0.5 + 1e-3,
+                "{width}×{height}"
+            );
+            // The figure stays in frame.
+            assert!((x - FEET[0]).abs() < w * 0.5, "{width}×{height}");
         }
     }
 }

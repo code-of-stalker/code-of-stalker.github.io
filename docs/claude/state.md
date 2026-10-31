@@ -37,17 +37,25 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`, local only, not pushed)
-Head 9d08504. 7 reading pages (text in `stepFiveContent.ts`), access via step 4 page 14 or
-settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`, briefs in
-`docs/step-five-illustrations-ru.md`.
+Head: the handoff commit after d962831; main is merged in (9c1fe45). 7 reading pages (text in
+`stepFiveContent.ts`), access via step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's
+illustration packs in `graphics/sphere-*/`, briefs in `docs/step-five-illustrations-ru.md`.
 - Hero «Скан в глубине» (`graphics/sphere-hero`): drifting parallax camera, a wave of light from
   the feet every 10 s, the bird sings. Approved by Art in all 7 themes (light themes as a muted
   two-ink print). Wired on web (`SphereHero.web.tsx` via `StepFiveHero.web.tsx`); native and the
   web fallback keep Art's still (`StepFiveStill.tsx`). Checked in the exported app, all 7 themes.
-- Waits for Art: his command to ship Step 5 to `main` (the branch predates main's paged
-  Steps 1–3 merge; merge main in first and keep both sides of `state.md`).
-- Open: forward scroll step 4 → 5 (needs `StepFourScreen`), Step 5 home card art (reuses
-  step 4's), a light mountain-lake panorama for page 01, scenes for pages 02–07 (placeholders).
+- Home card from step 5 on plays the same scene (`webScene: 'sphere-hero'`, card mode: Rust
+  `cover(true)` crops to the card around the feet, glass and press like `SimplePractice`).
+  Checked: Матрица 800 wide, Дюна 375 wide (lossless canvas grab: 0 px lighter than the page).
+- Step 4's last page (block 2, 08/08) scrolls on into Step 5 page 01 (`nextStep` in
+  `practice.tsx`, `onNextStep` in `StepFourScreen`). Checked in the exported app.
+- Waits for Art: (1) the light panorama for 01: A = Rust prints his dark mountain lake as a
+  sepia engraving (trial `output/prototypes/step-five/panorama-svetlaya.jpg`, inverted luma
+  through the hero's two-ink `print`, 0 px lighter), B = he paints a light one; (2) a direction
+  per page 01–07 from the sheet `output/prototypes/step-five/varianty.jpg` (A recommended
+  everywhere); (3) his command to ship Step 5 to `main`.
+- Then: build the page scenes in Тишина first (one crate per page, `graphics/sphere-*` already
+  hold the assets; 04 and 05 are pure 3D), prototype each, other themes after his OK.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

@@ -1,11 +1,11 @@
 import { Animated } from '../motion/RustAnimated';
 import { useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
-import { firstStepExplanations, productStepNames, stepDescriptions, stepTwoDream } from '../content';
+import { firstStepExplanations, productStepNames } from '../content';
 import { Art } from '../motion/Art';
 import { Reveal } from '../motion/Reveal';
 import { ScrollGate } from '../motion/ScrollGate';
@@ -15,18 +15,12 @@ import { StepDropdown } from '../motion/StepDropdown';
 import { ScrollCue } from '../motion/ScrollCue';
 import { scrollCueFooterInset, type ScrollCueState } from '../motion/ScrollCue.types';
 import { ContentSwap } from '../motion/ContentSwap';
-import { DreamRealityText } from '../motion/DreamRealityText';
-import { DreamConclusion } from '../motion/DreamConclusion';
-import { StepOneConclusion } from '../motion/StepOneConclusion';
 import { TaskStepSelector } from '../motion/TaskStepSelector';
 import { TaskExplanationSwap } from '../motion/TaskExplanationSwap';
 import { usePracticeMotion } from '../motion/usePracticeMotion';
 import { PracticeEntryTransition } from '../motion/PracticeEntryTransition';
-import { useReadingPlayback } from '../motion/useReadingPlayback';
-import { useEffectQualityLevel } from '../motion/EffectsQuality';
 import { EconomyReadingPages, type ReadingPagePosition } from '../motion/EconomyReadingPages';
 import { StepTwoTaskPage } from '../motion/StepTwoTaskPage';
-import { useProduct } from '../state/ProductProvider';
 import type { ObservationNavigation } from './ObservationScreen';
 import type { PracticeStage } from '../state/model';
 import { PracticeCooldown } from './PracticeCooldown';
@@ -53,47 +47,8 @@ function remainingTime(deadline: number, now: number) {
   return [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map(value => String(value).padStart(2, '0')).join(':');
 }
 const ignoreMeasuredHeight = () => {};
-const readingArtKinds = ['cells', 'reflections', 'single-hero', 'book', 'dream-world', 'dream-wake', 'dream-inward', 'dreamer', 'identity-imprints', 'lived-paths'] as const;
-type ReadingArtKind = typeof readingArtKinds[number];
-const readingMotionKinds = [...readingArtKinds, 'dream-reality', 'dream-conclusion', 'step-one-conclusion'] as const;
-type ReadingMotionKind = typeof readingMotionKinds[number];
-type ReadingArtBounds = { top: number; height: number };
-function ReadingArt({ kind, width, active, reducedMotion, onMeasure, topInset = 0 }: {
-  kind: ReadingArtKind; width: number; active: boolean; reducedMotion: boolean;
-  topInset?: number;
-  onMeasure(kind: ReadingArtKind, bounds: ReadingArtBounds): void;
-}) {
-  const element = useRef<View>(null), measure = useRef(onMeasure);
-  useLayoutEffect(() => { measure.current = onMeasure; }, [onMeasure]);
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'web' || !element.current) return;
-    const node = element.current as unknown as HTMLElement, parent = node.parentElement;
-    if (!parent) return;
-    let frame = 0, live = true;
-    // RN Web's onLayout observes size, so it misses the position change when
-    // the zoom moves the parent's padding. Measure in the actual content box.
-    const read = () => {
-      if (!live) return;
-      const box = node.getBoundingClientRect(), content = parent.getBoundingClientRect();
-      if (box.height > 0) measure.current(kind, { top: box.top - content.top, height: box.height });
-    };
-    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(read); };
-    const observer = new ResizeObserver(schedule); observer.observe(node); observer.observe(parent);
-    schedule(); void document.fonts.ready.then(schedule);
-    return () => { live = false; cancelAnimationFrame(frame); observer.disconnect(); };
-  }, [kind, width, topInset]);
-  // The art spans the plate at its phone proportions; larger screens add air around it.
-  const natural = kind === 'dreamer' ? width * 0.92 : kind === 'reflections' || kind === 'single-hero' ? width * 136 / 288 : kind === 'dream-inward' ? width * 136 / 288 : kind === 'cells' ? Math.min(236, width * 156 / 288) : kind === 'identity-imprints' || kind === 'lived-paths' ? Math.min(236, width * 176 / 288) : kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? width * 206 / 288 : Math.min(154, width * 136 / 288);
-  const extra = (useProductLayout().air - 1) * 48;
-  return <View ref={element} testID={`step-two-${kind}`} pointerEvents="none" style={{
-    marginTop: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dreamer' ? 36 : kind === 'dream-world' ? 24 : kind === 'book' ? 4 : 0),
-    marginBottom: extra + (kind === 'dream-inward' || kind === 'reflections' || kind === 'single-hero' ? 64 : kind === 'dream-world' ? 60 : kind === 'book' ? 0 : 20),
-  }} onLayout={event => {
-    if (Platform.OS !== 'web') onMeasure(kind, { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height });
-  }}>
-    <Art kind={kind} width={width} height={natural} active={active} reducedMotion={reducedMotion} />
-  </View>;
-}
+// The pages own their illustrations, so the reading window needs no tracking.
+const ignoreViewport = () => {};
 export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
   const destination = useReadingDestination();
   useEffect(() => () => clearReadingDestination(), []);
@@ -103,10 +58,7 @@ export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
 
 function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMotion = false, onBack, onClose, onLevels, onQuestions, onSelectStep, onPreviousStep, onDiary, renderQuestions, showQuestions = false, initialStage = 0, startAtEnd = false, onStageChange, onCompleteSecondStep }: PracticeIntroScreenProps) {
   const styles = useThemeStyles(createStyles);
-  const { settings } = useProduct();
   const request = useReadingDestination(), destination = request?.step === step ? request : null;
-  // A temporary renderer downgrade must never replace the article mid-reading.
-  const pagedEconomy = settings.effectQuality === 'economy' || !!destination?.section;
   const focused = useIsFocused();
   const currentStep: 1 | 2 = step === 2 ? 2 : 1;
   const [stage, setStage] = useState(() => destination?.stage ?? (step === 1 ? showQuestions ? 4 : initialStage : !testUnlockAll && (availableAt ?? 0) > Date.now() ? 0 : initialStage));
@@ -142,10 +94,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
       return previous?.visible === next?.visible && previous?.progress === next?.progress && previous?.label === next?.label ? previous : next;
     });
   }, []);
-  const scrollWindow = useRef({ offset: 0, height: 0 });
-  const readingArtBounds = useRef<Partial<Record<ReadingMotionKind, { top: number; height: number }>>>({});
-  const economy = useEffectQualityLevel() === 'economy';
-  const { playing: readingArtVisible, update: updateReadingPlayback } = useReadingPlayback(readingMotionKinds, economy, !pagedEconomy && focused && stage === 0 && !selectorOpen && !changing);
   const deadline = availableAt ?? 0, coolingDown = currentStep === 2 && deadline > now && !testUnlockAll;
   const { gutter } = productSpacing(viewport.width);
   const bottomInset = stage > 0 ? gutter : Math.max(gutter, scrollCueFooterInset);
@@ -158,12 +106,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const heroHeight = hero.height + (air - 1) * 32;
   const insightWidth = Math.max(1, illustrationWidth - inset * 2);
   const explanationArt = (art: string) => ({ width: illustrationWidth, height: illustrationWidth * (art === 'attention' ? 1 : 244 / 320) });
-  function checkReadingArtVisibility() {
-    updateReadingPlayback(readingArtBounds.current, scrollWindow.current);
-  }
-  function measureReadingArt(kind: ReadingMotionKind, bounds: ReadingArtBounds) {
-    readingArtBounds.current[kind] = bounds; checkReadingArtVisibility();
-  }
   const canAdvance = (currentStep === 1 ? stage < 4 : !coolingDown) && !selectorOpen && !changing;
   const canNavigate = !selectorOpen && !changing;
   useEffect(() => {
@@ -175,7 +117,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   }, [currentStep, deadline]);
   function resetTransition() {
     setReady(false); setProgress(0); motion.reset();
-    scrollWindow.current = { offset: 0, height: 0 };
   }
   function finishEntryScan() {
     setEntryScanning(false); resetTransition(); setChanging(false); transitionLocked.current = false;
@@ -222,7 +163,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
     if (transitionLocked.current || next === readingChapter) return;
     transitionLocked.current = true;
     setChanging(true); setReady(false); setProgress(0); motion.reset();
-    readingArtBounds.current = {}; checkReadingArtVisibility();
     setReturnToBook(next === 0); setReadingChapter(next);
     // The chapter dissolves inside the existing frame. Never reuse the task
     // exit clock, which also moves/fades the entire native reading shell.
@@ -252,10 +192,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const menu = <StepDropdown step={currentStep} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion} inset={inset} embedded={stage === 0} onNaturalHeight={setMenuContentHeight}
     onClose={() => setSelectorOpen(false)} onSelect={value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); }} />;
   const explanationStage = Math.max(1, Math.min(3, stage));
-  const hasNextReadingPage = pagedEconomy && stage === 0 && economyPage.index < economyPage.count - 1;
+  const hasNextReadingPage = stage === 0 && economyPage.index < economyPage.count - 1;
   const cue = <ScrollCue visible={stage === questionStage ? !!recordingCue?.visible && !changing && !selectorOpen : ready && canNavigate && (canAdvance || hasNextReadingPage || progress < 0)}
     progress={stage === questionStage ? recordingCue?.progress ?? 0 : progress} reducedMotion={reducedMotion}
-    label={stage === questionStage ? recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ' : progress < 0 ? pagedEconomy && stage === 0 && economyPage.index > 0 ? 'ПРОКРУТИ НАЗАД' : stage === 0 ? readingChapter === 1 ? 'ПРОКРУТИ К КНИГЕ' : currentStep === 2 ? 'ПРОКРУТИ К ШАГУ 1' : 'ПРОКРУТИ К ВЫБОРУ УРОВНЯ' : 'ПРОКРУТИ НАЗАД' : hasNextReadingPage ? 'ПРОКРУТИ ДАЛЬШЕ' : currentStep === 2 ? 'ПРОКРУТИ К ПРОДОЛЖЕНИЮ' : stage === 3 ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ ДАЛЬШЕ'}
+    label={stage === questionStage ? recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ' : progress < 0 ? stage === 0 && economyPage.index > 0 ? 'ПРОКРУТИ НАЗАД' : stage === 0 ? readingChapter === 1 ? 'ПРОКРУТИ К КНИГЕ' : currentStep === 2 ? 'ПРОКРУТИ К ШАГУ 1' : 'ПРОКРУТИ К ВЫБОРУ УРОВНЯ' : 'ПРОКРУТИ НАЗАД' : hasNextReadingPage ? 'ПРОКРУТИ ДАЛЬШЕ' : currentStep === 2 ? 'ПРОКРУТИ К ПРОДОЛЖЕНИЮ' : stage === 3 ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ ДАЛЬШЕ'}
     style={stage > 0 ? { left: 0, right: 0, bottom: 5 } : { left: gutter + 28, right: gutter + 28 }} />;
 
   return <>
@@ -273,8 +213,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                 reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate}
                 // Like steps 3–4, scrolling back on the closed cover of Step 2 enters the end of Step 1.
                 {...currentStep === 2 ? { onRetreat: retreat, onRetreatProgress: setProgress, onRetreatReady: setReady } : {}}
-                continued={!!destination?.section || readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
-                onViewportChange={value => { scrollWindow.current = value; checkReadingArtVisibility(); }}
+                continued={!!destination?.section || readingChapter === 1 || returnToDream || currentStep === 1 && economyPage.index > 0} paged onViewportChange={ignoreViewport}
                 hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
                   <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} width={hero.width} height={hero.height} active={active && !changing && focused} reducedMotion={reducedMotion} />
                 </Reveal>}>
@@ -284,46 +223,11 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                   readingSelection={{ availableAt, testUnlockAll, onSelectStep: value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); } }}>
                   <ContentSwap value={readingChapter} fill dissolve duration={600} exitDuration={260} reducedMotion={reducedMotion} render={chapter => {
                     const current = chapter === readingChapter;
-                    if (pagedEconomy) return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused && !selectorOpen} enabled={canNavigate}
+                    return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused && !selectorOpen} enabled={canNavigate}
                       initialIndex={destination?.chapter === chapter ? destination.page : 0}
                       canAdvance={canAdvance} startAtEnd={!destination?.section && (chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook)} reading={reading} width={insightWidth} reducedMotion={reducedMotion}
                       onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight}
                       onAdvance={advance} onRetreat={retreat} onPageChange={reportEconomyPage} />;
-                    return <ScrollGate enabled={current && canNavigate} allowAdvance={current && canAdvance} onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight} onAdvance={advance} onRetreat={retreat} fadeTop={24} fadeBottom={24}
-                      startAtEnd={chapter === 1 ? returnToDream : returnToBook}
-                      guardEntryGesture={chapter === 1 || returnToBook}
-                      onViewportChange={current ? reading.onViewportChange : undefined} controllerRef={current ? reading.controllerRef : undefined}
-                      readingGesture={current ? reading.readingGesture : undefined}
-                      contentStyle={chapter === 1 ? { ...reading.contentStyle, paddingTop: 0, minHeight: viewport.height } : reading.contentStyle}>
-                      {chapter === 1 ? <>
-                        <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={styles.chapterTitle}>{stepTwoDream.title}</ProductText>
-                        {stepTwoDream.blocks.map((block, index) => <Fragment key={block.art}>
-                          <ProductText testID={`dream-text-${index}`} style={styles.overviewText}>{block.text}</ProductText>
-                          {'emphasis' in block && <DreamRealityText text={block.emphasis} style={styles.overviewText}
-                            active={current && readingArtVisible['dream-reality'] && !selectorOpen && !changing && focused}
-                            reducedMotion={reducedMotion} onLayout={current ? event => measureReadingArt('dream-reality', { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }) : undefined} />}
-                          {'conclusion' in block && <DreamConclusion text={block.conclusion} style={[styles.overviewText, styles.dreamConclusion]}
-                            active={current && readingArtVisible['dream-conclusion'] && !selectorOpen && !changing && focused}
-                            reducedMotion={reducedMotion} onLayout={current ? event => measureReadingArt('dream-conclusion', { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }) : undefined} />}
-                          <ReadingArt kind={block.art} width={insightWidth} active={current && readingArtVisible[block.art] && !selectorOpen && !changing && focused}
-                            reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />
-                        </Fragment>)}
-                      </> : <>
-                      {stepDescriptions[currentStep].split('\n\n').map((text, index) => <Fragment key={text}>
-                        <Reveal reducedMotion={reducedMotion} delay={220 + index * 65}><ProductText style={styles.overviewText}>{text}</ProductText></Reveal>
-                        {currentStep === 2 && (index === 1 || index === 2) && <ReadingArt kind={index === 1 ? 'reflections' : 'single-hero'} width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
-                          active={current && readingArtVisible[index === 1 ? 'reflections' : 'single-hero'] && !selectorOpen && !changing && stage === 0}
-                          reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
-                        {currentStep === 1 && (index === 1 || index === 3) && <ReadingArt kind={index === 1 ? 'cells' : 'identity-imprints'} width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)}
-                          active={current && readingArtVisible[index === 1 ? 'cells' : 'identity-imprints'] && !selectorOpen && !changing && stage === 0}
-                          reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
-                      </Fragment>)}
-                      {currentStep === 1 && <StepOneConclusion active={current && readingArtVisible['step-one-conclusion'] && !selectorOpen && !changing && stage === 0} reducedMotion={reducedMotion}
-                        onLayout={current ? event => measureReadingArt('step-one-conclusion', { top: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height }) : undefined} />}
-                      {currentStep === 2 && <ReadingArt kind="book" width={insightWidth} topInset={Number(reading.contentStyle.paddingTop ?? 0)} active={current && readingArtVisible.book && !selectorOpen && !changing && stage === 0}
-                        reducedMotion={reducedMotion} onMeasure={current ? measureReadingArt : ignoreMeasuredHeight} />}
-                      </>}
-                    </ScrollGate>;
                   }} />
                 </StepPanel>
               </Reveal>
@@ -393,8 +297,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   heroNavigation: { ...StyleSheet.absoluteFill, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   panelSpace: { flex: 1, minHeight: 0 },
   overviewText: { fontSize: 12, lineHeight: 17, textTransform: 'uppercase', marginBottom: 10 },
-  chapterTitle: { fontSize: 20, lineHeight: 27, textTransform: 'uppercase', marginTop: 80, marginBottom: 24 },
-  dreamConclusion: { fontFamily: fonts.bodyBold, marginTop: 8 },
   conclusion: { gap: 6, paddingVertical: 12 }, conclusionSmall: { fontSize: 11, lineHeight: 16 }, conclusionStrong: { fontSize: 15, lineHeight: 21 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   explanationText: { fontSize: 12, lineHeight: 17, textTransform: 'uppercase' },

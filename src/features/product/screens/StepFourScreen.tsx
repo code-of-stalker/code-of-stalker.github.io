@@ -28,7 +28,7 @@ const ignoreHeight = () => {};
 
 /** One scene per page in every quality mode; the shared Rust reader owns the zoom and transitions.
  * The questions between the two reading blocks use the voice answer of steps 1–2. */
-export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false, renderQuestions }: PracticeIntroScreenProps) {
+export function StepFourScreen({ onSelectStep, onPreviousStep, onNextStep, onClose, availableAt, testUnlockAll, reducedMotion = false, renderQuestions }: PracticeIntroScreenProps) {
   const focused = useIsFocused(), destination = useReadingDestination(), { updateProgress } = useProduct();
   const { initial, record, flush } = useStepFourBookmark();
   const [part, setPart] = useState<StepFourPart>(() => stepFourPlace(initial.page).part);
@@ -95,6 +95,8 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
   };
   useBackSwipe(() => { if (open) setOpen(false); else if (questions) observation.current?.back(); else retreat(); });
   useWebUpdateBlock(focused && (expanded || questions || reading.block === 1 || page.index > 0));
+  // The first block scrolls on into the questions; the end of the second scrolls into step five.
+  const advance = () => { if (reading.block === 0) enter('questions'); else if (onNextStep) { flush(); onNextStep(); } };
   const select = (step: number) => { setOpen(false); if (step !== 4) { flush(); onSelectStep(step); } };
   const close = () => { flush(); onClose(); };
   const lastPage = page.index >= page.count - 1;
@@ -125,9 +127,9 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
               menu={open && !questions ? <StepDropdown step={4} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion}
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
               <EconomyReadingPages key={reading.block} step={4} chapter={reading.block} active={focused && !open && !questions} enabled={focused && !open && !questions}
-                initialIndex={reading.page} initialOffset={reading.offset} canAdvance={reading.block === 0 && !!renderQuestions} startAtEnd={reading.end}
+                initialIndex={reading.page} initialOffset={reading.offset} canAdvance={reading.block === 0 ? !!renderQuestions : !!onNextStep} startAtEnd={reading.end}
                 reading={layout} width={width} reducedMotion={reducedMotion}
-                onReady={setReady} onProgress={setProgress} onAdvance={() => enter('questions')} onRetreat={retreat} onPageChange={reportPage}
+                onReady={setReady} onProgress={setProgress} onAdvance={advance} onRetreat={retreat} onPageChange={reportPage}
                 endContent={reading.block === 1 ? <StepSignature active={focused && !open && !questions} reducedMotion={reducedMotion} /> : undefined} />
             </StepPanel>
           </Reveal>}
@@ -147,8 +149,8 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
           </View>
         </PracticeEntryTransition>
       </View>
-      {!questions && <ScrollCue visible={ready && !open && (!lastPage || reading.block === 0 || progress < 0)} progress={progress} reducedMotion={reducedMotion}
-        label={progress < 0 ? page.index > 0 || reading.block === 1 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 3' : reading.block === 0 && lastPage ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ ДАЛЬШЕ'}
+      {!questions && <ScrollCue visible={ready && !open && (!lastPage || reading.block === 0 || !!onNextStep || progress < 0)} progress={progress} reducedMotion={reducedMotion}
+        label={progress < 0 ? page.index > 0 || reading.block === 1 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 3' : lastPage ? reading.block === 0 ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ К ШАГУ 5' : 'ПРОКРУТИ ДАЛЬШЕ'}
         style={{ left: gutter + 28, right: gutter + 28 }} />}
     </View>
   </ProductScreen>;

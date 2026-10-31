@@ -16,6 +16,7 @@ import { CallBell } from './CallBell.web';
 import { EssenceFlame } from './EssenceFlame.web';
 import { TrueSight } from './TrueSight.web';
 import { PersonaBelief } from './PersonaBelief.web';
+import { SphereHero } from './SphereHero.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
   const systemReduced = useSystemReducedMotion();
@@ -26,6 +27,7 @@ function scene(props: ArtProps) {
   if (props.webScene === 'theatre-marionette') return <TheatreMarionette {...props} />;
   if (props.webScene === 'world-in-glasses') return <WorldInGlasses {...props} />;
   if (props.webScene === 'simple-practice') return <SimplePractice {...props} />;
+  if (props.webScene === 'sphere-hero') return <SphereHero {...props} />;
   if (props.webScene === 'hear-state') return <HearState {...props} />;
   if (props.webScene === 'tuning-questions') return <TuningQuestions {...props} />;
   if (props.webScene === 'persona-dream') return <PersonaDream {...props} />;

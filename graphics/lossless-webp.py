@@ -25,6 +25,12 @@ SOURCES = {
     "call-bell": ["labels"],
     "essence-flame": ["labels"],
     "true-sight": ["labels"],
+    "sphere-hero": ["parallax-base", "reflection", "figure", "foreground"],
+    "sphere-world": ["panorama"],
+    "sphere-anchor": ["avatar"],
+    "sphere-room": ["room"],
+    "sphere-lake": ["lake"],
+    "sphere-everywhere": ["strip"],
 }
 
 

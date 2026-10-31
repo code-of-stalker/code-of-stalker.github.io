@@ -13,11 +13,14 @@ import { StepOneConclusion } from './StepOneConclusion';
 import { ScrollGate } from './ScrollGate';
 import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
+import { ScenePlaceholder } from './ScenePlaceholder';
+import { StepFiveScene } from './StepFiveScene';
+import type { ReadingStep } from '../stepSections';
 import { useProductLayout } from '../layout';
 
 export type ReadingPagePosition = { index: number; count: number };
 export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance, startAtEnd, initialIndex = 0, initialOffset = 0, reading, width, reducedMotion, onReady, onProgress, onAdvance, onRetreat, onPageChange, endContent }: {
-  step: 1 | 2 | 3 | 4; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
+  step: ReadingStep; chapter: 0 | 1; active: boolean; enabled: boolean; canAdvance: boolean; startAtEnd: boolean;
   endContent?: ReactNode;
   initialIndex?: number; initialOffset?: number;
   reading: ReadingLayout; width: number; reducedMotion: boolean;
@@ -47,7 +50,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
         const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
-        const artWidth = Math.max(1, width - 16) * wider, artHeight = kind ? (step === 4 ? artWidth * 2 / 3 : step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
+        const artWidth = Math.max(1, width - 16) * wider, artHeight = step >= 4 ? artWidth * 2 / 3 : kind ? (step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
             startAtEnd={selected && position.end} initialOffset={selected ? position.offset : 0} onReady={selected ? onReady : () => {}} onProgress={selected ? onProgress : () => {}}
@@ -59,18 +62,20 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             <ProductText testID="reading-page-count" variant="label" style={[styles.count, phone && { marginBottom: 16 }, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{page.title}</ProductText>}
             <View testID="reading-page-copy" style={[styles.copy, phone && { gap: 20 }]}>
-              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={textStyle} />)}
+              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={page.bold?.includes(text) ? [textStyle, { fontFamily: fonts.bodyBold }] : textStyle} />)}
               {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{text}</ProductText>)}
               {page.after?.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
               {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{page.statement}</ProductText>}
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
             </View>
-            {kind && <View testID={`reading-page-art-${kind}`} pointerEvents="none" style={[styles.art,
+            {(kind || page.placeholder) && <View testID={`reading-page-art-${kind ?? page.id}`} pointerEvents="none" style={[styles.art,
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
               { marginHorizontal: -reading.contentInset - pageInset }, extra > 0 && (kind === 'reflections' || kind === 'single-hero' || kind === 'dream-inward' ? { paddingTop: 64 + extra, paddingBottom: 64 + extra } : { paddingTop: 40 + extra, paddingBottom: 36 + extra })]}>
-              <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+              {kind ? <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+                : page.webScene ? <StepFiveScene page={page} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+                  : page.placeholder && <ScenePlaceholder scene={page.placeholder} width={artWidth} height={artHeight} />}
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}

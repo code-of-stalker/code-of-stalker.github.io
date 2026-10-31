@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { PracticeIntroScreen } from '../../features/product/screens/PracticeIntroScreen';
 import { ObservationFlow } from '../../features/product/ObservationFlow';
 import { useProduct } from '../../features/product/state/ProductProvider';
-import { canOpenFourthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
+import { canOpenFifthStep, canOpenFourthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
 import { ProductText, ScreenTransition } from '../../features/product/ui';
 import { stepThreePractice } from '../../features/product/stepThreePractice';
 
@@ -30,24 +30,29 @@ export default function Practice() {
       await updateProgress({
         step: !previewing && progress.step >= 3 ? progress.step - 1 : 1,
         questionIndex: 3,
-        practiceStage: progress.step === 4 ? 0 : 4,
+        practiceStage: progress.step === 4 || progress.step === 5 ? 0 : 4,
         // A backwards boundary crossing enters the end of the previous step,
         // independently of whichever Step 3 bookmark was saved before it.
         ...(!previewing && progress.step === 4 ? {
           stepThreeReading: { chapter: 1 as const, page: stepThreePractice.length - 1, offset: 0, paged: true },
         } : {}),
+        // Step five's first page scrolls back onto step four's last page.
+        ...(!previewing && progress.step === 5 ? { stepFourReading: { page: 14, offset: 0 } } : {}),
       });
       if (previewing) router.replace({ pathname: '/practice', params: { entry: 'end' } });
     } catch { /* The provider reports persistence errors. */ }
   }
   async function nextStep() {
-    if (previewing || progress.step !== 3) return;
+    if (previewing || progress.step !== 3 && progress.step !== 4) return;
     setReturnToEnd(false);
     try {
-      // A forwards boundary crossing enters the start of Step 4, like the
-      // backwards one enters the end of Step 3.
-      await updateProgress({ step: 4, practiceStage: 0, questionIndex: 0, stepFourReading: { page: 0, offset: 0 },
-        ...(!settings.testUnlockAll ? { fourthStepUnlocked: true } : {}) });
+      // A forwards boundary crossing enters the start of the next step, like the
+      // backwards one enters the end of the previous step.
+      await updateProgress(progress.step === 3
+        ? { step: 4, practiceStage: 0, questionIndex: 0, stepFourReading: { page: 0, offset: 0 },
+          ...(!settings.testUnlockAll ? { fourthStepUnlocked: true } : {}) }
+        : { step: 5, practiceStage: 0, stepFiveReading: { page: 0, offset: 0 },
+          ...(!settings.testUnlockAll ? { fifthStepUnlocked: true } : {}) });
     } catch { /* The provider reports persistence errors. */ }
   }
   return <ScreenTransition reducedMotion={settings.reducedMotion}>
@@ -66,7 +71,7 @@ export default function Practice() {
       onQuestions={step => { void questions(step); }} onSelectStep={step => {
         setReturnToEnd(false);
         if (previewing) { if (step === 1) void updateProgress({ step: 1 }).then(() => router.replace('/practice')).catch(() => {}); return; }
-        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll) || step === 4 && canOpenFourthStep(progress, settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
+        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll) || step === 4 && canOpenFourthStep(progress, settings.testUnlockAll) || step === 5 && canOpenFifthStep(progress, settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
       }}
       onCompleteSecondStep={completeSecondStep}
       renderQuestions={previewing ? undefined : (active, onBack, registerNavigation, onQuestionHeight, effectsActive, onAnswered) => <ObservationFlow embedded active={active} onAnswered={onAnswered} effectsActive={effectsActive} startAtEnd={returnToEnd} onBack={() => { setReturnToEnd(false); onBack(); }} onNavigationReady={registerNavigation} onQuestionHeight={onQuestionHeight} />} />

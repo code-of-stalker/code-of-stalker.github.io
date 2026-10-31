@@ -64,16 +64,17 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   night room as a cloud of points placed by a depth map made here (`assets/depth.webp`); a plane
   of light sweeps the room once per list line and wakes one layer (sound waves, trees and
   curtain, floor draft, moonbeam motes, cup wisp and breathing, sphere and lattice); 60 s loop.
-  Wired to page `sphere-scan`. Тишина checked; prototype
-  `output/prototypes/sphere-room/index.html` (+ `kadry.jpg`) waits for Art's notes, then the
-  other 6 themes (light: engrave, 0 px lighter), then ship when he says.
+  Wired to page `sphere-scan`. Art OK'd Тишина («Ок, делай темы»); all 7 themes checked in the
+  prototype (`output/prototypes/sphere-room/index.html`, sheets `kadry.jpg`, `temy.jpg`): light
+  themes engrave in their inks, 0 px lighter than the page over the loop (120 frames each).
+  Waits for Art's word to ship.
 - Art chose direction A for every page (2026-10-31): 02 the figure on a floor grid, everything
   freezes, a wave down from the feet lights the support points; 03 the room as a point cloud
   with a scanner plane, one layer per list line; 04 a point → orbit ring → meridians → sphere,
   camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
   07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
-- Next: Art's notes on 03 in Тишина, its other themes; then 04–07, one crate each, Тишина
+- Next: ship 03 when Art says; then 04–07, one crate each, Тишина
   first, prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)

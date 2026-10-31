@@ -1,6 +1,10 @@
 # Project state
 
-Updated 2026-10-28. `main` = 832456a; every earlier work branch is merged, nothing is waiting.
+Updated 2026-10-31. `main` = the merge of `fix/home-card-shade` (home card shade spans the
+whole card width and reaches its bottom edge, `motion/HomeCard.tsx`), shipped 2026-10-31.
+Open: local branch `scene/call-bell` (not pushed), see the table and «Next».
+Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
+as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
 
 ## Step 4 «Практика заземления и прямого узнавания»: page → scene
@@ -20,15 +24,17 @@ Scenes are web only (Rust WebGL2); the native app keeps the engine art.
 | 2 / 01 | grounding-character «Персонаж: сон, в который поверил Абсолют» | persona-dream | plates lock into a mosaic shell over the person, matrix frame, «Я…» tags |
 | 2 / 02 | grounding-program «Механизм обусловленности» | persona-program | the shell as a circuit, the same impulse path, six verbs on the card |
 | 2 / 03 | grounding-belief «Я это действительно знаю?» | persona-belief «Оттиск» | macro of sand under a raking lamp, seals and imprints; no room, no person |
-| 2 / 04 | grounding-call «Сила Зова» | none yet | engine art `grounding-signal` |
-| 2 / 05 | grounding-awakening «Пробуждение» | none yet | engine art; dis-identification belongs here |
-| 2 / 06 | grounding-witnessing «Живое Осознавание» | none yet | engine art |
+| 2 / 04 | grounding-call «Сила Зова» | call-bell «Колокол» (branch `scene/call-bell`, not wired) | bell in a stone tower held by threads; threads snap, clapper strikes, sound floods the tower |
+| 2 / 05 | grounding-awakening «Пробуждение» | awakening | portrait with a cracking, peeling mask |
+| 2 / 06 | grounding-witnessing «Живое Осознавание» | witnessing | witnessing story, own light-theme artwork |
 | 2 / 07 | grounding-recognition «Сущностные ощущения» | none yet | engine art (shares `grounding-contact`) |
 | 2 / 08 | grounding-real «Истинное распознавание» | none yet | engine art |
 
 Block 1 pages 04–06 and block 2 pages 01–02 share one look (dark room, seated person in
 profile, card bottom-right, focus pulls). Do not make a sixth one like them.
-Next likely work: animations for block 2 pages 04–08 (`/new-scene`).
+Next: «Колокол» — Art approved Тишина on 2026-10-31; adapt the other 6 themes, show the
+prototype, then wire it (`CallBell.web.tsx`, `WebScene`, `Art.web.tsx`, `webScene: 'call-bell'`)
+and ship only on Art's command. After that: pages 07–08 (`/new-scene`).
 
 ## Shipped features (all on main)
 - Themes: 7 (Тишина default). Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

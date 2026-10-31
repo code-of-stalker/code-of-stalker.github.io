@@ -37,17 +37,20 @@ export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { k
   </View><ScanLight path={glass.path}/></View>;
 }
 
-// The shade begins at the text block and runs flush to the bottom of the card.
-// On the left it starts just inside the 0.25px stroke at full strength: the
-// authored left fade (7% of the shade's width) is pushed outside the clip.
-const shadeLeftFade = .07, strokeClear = 1;
+// The shade begins at the text block and spans the whole card: flush to the
+// bottom, from just inside the left stroke to the right edge, cut corner
+// included. The copy stops short of the arrow, so the shade reaches past it to
+// the card's edge, and both authored side fades (7% left, 17% right of the
+// shade's width) are pushed outside the clip at full strength.
+const shadeLeftFade = .07, shadeRightFade = .17, strokeClear = 1;
 export function HomeCardCopy({ children, inset, gradient, style }: PropsWithChildren<{
   inset: number; gradient: HomeTitleGradient; style?: StyleProp<ViewStyle>;
 }>) {
   const { size, onLayout, ref } = usePanelSize({ width: 260, height: 110 });
-  const fade = size.width * shadeLeftFade / (1 - shadeLeftFade);
+  const { right } = StyleSheet.flatten([styles.copy, style]), toEdge = typeof right === 'number' ? right : 0;
+  const width = (size.width + toEdge) / (1 - shadeLeftFade - shadeRightFade);
   return <View ref={ref} onLayout={onLayout} pointerEvents="none" testID={`home-copy-${gradient}`} style={[styles.copy, { paddingBottom: inset, paddingLeft: inset - strokeClear, paddingRight: Math.max(0, inset - 5) }, style]}>
-    <View pointerEvents="none" style={[styles.shade, { left: -fade }]}><Art kind="home-shade" width={size.width + fade} height={size.height} reducedMotion /></View>
+    <View pointerEvents="none" style={[styles.shade, { left: -width * shadeLeftFade, right: -toEdge - width * shadeRightFade }]}><Art kind="home-shade" width={width} height={size.height} reducedMotion /></View>
     {children}
   </View>;
 }

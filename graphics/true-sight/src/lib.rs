@@ -3,24 +3,29 @@
 //! iris, a single soft light from the upper left; around it only the dark.
 //! The page, in order:
 //! «И пока ты не ощутил ступни, не услышал голос, не отследил, как мысль
-//! делает вывод» — the eye is closed. Dreams shimmer through the thin skin of
-//! the lid and the eyeball runs under it. At each «не» the lid starts and
-//! quivers, and does not open; at the thought making its conclusion the
-//! eyeball races.
-//! «ты не проснулся» — stillness; the dreams slow and dim, the eye stays shut.
+//! делает вывод» — the eye is closed and dreams show through the thin skin
+//! of the lid like pictures: a house at night, a road with a walker, two
+//! faces and a voice between them, an endless stair. At each «не» the lid
+//! starts, the dream tears down the middle and the next one comes; at the
+//! thought making its conclusion the stair runs and the eyeball races.
+//! «ты не проснулся» — stillness; the stair slows and dims, the eye stays
+//! shut.
 //! «Но как только возникло Истинное Видение» — the eye opens and the lens
 //! draws back to all of it; the wide pupil narrows in the light.
 //! «Истинное Распознавание» — the lens comes to the iris: the world (a
-//! horizon, hills, the low sun) appears on the cornea, still soft.
-//! «и Различение» — it comes into focus: the reflection and the iris's
-//! fibres turn sharp, and the eye checks the world with two small glances.
-//! «возникает Ты Абсолютный, Ты Настоящий» — the lens draws far back: the
-//! open eye, the brow, the dark; the light warms a little. Then the eye
-//! closes slowly while the lens returns to the lid, and the loop is whole.
+//! horizon, hills, the low sun) appears on the cornea, and then breaks from
+//! the pupil outward into a lit grid: it was a projection.
+//! «и Различение» — the lens draws back and the grid runs out of the eye
+//! over the whole face: skin and lashes are a wireframe too. Only the eye
+//! itself stays alive, and checks it all with three small glances.
+//! «возникает Ты Абсолютный, Ты Настоящий» — the lens dives into the pupil.
+//! The iris's fibres stream inward and weave a whole person standing in its
+//! dark, lit from the heart, the iris a ring around them. Then the eye
+//! closes while the lens returns to the lid, and the first dream comes back.
 //!
 //! Everything that moves is computed here, as pure functions of the loop
-//! time: the lens, the lid, the gaze, the pupil, the dreams, the reflection
-//! and its focus. The browser adapter only uploads the values and the
+//! time: the lens, the lid, the gaze, the pupil, the dreams, the reflection,
+//! its grid and the person. The browser adapter only uploads the values and the
 //! shaders only paint them.
 #[cfg(target_arch = "wasm32")]
 mod browser;
@@ -34,9 +39,9 @@ use watcher_scene_palette::Palette;
 pub const SIZE: [f32; 2] = [1536.0, 1024.0];
 /// The page in one seamless loop.
 pub const LOOP_SECONDS: f32 = 60.0;
-/// Reduced motion holds this moment: the eye open and seeing, the world
-/// sharp on its cornea, «ТЫ АБСОЛЮТНЫЙ, ТЫ НАСТОЯЩИЙ.» written.
-pub const STILL: f32 = 52.0;
+/// Reduced motion holds this moment: the lens inside the pupil, the woven
+/// person whole in it, «ТЫ АБСОЛЮТНЫЙ, ТЫ НАСТОЯЩИЙ.» written.
+pub const STILL: f32 = 52.5;
 
 /// The world is measured in centimetres on the face's frontal plane: x
 /// across (the nose to the left), y up. The iris's centre when the eye looks
@@ -46,6 +51,8 @@ pub const IRIS_R: f32 = 0.6;
 /// The pupil: wide in the dark of sleep, narrow in the light.
 pub const PUPIL_WIDE: f32 = 0.37;
 pub const PUPIL_NARROW: f32 = 0.17;
+/// The pupil the lens dives into.
+pub const PUPIL_DIVE: f32 = 0.4;
 
 /// The captions, in the order of the page.
 pub const CARDS: [[f32; 2]; 8] = [
@@ -67,16 +74,28 @@ const LEADS: [(usize, [usize; 2]); 3] = [(0, [0, 2]), (5, [4, 6]), (9, [7, 7])];
 pub const TWITCHES: [f32; 3] = [3.0, 9.6, 16.2];
 /// The eye opens over these seconds and closes again over `CLOSE`.
 pub const OPEN: [f32; 2] = [28.0, 30.8];
-pub const CLOSE: [f32; 2] = [54.4, 58.4];
+pub const CLOSE: [f32; 2] = [55.5, 58.5];
 /// The dreams under the lid, leaving as the eye opens and back as it shuts.
-const DREAMS_GONE: [f32; 4] = [27.6, 29.6, 56.0, 59.6];
+const DREAMS_GONE: [f32; 4] = [27.6, 29.6, 57.0, 59.6];
+/// When each of the four dreams begins: the house comes back with the shut
+/// lid and runs over the loop's seam, the others tear in at the «не».
+pub const DREAM_STARTS: [f32; 4] = [57.0, TWITCHES[0], TWITCHES[1], TWITCHES[2]];
+/// How long a dream takes to tear and give way to the next.
+const TEAR: f32 = 0.9;
 /// The eyeball's run under the lid while «мысль делает вывод».
 const RACE: [f32; 4] = [14.2, 15.2, 19.8, 21.0];
 /// «Ты не проснулся»: the dreams go quiet.
 const HUSH: [f32; 4] = [21.4, 22.6, 26.0, 27.6];
-/// The world on the cornea, and when it comes into focus.
-const WORLD: [f32; 4] = [34.6, 37.0, 54.0, 56.5];
-const FOCUS: [f32; 4] = [40.9, 43.0, 54.0, 56.5];
+/// The world on the cornea; its breaking into a grid from the pupil out;
+/// the grid leaving the eye to run over the face.
+const WORLD: [f32; 4] = [34.6, 36.4, 40.0, 41.0];
+const GRID: [f32; 4] = [37.2, 39.6, 41.6, 44.0];
+const HOLO: [f32; 4] = [41.0, 43.8, 49.0, 51.0];
+/// The dive: the pupil opens, the iris's fibres stream in and weave the
+/// person, who then stands whole in the pupil's dark.
+const DILATE: [f32; 4] = [47.0, 50.0, 56.0, 59.0];
+const WEAVE: [f32; 4] = [48.4, 49.8, 50.8, 52.2];
+const FIGURE: [f32; 4] = [49.2, 51.6, 54.2, 56.2];
 /// «Ты Настоящий»: the light warms.
 const WARM: [f32; 4] = [47.0, 50.0, 53.6, 57.0];
 /// Whole numbers of cycles per loop for every wave the shader turns with
@@ -155,23 +174,30 @@ const IRIS: Camera = Camera {
     center: [0.0, EYE_Y - 0.08],
     half: 0.78,
 };
-/// Far back: the eye, the brow and the dark.
-const BACK: Camera = Camera {
-    center: [0.0, EYE_Y - 0.45],
-    half: 2.9,
+/// Back from the eye, so the grid has the face to run over.
+const FACE: Camera = Camera {
+    center: [0.0, EYE_Y - 0.25],
+    half: 1.7,
+};
+/// Inside the pupil: its dark fills the frame, the iris a ring at the sides.
+const PUPIL: Camera = Camera {
+    center: [0.0, EYE_Y - 0.05],
+    half: 0.5,
 };
 /// The lens's keys: it holds between equal neighbours and eases between
 /// the others.
-const SHOTS: [(f32, Camera); 10] = [
+const SHOTS: [(f32, Camera); 12] = [
     (0.0, LID),
     (21.0, LID_NEAR),
     (27.8, LID_NEAR),
     (31.6, EYE),
     (34.4, EYE),
     (37.6, IRIS),
-    (46.6, IRIS),
-    (51.0, BACK),
-    (54.0, BACK),
+    (40.6, IRIS),
+    (43.6, FACE),
+    (46.8, FACE),
+    (50.6, PUPIL),
+    (55.0, PUPIL),
     (LOOP_SECONDS, LID),
 ];
 pub fn camera(t: f32) -> Camera {
@@ -237,7 +263,7 @@ pub fn rem(t: f32) -> f32 {
     (0.35 + 0.5 * startle(t).min(1.0) + 0.65 * window(t, RACE)) * (1.0 - 0.7 * window(t, HUSH))
 }
 /// Where the eye looks (cm from straight ahead). Shut, it runs under the
-/// lid; open, it is still but for the two glances of «Различение».
+/// lid; open, it is still but for the glances of «Различение».
 pub fn gaze(t: f32) -> [f32; 2] {
     let a = phase(t);
     let r = rem(t);
@@ -252,11 +278,14 @@ pub fn gaze(t: f32) -> [f32; 2] {
     [lerp(under[0], glances, w), under[1] * (1.0 - w)]
 }
 /// The pupil's radius (cm): wide as the eye opens, narrowing in the light
-/// with a small overshoot and a faint living tremor.
+/// with a small overshoot and a faint living tremor, opening again for the
+/// dive.
 pub fn pupil(t: f32) -> f32 {
-    let light = ease(smooth(29.6, 32.4, t)) * (1.0 - smooth(54.0, 57.5, t));
+    let light = ease(smooth(29.6, 32.4, t)) * (1.0 - ease(smooth(47.0, 50.0, t)));
     let overshoot = 0.03 * bell(t, 31.0, 31.8, 32.0, 33.6);
-    lerp(PUPIL_WIDE, PUPIL_NARROW, light) - overshoot + 0.006 * light * (13.0 * phase(t)).sin()
+    lerp(PUPIL_WIDE, PUPIL_NARROW, light) + (PUPIL_DIVE - PUPIL_WIDE) * window(t, DILATE)
+        - overshoot
+        + 0.006 * light * (13.0 * phase(t)).sin()
 }
 /// How much the dreams shine through the lid.
 pub fn dream(t: f32) -> f32 {
@@ -271,9 +300,43 @@ pub fn stir(t: f32) -> f32 {
 pub fn world(t: f32) -> f32 {
     window(t, WORLD)
 }
-/// How sharp the world and the iris are.
-pub fn focus(t: f32) -> f32 {
-    window(t, FOCUS)
+/// How much of the world on the cornea has broken into the grid.
+pub fn grid(t: f32) -> f32 {
+    window(t, GRID)
+}
+/// How far the grid has run over the face.
+pub fn holo(t: f32) -> f32 {
+    window(t, HOLO)
+}
+/// The person in the pupil.
+pub fn figure(t: f32) -> f32 {
+    window(t, FIGURE)
+}
+/// The iris's fibres streaming in to weave the person.
+pub fn weave(t: f32) -> f32 {
+    window(t, WEAVE)
+}
+/// The dreams on the lid: which one shows (0 house, 1 road, 2 faces,
+/// 3 stair), how far it has torn in over the one before, and the seconds
+/// since each of the two began.
+pub fn reel(t: f32) -> [f32; 4] {
+    let since = |s: f32| (t - s).rem_euclid(LOOP_SECONDS);
+    let i = (0..DREAM_STARTS.len())
+        .min_by(|&a, &b| since(DREAM_STARTS[a]).total_cmp(&since(DREAM_STARTS[b])))
+        .unwrap_or(0);
+    let before = (i + DREAM_STARTS.len() - 1) % DREAM_STARTS.len();
+    // The house only fades in behind the closing lid; it tears nothing.
+    let tear = if i == 0 {
+        1.0
+    } else {
+        smooth(0.0, TEAR, since(DREAM_STARTS[i]))
+    };
+    [
+        i as f32,
+        tear,
+        since(DREAM_STARTS[i]),
+        since(DREAM_STARTS[before]),
+    ]
 }
 /// The key light: steady, a little warmer for «Ты Настоящий».
 pub fn light(t: f32) -> f32 {
@@ -354,8 +417,12 @@ pub struct Frame {
     pub camera: Camera,
     /// The eye: how far open, where it looks (x, y) and its pupil's radius.
     pub eye: [f32; 4],
-    /// The dreams' light and flicker, the world on the cornea and its focus.
+    /// The dreams' light and flicker, the world on the cornea and its grid.
     pub state: [f32; 4],
+    /// The dreams on the lid (see `reel`).
+    pub dreams: [f32; 4],
+    /// The grid over the face, the person in the pupil, the weaving fibres.
+    pub holo: [f32; 4],
     /// The key light.
     pub light: f32,
     /// The loop as an angle: the shader's dream waves turn with it.
@@ -374,7 +441,9 @@ pub fn compose(t: f32) -> Frame {
         time: t,
         camera: camera(t),
         eye: [openness(t), g[0], g[1], pupil(t)],
-        state: [dream(t), stir(t), world(t), focus(t)],
+        state: [dream(t), stir(t), world(t), grid(t)],
+        dreams: reel(t),
+        holo: [holo(t), figure(t), weave(t), 0.0],
         light: light(t),
         phase: phase(t),
         shown: words(t).iter().fold(0.0_f32, |m, l| m.max(l.alpha)),
@@ -499,9 +568,12 @@ mod tests {
             // The gaze darts under the lid, so it moves fastest of all.
             assert!(close(x.eye[e], y.eye[e], 0.01), "eye {e}");
             assert!(close(x.state[e], y.state[e], 0.003), "state {e}");
+            assert!(close(x.holo[e], y.holo[e], 0.003), "holo {e}");
+            assert!(close(x.dreams[e], y.dreams[e], 0.01), "dreams {e}");
         }
         for f in [&x, &y] {
             assert!(f.eye[0] < 0.001 && f.state[0] > 0.999 && f.state[2] == 0.0);
+            assert!(f.holo == [0.0; 4] && f.dreams[0] == 0.0 && f.dreams[1] == 1.0);
             assert!(f.shown < 0.01);
         }
         for n in DREAM_CYCLES {
@@ -521,6 +593,13 @@ mod tests {
             for e in [0, 2, 3] {
                 assert!(close(a.state[e], b.state[e], 0.03), "state {e} {t}");
             }
+            for e in 0..3 {
+                assert!(close(a.holo[e], b.holo[e], 0.03), "holo {e} {t}");
+            }
+            // A new dream begins only where it starts to tear, or unseen.
+            if a.dreams[0] != b.dreams[0] {
+                assert!(b.dreams[1] < 0.01 || a.state[0] < 0.01, "tear {t}");
+            }
         }
     }
 
@@ -530,6 +609,13 @@ mod tests {
             assert!(w[0][1] < w[1][0]);
         }
         assert!(CARDS[7][1] < CLOSE[0]);
+        // A new dream for every «не», each torn in under its card.
+        for (i, at) in TWITCHES.iter().enumerate() {
+            assert_eq!(reel(at + 0.5)[0], (i + 1) as f32);
+            assert!(reel(at + TEAR + 0.01)[1] == 1.0 && reel(at + 0.3)[1] < 0.5);
+        }
+        assert_eq!(reel(1.0)[0], 0.0);
+        assert_eq!(reel(25.0)[0], 3.0);
         // The three «не»: the lid starts under each, and never opens.
         for (i, at) in TWITCHES.iter().enumerate() {
             assert!((CARDS[i][0]..CARDS[i][1]).contains(at));
@@ -547,9 +633,12 @@ mod tests {
         // «Истинное Видение»: open, the pupil narrowed.
         assert!(openness(33.0) > 0.999 && pupil(33.5) < PUPIL_NARROW + 0.01);
         assert!(pupil(OPEN[0] + 0.5) > PUPIL_WIDE - 0.01);
-        // «Распознавание» brings the world, «Различение» its focus.
-        assert!(world(CARDS[5][0]) < 0.1 && world(38.0) > 0.99 && focus(38.0) == 0.0);
-        assert!(focus(44.0) > 0.99);
+        // «Распознавание» brings the world and breaks it into the grid;
+        // «Различение» runs the grid over the face; then the dive.
+        assert!(world(CARDS[5][0]) < 0.1 && world(36.8) > 0.99 && grid(36.8) == 0.0);
+        assert!(grid(40.0) > 0.99 && holo(40.6) == 0.0 && holo(44.5) > 0.99);
+        assert!(figure(CARDS[7][0]) == 0.0 && figure(STILL) > 0.99);
+        assert!(pupil(STILL) > PUPIL_DIVE - 0.01);
         // The dreams are gone while the eye is open.
         assert!(dream(33.0) == 0.0 && dream(52.0) == 0.0);
     }
@@ -565,8 +654,9 @@ mod tests {
                 c.project([0.0, EYE_Y - 0.15])[1] < 830.0,
                 "over the words {t}"
             );
-            // Once the eye opens, the whole iris is in the frame.
-            if o > 0.5 {
+            // Once the eye opens, the whole iris is in the frame, until the
+            // dive.
+            if o > 0.5 && t < CARDS[7][0] {
                 for p in [[0.0, EYE_Y + IRIS_R], [-IRIS_R, EYE_Y], [IRIS_R, EYE_Y]] {
                     assert!(inside(&c, p, 30.0), "iris {t}");
                 }
@@ -574,9 +664,13 @@ mod tests {
         }
         // «Распознавание»: the iris fills most of the frame's height.
         assert!(2.0 * IRIS_R * camera(40.0).scale() > 0.7 * SIZE[1]);
-        // «Ты Настоящий»: the whole eye and the brow above it.
+        // «Различение»: the whole eye and the face around it.
+        assert!(inside(&camera(45.0), [-1.5, EYE_Y], 100.0));
+        // «Ты Настоящий»: the pupil fills the frame; the person's feet stay
+        // over the words.
         let c = camera(STILL);
-        assert!(inside(&c, [-1.5, EYE_Y], 100.0) && inside(&c, [0.0, EYE_Y + 1.7], 40.0));
+        assert!(2.0 * PUPIL_DIVE * c.scale() > 0.7 * SIZE[1]);
+        assert!(c.project([0.0, EYE_Y - 0.7 * PUPIL_DIVE])[1] < 820.0);
     }
 
     #[test]
@@ -605,9 +699,9 @@ mod tests {
     }
 
     #[test]
-    fn the_still_is_the_seeing_eye() {
+    fn the_still_is_the_person_in_the_eye() {
         let f = compose(STILL);
-        assert!(f.eye[0] > 0.999 && f.state[2] > 0.999 && f.state[3] > 0.999);
+        assert!(f.eye[0] > 0.999 && f.holo[1] > 0.999 && f.state[0] == 0.0);
         assert!(f.shown > 0.99);
     }
 

@@ -134,7 +134,7 @@ export function TrueSight(props: ArtProps) {
     };
   }, [controller]);
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    <div role="img" aria-label="Закрытое веко крупно, сквозь кожу мерцают сны. Трижды веко вздрагивает, но не открывается. Потом глаз открывается, зрачок сужается на свету, в радужке отражается мир: небо, холмы и солнце. Камера отходит, и виден весь глаз под бровью."
+    <div role="img" aria-label="Закрытое веко крупно, сквозь кожу видны сны: дом ночью, дорога с уходящим человеком, два лица и голос между ними, бесконечная лестница. На каждое «не» веко вздрагивает и сон рвётся. Потом глаз открывается, в радужке отражается мир и распадается в светящуюся сетку; сетка уходит на всё лицо, живым остаётся только глаз. Камера ныряет в зрачок, где волокна радужки сплетают светящегося человека во весь рост."
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* Without WebGL2 the page keeps the product engine's vector study. */}

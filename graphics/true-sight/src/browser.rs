@@ -264,7 +264,7 @@ impl TrueSight {
             &scene_source(),
             &[
                 "u_res", "u_cam", "u_eye", "u_state", "u_light", "u_paper", "u_key", "u_fill",
-                "u_warm",
+                "u_warm", "u_dream", "u_holo",
             ],
         )?;
         let finish = Pass::new(
@@ -495,6 +495,8 @@ impl TrueSight {
         gl.uniform3f(s.at("u_cam"), c.center[0], c.center[1], c.half);
         gl.uniform4fv_with_f32_array(s.at("u_eye"), &f.eye);
         gl.uniform4fv_with_f32_array(s.at("u_state"), &f.state);
+        gl.uniform4fv_with_f32_array(s.at("u_dream"), &f.dreams);
+        gl.uniform4fv_with_f32_array(s.at("u_holo"), &f.holo);
         gl.uniform3f(s.at("u_light"), f.light, f.phase, self.look.body);
         gl.uniform3fv_with_f32_array(s.at("u_paper"), &paper);
         gl.uniform3fv_with_f32_array(s.at("u_key"), &key);

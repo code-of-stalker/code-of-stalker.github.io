@@ -36,26 +36,29 @@ Block 1 pages 04–06 and block 2 pages 01–02 share one look (dark room, seate
 profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
-## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`, local only, not pushed)
-Head: the handoff commit after d962831; main is merged in (9c1fe45). 7 reading pages (text in
-`stepFiveContent.ts`), access via step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's
-illustration packs in `graphics/sphere-*/`, briefs in `docs/step-five-illustrations-ru.md`.
+## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
+Shipped to `main` 2026-10-31 on Art's word («как сделаешь первую анимацию запуш»): hero, home
+card, forward scroll and page 01. 7 reading pages (text in `stepFiveContent.ts`), access via
+step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
+briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
+(`webScene` on the page); pages without one keep their placeholder.
 - Hero «Скан в глубине» (`graphics/sphere-hero`): drifting parallax camera, a wave of light from
-  the feet every 10 s, the bird sings. Approved by Art in all 7 themes (light themes as a muted
-  two-ink print). Wired on web (`SphereHero.web.tsx` via `StepFiveHero.web.tsx`); native and the
-  web fallback keep Art's still (`StepFiveStill.tsx`). Checked in the exported app, all 7 themes.
-- Home card from step 5 on plays the same scene (`webScene: 'sphere-hero'`, card mode: Rust
-  `cover(true)` crops to the card around the feet, glass and press like `SimplePractice`).
-  Checked: Матрица 800 wide, Дюна 375 wide (lossless canvas grab: 0 px lighter than the page).
-- Step 4's last page (block 2, 08/08) scrolls on into Step 5 page 01 (`nextStep` in
-  `practice.tsx`, `onNextStep` in `StepFourScreen`). Checked in the exported app.
-- Waits for Art: (1) the light panorama for 01: A = Rust prints his dark mountain lake as a
-  sepia engraving (trial `output/prototypes/step-five/panorama-svetlaya.jpg`, inverted luma
-  through the hero's two-ink `print`, 0 px lighter), B = he paints a light one; (2) a direction
-  per page 01–07 from the sheet `output/prototypes/step-five/varianty.jpg` (A recommended
-  everywhere); (3) his command to ship Step 5 to `main`.
-- Then: build the page scenes in Тишина first (one crate per page, `graphics/sphere-*` already
-  hold the assets; 04 and 05 are pure 3D), prototype each, other themes after his OK.
+  the feet every 10 s, the bird sings. All 7 themes (light: a muted two-ink print). Native and
+  the web fallback keep Art's still (`StepFiveStill.tsx`). The home card from step 5 on plays it
+  in card mode (Rust `cover(true)`).
+- Step 4's last page (block 2, 08/08) scrolls on into Step 5 page 01.
+- 01 «Мир вокруг» (`graphics/sphere-world`): we stand inside the sphere, the view turns once
+  through Art's dark panorama in 90 s; beats at 2/20/38/56/74 s (gust, ripple, bird, ring with
+  meridians, stars and a falling star). Light themes print the panorama as a sepia engraving
+  (Art chose A). Prototype: 0 px lighter over the whole loop in Дюна/Мираж/Рассвет.
+- Art chose direction A for every page (2026-10-31): 02 the figure on a floor grid, everything
+  freezes, a wave down from the feet lights the support points; 03 the room as a point cloud
+  with a scanner plane, one layer per list line; 04 a point → orbit ring → meridians → sphere,
+  camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
+  pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
+  07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
+- Next: 02 «Якорь» (`graphics/sphere-anchor`), then 03–07, one crate each, Тишина first,
+  prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

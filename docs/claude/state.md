@@ -48,7 +48,8 @@ Next: page 08 «Истинное распознавание» (`/new-scene`).
   `data-soft-scroll="off"`). Touch, keys and native stay native.
 - Security: CSP and an address guard in the web shell; Pages build job is read-only;
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
-- Step 3 end scrolls straight into Step 4.
+- Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
+  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

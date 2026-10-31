@@ -20,6 +20,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   background («почему все еще белый фон есть?»). Light is never white: «белый цвет там вообще
   не в тему»; ink it in the lamp color, like the amber/umber effects of his light paintings.
 - Дюна: no eye-searing saturated orange; soft sepia print.
+- Light themes printed from a light painting read «ярковаты слишком» in full colour; a muted
+  two-ink print per theme (deep + mid ink, paper = page) was approved. (Step 5 hero.)
+- No painted effect that duplicates an animation: the bird's static sound arcs had to go once
+  the bird sang in motion («висит постоянно»). (Step 5 hero.)
 - Tablet/PC: illustrations as wide as the plate below, never a centered shrunk hero.
 - Words placed literally where he says: the tuning-questions conclusion sits at lip height.
 - Hairlines must survive 125% display scaling (draw outlines outside the clip path).

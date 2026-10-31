@@ -34,6 +34,19 @@ Block 1 pages 04–06 and block 2 pages 01–02 share one look (dark room, seate
 profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: pages 07–08 (`/new-scene`).
 
+## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`, local only, not pushed)
+Head 9d08504. 7 reading pages (text in `stepFiveContent.ts`), access via step 4 page 14 or
+settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`, briefs in
+`docs/step-five-illustrations-ru.md`.
+- Hero «Скан в глубине» (`graphics/sphere-hero`): drifting parallax camera, a wave of light from
+  the feet every 10 s, the bird sings. Approved by Art in all 7 themes (light themes as a muted
+  two-ink print). Wired on web (`SphereHero.web.tsx` via `StepFiveHero.web.tsx`); native and the
+  web fallback keep Art's still (`StepFiveStill.tsx`). Checked in the exported app, all 7 themes.
+- Waits for Art: his command to ship Step 5 to `main` (the branch predates main's paged
+  Steps 1–3 merge; merge main in first and keep both sides of `state.md`).
+- Open: forward scroll step 4 → 5 (needs `StepFourScreen`), Step 5 home card art (reuses
+  step 4's), a light mountain-lake panorama for page 01, scenes for pages 02–07 (placeholders).
+
 ## Shipped features (all on main)
 - Themes: 7 (Тишина default). Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
   navy 263B6B; Рассвет peach F3D8C7 / wine 9C3857 / copper B77A43 / plum 603346; Матрица 00FF41

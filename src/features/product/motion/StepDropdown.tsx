@@ -15,9 +15,9 @@ import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
 import { readingMenuPath, type ReadingMenuCutout } from './reading-menu-geometry';
 import { useProduct } from '../state/ProductProvider';
-import { canOpenFourthStep } from '../state/model';
+import { canOpenFifthStep, canOpenFourthStep } from '../state/model';
 import { Animated, Easing } from './RustAnimated';
-import { stepSections, type StepDestination } from '../stepSections';
+import { stepSections, type ReadingStep, type StepDestination } from '../stepSections';
 import { beginReadingNavigation, requestReadingDestination } from '../navigation/readingDestination';
 
 const lock = { uri: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M3 6V4Q3 1 6 1T9 4V6M1.5 6.5H10.5V13H1.5ZM6 9V10.5" stroke="#B69D4B" stroke-width=".75" stroke-linecap="round" stroke-linejoin="round"/></svg>')}` };
@@ -34,7 +34,7 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
     const animation = Animated.timing(motion, { toValue: expanded ? 1 : 0, duration: reducedMotion ? 0 : 480, easing: Easing.inOut(Easing.cubic), useNativeDriver: false });
     animation.start(); return () => animation.stop();
   }, [expanded, reducedMotion, motion]);
-  const groups = value <= 4 && !disabled ? stepSections(value as 1 | 2 | 3 | 4) : [];
+  const groups = value <= 5 && !disabled ? stepSections(value as ReadingStep) : [];
   return <View>
     <View style={[styles.option, value === current && { backgroundColor: colors.subtle }]}>
       <Pressable accessibilityRole="button" accessibilityState={{ selected: value === current, disabled: disabled || busy }} disabled={disabled || busy}
@@ -83,7 +83,9 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
       await updateProgress({ step: destination.step, practiceStage: destination.stage, questionIndex: 0,
         ...(destination.step === 3 ? { stepThreeReading: { chapter: destination.chapter, page: destination.page, offset: 0, paged: destination.section } } : {}),
         ...(destination.step === 4 ? { stepFourReading: { page: destination.page, offset: 0 },
-          ...(!testUnlockAll && canOpenFourthStep(progress) ? { fourthStepUnlocked: true } : {}) } : {}) });
+          ...(!testUnlockAll && canOpenFourthStep(progress) ? { fourthStepUnlocked: true } : {}) } : {}),
+        ...(destination.step === 5 ? { stepFiveReading: { page: destination.page, offset: 0 },
+          ...(!testUnlockAll && canOpenFifthStep(progress) ? { fifthStepUnlocked: true } : {}) } : {}) });
       requestReadingDestination(destination); onSelect(destination.step);
     } catch { setNavigating(false); }
   }
@@ -115,10 +117,10 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
   const options = <ScrollView accessibilityLabel="Доступные и закрытые шаги" onContentSizeChange={(_, height) => setContentHeight(previous => previous === height ? previous : height)} style={embedded ? styles.embeddedList : [styles.list, { top: topInset, bottom: bottomInset }]}
     contentContainerStyle={[styles.options, embedded && { paddingTop: 18, paddingBottom: inset }]} showsVerticalScrollIndicator={false}>
     {steps.map(value => {
-      const disabled = value > 4 || value === 4 && !canOpenFourthStep(progress, testUnlockAll) || value === 3 && !progress.secondStepCompletedAt && !testUnlockAll || value === 2 && availableAt === null && !testUnlockAll;
+      const disabled = value > 5 || value === 5 && !canOpenFifthStep(progress, testUnlockAll) || value === 4 && !canOpenFourthStep(progress, testUnlockAll) || value === 3 && !progress.secondStepCompletedAt && !testUnlockAll || value === 2 && availableAt === null && !testUnlockAll;
       return <StepChoice key={value} value={value} current={step} disabled={disabled} expanded={expandedStep === value} inset={inset} reducedMotion={reducedMotion} busy={navigating}
         onToggle={() => setExpandedStep(previous => previous === value ? null : value)} onSection={destination => { void navigate(destination); }}
-        onEnter={() => { if (value <= 4) void navigate({ step: value as 1 | 2 | 3 | 4, stage: 0, chapter: 0, page: 0, section: false }); }} />;
+        onEnter={() => { if (value <= 5) void navigate({ step: value as ReadingStep, stage: 0, chapter: 0, page: 0, section: false }); }} />;
     })}
   </ScrollView>;
   const content = <View style={embedded ? styles.embedded : styles.overlay}>

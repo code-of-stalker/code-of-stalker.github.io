@@ -1,14 +1,18 @@
 import { stepThreeBlocks } from './stepThreeContent';
 import { stepThreePractice } from './stepThreePractice';
 import { stepFourGroups, stepFourTitle } from './stepFourContent';
+import { stepFiveGroups, stepFiveTitle } from './stepFiveContent';
 import type { PracticeStage } from './state/model';
 
-export type StepDestination = { step: 1 | 2 | 3 | 4; stage: PracticeStage; chapter: 0 | 1; page: number; section: boolean };
+export type ReadingStep = 1 | 2 | 3 | 4 | 5;
+export type StepDestination = { step: ReadingStep; stage: PracticeStage; chapter: 0 | 1; page: number; section: boolean };
 export type StepSection = { title: string; destination: StepDestination };
 export type StepSectionGroup = { title: string; items: StepSection[] };
-const item = (step: 1 | 2 | 3 | 4, title: string, stage: PracticeStage, chapter: 0 | 1, page = 0): StepSection =>
+const item = (step: ReadingStep, title: string, stage: PracticeStage, chapter: 0 | 1, page = 0): StepSection =>
   ({ title, destination: { step, stage, chapter, page, section: true } });
-export function stepSections(step: 1 | 2 | 3 | 4): StepSectionGroup[] {
+export function stepSections(step: ReadingStep): StepSectionGroup[] {
+  if (step === 5) return stepFiveGroups.map(group => ({ title: group.title,
+    items: group.pages.map(page => item(5, stepFiveTitle(page), 0, 0, page)) }));
   if (step === 4) return stepFourGroups.map(group => ({ title: group.title,
     items: group.pages.map(page => item(4, stepFourTitle(page), 0, 0, page)) }));
   if (step === 1) return [

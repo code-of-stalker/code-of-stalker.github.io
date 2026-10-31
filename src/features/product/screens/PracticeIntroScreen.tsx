@@ -32,6 +32,7 @@ import type { PracticeStage } from '../state/model';
 import { PracticeCooldown } from './PracticeCooldown';
 import { StepThreeScreen } from './StepThreeScreen';
 import { StepFourScreen } from './StepFourScreen';
+import { StepFiveScreen } from './StepFiveScreen';
 import { fonts } from '../theme';
 import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
 import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
@@ -98,7 +99,7 @@ export function PracticeIntroScreen(props: PracticeIntroScreenProps) {
   const destination = useReadingDestination();
   useEffect(() => () => clearReadingDestination(), []);
   const key = `${props.step}-${destination?.step === props.step ? destination.revision : 0}`;
-  return props.step === 4 ? <StepFourScreen key={key} {...props} /> : props.step === 3 ? <StepThreeScreen key={key} {...props} /> : <PracticeSession key={key} {...props} />;
+  return props.step === 5 ? <StepFiveScreen key={key} {...props} /> : props.step === 4 ? <StepFourScreen key={key} {...props} /> : props.step === 3 ? <StepThreeScreen key={key} {...props} /> : <PracticeSession key={key} {...props} />;
 }
 
 function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMotion = false, onBack, onClose, onLevels, onQuestions, onSelectStep, onPreviousStep, onDiary, renderQuestions, showQuestions = false, initialStage = 0, startAtEnd = false, onStageChange, onCompleteSecondStep }: PracticeIntroScreenProps) {

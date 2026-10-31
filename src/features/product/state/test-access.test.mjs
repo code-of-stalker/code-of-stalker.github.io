@@ -117,3 +117,16 @@ test('normal fourth-step access follows the final third-step practice and remain
   progress.fourthStepUnlocked=true; progress.stepThreeReading.page=0;
   assert.equal(model.canOpenFourthStep(progress),true);
 });
+test('fifth-step access follows step four\'s last page, stays earned and falls back to step four', () => {
+  const progress={...model.defaultProgress,step:5,fourthStepUnlocked:true,secondStepCompletedAt:1000,stepFourReading:{page:13,offset:0}};
+  assert.equal(model.canOpenFifthStep(progress),false);
+  assert.equal(model.accessibleProgress(progress).step,4);
+  progress.stepFourReading.page=14;
+  assert.equal(model.canOpenFifthStep(progress),true);
+  assert.equal(model.accessibleProgress(progress).step,5);
+  progress.fifthStepUnlocked=true; progress.stepFourReading.page=0;
+  assert.equal(model.canOpenFifthStep(progress),true);
+  const snapshot=model.emptyProduct(); snapshot.progress={...snapshot.progress,stepFiveReading:{page:6,offset:0},fifthStepUnlocked:true};
+  assert.equal(model.validateSnapshot(snapshot),snapshot);
+  snapshot.progress.stepFiveReading.page=7; assert.throws(()=>model.validateSnapshot(snapshot),/настройки/);
+});

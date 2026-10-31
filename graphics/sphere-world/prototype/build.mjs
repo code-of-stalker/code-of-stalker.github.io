@@ -20,6 +20,7 @@ const fill = {
   __TEKTUR__: b64(path.join(root, 'assets/product/fonts/Tektur-Medium.ttf')),
   __WASM__: b64(path.join(pub, 'pkg/watcher_sphere_world_bg.wasm')),
   __PANORAMA__: b64(path.join(pub, 'assets/panorama.webp')),
+  __DEPTH__: b64(path.join(pub, 'assets/depth.webp')),
   __GLUE__: glue,
 };
 let page = readFileSync(path.join(here, 'template.html'), 'utf8');

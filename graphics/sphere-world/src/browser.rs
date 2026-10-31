@@ -1,7 +1,8 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
-//! from `compose`; the shader turns the camera inside the panorama and paints
-//! the beat, and the theme's recolor (scene-palette) maps the finished frame.
-use crate::{compose, look, Look, GEOMETRY, LOOP_SECONDS, SIZE, STILL, VIEW_DEGREES};
+//! from `compose`; the shader turns the camera inside the panorama, shifts the
+//! eye through the depth map and paints the beat, and the theme's recolor
+//! (scene-palette) maps the finished frame.
+use crate::{compose, look, Look, DEPTH_SIZE, GEOMETRY, LOOP_SECONDS, SIZE, STILL, VIEW_DEGREES};
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
 use web_sys::{
@@ -87,6 +88,32 @@ fn panorama(gl: &Gl, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> 
     Ok(t)
 }
 
+/// The depth map, eye heights over distance in red, on unit 1: read a few
+/// times a pixel at one level, so no mipmaps.
+fn depth(gl: &Gl, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> {
+    if image.natural_width() != DEPTH_SIZE[0] || image.natural_height() != DEPTH_SIZE[1] {
+        return Err("The depth map must be 1536 × 768".into());
+    }
+    let t = gl.create_texture().ok_or("Cannot allocate texture")?;
+    gl.active_texture(Gl::TEXTURE1);
+    gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::REPEAT as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
+    gl.pixel_storei(Gl::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+    gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
+        Gl::TEXTURE_2D,
+        0,
+        Gl::RGBA as i32,
+        Gl::RGBA,
+        Gl::UNSIGNED_BYTE,
+        image,
+    )?;
+    gl.active_texture(Gl::TEXTURE0);
+    Ok(t)
+}
+
 #[wasm_bindgen]
 pub struct SphereWorld {
     gl: Gl,
@@ -94,6 +121,7 @@ pub struct SphereWorld {
     program: WebGlProgram,
     uniforms: Vec<(&'static str, Option<WebGlUniformLocation>)>,
     texture: WebGlTexture,
+    depth: WebGlTexture,
     screen: WebGlVertexArrayObject,
     themed: Themed,
     look: Look,
@@ -109,9 +137,14 @@ pub struct SphereWorld {
 
 #[wasm_bindgen]
 impl SphereWorld {
-    /// Art's dark panorama; light themes engrave it on the page.
+    /// Art's dark panorama, light themes engrave it on the page, and its
+    /// depth map.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement, world: HtmlImageElement) -> Result<SphereWorld, JsValue> {
+    pub fn new(
+        canvas: HtmlCanvasElement,
+        world: HtmlImageElement,
+        distance: HtmlImageElement,
+    ) -> Result<SphereWorld, JsValue> {
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
         js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
@@ -128,6 +161,7 @@ impl SphereWorld {
             "u_edges",
             "u_camera",
             "u_beat",
+            "u_head",
             "u_bird",
             "u_glow",
             "u_deep",
@@ -139,8 +173,10 @@ impl SphereWorld {
             .map(|name| (*name, gl.get_uniform_location(&program, name)))
             .collect();
         let texture = panorama(&gl, &world)?;
+        let depth = depth(&gl, &distance)?;
         gl.use_program(Some(&program));
         gl.uniform1i(gl.get_uniform_location(&program, "u_world").as_ref(), 0);
+        gl.uniform1i(gl.get_uniform_location(&program, "u_depth").as_ref(), 1);
         let themed = Themed::new(&gl, false)?;
         let screen = gl
             .create_vertex_array()
@@ -151,6 +187,7 @@ impl SphereWorld {
             program,
             uniforms,
             texture,
+            depth,
             screen,
             themed,
             look: look(2),
@@ -252,6 +289,7 @@ impl SphereWorld {
         }
         let gl = &self.gl;
         gl.delete_texture(Some(&self.texture));
+        gl.delete_texture(Some(&self.depth));
         gl.delete_vertex_array(Some(&self.screen));
         gl.delete_program(Some(&self.program));
         self.themed.dispose(gl);
@@ -280,6 +318,8 @@ impl SphereWorld {
         gl.disable(Gl::BLEND);
         gl.use_program(Some(&self.program));
         gl.bind_vertex_array(Some(&self.screen));
+        gl.active_texture(Gl::TEXTURE1);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.depth));
         gl.active_texture(Gl::TEXTURE0);
         gl.bind_texture(Gl::TEXTURE_2D, Some(&self.texture));
         gl.uniform2f(self.at("u_res"), width as f32, height as f32);
@@ -292,9 +332,10 @@ impl SphereWorld {
         );
         gl.uniform3fv_with_f32_array(self.at("u_backdrop"), &self.backdrop);
         gl.uniform4fv_with_f32_array(self.at("u_edges"), &EDGES);
-        let view = (VIEW_DEGREES.to_radians() * 0.5).tan();
+        let view = (VIEW_DEGREES.to_radians() * 0.5).tan() * f.zoom;
         gl.uniform4f(self.at("u_camera"), f.camera, f.pitch, view, f.phase);
         gl.uniform4f(self.at("u_beat"), f.beat as f32, f.since, f.centre, 0.0);
+        gl.uniform4f(self.at("u_head"), f.head[0], f.head[1], f.head[2], 0.0);
         gl.uniform4fv_with_f32_array(self.at("u_bird"), &f.bird);
         gl.uniform3fv_with_f32_array(self.at("u_glow"), &self.look.glow);
         gl.uniform3fv_with_f32_array(self.at("u_deep"), &self.look.deep);

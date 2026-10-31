@@ -5,12 +5,14 @@ precision highp float;
 // latitude in radians; the panorama's u runs with longitude and its v down
 // from the zenith. The beats' timing and geometry mirror lib.rs.
 uniform sampler2D u_world;
+uniform sampler2D u_depth; // eye heights over distance: 1 straight down, 0 the sky
 uniform vec2 u_res;      // target px
 uniform vec4 u_out;      // straight to the canvas, soft edges, engrave on the page, -
 uniform vec3 u_backdrop; // the page around the scene
 uniform vec4 u_edges;    // left, right, top, bottom
 uniform vec4 u_camera;   // view centre u, pitch, tan of half the view across, loop phase
 uniform vec4 u_beat;     // beat (0 gust, 1 ripple, 2 bird, 3 ring, 4 stars), seconds into it, its centre u, -
+uniform vec4 u_head;     // the eye's offset, eye heights: right, up, forward; -
 uniform vec4 u_bird;     // u, latitude, wing lift, presence
 uniform vec3 u_glow;     // the light the beats add
 uniform vec3 u_deep;     // the engraving's deepest ink
@@ -128,6 +130,14 @@ void main() {
   vec3 d = normalize(vec3(ndc.x * u_camera.z, ndc.y * u_camera.z / aspect, 1.0));
   float cp = cos(u_camera.y), sp = sin(u_camera.y);
   d = vec3(d.x, d.y * cp + d.z * sp, d.z * cp - d.y * sp);
+  // The eye sways off the centre: what it sees along d lies, seen from the
+  // centre, along d plus the offset over its distance. A few steps find it;
+  // the sky is infinitely far and stays.
+  vec3 view = d;
+  for (int i = 0; i < 3; i++) {
+    vec2 q = vec2(u_camera.x + atan(d.x, d.z) / TAU, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
+    d = normalize(view + u_head.xyz * textureLod(u_depth, q, 0.0).r);
+  }
   float lon = atan(d.x, d.z);
   float lat = asin(clamp(d.y, -1.0, 1.0));
   // u runs on past 1 across the seam; the texture repeats, so no edge shows.

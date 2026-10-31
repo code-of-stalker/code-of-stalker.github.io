@@ -46,3 +46,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Figures of light: a clean, well-proportioned silhouette, no patterns or fibre weaves («непонятные узоры», «топорная»).
 - Torn/ragged transitions look crude («разрывы выглядят топорно»); soft melts (ripple, blur, fade) passed.
 - On light themes a light figure must not turn into a solid ink shadow: inked edge, lamp-tinted body.
+
+## Step 5 «Внешнее кольцо»
+- Painted panoramas want depth and a living head: parallax from a depth map, a small sway, leaning toward where something happens. A static raster element (the bird painted in the sky) «выглядит тупо»: keep the camera away from it. (Page 01.)
+- «Якорь» first take lacked detail, depth and breathing; a crooked outline read badly. Wanted: a background (Matrix-like rain is fine), breathing, an even outline. (Page 02.)

@@ -116,8 +116,9 @@ const BEATS = [
   [74, 87, 'Истинная Глубина', 'Звёзды разгораются вглубь неба, падает звезда.'],
 ];
 const WASM = '__WASM__';
-// Art's dark panorama; the light themes engrave it in Rust.
+// Art's dark panorama; the light themes engrave it in Rust. Its depth map moves the eye.
 const PANORAMA = 'data:image/webp;base64,__PANORAMA__';
+const DEPTH = 'data:image/webp;base64,__DEPTH__';
 // The app's themes: settings id, name, graphicsPalette code, page / surface / accent / text / muted / faint / border.
 const THEMES = [
   ['neutral', 'Тишина', 2, '#0D1520', '#15212E', '#86C9C7', '#E4E7DD', '#A1B0B5', '#8199A6', '#3B5361'],
@@ -225,6 +226,9 @@ async function start() {
   const world = new Image();
   world.src = PANORAMA;
   await world.decode();
+  const depth = new Image();
+  depth.src = DEPTH;
+  await depth.decode();
 
   let dragging = false;
   // Reduced motion holds one moment: the drop's rings cross the lake.
@@ -237,7 +241,7 @@ async function start() {
     const w = Math.max(2, Math.min(3072, Math.round(r.width * k)));
     scene.resize(w, Math.round(w * 2 / 3));
   };
-  scene = new SphereWorld(canvas, world);
+  scene = new SphereWorld(canvas, world, depth);
   scene.soft_edges(true);
   scene.reduced(reduced);
   fit();

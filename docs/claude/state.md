@@ -38,7 +38,7 @@ Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
 Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
-первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка» on 2026-11-01 (Art: «Пушим»). 7 reading pages (text in `stepFiveContent.ts`), access via
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка» and page 05 «Используй свой голос» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -82,7 +82,24 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
   `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
   over the loop (108 frames each).
-- Next: 05–07, one crate each, Тишина first, prototype per page; ship each when Art says.
+- 05 «Используй свой голос» (`graphics/sphere-voice`, shipped to `main` 2026-11-01): no
+  images, one ray-traced pass. A string of light on a Chladni sand plate; each phrase (1–28 s)
+  rings it, reshapes the sand, sends a bead up the axis, and builds one belt of a dome from the
+  crown down (Art's note on round 1): «Я Здесь» grows the crown from a point, «Я Есть» sets the
+  last belt on the plate; belts fade in softly. The camera climbs to look down on it (mandala),
+  five pulses crown-down for the verbs (33.5–40.3 s), an inner and an outer dome open (42.5 s)
+  and the floor's dials and glyph rings spin up each its own way («полное включение», Art),
+  resting whole turns on by 55.5 s; the dome fades crown first (50 s); 56 s loop. Matrix hall behind: 4 walls of code rain,
+  5 floating panels (scrolling code, the voice's wave), floor projection (dials, glyph rings,
+  code streams). No floor mirror: a dome over its reflection reads as 04's sphere, and the
+  mirror is 06's image. Wired to page `sphere-voice`. Prototype
+  `output/prototypes/sphere-voice/index.html`. Art approved Тишина («Ок, делай темы»); all 7
+  themes checked in the prototype (sheet `temy.jpg`), no per-theme changes needed: Дюна, Мираж,
+  Рассвет 0 px lighter than the page over 108 frames each.
+  The exported app mounts it at phone (295 px wide) and wide (544 px, the plate's width) sizes,
+  no console or GPU error.
+- Next: 06 «stilling» (direction A: the ripple weakens with each «Не…», the last leaves a
+  mirror), then 07; one crate each, Тишина first; ship each when Art says.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

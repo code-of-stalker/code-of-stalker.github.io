@@ -147,6 +147,26 @@ pub fn contour_mask_density(view_width: f32, display_width: f32, local_scale: f3
         * local_scale.max(1.)
         * 1.1
 }
+/// Maps an SVG viewBox onto the output like the browser: centred and uniform
+/// ("meet") unless the root declares `preserveAspectRatio="none"`, which
+/// stretches each axis to fill (the home card shade spans any card width).
+pub fn viewport(view: [f32; 4], width: f32, height: f32, stretch: bool) -> Matrix {
+    let (sx, sy) = if stretch {
+        (width / view[2], height / view[3])
+    } else {
+        let s = (width / view[2]).min(height / view[3]);
+        (s, s)
+    };
+    let offset = [(width - view[2] * sx) / 2., (height - view[3] * sy) / 2.];
+    Matrix([
+        sx,
+        0.,
+        0.,
+        sy,
+        offset[0] - view[0] * sx,
+        offset[1] - view[1] * sy,
+    ])
+}
 pub fn mesh(
     source: &str,
     stroke: Option<f32>,
@@ -440,6 +460,18 @@ mod tests {
             }
         }
         assert!(cached > 9. && cached < 10.);
+    }
+    #[test]
+    fn stretched_viewbox_fills_both_axes_and_meet_stays_centred() {
+        let view = [0., 0., 320., 160.];
+        let fill = viewport(view, 725., 71., true);
+        let [a, b] = [fill.point([0., 0.]), fill.point([320., 160.])];
+        assert!(a[0].abs() < 0.001 && a[1].abs() < 0.001);
+        assert!((b[0] - 725.).abs() < 0.001 && (b[1] - 71.).abs() < 0.001);
+        let meet = viewport(view, 725., 71., false);
+        let [a, b] = [meet.point([0., 0.]), meet.point([320., 160.])];
+        assert!((b[1] - a[1] - 71.).abs() < 0.001 && (b[0] - a[0] - 142.).abs() < 0.001);
+        assert!((a[0] + b[0] - 725.).abs() < 0.001);
     }
     #[test]
     fn maximum_scale_accounts_for_shear_and_rotation() {

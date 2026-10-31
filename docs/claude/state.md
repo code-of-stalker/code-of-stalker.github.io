@@ -74,12 +74,14 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
   07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
 - 04 «Ты не точка» (`graphics/sphere-orbit`, on the branch, not shipped): no images, all 3D.
-  A point opens into a ticked ring with a runner, the ring rises into meridians and parallels
-  (glints at the crossings), one wave crosses the sphere from each named side (30–46 s), all
-  sides on «вокруг» (50 s); the camera orbits once per 60 s loop; near motes soft, far ones
-  sharp like stars. Wired to page `sphere-expand`; the exported app mounts it at phone and
-  wide sizes. Тишина prototype `output/prototypes/sphere-orbit/index.html`, sheet `frames.jpg`.
-  Waits for Art's OK on Тишина; then the other 6 themes (light: 0 px lighter than the page).
+  A point opens into a ticked ring with a runner at 3 s (Art: 9 s of the point alone was too
+  long), the ring rises into meridians and parallels (glints at the crossings), one wave
+  crosses the sphere from each named side (24–40 s), all sides on «вокруг» (44 s); the camera
+  orbits once per 54 s loop; near motes soft, far ones sharp like stars. Wired to page
+  `sphere-expand`; the exported app mounts it at phone and wide sizes. Art OK'd Тишина; all 7
+  themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
+  `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
+  over the loop (108 frames each). Waits for Art's «пушим».
 - Next: 05–07, one crate each, Тишина first, prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)

@@ -11,21 +11,29 @@ const item = (step: 1 | 2 | 3 | 4, title: string, stage: PracticeStage, chapter:
 export function stepSections(step: 1 | 2 | 3 | 4): StepSectionGroup[] {
   if (step === 4) return stepFourGroups.map(group => ({ title: group.title,
     items: group.pages.map(page => item(4, stepFourTitle(page), 0, 0, page)) }));
+  // Like step 4, each step is grouped by what its pages are about, not by material
+  // and practice.
   if (step === 1) return [
-    { title: 'Материал', items: [item(1, 'Ловушка подобия', 0, 0), item(1, 'Но они не ты', 0, 0, 1)] },
-    { title: 'Практика', items: [item(1, 'Наблюдение', 1, 0), item(1, 'Внимание', 2, 0), item(1, 'Среди множества', 3, 0), item(1, 'Вопросы к себе', 4, 0)] },
+    { title: 'Ловушка подобия', items: [item(1, 'Ловушка подобия', 0, 0), item(1, 'Но они не ты', 0, 0, 1)] },
+    { title: 'Механизм сравнения', items: [item(1, 'Наблюдение', 1, 0), item(1, 'Внимание', 2, 0)] },
+    { title: 'Я есть', items: [item(1, 'Среди множества', 3, 0), item(1, 'Вопросы к себе', 4, 0)] },
   ];
   if (step === 2) return [
-    { title: 'Материал', items: [
-      item(2, 'Отражения', 0, 0), item(2, 'Главный Герой', 0, 0, 1), item(2, 'Книга Жизни', 0, 0, 2),
+    { title: 'Отражения', items: [item(2, 'Отражения', 0, 0), item(2, 'Главный Герой', 0, 0, 1), item(2, 'Книга Жизни', 0, 0, 2)] },
+    { title: 'Сон как метафора', items: [
       item(2, 'Сон как метафора', 0, 1), item(2, 'Пробуждение', 0, 1, 1), item(2, 'Пьеса одного Героя', 0, 1, 2), item(2, 'Единственный, Кто Смотрит', 0, 1, 3),
     ] },
-    { title: 'Практика', items: [item(2, 'Заметь сегодня', 1, 0), item(2, 'Жизнь как книга', 2, 0), item(2, 'Вопросы к себе', 3, 0), item(2, 'Присмотрись к телу', 4, 0)] },
+    { title: 'Жизнь как книга', items: [item(2, 'Заметь сегодня', 1, 0), item(2, 'Жизнь как книга', 2, 0)] },
+    { title: 'Ты — Один', items: [item(2, 'Вопросы к себе', 3, 0), item(2, 'Присмотрись к телу', 4, 0)] },
   ];
+  const reading = stepThreeBlocks.map((block, page) => item(3, block.title ?? 'Мысли и Наблюдение', 0, 0, page));
+  const practice = stepThreePractice.map((block, page) => item(3, [
+    'Останься в тишине', 'Я слышу свой голос', 'Отец и сын', 'Слышание и чувствование', 'Дыхание Осознавания', 'Говори с собой', 'Нить Ариадны',
+  ][page] ?? block.title ?? 'Практика', 0, 1, page));
   return [
-    { title: 'Материал', items: stepThreeBlocks.map((block, page) => item(3, block.title ?? 'Мысли и Наблюдение', 0, 0, page)) },
-    { title: 'Практика', items: stepThreePractice.map((block, page) => item(3, [
-      'Останься в тишине', 'Я слышу свой голос', 'Отец и сын', 'Слышание и чувствование', 'Дыхание Осознавания', 'Говори с собой', 'Нить Ариадны',
-    ][page] ?? block.title ?? 'Практика', 0, 1, page)) },
+    { title: 'Мост к Присутствию', items: reading.slice(0, 3) },
+    { title: 'Голос освобождает', items: reading.slice(3) },
+    { title: 'Отец и Сын', items: practice.slice(0, 3) },
+    { title: 'Нить Ариадны', items: practice.slice(3) },
   ];
 }

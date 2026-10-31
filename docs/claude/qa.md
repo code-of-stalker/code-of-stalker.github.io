@@ -4,6 +4,9 @@
 `/settings` → «Оставить настройки по умолчанию» → toggle «Всё открыто» → «ОТКРЫТЬ ЧЕТВЁРТЫЙ ШАГ».
 The practice page reopens at the last page visited, so start from `/settings` in a fresh profile.
 Text is upper-cased by CSS: search `innerText` case-insensitively.
+Step 5: `/settings` → «ОТКРЫТЬ ПЯТЫЙ ШАГ» opens it at the last page. In the desktop app's hidden
+browser pane, page on by dispatching `WheelEvent`s (deltaY 120, 140 ms apart) on the element at
+the viewport center; a reload there can take ~10 s before the page renders.
 
 ## Build and serve
 - Check the production build, not the dev server: `npm run export:web`, then serve

@@ -49,6 +49,8 @@ Next: page 08 «Истинное распознавание» (`/new-scene`).
 - Security: CSP and an address guard in the web shell; Pages build job is read-only;
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
 - Step 3 end scrolls straight into Step 4.
+- Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
+  2026-10-31 at the end of block 2 page 08.
 
 ## Open decisions and ideas (nothing promised)
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.

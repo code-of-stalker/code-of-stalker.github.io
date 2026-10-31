@@ -21,6 +21,7 @@ import { Reveal } from '../motion/Reveal';
 import { EconomyReadingPages, type ReadingPagePosition } from '../motion/EconomyReadingPages';
 import { PracticeEntryTransition } from '../motion/PracticeEntryTransition';
 import { TaskStepSelector } from '../motion/TaskStepSelector';
+import { StepSignature } from '../motion/StepSignature';
 
 type ReadingEntry = { block: 0 | 1; page: number; offset: number; end: boolean };
 const ignoreHeight = () => {};
@@ -126,7 +127,8 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onClose, availabl
               <EconomyReadingPages key={reading.block} step={4} chapter={reading.block} active={focused && !open && !questions} enabled={focused && !open && !questions}
                 initialIndex={reading.page} initialOffset={reading.offset} canAdvance={reading.block === 0 && !!renderQuestions} startAtEnd={reading.end}
                 reading={layout} width={width} reducedMotion={reducedMotion}
-                onReady={setReady} onProgress={setProgress} onAdvance={() => enter('questions')} onRetreat={retreat} onPageChange={reportPage} />
+                onReady={setReady} onProgress={setProgress} onAdvance={() => enter('questions')} onRetreat={retreat} onPageChange={reportPage}
+                endContent={reading.block === 1 ? <StepSignature active={focused && !open && !questions} reducedMotion={reducedMotion} /> : undefined} />
             </StepPanel>
           </Reveal>}
         </ReadingExpansion>}>

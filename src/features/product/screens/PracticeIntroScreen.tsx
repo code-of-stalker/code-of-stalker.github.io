@@ -270,7 +270,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
               reducedMotion={reducedMotion} active={!changing} onBack={onBack} onClose={onClose}
               onRetreat={retreat} onReady={setReady} onProgress={setProgress}
               onSelect={() => setSelectorOpen(value => !value)} onDiary={onDiary} /> : <ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
-                reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate} continued={!!destination?.section || readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
+                reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate}
+                // Like steps 3–4, scrolling back on the closed cover of Step 2 enters the end of Step 1.
+                {...currentStep === 2 ? { onRetreat: retreat, onRetreatProgress: setProgress, onRetreatReady: setReady } : {}}
+                continued={!!destination?.section || readingChapter === 1 || returnToDream || pagedEconomy && currentStep === 1 && economyPage.index > 0} paged={pagedEconomy}
                 onViewportChange={value => { scrollWindow.current = value; checkReadingArtVisibility(); }}
                 hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
                   <Art kind={currentStep === 1 ? 'mirror' : 'gallery'} width={hero.width} height={hero.height} active={active && !changing && focused} reducedMotion={reducedMotion} />

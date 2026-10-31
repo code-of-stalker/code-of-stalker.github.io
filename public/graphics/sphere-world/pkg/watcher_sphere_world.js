@@ -50,14 +50,16 @@ export class SphereWorld {
         return ret >>> 0;
     }
     /**
-     * Art's dark panorama; light themes engrave it on the page.
+     * Art's dark panorama, light themes engrave it on the page, and its
+     * depth map.
      * @param {HTMLCanvasElement} canvas
      * @param {HTMLImageElement} world
+     * @param {HTMLImageElement} distance
      */
-    constructor(canvas, world) {
+    constructor(canvas, world, distance) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.sphereworld_new(retptr, addHeapObject(canvas), addHeapObject(world));
+            wasm.sphereworld_new(retptr, addHeapObject(canvas), addHeapObject(world), addHeapObject(distance));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

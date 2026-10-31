@@ -15,6 +15,9 @@ pub use browser::SphereWorld;
 
 /// The panorama, equirectangular: longitude across, latitude down.
 pub const SIZE: [u32; 2] = [3072, 1536];
+/// Its depth map at half the size: eye heights over distance, 1 straight
+/// down, 0 the sky.
+pub const DEPTH_SIZE: [u32; 2] = [SIZE[0] / 2, SIZE[1] / 2];
 /// One full turn of the camera and five beats.
 pub const LOOP_SECONDS: f32 = 90.0;
 pub const BEATS: usize = 5;
@@ -30,9 +33,39 @@ pub const BEAT_QUIET: f32 = 13.0;
 pub const VIEW_DEGREES: f32 = 84.0;
 /// The ripple lands on the panorama's middle, where the lake shines most.
 pub const RIPPLE_U: f32 = 0.5;
-/// The camera's pitch, degrees, as it faces each beat: down to the lake,
-/// level for the bird, up to the stars.
-pub const PITCH_DEGREES: [f32; BEATS] = [-7.0, -15.0, -1.0, -6.0, 6.0];
+/// The camera's pitch, degrees, as it faces each beat: down to the lake, low
+/// enough for the bird and the ring that the painted bird stays over the
+/// view, up to the stars.
+pub const PITCH_DEGREES: [f32; BEATS] = [-7.0, -15.0, -8.0, -7.0, 6.0];
+
+/// The head: the viewer stands still but alive, swaying side to side and
+/// bobbing a little, whole times a loop. The depth map (assets/depth.webp)
+/// turns the eye's shift into parallax: near rocks move against the far
+/// mountains, the sky stays. Eye heights, in the view's frame.
+pub const HEAD_SIDE: f32 = 0.032;
+pub const HEAD_BOB: f32 = 0.014;
+pub const HEAD_SIDE_TIMES: f32 = 7.0;
+pub const HEAD_BOB_TIMES: f32 = 17.0;
+/// As each beat wakes, the viewer leans `LEAN` toward it and the view
+/// narrows by `ZOOM`, in over `LEAN_IN` seconds of the beat, back over
+/// `LEAN_OUT`.
+pub const LEAN: f32 = 0.09;
+pub const ZOOM: f32 = 0.07;
+pub const LEAN_IN: [f32; 2] = [0.5, 5.0];
+pub const LEAN_OUT: [f32; 2] = [9.5, 16.0];
+/// What each beat leans toward, latitude at its centre: the forest, the
+/// drop, the bird's flight, the ring, the sky over the mountains.
+pub const LEAN_LATITUDE: [f32; BEATS] = [
+    4.0 * PI / 180.0,
+    RIPPLE_LATITUDE,
+    11.0 * PI / 180.0,
+    RING_LATITUDE,
+    20.0 * PI / 180.0,
+];
+/// A bird painted into the sky of the panorama. It never moves, so the
+/// camera keeps it over the top of the view: u from, u to, latitude from,
+/// latitude to.
+pub const PAINTED_BIRD: [f32; 4] = [0.722, 0.757, 24.0 * PI / 180.0, 32.5 * PI / 180.0];
 
 /// Gust: the front enters the left of the view and crosses the forest,
 /// u per second; the trees bend up to `SWAY` u at their tops.
@@ -137,6 +170,10 @@ pub struct Frame {
     pub bird: [f32; 4],
     /// The loop's phase, 0..TAU, for the ambient twinkle.
     pub phase: f32,
+    /// The eye's offset, eye heights: right, up, forward along the view.
+    pub head: [f32; 3],
+    /// The view's width against `VIEW_DEGREES`, below 1 as it leans in.
+    pub zoom: f32,
 }
 
 fn wrap01(u: f32) -> f32 {
@@ -186,6 +223,29 @@ pub fn bird(view: f32, s: f32) -> [f32; 4] {
     [wrap01(view + across), latitude, lift, presence]
 }
 
+/// How far the viewer leans into a beat `since` seconds after it started,
+/// 0..1: zero at its ends, so beats hand over without a jolt.
+pub fn lean(since: f32) -> f32 {
+    smooth(LEAN_IN[0], LEAN_IN[1], since) * (1.0 - smooth(LEAN_OUT[0], LEAN_OUT[1], since))
+}
+
+/// The eye's offset at loop time `t`, the view centre at `view`: the sway
+/// and bob, and the lean toward the `beat`'s centre.
+pub fn head(t: f32, view: f32, beat: usize, since: f32) -> [f32; 3] {
+    let phase = t / LOOP_SECONDS * TAU;
+    let side = HEAD_SIDE * (phase * HEAD_SIDE_TIMES).sin();
+    let bob = HEAD_BOB * (phase * HEAD_BOB_TIMES + 1.3).sin();
+    let rel = wrap_half(centre(beat) - view) * TAU;
+    let latitude = LEAN_LATITUDE[beat];
+    let toward = [
+        latitude.cos() * rel.sin(),
+        latitude.sin(),
+        latitude.cos() * rel.cos(),
+    ];
+    let k = LEAN * lean(since);
+    [side + k * toward[0], bob + k * toward[1], k * toward[2]]
+}
+
 pub fn compose(t: f32) -> Frame {
     let time = if t.is_finite() {
         t.rem_euclid(LOOP_SECONDS)
@@ -197,6 +257,8 @@ pub fn compose(t: f32) -> Frame {
     let since = into - beat as f32 * BEAT_SECONDS;
     let view = camera(time);
     Frame {
+        head: head(time, view, beat, since),
+        zoom: 1.0 - ZOOM * lean(since),
         time,
         camera: view,
         pitch: pitch(time),
@@ -328,6 +390,8 @@ mod tests {
         let after = compose(0.001);
         assert!(close(wrap_half(before.camera - after.camera), 0.0, 1e-4));
         assert!(close(before.pitch, after.pitch, 1e-4));
+        assert!((0..3).all(|i| close(before.head[i], after.head[i], 1e-4)));
+        assert!(close(before.zoom, after.zoom, 1e-5));
         assert_eq!(compose(f32::NAN), compose(0.0));
         assert_eq!(compose(-LOOP_SECONDS), compose(0.0));
     }
@@ -359,6 +423,70 @@ mod tests {
             assert!(close(f.pitch, degrees * PI / 180.0, 1e-5));
         }
         assert!(close(centre(1), RIPPLE_U, 1e-5));
+    }
+
+    #[test]
+    fn the_head_moves_gently() {
+        let mut last = compose(0.0);
+        for i in 1..=9000 {
+            let f = compose(i as f32 * 0.01);
+            // A few hundredths of an eye height, never faster than 0.06 a second.
+            let size = f.head.iter().map(|v| v * v).sum::<f32>().sqrt();
+            assert!(size <= HEAD_SIDE + HEAD_BOB + LEAN, "{i} {size}");
+            let step = (0..3)
+                .map(|k| (f.head[k] - last.head[k]).powi(2))
+                .sum::<f32>()
+                .sqrt();
+            assert!(step < 6e-4, "{i} {step}");
+            assert!((1.0 - ZOOM..=1.0).contains(&f.zoom));
+            assert!((f.zoom - last.zoom).abs() < 3e-4, "{i}");
+            last = f;
+        }
+    }
+
+    #[test]
+    fn the_viewer_leans_toward_each_beat_at_its_peak() {
+        for (beat, latitude) in LEAN_LATITUDE.iter().enumerate() {
+            let start = FIRST_BEAT + beat as f32 * BEAT_SECONDS;
+            let f = compose(start + PEAK);
+            assert!(close(f.zoom, 1.0 - ZOOM, 1e-6));
+            // Forward and toward the beat's height, beyond the sway.
+            assert!(f.head[2] > LEAN * latitude.cos() - 1e-5, "{beat}");
+            let up = f.head[1] - LEAN * latitude.sin();
+            assert!(up.abs() <= HEAD_BOB + 1e-5, "{beat}");
+            // Upright again before the beat ends.
+            assert_eq!(compose(start + LEAN_OUT[1]).zoom, 1.0);
+            assert_eq!(compose(start + 0.2).zoom, 1.0);
+        }
+    }
+
+    #[test]
+    fn the_painted_bird_stays_over_the_view() {
+        // Corners and edges of the painted bird's box, projected into a 3:2
+        // frame the way the shader looks, never come inside it.
+        let [u0, u1, lat0, lat1] = PAINTED_BIRD;
+        let across = (VIEW_DEGREES * PI / 360.0).tan();
+        for i in 0..=9000 {
+            let f = compose(i as f32 * 0.01);
+            let (cp, sp) = (f.pitch.cos(), f.pitch.sin());
+            for j in 0..=8 {
+                for m in 0..=8 {
+                    let u = u0 + (u1 - u0) * j as f32 / 8.0;
+                    let latitude = lat0 + (lat1 - lat0) * m as f32 / 8.0;
+                    let lon = wrap_half(u - f.camera) * TAU;
+                    let x = latitude.cos() * lon.sin();
+                    let y = latitude.sin();
+                    let z = latitude.cos() * lon.cos();
+                    let (y, z) = (y * cp - z * sp, z * cp + y * sp);
+                    if z <= 0.0 {
+                        continue;
+                    }
+                    let nx = x / z / (across * f.zoom);
+                    let ny = y / z / (across * f.zoom / 1.5);
+                    assert!(nx.abs() > 1.0 || ny > 1.03, "{i} {u} {latitude} {ny}");
+                }
+            }
+        }
     }
 
     #[test]

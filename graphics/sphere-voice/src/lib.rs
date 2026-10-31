@@ -1,13 +1,15 @@
 //! «Используй свой голос», page 05 of Step 5 «Внешнее кольцо». A string of
 //! light stands in the middle of a round plate: the voice. Each spoken
 //! phrase («Я Здесь» … «Я Есть») sets it ringing; the sound runs out over
-//! the plate, shakes its sand into a new figure, climbs the air and leaves
-//! one belt of a dome behind, each belt its own standing-wave pattern, until
-//! «Я Есть» closes the crown. The camera rises with the dome and looks down
-//! on the closed crown; five pulses read the dome through for the five
-//! verbs, and on «Купольности и Многомерности» two more domes open inside
-//! and around it. Then the dome sinks back
-//! into the plate. Every value here is a pure function of loop time;
+//! the plate, shakes its sand into a new figure, rises to the pole and runs
+//! down a dome, leaving one belt of it behind, each belt its own
+//! standing-wave pattern: «Я Здесь» lights the crown, «Я Есть» sets the dome
+//! on the plate. The camera rises with the build and looks down on the
+//! closed crown; five pulses read the dome through for the five verbs, and
+//! on «Купольности и Многомерности» two more domes open inside and around
+//! it. Then the dome sinks back into the plate. Code rains down the walls of
+//! the dark round the scene and a projection of dials, glyphs and streams
+//! turns on the floor. Every value here is a pure function of loop time;
 //! `browser.rs` only uploads it and one ray-traced pass draws it. Unit: the
 //! dome's radius.
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
@@ -60,10 +62,10 @@ pub const NEST: [f32; 2] = [0.62, 1.5];
 pub const NEST_PATTERNS: [[f32; 4]; 2] = [[5.0, 3.0, 10.0, 2.0], [7.0, 5.0, 14.0, 3.0]];
 
 /// «Я Здесь», «Я Говорю», «Я Слышу», «Я Осознаю», «Я Ощущаю», «Я Наблюдаю»,
-/// «Я Есть»: each phrase builds the next belt from the plate up.
+/// «Я Есть»: each phrase builds the next belt from the crown down.
 pub const PHRASES: [f32; 7] = [1.0, 5.5, 10.0, 14.5, 19.0, 23.5, 28.0];
 /// «означать, вибрировать, считывать, транслировать, ощущать»: a pulse from
-/// the voice to the crown for each verb.
+/// the voice up to the pole and down the dome for each verb.
 pub const PULSES: [f32; 5] = [33.5, 35.2, 36.9, 38.6, 40.3];
 /// «каркас Присутствия формата Купольности и Многомерности»: the other
 /// domes open.
@@ -77,9 +79,16 @@ pub const SETTLE: [f32; 2] = [50.0, 55.0];
 /// Reduced motion: the whole dome and the other domes.
 pub const STILL: f32 = 47.5;
 
-/// The sound's front, units a second: out over the plate, then up the dome
-/// (the arc, radius 1) and on along the floor.
+/// The sound's front, units a second: out over the plate to the dome's rim
+/// (1) while it rises from the string to the pole, then down the dome's arc
+/// (radius 1) and on along the floor.
 pub const WAVE_SPEED: f32 = 1.5;
+/// A new belt's light comes up over this long after the front reaches it,
+/// and flashes this much as the front closes it.
+pub const BELT_FADE: f32 = 1.0;
+pub const FLASH: f32 = 0.4;
+/// An unbuilt dome's edge waits this far over the pole, so nothing shows.
+pub const CLEAR: f32 = 0.02;
 /// How long a front lights the floor as it runs out to the horizon.
 pub const FLOOR_SECONDS: f32 = 5.0;
 /// Each phrase's wave, then each verb's pulse.
@@ -116,15 +125,48 @@ pub const LINE_WIDTH: f32 = 0.0011;
 pub const HALO: f32 = 0.12;
 pub const HALO_SPREAD: f32 = 4.0;
 
-/// The camera climbs with the dome: its height over the plate (degrees),
-/// distance and the height it looks at, keyed through the loop. Low by the
-/// plate for «Я Здесь», straight above the crown after «Я Есть», down to
-/// three quarters for the other domes, then low again.
+/// Code rain on four walls round the scene, only their far side: each
+/// wall's radius, column width and light; glyphs fall from this high. The
+/// nearest stands on the floor behind the dome, the others in the dark.
+pub const RAIN: [[f32; 3]; 4] = [
+    [4.2, 0.09, 0.3],
+    [7.0, 0.13, 0.6],
+    [9.5, 0.16, 0.45],
+    [13.0, 0.2, 0.32],
+];
+pub const RAIN_HEIGHT: f32 = 7.0;
+/// The projection on the floor round the plate. Dials: radius, ticks, ticks
+/// turned a loop. Glyph rings: inner radius, width, glyphs, glyphs turned a
+/// loop. Streams of code running in to the plate: from radius, columns, row
+/// length, out to radius.
+pub const DIALS: [[f32; 3]; 2] = [[1.42, 240.0, 5.0], [1.74, 180.0, -3.0]];
+pub const GLYPH_RINGS: [[f32; 4]; 2] = [[1.54, 0.12, 90.0, 7.0], [1.86, 0.14, 110.0, -9.0]];
+pub const STREAMS: [f32; 4] = [2.1, 128.0, 0.16, 6.5];
+pub const PROJECTION_LIGHT: f32 = 0.4;
+pub const STREAM_LIGHT: f32 = 0.32;
+/// Projections standing round the scene behind the dome, facing it: where
+/// round it (degrees, the camera keeps near 20°), how far out, how wide and
+/// tall; how high they float, their light. Lines of code scroll up them and
+/// each shows the voice's own wave.
+pub const PANELS: [[f32; 4]; 5] = [
+    [200.0, 3.2, 0.9, 1.2],
+    [156.0, 3.0, 0.7, 0.9],
+    [244.0, 3.0, 0.7, 0.9],
+    [116.0, 3.4, 0.6, 0.75],
+    [284.0, 3.4, 0.6, 0.75],
+];
+pub const PANEL_FLOAT: f32 = 0.3;
+pub const PANEL_LIGHT: f32 = 0.5;
+
+/// The camera climbs as the dome is built: its height over the plate
+/// (degrees), distance and the height it looks at, keyed through the loop.
+/// Just over the crown for «Я Здесь», straight above it after «Я Есть», down
+/// to three quarters for the other domes, then low again.
 pub const ELEVATION: [(f32, f32); 14] = [
-    (0.0, 9.0),
-    (5.5, 10.0),
-    (10.0, 13.0),
-    (14.5, 18.0),
+    (0.0, 14.0),
+    (5.5, 16.0),
+    (10.0, 19.0),
+    (14.5, 23.0),
     (19.0, 25.0),
     (23.5, 35.0),
     (28.0, 52.0),
@@ -134,7 +176,7 @@ pub const ELEVATION: [(f32, f32); 14] = [
     (43.0, 60.0),
     (46.5, 30.0),
     (50.0, 22.0),
-    (53.5, 11.0),
+    (53.5, 15.0),
 ];
 pub const DISTANCE: [(f32, f32); 7] = [
     (0.0, 3.3),
@@ -146,13 +188,13 @@ pub const DISTANCE: [(f32, f32); 7] = [
     (53.5, 3.5),
 ];
 pub const TARGET: [(f32, f32); 7] = [
-    (0.0, 0.2),
-    (10.0, 0.3),
+    (0.0, 0.45),
+    (10.0, 0.45),
     (19.0, 0.42),
     (31.5, 0.1),
     (39.5, 0.0),
     (45.5, 0.25),
-    (53.5, 0.22),
+    (53.5, 0.4),
 ];
 /// A slow sway round the dome, back where it began each loop.
 pub const AZIMUTH: f32 = 20.0 * PI / 180.0;
@@ -178,14 +220,17 @@ pub struct Frame {
     pub forward: [f32; 3],
     /// The string: how wide it swings, at which harmonic, its light.
     pub voice: [f32; 3],
-    /// Each wave: its front (out over the plate to 1, then up the dome's
-    /// arc), its light on the dome and on the floor, where it stops climbing.
+    /// Each wave: its front (out over the plate to 1 as it rises to the
+    /// pole, then down the dome's arc), its light on the dome and on the
+    /// floor, where it stops on the way down.
     pub waves: [[f32; 4]; WAVES],
-    /// Each belt: how much of it is drawn (0..1 from its lower edge, the
-    /// crown from its rim), its light, how far it has turned (radians).
+    /// Each belt, from the plate up: how much of it is drawn, its light, how
+    /// far it has turned (radians).
     pub belts: [[f32; 3]; 7],
-    /// How high the dome stands (radians of latitude) and its light.
-    pub top: f32,
+    /// The latitudes the dome shows between (radians): built down to `low`,
+    /// taken down from `high` as it settles; its light.
+    pub low: f32,
+    pub high: f32,
     pub dome: f32,
     /// The plate's sand: the figure it leaves, the one it goes to, how far
     /// between (0..1); its light.
@@ -247,23 +292,33 @@ pub fn spline(keys: &[(f32, f32)], t: f32) -> f32 {
         + (s3 - s2) * h * m2
 }
 
-/// Where belt `k`'s top edge lies along a front's path: the plate's radius,
-/// then the arc up to that latitude.
-pub fn belt_end(k: usize) -> f32 {
-    1.0 + BELTS[k + 1].to_radians()
+/// The belt phrase `k` builds: the crown first, the plate's own belt last.
+pub fn belt_of(k: usize) -> usize {
+    PHRASES.len() - 1 - k
 }
 
-/// When wave `i` starts, and how far up the dome it climbs.
+/// Where a latitude lies along a front's path: up to the pole (1), then
+/// down the arc.
+fn path_to(latitude: f32) -> f32 {
+    1.0 + FRAC_PI_2 - latitude
+}
+
+/// Where belt `b`'s lower edge lies along a front's path.
+pub fn belt_end(b: usize) -> f32 {
+    path_to(BELTS[b].to_radians())
+}
+
+/// When wave `i` starts, and how far down the dome it runs.
 pub fn wave_plan(i: usize) -> (f32, f32) {
     if i < PHRASES.len() {
-        (PHRASES[i], belt_end(i))
+        (PHRASES[i], belt_end(belt_of(i)))
     } else {
-        (PULSES[i - PHRASES.len()], 1.0 + FRAC_PI_2)
+        (PULSES[i - PHRASES.len()], path_to(0.0))
     }
 }
 
 /// Wave `i` at `t`: its front, its light on the dome and on the floor,
-/// where it stops climbing. On the dome it dies at the edge it closes.
+/// where it stops. On the dome it dies at the edge it closes.
 pub fn wave(i: usize, t: f32) -> [f32; 4] {
     let (from, end) = wave_plan(i);
     let age = t - from;
@@ -281,22 +336,27 @@ pub fn wave(i: usize, t: f32) -> [f32; 4] {
     ]
 }
 
-/// How high the dome stands at `t`: built by the phrases' fronts, taken
-/// down crown first as it settles (radians).
-pub fn top(t: f32) -> f32 {
-    let built = (0..PHRASES.len())
+/// How far down the phrases' fronts have built the dome at `t` (radians of
+/// latitude); just over the pole until the first one arrives.
+pub fn low(t: f32) -> f32 {
+    (0..PHRASES.len())
         .map(|k| {
-            let [front, ..] = wave(k, t);
-            if t >= PHRASES[k] + FLOOR_SECONDS || front >= belt_end(k) {
-                BELTS[k + 1].to_radians()
-            } else if front > 1.0 && t >= PHRASES[k] {
-                front - 1.0
+            let from = PHRASES[k];
+            let lowest = BELTS[belt_of(k)].to_radians();
+            if t >= from + FLOOR_SECONDS {
+                lowest
+            } else if t >= from {
+                (FRAC_PI_2 + 1.0 - wave(k, t)[0]).clamp(lowest, FRAC_PI_2 + CLEAR)
             } else {
-                0.0
+                FRAC_PI_2 + CLEAR
             }
         })
-        .fold(0.0, f32::max);
-    built.min(FRAC_PI_2 * (1.0 - smooth(SETTLE[0], SETTLE[1], t)))
+        .fold(FRAC_PI_2 + CLEAR, f32::min)
+}
+
+/// Where the dome is taken down to as it settles, crown first.
+pub fn high(t: f32) -> f32 {
+    FRAC_PI_2 - (FRAC_PI_2 + CLEAR) * smooth(SETTLE[0], SETTLE[1], t)
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -322,20 +382,25 @@ pub fn compose(t: f32) -> Frame {
     let up = cross(right, forward);
 
     let waves: [[f32; 4]; WAVES] = std::array::from_fn(|i| wave(i, time));
-    let top = top(time);
+    let (low, high) = (low(time), high(time));
     let gone = 1.0 - smooth(SETTLE[0], SETTLE[0] + 3.0, time);
     let turned = smooth(TURN[0], TURN[1], time);
-    let belts: [[f32; 3]; 7] = std::array::from_fn(|k| {
-        let (lo, hi) = (BELTS[k].to_radians(), BELTS[k + 1].to_radians());
-        let drawn = ((top - lo) / (hi - lo)).clamp(0.0, 1.0);
-        // A flash as the front closes the belt, then its steady light.
-        let done = PHRASES[k] + (belt_end(k) / WAVE_SPEED);
-        let flash = 0.8 * smooth(done - 0.45, done, time) * (-(time - done).max(0.0) / 0.7).exp();
-        let side = if k % 2 == 0 { 1.0 } else { -1.0 };
+    let belts: [[f32; 3]; 7] = std::array::from_fn(|b| {
+        let (lo, hi) = (BELTS[b].to_radians(), BELTS[b + 1].to_radians());
+        let drawn = ((hi.min(high) - lo.max(low)) / (hi - lo)).clamp(0.0, 1.0);
+        // The light comes up softly behind the front, flashes gently as the
+        // front closes the belt, then stays.
+        let from = PHRASES[PHRASES.len() - 1 - b];
+        let arrive = from + path_to(hi) / WAVE_SPEED;
+        let done = from + belt_end(b) / WAVE_SPEED;
+        let on = smooth(arrive, done + BELT_FADE, time);
+        let flash =
+            FLASH * smooth(done - 0.3, done + 0.3, time) * (-(time - done - 0.3).max(0.0)).exp();
+        let side = if b % 2 == 0 { 1.0 } else { -1.0 };
         [
             drawn,
-            (1.0 + flash) * gone,
-            side * TAU / PATTERNS[k][0] * turned,
+            on * (1.0 + flash) * gone,
+            side * TAU / PATTERNS[b][0] * turned,
         ]
     });
 
@@ -396,7 +461,8 @@ pub fn compose(t: f32) -> Frame {
         voice,
         waves,
         belts,
-        top,
+        low,
+        high,
         dome: 1.0,
         mode_from,
         mode_to,
@@ -521,7 +587,7 @@ mod tests {
         }
         // Only the plate at rest and the quiet string across the seam.
         for f in [before, after] {
-            assert_eq!(f.top, 0.0);
+            assert!(f.high <= f.low.max(0.0), "{f:?}");
             assert!(f.belts.iter().all(|b| b[0] == 0.0), "{f:?}");
             assert!(f.waves.iter().all(|w| w[1] == 0.0 && w[2] == 0.0));
             assert_eq!(f.nest, [0.0, 0.0]);
@@ -570,7 +636,8 @@ mod tests {
                     "forward at {t}"
                 );
             }
-            assert!((f.top - previous.top).abs() < 0.05, "top at {t}");
+            assert!((f.low - previous.low).abs() < 0.05, "low at {t}");
+            assert!((f.high - previous.high).abs() < 0.05, "high at {t}");
             for (a, b) in [
                 (f.nest[0], previous.nest[0]),
                 (f.nest[1], previous.nest[1]),
@@ -598,20 +665,43 @@ mod tests {
     }
 
     #[test]
-    fn each_phrase_builds_its_own_belt() {
+    fn each_phrase_builds_its_own_belt_from_the_crown_down() {
         for k in 0..7 {
+            let b = belt_of(k);
             let before = compose(PHRASES[k] - 0.01);
-            assert!(before.belts[k][0] == 0.0, "{k} too early");
-            let after = compose(PHRASES[k] + belt_end(k) / WAVE_SPEED + 0.1);
+            assert!(before.belts[b][0] == 0.0, "{k} too early");
+            let done = PHRASES[k] + belt_end(b) / WAVE_SPEED;
+            let after = compose(done + 0.1);
             for (j, belt) in after.belts.iter().enumerate() {
-                assert_eq!(belt[0] == 1.0, j <= k, "{k}: belt {j} at {}", belt[0]);
+                assert_eq!(belt[0] == 1.0, j >= b, "{k}: belt {j} at {}", belt[0]);
             }
+            assert!(compose(done + BELT_FADE + 0.1).belts[b][1] >= 1.0, "{k}");
             // The sand has taken the phrase's figure.
             assert_eq!(compose(PHRASES[k] + 1.5).mode_to, PLATE_MODES[k + 1]);
             assert_eq!(compose(PHRASES[k] + 1.5).mode_mix, 1.0);
         }
-        // «Я Есть» closes the crown.
-        assert!(close(compose(PULSES[0]).top, FRAC_PI_2, 1e-6));
+        assert_eq!(belt_of(0), 6, "«Я Здесь» lights the crown");
+        // «Я Есть» sets the whole dome on the plate.
+        let f = compose(PULSES[0]);
+        assert!(close(f.low, 0.0, 1e-6) && close(f.high, FRAC_PI_2, 1e-6));
+    }
+
+    #[test]
+    fn every_belt_comes_up_softly() {
+        // Art: the first step came in sharply, the others softly.
+        for (k, &from) in PHRASES.iter().enumerate() {
+            let b = belt_of(k);
+            let arrive = from + path_to(BELTS[b + 1].to_radians()) / WAVE_SPEED;
+            assert!(compose(arrive + 0.3).belts[b][1] < 0.5, "{k}");
+            let mut previous = compose(arrive - 0.5).belts[b][1];
+            let mut t = arrive - 0.5;
+            while t < arrive + 4.0 {
+                let light = compose(t).belts[b][1];
+                assert!((light - previous).abs() < 0.03, "{k} at {t}");
+                previous = light;
+                t += 1.0 / 60.0;
+            }
+        }
     }
 
     #[test]
@@ -639,13 +729,18 @@ mod tests {
         let mut t = 0.0;
         while t < LOOP_SECONDS {
             let f = compose(t);
-            let shells = [(1.0, f.top), (NEST[0], f.nest[0]), (NEST[1], f.nest[1])];
+            let shown = f.high - f.low.max(0.0);
+            let shells = [(1.0, shown), (NEST[0], f.nest[0]), (NEST[1], f.nest[1])];
             for (r, on) in shells {
                 if on <= 0.0 {
                     continue;
                 }
-                let up_to = if r == 1.0 { f.top } else { FRAC_PI_2 };
-                for lat in (0..=6).map(|k| k as f32 / 6.0 * up_to) {
+                let (from, to) = if r == 1.0 {
+                    (f.low.max(0.0), f.high)
+                } else {
+                    (0.0, FRAC_PI_2)
+                };
+                for lat in (0..=6).map(|k| from + k as f32 / 6.0 * (to - from)) {
                     for lon in (0..24).map(|k| k as f32 * 15.0_f32.to_radians()) {
                         let p = [
                             r * lat.cos() * lon.sin(),
@@ -673,7 +768,7 @@ mod tests {
         }
         let f = compose(STILL);
         assert!(f.nest.iter().all(|&n| n > 0.99));
-        assert!(close(f.top, FRAC_PI_2, 1e-6));
+        assert!(close(f.low, 0.0, 1e-6) && close(f.high, FRAC_PI_2, 1e-6));
         assert!(f.belts.iter().all(|b| b[0] == 1.0 && b[1] > 0.99));
     }
 

@@ -3,10 +3,12 @@
 //! plate, the dome's shells and the string, the finish engraves or recolors
 //! the frame, and the theme's recolor (scene-palette) maps it.
 use crate::{
-    compose, look, Look, BACK, BELTS, EDGE_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLOOR_LIGHT, FOCAL,
-    FRAME_ASPECT, FRONT_LIGHT, FRONT_WIDTH, HALO, HALO_SPREAD, LINE_WIDTH, LOOP_SECONDS, MID_AT,
-    NEST, NEST_LIGHT, NEST_PATTERNS, PATTERNS, PATTERN_LIGHT, PLATE, PLATE_FILL, RIM_LIGHT,
-    SAND_GRAIN, SAND_LIGHT, SAND_WIDTH, SHEEN, STILL, VOICE_HEIGHT, VOICE_HZ, VOICE_LIGHT, WAVES,
+    compose, look, Look, BACK, BELTS, DIALS, EDGE_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLOOR_LIGHT,
+    FOCAL, FRAME_ASPECT, FRONT_LIGHT, FRONT_WIDTH, GLYPH_RINGS, HALO, HALO_SPREAD, LINE_WIDTH,
+    LOOP_SECONDS, MID_AT, NEST, NEST_LIGHT, NEST_PATTERNS, PANELS, PANEL_FLOAT, PANEL_LIGHT,
+    PATTERNS, PATTERN_LIGHT, PLATE, PLATE_FILL, PROJECTION_LIGHT, RAIN, RAIN_HEIGHT, RIM_LIGHT,
+    SAND_GRAIN, SAND_LIGHT, SAND_WIDTH, SHEEN, STILL, STREAMS, STREAM_LIGHT, VOICE_HEIGHT,
+    VOICE_HZ, VOICE_LIGHT, WAVES,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -47,6 +49,7 @@ const NAMES: [&str; 20] = [
 /// lib.rs's constants as the shader's `#define`s, so both read one source.
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
+    let v3 = |[x, y, z]: [f32; 3]| format!("vec3({x:?}, {y:?}, {z:?})");
     let v4 = |[x, y, z, w]: [f32; 4]| format!("vec4({x:?}, {y:?}, {z:?}, {w:?})");
     let lines = [
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
@@ -80,6 +83,21 @@ fn defines() -> String {
             BELTS.map(|degrees| f(degrees.to_radians())).join(", "),
         ),
         ("PATTERNS_INIT", PATTERNS.map(v4).join(", ")),
+        ("RAIN_INIT", RAIN.map(v3).join(", ")),
+        ("RAIN_HEIGHT", f(RAIN_HEIGHT)),
+        ("DIALS_INIT", DIALS.map(v3).join(", ")),
+        ("GLYPH_RINGS_INIT", GLYPH_RINGS.map(v4).join(", ")),
+        ("STREAMS", v4(STREAMS)),
+        ("PROJECTION_LIGHT", f(PROJECTION_LIGHT)),
+        ("STREAM_LIGHT", f(STREAM_LIGHT)),
+        (
+            "PANELS_INIT",
+            PANELS
+                .map(|[a, r, w, h]| v4([a.to_radians(), r, w, h]))
+                .join(", "),
+        ),
+        ("PANEL_FLOAT", f(PANEL_FLOAT)),
+        ("PANEL_LIGHT", f(PANEL_LIGHT)),
     ];
     lines
         .iter()
@@ -464,7 +482,7 @@ impl SphereVoice {
         gl.uniform4f(p.at("u_voice"), swing, harmonic, voice, 0.0);
         gl.uniform4fv_with_f32_array(p.at("u_waves"), &f.waves.concat());
         gl.uniform3fv_with_f32_array(p.at("u_belts"), &f.belts.concat());
-        gl.uniform4f(p.at("u_dome"), f.top, f.dome, f.plate, 0.0);
+        gl.uniform4f(p.at("u_dome"), f.low, f.high, f.dome, f.plate);
         gl.uniform4fv_with_f32_array(p.at("u_mode0"), &f.mode_from);
         gl.uniform4fv_with_f32_array(p.at("u_mode1"), &f.mode_to);
         gl.uniform4f(p.at("u_misc"), f.mode_mix, f.nest[0], f.nest[1], 0.0);

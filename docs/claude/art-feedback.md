@@ -27,3 +27,6 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 ## World in glasses (block 1 page 01)
 - Gum stays GOLD (pink clashes). No smile at the end. No grey/beige desaturation in the cracks.
 - Lens edges come from his hand-drawn mask (`graphics/world-in-glasses/assets/lens-mask.svg`). Never auto-trace lenses.
+
+## Колокол (block 2 page 04)
+- Light themes must read as clearly as the 48 s flood frame: «слишком всё сливается» when only faint lamp lines sat on the page. Fix: a quiet light from the mouth and an ink S-curve (lit forms deepen to ink).

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-10-31. `main` = the merges of `fix/home-shade-band` (the vector engine honors
+Updated 2026-11-01. `main` = the merges of `fix/home-shade-band` (the vector engine honors
 `preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip),
 `scene/call-bell` («Колокол» on «Сила Зова»), `scene/essence-flame` («Пламя» on
 «Сущностные ощущения») and `scene/true-sight` («Глаз» on «Истинное распознавание»),
@@ -73,8 +73,14 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
   07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
-- Next: 04–07, one crate each, Тишина
-  first, prototype per page; ship each when Art says.
+- 04 «Ты не точка» (`graphics/sphere-orbit`, on the branch, not shipped): no images, all 3D.
+  A point opens into a ticked ring with a runner, the ring rises into meridians and parallels
+  (glints at the crossings), one wave crosses the sphere from each named side (30–46 s), all
+  sides on «вокруг» (50 s); the camera orbits once per 60 s loop; near motes soft, far ones
+  sharp like stars. Wired to page `sphere-expand`; the exported app mounts it at phone and
+  wide sizes. Тишина prototype `output/prototypes/sphere-orbit/index.html`, sheet `frames.jpg`.
+  Waits for Art's OK on Тишина; then the other 6 themes (light: 0 px lighter than the page).
+- Next: 05–07, one crate each, Тишина first, prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

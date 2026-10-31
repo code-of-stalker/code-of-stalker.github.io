@@ -22,6 +22,7 @@ SOURCES = {
     "persona-dream": ["figure", "labels"],
     "persona-program": ["figure", "labels"],
     "persona-belief": ["labels"],
+    "call-bell": ["labels"],
 }
 
 

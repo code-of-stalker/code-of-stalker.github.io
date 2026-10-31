@@ -63,7 +63,7 @@ export function StepFiveScreen({ onSelectStep, onPreviousStep, onClose, availabl
             }
           }}
           hero={() => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
-            <StepFiveHero width={hero.width} height={hero.height} />
+            <StepFiveHero width={hero.width} height={hero.height} reducedMotion={reducedMotion} />
           </Reveal>}>
           {layout => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 5. ВНЕШНЕЕ КОЛЬЦО" background="clear" expanded={open} onSelect={() => setOpen(value => !value)}

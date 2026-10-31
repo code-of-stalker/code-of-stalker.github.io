@@ -82,7 +82,7 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
   `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
   over the loop (108 frames each).
-- 05 «Используй свой голос» (`graphics/sphere-voice`, branch only, round 3 commit dd585c3): no
+- 05 «Используй свой голос» (`graphics/sphere-voice`, branch only, head 73e34bb): no
   images, one ray-traced pass. A string of light on a Chladni sand plate; each phrase (1–28 s)
   rings it, reshapes the sand, sends a bead up the axis, and builds one belt of a dome from the
   crown down (Art's note on round 1): «Я Здесь» grows the crown from a point, «Я Есть» sets the
@@ -93,9 +93,9 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   5 floating panels (scrolling code, the voice's wave), floor projection (dials, glyph rings,
   code streams). No floor mirror: a dome over its reflection reads as 04's sphere, and the
   mirror is 06's image. Wired to page `sphere-voice`. Prototype
-  `output/prototypes/sphere-voice/index.html`, sheet `frames.jpg`, in Тишина only. Waits for
-  Art's OK on Тишина, then the other 6 themes
-  (`look()` already has the light inks; the light test passes in Rust), then his word to ship.
+  `output/prototypes/sphere-voice/index.html`. Art approved Тишина («Ок, делай темы»); all 7
+  themes checked in the prototype (sheet `temy.jpg`), no per-theme changes needed: Дюна, Мираж,
+  Рассвет 0 px lighter than the page over 108 frames each. Waits for Art's word to ship.
   The exported app loads the runtime with no CSP/GPU error; the page itself was not opened there
   (the hidden browser pane freezes the app's navigation).
 - Next: Art's notes on 05; then 06–07, one crate each, Тишина first; ship each when Art says.

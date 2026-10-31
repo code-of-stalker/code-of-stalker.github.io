@@ -144,6 +144,14 @@ pub const GLYPH_RINGS: [[f32; 4]; 2] = [[1.54, 0.12, 90.0, 7.0], [1.86, 0.14, 11
 pub const STREAMS: [f32; 4] = [2.1, 128.0, 0.16, 6.5];
 pub const PROJECTION_LIGHT: f32 = 0.4;
 pub const STREAM_LIGHT: f32 = 0.32;
+/// «Полное включение» (Art): as the inner and outer domes open, the dials and
+/// glyph rings spin up, each the other way from the next one out (dial in,
+/// dial out, glyphs in, glyphs out), glowing up to `1 + SPIN_GLOW` while they
+/// whirl, and come to rest by the loop's end. Whole turns, so they rest where
+/// they started.
+pub const SPIN: [f32; 4] = [1.0, 2.0, -2.0, -1.0];
+pub const SPIN_TIME: [f32; 2] = [FRAME_BEAT[0], LOOP_SECONDS - 0.5];
+pub const SPIN_GLOW: f32 = 1.0;
 /// Projections standing round the scene behind the dome, facing it: where
 /// round it (degrees, the camera keeps near 20°), how far out, how wide and
 /// tall; how high they float, their light. Lines of code scroll up them and
@@ -241,6 +249,23 @@ pub struct Frame {
     /// The inner and the outer dome: light, and how far each has turned.
     pub nest: [f32; 2],
     pub nest_turn: [f32; 2],
+    /// The floor's rings spinning up: how far through their turns (0..1),
+    /// how fast (of their turns a second), how bright they glow (0..1).
+    pub spin: [f32; 3],
+}
+
+/// The spin-up starts at once and eases out: 1 - 5(1-x)^4 + 4(1-x)^5, whose
+/// speed 20x(1-x)^3 peaks a quarter of the way in at 135/64.
+pub fn spin(t: f32) -> [f32; 3] {
+    let length = SPIN_TIME[1] - SPIN_TIME[0];
+    let x = ((t - SPIN_TIME[0]) / length).clamp(0.0, 1.0);
+    let y = 1.0 - x;
+    let speed = 20.0 * x * y.powi(3);
+    [
+        1.0 - 5.0 * y.powi(4) + 4.0 * y.powi(5),
+        speed / length,
+        (speed * 64.0 / 135.0).sqrt(),
+    ]
 }
 
 fn smooth(a: f32, b: f32, x: f32) -> f32 {
@@ -488,6 +513,7 @@ pub fn compose(t: f32) -> Frame {
             -0.5 * smooth(FRAME_BEAT[0], SETTLE[0] + 0.5, time),
             0.35 * smooth(FRAME_BEAT[0], SETTLE[0] + 0.5, time),
         ],
+        spin: spin(time),
     }
 }
 
@@ -591,6 +617,8 @@ mod tests {
             assert!(f.belts.iter().all(|b| b[0] == 0.0), "{f:?}");
             assert!(f.waves.iter().all(|w| w[1] == 0.0 && w[2] == 0.0));
             assert_eq!(f.nest, [0.0, 0.0]);
+            assert!(f.spin[0] == 0.0 || f.spin[0] == 1.0, "{f:?}");
+            assert_eq!([f.spin[1], f.spin[2]], [0.0, 0.0]);
             assert!(f.voice[0] < 1e-3);
             let rest = if f.mode_mix > 0.5 {
                 f.mode_to
@@ -599,6 +627,37 @@ mod tests {
             };
             assert_eq!(rest, PLATE_MODES[0]);
         }
+    }
+
+    #[test]
+    fn the_rings_spin_up_each_its_own_way_and_rest_whole_turns_on() {
+        assert!(SPIN.iter().all(|s| *s != 0.0 && s.fract() == 0.0));
+        // From the plate out: dial, glyphs, dial, glyphs, each the other way.
+        let outward = [
+            (DIALS[0][0], SPIN[0]),
+            (GLYPH_RINGS[0][0], SPIN[2]),
+            (DIALS[1][0], SPIN[1]),
+            (GLYPH_RINGS[1][0], SPIN[3]),
+        ];
+        for pair in outward.windows(2) {
+            assert!(pair[0].0 < pair[1].0 && pair[0].1 * pair[1].1 < 0.0);
+        }
+        assert_eq!(compose(SPIN_TIME[0] - 0.1).spin, [0.0, 0.0, 0.0]);
+        // Art: «на 42 секунде начнут красиво крутится».
+        const _: () = assert!(SPIN_TIME[0] >= 42.0 && SPIN_TIME[0] <= 43.0);
+        assert!(compose(SPIN_TIME[0] + 0.5).spin[2] > 0.4);
+        assert_eq!(compose(SPIN_TIME[1] + 0.1).spin, [1.0, 0.0, 0.0]);
+        // The speed is the progress's own, and its glow peaks at 1.
+        let mut top = 0.0f32;
+        let mut t = SPIN_TIME[0];
+        while t < SPIN_TIME[1] {
+            let [a, speed, glow] = spin(t);
+            let b = spin(t + 1e-3)[0];
+            assert!(close((b - a) / 1e-3, speed, 2e-3), "{t}");
+            top = top.max(glow);
+            t += 0.05;
+        }
+        assert!(close(top, 1.0, 1e-3));
     }
 
     #[test]

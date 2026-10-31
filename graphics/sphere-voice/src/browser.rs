@@ -7,8 +7,8 @@ use crate::{
     FOCAL, FRAME_ASPECT, FRONT_LIGHT, FRONT_WIDTH, GLYPH_RINGS, HALO, HALO_SPREAD, LINE_WIDTH,
     LOOP_SECONDS, MID_AT, NEST, NEST_LIGHT, NEST_PATTERNS, PANELS, PANEL_FLOAT, PANEL_LIGHT,
     PATTERNS, PATTERN_LIGHT, PLATE, PLATE_FILL, PROJECTION_LIGHT, RAIN, RAIN_HEIGHT, RIM_LIGHT,
-    SAND_GRAIN, SAND_LIGHT, SAND_WIDTH, SHEEN, STILL, STREAMS, STREAM_LIGHT, VOICE_HEIGHT,
-    VOICE_HZ, VOICE_LIGHT, WAVES,
+    SAND_GRAIN, SAND_LIGHT, SAND_WIDTH, SHEEN, SPIN, SPIN_GLOW, STILL, STREAMS, STREAM_LIGHT,
+    VOICE_HEIGHT, VOICE_HZ, VOICE_LIGHT, WAVES,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -23,7 +23,7 @@ const FINISH: &str = include_str!("shaders/finish.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// Every uniform any program reads; a program without one ignores it.
-const NAMES: [&str; 20] = [
+const NAMES: [&str; 21] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -37,6 +37,7 @@ const NAMES: [&str; 20] = [
     "u_mode1",
     "u_misc",
     "u_turn",
+    "u_spin",
     "u_glow",
     "u_out",
     "u_backdrop",
@@ -90,6 +91,8 @@ fn defines() -> String {
         ("STREAMS", v4(STREAMS)),
         ("PROJECTION_LIGHT", f(PROJECTION_LIGHT)),
         ("STREAM_LIGHT", f(STREAM_LIGHT)),
+        ("SPIN", v4(SPIN)),
+        ("SPIN_GLOW", f(SPIN_GLOW)),
         (
             "PANELS_INIT",
             PANELS
@@ -487,6 +490,7 @@ impl SphereVoice {
         gl.uniform4fv_with_f32_array(p.at("u_mode1"), &f.mode_to);
         gl.uniform4f(p.at("u_misc"), f.mode_mix, f.nest[0], f.nest[1], 0.0);
         gl.uniform4f(p.at("u_turn"), f.nest_turn[0], f.nest_turn[1], 0.0, 0.0);
+        gl.uniform4f(p.at("u_spin"), f.spin[0], f.spin[1], f.spin[2], 0.0);
         gl.uniform3fv_with_f32_array(p.at("u_glow"), &self.look.glow);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.disable(Gl::BLEND);

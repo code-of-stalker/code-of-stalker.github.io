@@ -23,6 +23,7 @@ uniform vec4 u_mode0; // the sand's figure it leaves
 uniform vec4 u_mode1; // the figure it goes to
 uniform vec4 u_misc;  // how far between, inner dome, outer dome, -
 uniform vec4 u_turn;  // inner dome's turn, outer dome's turn, -, -
+uniform vec4 u_spin;  // the floor's rings: how far through their turns, how fast, glow, -
 uniform vec3 u_glow;
 
 out vec4 o;
@@ -102,32 +103,39 @@ float glyph(vec2 id, vec2 f, float size, float seed, float swap) {
 
 // The projection round the plate at radius r, angle phi, a pixel `fp` units
 // wide: dials of ticks and rings of glyphs, each turning a whole number of
-// cells a loop, and streams of code running in over the floor to the plate.
+// cells a loop and spinning up whole turns at the frame beat, and streams of
+// code running in over the floor to the plate.
 float projection(float r, float phi, float fp) {
   float u = u_eye.w / LOOP_SECONDS;
   float a = phi / TAU + 0.5;
   float light = 0.0;
   for (int i = 0; i < 2; i++) {
     vec3 dial = DIALS[i];
-    float x = a * dial.y + dial.z * u;
+    float x = (a + SPIN[i] * u_spin.x) * dial.y + dial.z * u;
     float n = floor(x + 0.5);
     float tall = mod(n, 5.0) < 0.5 ? 0.09 : 0.04;
     float apart = TAU * r / dial.y / fp;
     float along = clamp(min(r - dial.x, dial.x + tall - r) / fp + 0.5, 0.0, 1.0);
     float ticks = mix(0.3, line(abs(x - n) * apart), smoothstep(1.5, 4.0, apart));
-    light += along * ticks + 0.5 * line(abs(r - dial.x) / fp);
+    // Spinning, the ticks smear into their mean like a turning wheel's: all
+    // of them by the circle, the long ones every fifth further out.
+    float every = r - dial.x < 0.04 ? 1.0 : 5.0;
+    float moved = abs(SPIN[i] * u_spin.y) * dial.y / 60.0 / every;
+    float band = clamp(min(r - dial.x, dial.x + 0.09 - r) / fp + 0.5, 0.0, 1.0);
+    float swept = band * min(0.3, 2.5 * sigma / (every * apart));
+    light += mix(along * ticks, swept, smoothstep(0.15, 0.5, moved)) + 0.5 * line(abs(r - dial.x) / fp);
   }
   for (int i = 0; i < 2; i++) {
     vec4 ring = GLYPH_RINGS[i];
     light += 0.35 * (line(abs(r - ring.x) / fp) + line(abs(r - ring.x - ring.y) / fp));
     float y = (r - ring.x) / ring.y;
     if (y < 0.0 || y > 1.0) continue;
-    float x = a * ring.z + ring.w * u;
+    float x = (a + SPIN[2 + i] * u_spin.x) * ring.z + ring.w * u;
     vec2 id = vec2(mod(floor(x), ring.z), float(i));
     if (hash(id + vec2(0.0, 40.0)) < 0.25) continue;
     light += glyph(id, vec2(fract(x), y), ring.y * 0.8 / 5.0 / fp, 50.0 + float(i), 40.0);
   }
-  light *= PROJECTION_LIGHT;
+  light *= PROJECTION_LIGHT * (1.0 + SPIN_GLOW * u_spin.z);
 
   // The streams: a bright head running in, its trail fading out behind it.
   float sx = a * STREAMS.y;

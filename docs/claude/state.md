@@ -51,6 +51,9 @@ Next: nothing queued; wait for Art.
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
 - Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
   the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4.
+- Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
+  pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
+  pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

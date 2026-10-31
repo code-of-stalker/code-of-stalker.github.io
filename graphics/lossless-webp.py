@@ -24,6 +24,7 @@ SOURCES = {
     "persona-belief": ["labels"],
     "call-bell": ["labels"],
     "essence-flame": ["labels"],
+    "true-sight": ["labels"],
 }
 
 

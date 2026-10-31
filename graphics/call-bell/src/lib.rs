@@ -598,6 +598,13 @@ pub fn rings(t: f32) -> Vec<[f32; 3]> {
     }
     out
 }
+/// Light pages: a quiet light from the bell's mouth that keeps the stone
+/// and bronze as clearly drawn as the flood draws them (the dark of a dark
+/// page would be just the page here). The flood takes over from it.
+pub fn glow(flood: f32) -> f32 {
+    let lit = (flood / 0.85).clamp(0.0, 1.0);
+    0.45 * (1.0 - lit * lit * (3.0 - 2.0 * lit))
+}
 /// The light that floods the tower: the height it has climbed to, its
 /// strength.
 pub fn flood(t: f32) -> [f32; 2] {
@@ -1331,6 +1338,18 @@ mod tests {
             for w in slots.windows(2) {
                 assert!(w[0][1] + 8.0 < w[1][0], "{t}: {w:?}");
             }
+        }
+    }
+
+    #[test]
+    fn light_pages_glow_until_the_flood() {
+        assert_eq!(glow(0.0), 0.45);
+        assert_eq!(glow(compose(48.5).flood[1]), 0.0);
+        for t in times(0.05) {
+            let f = compose(t).flood[1];
+            assert!((0.0..=0.45).contains(&glow(f)), "{t}");
+            // never more light than the flood itself gives
+            assert!(glow(f) + f <= 1.2, "{t}");
         }
     }
 

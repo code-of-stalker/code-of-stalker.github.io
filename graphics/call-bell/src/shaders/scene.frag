@@ -12,6 +12,7 @@ uniform vec3 u_light3;  // flood front, flood strength, window light
 uniform vec3 u_paper;
 uniform vec3 u_key;     // the strike and the flood
 uniform vec3 u_fill;    // the window
+uniform float u_glow;   // light pages: a quiet light from the mouth
 in vec2 v_uv;
 out vec4 o;
 
@@ -153,7 +154,7 @@ vec3 lit(vec3 p, vec3 n, vec3 v, float shine, float sheen) {
   float dp = length(tp);
   rad += u_fill * u_light3.z * 0.3 * (0.2 + max(dot(n, tp / dp), 0.0)) / (1.0 + 0.5 * dp * dp);
   // the flood, from the mouth of the bell outwards and up
-  float f = floodAt(p);
+  float f = floodAt(p) + u_glow;
   if (f > 0.0) {
     vec3 lf = normalize(PIVOT + vec3(0.0, LIP, 0.0) - p);
     rad += u_key * f * (0.3 + 0.7 * max(dot(n, lf), 0.0));

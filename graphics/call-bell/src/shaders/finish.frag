@@ -46,9 +46,11 @@ void main() {
     c = mix(c, u_paper, 0.72 * strip);
     c += (hash(gl_FragCoord.xy + u_post.z) - 0.5) * 0.018;
   } else {
-    float a = 1.0 - exp(-2.0 * max(c.r, max(c.g, c.b)));
+    float a = 1.0 - exp(-2.4 * max(c.r, max(c.g, c.b)));
+    // an S-curve keeps faint light near the page and pulls lit forms to ink
+    a = a * a * (3.0 - 2.0 * a);
     a *= 1.0 - 0.6 * strip;
-    c = a < 0.7 ? mix(u_paper, u_lamp, a / 0.7) : mix(u_lamp, u_ink, (a - 0.7) / 0.3);
+    c = a < 0.55 ? mix(u_paper, u_lamp, a / 0.55) : mix(u_lamp, u_ink, (a - 0.55) / 0.45);
   }
   c += (hash(gl_FragCoord.xy * 1.37) - 0.5) / 255.0;
   if (u_post.w > 0.5) {

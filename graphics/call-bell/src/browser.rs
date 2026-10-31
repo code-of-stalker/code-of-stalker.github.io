@@ -3,9 +3,9 @@
 //! threads and the lens.
 use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK};
 use crate::{
-    band_above, compose, line_place, look, overlay, smooth, words, Look, APOTHEM, BALL, BELL_H,
-    CEILING, CLAPPER_PIVOT, CLAPPER_ROD, LIP, LOOP_SECONDS, OVERLAY_STRIDE, PIVOT, SHAFT_TO,
-    SHAFT_WIDTH, SIZE, STILL, WINDOW,
+    band_above, compose, glow, line_place, look, overlay, smooth, words, Look, APOTHEM, BALL,
+    BELL_H, CEILING, CLAPPER_PIVOT, CLAPPER_ROD, LIP, LOOP_SECONDS, OVERLAY_STRIDE, PIVOT,
+    SHAFT_TO, SHAFT_WIDTH, SIZE, STILL, WINDOW,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -290,7 +290,7 @@ impl CallBell {
             &scene_source(),
             &[
                 "u_res", "u_eye", "u_view", "u_lens", "u_bell", "u_strike", "u_light3", "u_paper",
-                "u_key", "u_fill",
+                "u_key", "u_fill", "u_glow",
             ],
         )?;
         let lines = Pass::new(
@@ -557,6 +557,12 @@ impl CallBell {
         gl.uniform3fv_with_f32_array(s.at("u_paper"), &paper);
         gl.uniform3fv_with_f32_array(s.at("u_key"), &key);
         gl.uniform3fv_with_f32_array(s.at("u_fill"), &fill);
+        let quiet = if self.look.light {
+            glow(f.flood[1])
+        } else {
+            0.0
+        };
+        gl.uniform1f(s.at("u_glow"), quiet);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
 
         // The threads, the rings and the dust, added where nothing stands

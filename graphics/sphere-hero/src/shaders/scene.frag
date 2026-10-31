@@ -8,12 +8,14 @@ uniform sampler2D u_reflection;
 uniform sampler2D u_figure;
 uniform sampler2D u_front;
 uniform vec2 u_res;      // target px
-uniform vec4 u_out;      // straight to the canvas, soft edges, light paintings, -
+uniform vec4 u_out;      // straight to the canvas, soft edges, light paintings, light print
 uniform vec3 u_backdrop; // the page around the scene
 uniform vec4 u_edges;    // left, right, top, bottom
 uniform vec4 u_motion;   // wave seconds, branch angle, leaf flutter, loop phase
 uniform vec4 u_drift;    // camera x, y (-1..1), bird lift px, -
 uniform vec3 u_glow;     // the wave's light, or its ink on the light paintings
+uniform vec3 u_deep;     // the light print's deepest ink
+uniform vec4 u_mid;      // its middle ink, and how much painted colour stays
 uniform vec4 u_geo[7];   // GEOMETRY in lib.rs
 in vec2 v_uv;
 out vec4 o;
@@ -89,6 +91,17 @@ vec3 glowOn(vec3 c, float k) {
   return c + u_glow * k;
 }
 
+// A light theme prints the light painting in two muted inks on its page;
+// Art's paper level and anything lighter is the page itself (lib.rs print).
+const float PAPER_LEVEL = 0.875;
+const float MID_AT = 0.45;
+vec3 print(vec3 c) {
+  float t = clamp(dot(c, vec3(0.2126, 0.7152, 0.0722)) / PAPER_LEVEL, 0.0, 1.0);
+  vec3 ink = t < MID_AT ? mix(u_deep, u_mid.rgb, t / MID_AT)
+                        : mix(u_mid.rgb, u_backdrop, (t - MID_AT) / (1.0 - MID_AT));
+  return min(mix(ink, c, u_mid.a * (1.0 - smoothstep(0.85, 1.0, t))), u_backdrop);
+}
+
 vec3 world(vec2 q) {
   vec2 p = q - shift(nearness(q.y));
   vec3 c = at(u_world, p).rgb;
@@ -132,7 +145,8 @@ vec3 world(vec2 q) {
   float rate = 2.0 + floor(hash(vec2(column, 7.0)) * 3.0);
   float u = fract(p.y / SIZE.y - u_motion.w / (2.0 * PI) * rate - hash(vec2(column, 3.0)));
   float drop = pow(smoothstep(0.84, 1.0, u), 2.0) * step(0.55, hash(vec2(column, 11.0))) * smoothstep(1.0, 1.06, e);
-  c = shine(c, 1.6 * drop);
+  // On a light page the rain is a faint ink, not dark streaks.
+  c = shine(c, (lightPaintings() ? 0.6 : 1.6) * drop);
   return c;
 }
 
@@ -188,6 +202,7 @@ void main() {
   }
   c = glowOn(c, 0.55 * call * side);
 
+  if (u_out.w > 0.5) c = print(c);
   // Dither against banding in the glows.
   c += (hash(gl_FragCoord.xy * 1.37) - 0.5) / 255.0;
   if (u_out.x > 0.5) {

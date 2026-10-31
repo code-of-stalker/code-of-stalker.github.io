@@ -185,7 +185,7 @@ pub fn body_arrival(y: f32) -> f32 {
     BODY_START + (FEET[1] - y) / 700.0 * BODY_SPAN
 }
 
-/// How one theme lights the wave.
+/// How one theme lights the wave and, on a light page, prints the painting.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
     /// Drawn from Art's light paintings: the wave inks the page instead of
@@ -194,27 +194,78 @@ pub struct Look {
     /// Dark themes: the light the wave adds, in the painting's own green
     /// (the theme's recolor maps it). Light themes: the ink it multiplies in.
     pub glow: [f32; 3],
+    /// Light themes print the painting in two muted inks on the page, softer
+    /// than the shared recolor: the deepest shadows, then the middle tones.
+    pub deep: [f32; 3],
+    pub mid: [f32; 3],
+    /// How much of the light painting's own colour stays in the print.
+    pub keep: f32,
 }
 
+const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
+    [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0]
+}
 const GREEN: [f32; 3] = [0.56, 1.0, 0.62];
 /// Дюна's soft sepia: the light paintings' own shadow ink, never orange.
 const SEPIA: [f32; 3] = [0.74, 0.46, 0.27];
+/// The light paintings' paper is Дюна's page (luma .88): from here up the
+/// print is exactly the page.
+pub const PAPER_LEVEL: f32 = 0.875;
+/// Where the middle ink sits, as a fraction of the paper level.
+const MID_AT: f32 = 0.45;
+const LUMA: [f32; 3] = [0.2126, 0.7152, 0.0722];
 
 /// The app theme by its `graphicsPalette` code (0 Искра … 6 Рассвет).
-/// Light themes draw the light paintings; Мираж and Рассвет then map them
-/// to their own inks, so all three ink the same sepia here.
+/// Light themes draw the light paintings and print them here in their own
+/// muted inks; the wave inks the same sepia in all three.
 pub fn look(code: u32) -> Look {
-    if Palette::from_code(code).is_light() {
-        Look {
-            light: true,
-            glow: SEPIA,
-        }
-    } else {
-        Look {
+    let print = |deep, mid, keep| Look {
+        light: true,
+        glow: SEPIA,
+        deep,
+        mid,
+        keep,
+    };
+    match Palette::from_code(code) {
+        // Дюна keeps a third of Art's amber over a soft sepia.
+        Palette::Light => print(rgb(110, 52, 18), rgb(162, 98, 52), 0.35),
+        // Мираж: navy text ink, then cobalt dulled toward lilac.
+        Palette::Mirage => print(rgb(38, 59, 107), rgb(93, 97, 162), 0.0),
+        // Рассвет: plum text ink, then wine dulled toward copper.
+        Palette::Dawn => print(rgb(96, 51, 70), rgb(140, 84, 79), 0.0),
+        _ => Look {
             light: false,
             glow: GREEN,
-        }
+            deep: [0.0; 3],
+            mid: [0.0; 3],
+            keep: 0.0,
+        },
     }
+}
+
+/// The light print of one pixel of the light painting on `page`, as the
+/// shader's `print` does it.
+pub fn print(look: &Look, page: [f32; 3], color: [f32; 3]) -> [f32; 3] {
+    let level: f32 = (0..3).map(|i| color[i] * LUMA[i]).sum();
+    let t = (level / PAPER_LEVEL).clamp(0.0, 1.0);
+    let ink = |i: usize| {
+        if t < MID_AT {
+            mix(look.deep[i], look.mid[i], t / MID_AT)
+        } else {
+            mix(look.mid[i], page[i], (t - MID_AT) / (1.0 - MID_AT))
+        }
+    };
+    let keep = look.keep * (1.0 - smooth(0.85, 1.0, t));
+    [0, 1, 2].map(|i| mix(ink(i), color[i], keep).min(page[i]))
+}
+
+fn mix(a: f32, b: f32, t: f32) -> f32 {
+    a * (1.0 - t) + b * t
+}
+
+fn smooth(a: f32, b: f32, x: f32) -> f32 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
 }
 
 #[cfg(test)]
@@ -357,5 +408,30 @@ mod tests {
             }
         }
         assert!(!look(255).light);
+    }
+
+    #[test]
+    fn the_light_print_keeps_the_page_and_never_outshines_it() {
+        let pages = [
+            (1, [250, 225, 143]),
+            (5, [241, 223, 184]),
+            (6, [243, 216, 199]),
+        ];
+        for (code, page) in pages {
+            let page = page.map(|c| c as f32 / 255.0);
+            let l = look(code);
+            // Art's light paper, and anything lighter, lands on the page.
+            assert_eq!(print(&l, page, [0.98, 0.88, 0.56]), page);
+            let mut last = 0.0;
+            for step in 0..=20 {
+                let v = step as f32 / 20.0;
+                let ink = print(&l, page, [v, v * 0.8, v * 0.5]);
+                assert!((0..3).all(|i| ink[i] <= page[i]), "{code} {v}");
+                // Darker in the painting stays darker in the print.
+                let level: f32 = (0..3).map(|i| ink[i] * LUMA[i]).sum();
+                assert!(level + 1e-4 >= last, "{code} {v}");
+                last = level;
+            }
+        }
     }
 }

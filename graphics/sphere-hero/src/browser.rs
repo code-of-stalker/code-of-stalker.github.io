@@ -133,6 +133,8 @@ impl SphereHero {
             "u_motion",
             "u_drift",
             "u_glow",
+            "u_deep",
+            "u_mid",
             "u_geo[0]",
         ];
         let uniforms = names
@@ -241,7 +243,9 @@ impl SphereHero {
     /// The app theme by its `graphicsPalette` code (0 Искра … 6 Рассвет).
     pub fn palette(&mut self, code: u32) {
         let next = look(code);
-        let changed = self.themed.set(code);
+        // Light themes print the light paintings here in their own muted
+        // inks, so they draw straight to the canvas like Дюна.
+        let changed = self.themed.set(if next.light { 1 } else { code });
         if changed || self.look != next {
             self.look = next;
             self.draw();
@@ -295,13 +299,16 @@ impl SphereHero {
             f32::from(!offscreen),
             f32::from(self.soft_edges),
             f32::from(self.light),
-            0.0,
+            f32::from(self.light && self.look.light),
         );
         gl.uniform3fv_with_f32_array(self.at("u_backdrop"), &self.backdrop);
         gl.uniform4fv_with_f32_array(self.at("u_edges"), &EDGES);
         gl.uniform4f(self.at("u_motion"), f.wave, f.sway, f.flutter, f.phase);
         gl.uniform4f(self.at("u_drift"), f.drift[0], f.drift[1], f.bob, 0.0);
         gl.uniform3fv_with_f32_array(self.at("u_glow"), &self.look.glow);
+        gl.uniform3fv_with_f32_array(self.at("u_deep"), &self.look.deep);
+        let [r, g, b] = self.look.mid;
+        gl.uniform4f(self.at("u_mid"), r, g, b, self.look.keep);
         gl.uniform4fv_with_f32_array(self.at("u_geo[0]"), &GEOMETRY);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.bind_vertex_array(None);

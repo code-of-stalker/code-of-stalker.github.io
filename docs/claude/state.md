@@ -82,7 +82,18 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
   `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
   over the loop (108 frames each).
-- Next: 05–07, one crate each, Тишина first, prototype per page; ship each when Art says.
+- 05 «Используй свой голос» (`graphics/sphere-voice`, branch only, commit 0bdbe69): no images,
+  one ray-traced pass. A string of light on a Chladni sand plate; each phrase (1–28 s) rings it,
+  reshapes the sand and leaves one belt of a dome (own standing-wave pattern), «Я Есть» closes
+  the crown; the camera climbs to look down on it (mandala), five pulses for the verbs
+  (33.5–40.3 s), an inner and an outer dome open (42.5 s), the dome sinks back (50 s); 56 s
+  loop. No floor mirror: a dome over its reflection reads as 04's sphere, and the mirror is
+  06's image. Wired to page `sphere-voice`. Prototype `output/prototypes/sphere-voice/index.html`,
+  sheet `frames.jpg`, in Тишина only. Waits for Art's OK on Тишина, then the other 6 themes
+  (`look()` already has the light inks; the light test passes in Rust), then his word to ship.
+  The exported app loads the runtime with no CSP/GPU error; the page itself was not opened there
+  (the hidden browser pane freezes the app's navigation).
+- Next: Art's notes on 05; then 06–07, one crate each, Тишина first; ship each when Art says.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

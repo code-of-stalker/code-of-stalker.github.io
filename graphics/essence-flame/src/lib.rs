@@ -1,6 +1,6 @@
 //! «Сущностные ощущения»: Step 4, the second block's page 07/08.
-//! «Пламя»: one candle flame in the dark, very close. No room and no
-//! person; the only figure is a small wax doll on the table, and it melts.
+//! «Пламя»: one candle flame in the dark, very close. No room; the candle
+//! itself is a person, a standing wax figure with the wick in its crown.
 //! The lens comes slowly closer until the frame holds only the flame. Then
 //! the page, in order:
 //! «Сущностные ощущения — это не про эмоции» — a draught: the flame
@@ -11,16 +11,17 @@
 //! «Я — Здесь» — the flame straightens and stands still.
 //! «Я — Не мысль» — curls of smoke leave its tip and thin out; the flame
 //! stays.
-//! «Я — Не персонаж» — the wax doll beside the candle melts into a puddle.
+//! «Я — Не персонаж» — the figure melts: head, arms and legs run into one
+//! plain column of wax, lower now; the flame burns on it as before.
 //! «Я — Присутствие» — the lens is at the flame: even light, nothing else.
 //! «Ощущение Себя — без обозначения Я» — the candle, the wick, the table
-//! and the puddle go into the dark; the light remains, softer, with nothing
-//! under it. Then the lens draws back, the candle and a whole doll return
-//! out of the dark and the loop closes where it began.
+//! and the wax go into the dark; the light remains, softer, with nothing
+//! under it, and drifts back up. Then the lens draws back, the whole figure
+//! returns out of the dark and the loop closes where it began.
 //!
 //! Everything that moves is computed here, as pure functions of the loop
 //! time: the lens, the flame's lean, flicker, height and light, the wax's
-//! glow, the doll's melt and every curl of smoke. The browser adapter only
+//! glow, the figure's melt and every curl of smoke. The browser adapter only
 //! uploads the values and the shaders only paint them.
 #[cfg(target_arch = "wasm32")]
 mod browser;
@@ -40,23 +41,22 @@ pub const STILL: f32 = 41.5;
 
 /// The world is measured in centimetres on the table's front edge plane:
 /// x across, y up, the candle's axis at x = 0 and the table at y = 0.
-/// The candle: its radius, the dish it stands in, and its top.
+/// The candle, a standing wax figure: its half-width at the shoulders, the
+/// dish it stands in, and its crown, where the wick is.
 pub const CANDLE_R: f32 = 2.2;
 pub const DISH_TOP: f32 = 0.3;
 pub const CANDLE_TOP: f32 = 11.0;
+/// How far the crown sinks once the figure has melted to a plain column.
+pub const SINK: f32 = 1.4;
 /// Round things are seen a little from above: an ellipse's height over its
 /// width.
 pub const TILT: f32 = 0.28;
-/// The wick's height over the wax, and the flame on it: its root, its
-/// height and its widest half-width.
+/// The wick's height over the wax, and the flame on it: its root over the
+/// wax, its height and its widest half-width.
 pub const WICK: f32 = 0.95;
-pub const FLAME_ROOT: f32 = CANDLE_TOP + 0.45;
+pub const ROOT_OVER: f32 = 0.45;
 pub const FLAME_H: f32 = 4.2;
 pub const FLAME_W: f32 = 0.62;
-/// The wax doll on the table, left of the candle: where it stands and how
-/// tall it is.
-pub const DOLL_X: f32 = -6.4;
-pub const DOLL_H: f32 = 4.0;
 
 /// The captions, in the order of the page.
 pub const CARDS: [[f32; 2]; 7] = [
@@ -75,12 +75,12 @@ const DRAUGHT: [f32; 4] = [0.8, 2.2, 5.6, 8.4];
 /// The breathing glow of «через тело», and its period.
 const BREATH: [f32; 4] = [9.5, 11.0, 15.8, 17.2];
 const BREATH_PERIOD: f32 = 4.6;
-/// The doll melts over these seconds; it is whole again once the dark has
-/// taken everything, at `RESET`.
+/// The figure melts over these seconds; it grows whole again, and the
+/// light drifts back up, while the dark holds everything, over `UNMELT`.
 pub const MELT: [f32; 2] = [30.6, 37.2];
-pub const RESET: f32 = 51.0;
-/// The matter (candle, table, doll) leaves and comes back.
-const GONE: [f32; 4] = [46.6, 50.4, 52.2, 55.2];
+pub const UNMELT: [f32; 2] = [51.4, 53.0];
+/// The matter (candle, dish, table) leaves and comes back.
+const GONE: [f32; 4] = [46.6, 50.4, 53.0, 55.6];
 /// The flame softens into light with nothing under it.
 const PURE: [f32; 4] = [46.4, 50.0, 52.0, 55.0];
 /// The curls of smoke of «не мысль»: when each leaves the tip and its own
@@ -150,12 +150,12 @@ impl Camera {
 }
 
 const WIDE: Camera = Camera {
-    center: [-1.5, 6.0],
+    center: [0.0, 6.0],
     half: 11.0,
 };
 /// Nearer, the flame and the top of the candle.
 const NEARER: Camera = Camera {
-    center: [-0.6, 10.4],
+    center: [0.0, 10.4],
     half: 7.2,
 };
 /// Room above the tip for the smoke.
@@ -163,18 +163,18 @@ const ABOVE: Camera = Camera {
     center: [0.2, 13.6],
     half: 6.4,
 };
-/// Down to the doll, the flame still in the frame and the table above the words.
-const DOLL: Camera = Camera {
-    center: [-1.0, 6.1],
+/// Back to the whole figure as it melts, the table above the words.
+const FIGURE: Camera = Camera {
+    center: [0.0, 6.1],
     half: 11.2,
 };
-/// The lip of the candle just clears the words.
+/// At the flame on the melted wax; the wax's top just clears the words.
 const FLAME: Camera = Camera {
-    center: [0.0, 12.95],
+    center: [0.0, 12.95 - SINK],
     half: 3.45,
 };
 const CLOSEST: Camera = Camera {
-    center: [0.0, 13.3],
+    center: [0.0, 13.3 - SINK],
     half: 2.9,
 };
 /// The lens's keys: it holds between equal neighbours and eases between
@@ -186,15 +186,28 @@ const SHOTS: [(f32, Camera); 13] = [
     (22.0, NEARER),
     (26.0, ABOVE),
     (27.5, ABOVE),
-    (30.6, DOLL),
-    (37.4, DOLL),
+    (30.6, FIGURE),
+    (37.4, FIGURE),
     (41.4, FLAME),
     (46.0, FLAME),
     (50.5, CLOSEST),
     (51.5, CLOSEST),
     (LOOP_SECONDS, WIDE),
 ];
+/// The lens. Once it is at the flame it rises with the light as the light
+/// drifts back up over the returning figure, then lets go as it draws back.
 pub fn camera(t: f32) -> Camera {
+    let mut c = shot(t);
+    let (hold, back) = (SHOTS[8].0, SHOTS[11].0);
+    let follow = if t < hold {
+        0.0
+    } else {
+        1.0 - ease((t - back) / (LOOP_SECONDS - back))
+    };
+    c.center[1] += follow * (crown(t) - (CANDLE_TOP - SINK));
+    c
+}
+fn shot(t: f32) -> Camera {
     let i = SHOTS
         .windows(2)
         .position(|w| t >= w[0].0 && t < w[1].0)
@@ -262,7 +275,7 @@ pub fn glow(t: f32) -> f32 {
     let b = breath(t);
     1.0 + 0.5 * b * (0.5 - 0.5 * (TAU * (t - BREATH[0]) / BREATH_PERIOD).cos())
 }
-/// How much of the candle, the table and the doll is there.
+/// How much of the candle, the dish and the table is there.
 pub fn matter(t: f32) -> f32 {
     1.0 - window(t, GONE)
 }
@@ -270,20 +283,25 @@ pub fn matter(t: f32) -> f32 {
 pub fn pure(t: f32) -> f32 {
     window(t, PURE)
 }
-/// How far the doll has melted. It is whole again from `RESET`, when
+/// How far the figure has melted into a plain column. It grows back while
 /// nothing of the matter is seen.
 pub fn melt(t: f32) -> f32 {
-    if t >= RESET {
-        0.0
-    } else {
-        ease(smooth(MELT[0], MELT[1], t))
-    }
+    ease(smooth(MELT[0], MELT[1], t)) * (1.0 - smooth(UNMELT[0], UNMELT[1], t))
+}
+/// The wax's top, where the wick stands: the figure's crown, lower as it
+/// melts.
+pub fn crown(t: f32) -> f32 {
+    CANDLE_TOP - SINK * melt(t)
+}
+/// The flame's root over the wick.
+pub fn root(t: f32) -> f32 {
+    crown(t) + ROOT_OVER
 }
 
 /// The flame's tip at the moment `t` (cm), with its lean.
 pub fn tip(t: f32) -> [f32; 2] {
     let h = FLAME_H * height(t);
-    [lean(t) * h, FLAME_ROOT + h]
+    [lean(t) * h, root(t) + h]
 }
 
 /// One curl of smoke: its points from the oldest (highest) to the newest
@@ -404,6 +422,8 @@ pub struct Frame {
     pub light: [f32; 2],
     pub matter: f32,
     pub melt: f32,
+    /// The wax's top (cm).
+    pub crown: f32,
     /// The loop as an angle: the shader's flicker waves turn with it.
     pub phase: f32,
     /// How much of the words' strip is shown.
@@ -422,6 +442,7 @@ pub fn compose(t: f32) -> Frame {
         light: [intensity(t), glow(t)],
         matter: matter(t),
         melt: melt(t),
+        crown: crown(t),
         phase: TAU * t / LOOP_SECONDS,
         shown: words(t).iter().fold(0.0_f32, |m, l| m.max(l.alpha)),
     }
@@ -582,10 +603,7 @@ mod tests {
             assert!(close(a.flame[0], b.flame[0], 0.05), "lean {t}");
             assert!(close(a.flame[2], b.flame[2], 0.02), "height {t}");
             assert!(close(a.matter, b.matter, 0.02), "matter {t}");
-            // The doll only jumps back to whole while nothing is seen.
-            if !close(a.melt, b.melt, 0.02) {
-                assert!(a.matter < 0.001 && b.matter < 0.001, "melt {t}");
-            }
+            assert!(close(a.melt, b.melt, 0.02), "melt {t}");
         }
     }
 
@@ -611,9 +629,15 @@ mod tests {
                 assert!(smoky, "{t}");
             }
         }
-        // «Не персонаж»: the doll melts under its words and stays melted.
+        // «Не персонаж»: the figure melts under its words and stays melted;
+        // it grows back only while nothing of it is seen.
         assert_eq!(melt(CARDS[4][0]), 0.0);
         assert!(melt(CARDS[4][1]) > 0.999 && melt(48.0) > 0.999);
+        for t in times(0.05) {
+            if (UNMELT[0]..UNMELT[1]).contains(&t) {
+                assert!(matter(t) < 0.001, "{t}");
+            }
+        }
         // «Без обозначения Я»: nothing under the light.
         assert!(matter(51.0) < 0.001 && pure(51.0) > 0.999);
     }
@@ -622,11 +646,11 @@ mod tests {
     fn the_lens_keeps_what_matters_in_the_frame() {
         for t in times(0.05) {
             let c = camera(t);
-            assert!(inside(&c, [0.0, FLAME_ROOT], 40.0), "flame root {t}");
+            assert!(inside(&c, [0.0, root(t)], 40.0), "flame root {t}");
             assert!(inside(&c, tip(t), 40.0), "flame tip {t}");
             if (MELT[0]..CARDS[4][1]).contains(&t) {
-                for p in [[DOLL_X, 0.0], [DOLL_X, DOLL_H], [DOLL_X - 2.4, 0.0]] {
-                    assert!(inside(&c, p, 40.0), "doll {t}");
+                for p in [[-CANDLE_R - 1.0, DISH_TOP], [CANDLE_R + 1.0, DISH_TOP]] {
+                    assert!(inside(&c, p, 40.0), "figure {t}");
                 }
             }
         }
@@ -638,7 +662,7 @@ mod tests {
         // It ends at the flame: the flame fills most of the frame's height.
         let c = camera(STILL);
         assert!(FLAME_H * c.scale() > 0.6 * SIZE[1]);
-        assert!(above(&c, CANDLE_TOP));
+        assert!(above(&c, crown(STILL)));
     }
 
     #[test]

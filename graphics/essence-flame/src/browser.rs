@@ -4,8 +4,8 @@
 use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK};
 use crate::{
     band_above, compose, line_place, look, overlay, smooth, words, Look, CANDLE_R, CANDLE_TOP,
-    DISH_TOP, DOLL_H, DOLL_X, FLAME_H, FLAME_ROOT, FLAME_W, FLICKER_CYCLES, LOOP_SECONDS, SIZE,
-    SMOKE_STRIDE, STILL, TILT, WICK,
+    DISH_TOP, FLAME_H, FLAME_W, FLICKER_CYCLES, LOOP_SECONDS, ROOT_OVER, SIZE, SMOKE_STRIDE, STILL,
+    TILT, WICK,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -37,11 +37,9 @@ const float DISH_TOP = {DISH_TOP:?};
          const float CANDLE_TOP = {CANDLE_TOP:?};
 const float TILT = {TILT:?};
          const float WICK = {WICK:?};
-const float FLAME_ROOT = {FLAME_ROOT:?};
+const float ROOT_OVER = {ROOT_OVER:?};
          const float FLAME_H = {FLAME_H:?};
 const float FLAME_W = {FLAME_W:?};
-         const float DOLL_X = {DOLL_X:?};
-const float DOLL_H = {DOLL_H:?};
          const vec4 CYCLES = vec4({a:?}, {b:?}, {c:?}, {d:?});
 {}",
         include_str!("shaders/scene.frag")
@@ -531,7 +529,7 @@ impl EssenceFlame {
         gl.uniform3f(s.at("u_cam"), c.center[0], c.center[1], c.half);
         gl.uniform4fv_with_f32_array(s.at("u_flame"), &f.flame);
         gl.uniform2fv_with_f32_array(s.at("u_light"), &f.light);
-        gl.uniform3f(s.at("u_state"), f.matter, f.melt, f.phase);
+        gl.uniform4f(s.at("u_state"), f.matter, f.melt, f.phase, f.crown);
         gl.uniform3fv_with_f32_array(s.at("u_paper"), &paper);
         gl.uniform3fv_with_f32_array(s.at("u_key"), &key);
         gl.uniform3fv_with_f32_array(s.at("u_fill"), &fill);

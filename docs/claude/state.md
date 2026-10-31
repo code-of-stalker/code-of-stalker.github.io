@@ -1,8 +1,9 @@
 # Project state
 
 Updated 2026-10-31. `main` = the merges of `fix/home-shade-band` (the vector engine honors
-`preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip)
-and `scene/call-bell` («Колокол» on «Сила Зова», all 7 themes), both shipped 2026-10-31.
+`preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip),
+`scene/call-bell` («Колокол» on «Сила Зова») and `scene/essence-flame` («Пламя» on
+«Сущностные ощущения»), all 7 themes, all shipped 2026-10-31.
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
@@ -27,12 +28,12 @@ Scenes are web only (Rust WebGL2); the native app keeps the engine art.
 | 2 / 04 | grounding-call «Сила Зова» | call-bell «Колокол» | bell in a stone tower held by threads; threads snap, clapper strikes, sound floods the tower |
 | 2 / 05 | grounding-awakening «Пробуждение» | awakening | portrait with a cracking, peeling mask |
 | 2 / 06 | grounding-witnessing «Живое Осознавание» | witnessing | witnessing story, own light-theme artwork |
-| 2 / 07 | grounding-recognition «Сущностные ощущения» | none yet | engine art (shares `grounding-contact`) |
+| 2 / 07 | grounding-recognition «Сущностные ощущения» | essence-flame «Пламя» | the candle is a wax figure of a person, flame in its crown; it melts into a plain candle, camera closes on the flame |
 | 2 / 08 | grounding-real «Истинное распознавание» | none yet | engine art |
 
 Block 1 pages 04–06 and block 2 pages 01–02 share one look (dark room, seated person in
 profile, card bottom-right, focus pulls). Do not make a sixth one like them.
-Next: pages 07–08 (`/new-scene`).
+Next: page 08 «Истинное распознавание» (`/new-scene`).
 
 ## Shipped features (all on main)
 - Themes: 7 (Тишина default). Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

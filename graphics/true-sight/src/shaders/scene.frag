@@ -9,8 +9,8 @@ uniform vec2 u_res;       // target px
 uniform vec3 u_cam;       // the lens's centre (cm) and half the frame's height
 uniform vec4 u_eye;       // open, gaze x, gaze y, pupil radius
 uniform vec4 u_state;     // dreams, their flicker, the world on the cornea, its grid
-uniform vec4 u_dream;     // which dream, its tear, seconds since it and the one before began
-uniform vec4 u_holo;      // the grid over the face, the person in the pupil, the weave
+uniform vec4 u_dream;     // which dream, how far it has formed, seconds since it and the one before began
+uniform vec4 u_holo;      // the grid over the face, the person in the pupil, light gathering
 uniform vec3 u_light;     // key light, the loop's angle, the skin's least light
 uniform vec3 u_paper;
 uniform vec3 u_key;
@@ -26,10 +26,12 @@ const vec2 OUTER = vec2(1.45, EYE_Y - 0.085);
 // The eyeball's radius.
 const float BALL = 1.22;
 // The dreams' pictures span the lid: their centre and how many cm one unit
-// of a picture is (x -2..2, y -1..1), and how soft the skin makes them.
+// of a picture is (x -2..2, y -1..1), and how soft the skin makes them;
+// a dream melting into the next is softer.
 const vec2 DREAM_AT = vec2(-0.02, EYE_Y + 0.22);
 const float DREAM_UNIT = 0.48;
-const float BLUR = 0.03;
+const float SKIN_BLUR = 0.03;
+float blur = SKIN_BLUR;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -76,7 +78,7 @@ float lines(float v, float w) {
 }
 // Inside a shape (its signed distance d), as soft as the lid's skin.
 float blurred(float d) {
-  return 1.0 - smoothstep(-BLUR, BLUR, d);
+  return 1.0 - smoothstep(-blur, blur, d);
 }
 // Where p lies across the eye, -1 at the inner corner to 1 at the outer.
 float across(float x) {
@@ -127,26 +129,50 @@ float grain(vec2 p) {
   return 0.003 * streaks * lid * along + 0.0015 * noise(p * 60.0);
 }
 
-// A person standing, the feet at y 0 and the crown at 1, facing the lens.
-// `swing` (-1..1) lifts one foot and the other hand: a walker from behind.
+// A rounded cone from a (radius ra) to b (radius rb): one limb.
+float limb(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+  vec2 ba = b - a;
+  float l2 = dot(ba, ba), rr = ra - rb, a2 = l2 - rr * rr, il2 = 1.0 / l2;
+  vec2 pa = p - a;
+  float y = dot(pa, ba), z = y - l2;
+  vec2 xv = pa * l2 - ba * y;
+  float x2 = dot(xv, xv), y2 = y * y * l2, z2 = z * z * l2;
+  float k = sign(rr) * rr * rr * x2;
+  if (sign(z) * a2 * z2 > k) return sqrt(x2 + z2) * il2 - rb;
+  if (sign(y) * a2 * y2 < k) return sqrt(x2 + y2) * il2 - ra;
+  return (sqrt(x2 * a2 * il2) + y * rr) * il2 - ra;
+}
+// A person standing, the feet at y 0 and the crown at 1, facing the lens,
+// eight heads tall, the arms a little open. `swing` (-1..1) lifts one foot
+// and the other hand: a walker seen from behind.
 float person(vec2 u, float swing) {
-  float d = length(u - vec2(0.0, 0.905)) - 0.068;
-  d = smin(d, capsule(u, vec2(0.0, 0.84), vec2(0.0, 0.78)) - 0.026, 0.02);
-  d = smin(d, capsule(u, vec2(-0.105, 0.76), vec2(0.105, 0.76)) - 0.032, 0.03);
-  d = smin(d, capsule(u, vec2(0.0, 0.7), vec2(0.0, 0.53)) - 0.07, 0.04);
-  d = smin(d, capsule(u, vec2(-0.05, 0.47), vec2(0.05, 0.47)) - 0.058, 0.03);
+  vec2 h = (u - vec2(0.0, 0.937)) / vec2(0.05, 0.063);
+  float d = (length(h) - 1.0) * 0.05;
+  d = smin(d, limb(u, vec2(0.0, 0.885), vec2(0.0, 0.83), 0.021, 0.024), 0.012);
+  // Shoulders sloping from the neck, the chest narrowing to the waist,
+  // the pelvis.
+  d = smin(d, limb(u, vec2(0.0, 0.82), vec2(-0.105, 0.79), 0.03, 0.036), 0.02);
+  d = smin(d, limb(u, vec2(0.0, 0.82), vec2(0.105, 0.79), 0.03, 0.036), 0.02);
+  d = smin(d, limb(u, vec2(0.0, 0.745), vec2(0.0, 0.6), 0.082, 0.06), 0.03);
+  d = smin(d, (length((u - vec2(0.0, 0.525)) / vec2(0.083, 0.062)) - 1.0) * 0.062, 0.03);
   for (int k = 0; k < 2; k++) {
     float side = k == 0 ? -1.0 : 1.0;
-    float lift = 0.05 * max(side * swing, 0.0);
-    vec2 hip = vec2(side * 0.052, 0.45), ankle = vec2(side * 0.058, 0.04 + lift);
-    float taper = clamp((u.y - ankle.y) / (hip.y - ankle.y), 0.0, 1.0);
-    d = smin(d, capsule(u, hip, ankle) - mix(0.022, 0.045, taper), 0.02);
-    d = smin(d, capsule(u, ankle - vec2(0.0, 0.025), ankle + vec2(side * 0.025, -0.03)) - 0.016, 0.015);
-    vec2 shoulder = vec2(side * 0.125, 0.745), elbow = vec2(side * 0.155, 0.53);
-    vec2 hand = vec2(side * 0.17, 0.33 + 0.03 * side * swing);
-    d = smin(d, capsule(u, shoulder, elbow) - 0.026, 0.02);
-    d = smin(d, capsule(u, elbow, hand) - 0.02, 0.01);
-    d = smin(d, length(u - hand + vec2(0.0, 0.025)) - 0.024, 0.01);
+    float lift = 0.035 * max(side * swing, 0.0);
+    // The leg: thigh to knee, the calf's swell, the ankle, the foot.
+    vec2 hip = vec2(side * 0.048, 0.5), knee = vec2(side * 0.044, 0.285 + lift);
+    vec2 calf = vec2(side * 0.046, 0.21 + lift), ankle = vec2(side * 0.042, 0.04 + lift);
+    d = smin(d, limb(u, hip, knee, 0.054, 0.032), 0.015);
+    d = smin(d, limb(u, knee, calf, 0.032, 0.034), 0.01);
+    d = smin(d, limb(u, calf, ankle, 0.034, 0.017), 0.01);
+    d = smin(d, limb(u, ankle, ankle + vec2(side * 0.022, -0.028), 0.017, 0.012), 0.01);
+    // The arm: deltoid, upper arm, elbow, forearm, wrist, the open hand.
+    float reach = 0.025 * side * swing;
+    vec2 shoulder = vec2(side * 0.112, 0.79), elbow = vec2(side * 0.148, 0.62 + reach);
+    vec2 wrist = vec2(side * 0.178, 0.47 + 2.0 * reach);
+    d = smin(d, length(u - shoulder) - 0.036, 0.015);
+    d = smin(d, limb(u, shoulder, elbow, 0.031, 0.024), 0.012);
+    d = smin(d, limb(u, elbow, wrist, 0.025, 0.016), 0.008);
+    d = smin(d, limb(u, wrist, wrist + vec2(side * 0.012, -0.075), 0.017, 0.012), 0.008);
   }
   return d;
 }
@@ -248,7 +274,7 @@ vec2 stair(vec2 q, float c) {
   float k = floor(slant / FLIGHT);
   float y = slant - (k + 0.5) * FLIGHT;
   float s = y - (0.5 - fract(x)) * RISE;
-  float body = smoothstep(BLUR, -BLUR, s) * smoothstep(-0.27, -0.23, s);
+  float body = smoothstep(blur, -blur, s) * smoothstep(-0.27, -0.23, s);
   float tread = exp(-pow(s / 0.018, 2.0));
   float riser = 0.35 + 0.65 * fract(x);
   float alternate = mod(k, 2.0) < 0.5 ? 1.0 : 0.6;
@@ -261,29 +287,23 @@ vec2 dreamPicture(int which, vec2 q, float c) {
   if (which == 2) return faces(q, c);
   return stair(q, c);
 }
-// The ragged line a dream tears along.
-float rag(float y) {
-  return 0.1 * (noise(vec2(y * 5.0, 3.1)) - 0.5) + 0.035 * sin(y * 31.0 + 1.0) + 0.02 * sin(y * 67.0);
-}
-// The dream now, torn in over the one before: the old picture splits
-// along a ragged line, its halves slide apart and fade, the torn edges
-// glow, and the new one shows in the gap.
+// The dream now, formed out of the one before: at the start of the lid a
+// ripple runs out from the middle of the picture, the old dream melts into
+// the blur and fades, and the new one gathers out of it and sharpens.
 vec2 reel(vec2 q) {
   int now = int(u_dream.x + 0.5);
-  float tear = u_dream.y;
-  vec2 pic = dreamPicture(now, q, u_dream.z) * smoothstep(0.1, 1.0, tear);
-  if (tear < 1.0) {
-    float gap = 1.1 * tear * tear;
-    vec2 l = q + vec2(0.5 * gap, 0.0), r = q - vec2(0.5 * gap, 0.0);
-    float dl = l.x - rag(l.y), dr = r.x - rag(r.y);
-    float kept = smoothstep(0.01, -0.01, dl) + smoothstep(-0.01, 0.01, dr);
-    vec2 old = dreamPicture((now + 3) % 4, dl < 0.0 ? l : r, u_dream.w);
-    float fade = 1.0 - tear;
-    pic = pic * (1.0 - kept * fade) + old * kept * fade;
-    float edge = exp(-min(abs(dl), abs(dr)) / 0.02) * fade * smoothstep(0.0, 0.08, tear);
-    pic.y += 1.6 * edge;
-  }
-  return pic;
+  float m = u_dream.y;
+  if (m >= 1.0) return dreamPicture(now, q, u_dream.z);
+  float r = length(q);
+  float wave = sin(PI * m) * sin(r * 7.0 - m * 16.0) * exp(-r * 0.6);
+  vec2 bent = q + q / max(r, 1e-3) * 0.07 * wave;
+  float melt = smoothstep(0.0, 1.0, m);
+  blur = SKIN_BLUR + 0.3 * melt;
+  vec2 old = dreamPicture((now + 3) % 4, bent, u_dream.w) * (1.0 - smoothstep(0.05, 0.75, m));
+  blur = SKIN_BLUR + 0.3 * (1.0 - melt);
+  vec2 next = dreamPicture(now, bent, u_dream.z) * smoothstep(0.3, 1.0, m);
+  blur = SKIN_BLUR;
+  return old + next;
 }
 
 // The world on the cornea, seen in a convex mirror: the sky, the low sun,
@@ -327,40 +347,39 @@ float worldGrid(vec2 c, float k) {
   return 0.45 * net + 0.9 * max(edges, sun) + 0.8 * dots;
 }
 
-// Inside the pupil: the iris's fibres streaming in, and the person they
-// weave standing whole in the dark, lit from the heart; faint stars around.
-// `pq` runs across the pupil (its rim at 1), `k` is one pixel in it.
-vec3 within(vec2 pq, float k) {
-  float f = u_holo.y, weave = u_holo.z;
-  if (f + weave <= 0.0) return vec3(0.0);
-  float pr = length(pq);
-  vec2 cell = floor(pq * 18.0);
-  vec2 sp = fract(pq * 18.0) - 0.5 - 0.5 * (vec2(hash(cell + 7.0), hash(cell + 9.0)) - 0.5);
-  float star = step(0.85, hash(cell + 3.0)) * exp(-dot(sp, sp) / pow(27.0 * k + 0.02, 2.0))
-             * 0.35 * max(f, weave);
-  // The threads run in from the rim along the iris's fibres, beads of light
-  // travelling on them.
-  float spokes = atan(pq.y, pq.x) / (2.0 * PI) * 72.0 + 0.6 * sin(pr * 5.0);
-  float thread = lines(spokes, k * 72.0 / (2.0 * PI * max(pr, 0.05)));
-  float reach = 1.0 - 1.25 * weave;
-  float bead = 0.55 + 0.45 * sin(pr * 40.0 + u_light.y * 360.0);
-  vec3 col = u_fill * thread * smoothstep(reach, reach + 0.15, pr) * bead * weave * 0.9;
-  // The person, revealed from the heart outward.
-  vec2 fu = (pq - vec2(0.0, -0.7)) / 1.4;
-  float d = person(fu, 0.0) * 1.4;
-  float body = 1.0 - smoothstep(-k, k, d);
-  float rim = exp(-abs(d) / (2.5 * k));
-  float halo = exp(-max(d, 0.0) / 0.06);
-  float fibres = noise(vec2(fu.x * 160.0, fu.y * 5.0 + 3.0 * noise(fu * 9.0)));
-  float woven = lines(d / 0.022, k / 0.022) * body;
-  vec2 heart = fu - vec2(0.0, 0.64);
-  float rr = length(heart * vec2(1.0, 0.75));
-  float shown = smoothstep(f * 0.75, f * 0.75 - 0.12, rr) * smoothstep(0.0, 0.2, f);
-  float breath = 1.0 + 0.08 * sin(7.0 * u_light.y);
-  float core = exp(-dot(heart, heart) / 0.003);
-  col += (u_fill * (0.7 * rim + 0.2 * halo + body * (0.06 + 0.3 * fibres * fibres) + 0.45 * woven)
-        + u_key * u_warm * (0.8 * core + 0.12 * body * exp(-rr * rr / 0.03))) * shown * breath;
-  return col + u_fill * star;
+// Inside the pupil: a person standing whole in its dark, woven of light,
+// glowing out from the heart and breathing; motes of light drift in to
+// them while they form. `p` is the point (cm), `k` one pixel.
+vec3 within(vec2 p, float k) {
+  float f = u_holo.y, gather = u_holo.z;
+  if (f + gather <= 0.0) return vec3(0.0);
+  vec2 fu = (p - vec2(u_eye.y, FIGURE_FEET)) / FIGURE_HEIGHT;
+  float d = person(fu, 0.0) * FIGURE_HEIGHT;
+  vec2 heart = fu - vec2(0.0, 0.68);
+  float shown = smoothstep(f * 0.8, f * 0.8 - 0.25, length(heart * vec2(1.0, 0.7)))
+              * smoothstep(0.0, 0.25, f);
+  float breath = 1.0 + 0.06 * sin(7.0 * u_light.y);
+  // The body's light: a fine bright edge, a soft fill that deepens inward,
+  // a wide glow around.
+  float inside = 1.0 - smoothstep(-k, k, d);
+  float depth = smoothstep(0.0, 0.035 * FIGURE_HEIGHT, -d);
+  float edge = exp(-abs(d) / (1.6 * k + 0.002 * FIGURE_HEIGHT));
+  float near = exp(-max(d, 0.0) / (0.04 * FIGURE_HEIGHT));
+  float far = exp(-max(d, 0.0) / (0.16 * FIGURE_HEIGHT));
+  float core = exp(-dot(heart, heart) / 0.004);
+  vec3 glow = mix(u_fill, u_key, 0.55);
+  vec3 col = glow * (0.75 * edge + inside * (0.3 + 0.25 * depth)) + u_fill * (0.3 * near + 0.14 * far)
+           + u_key * u_warm * (0.7 * core + 0.18 * inside * exp(-dot(heart, heart) / 0.03));
+  col *= shown * breath;
+  // Motes drift in toward the heart while the light gathers.
+  vec2 a = fu - vec2(0.0, 0.6);
+  float spin = atan(a.y, a.x);
+  vec2 cell = vec2(floor(spin / (2.0 * PI) * 40.0), 0.0);
+  float lane = (fract(spin / (2.0 * PI) * 40.0) - 0.5) * length(a) * 2.0 * PI / 40.0;
+  float run = fract(hash(cell + 5.0) - gather * (1.2 + hash(cell + 2.0)));
+  float mote = exp(-(lane * lane + pow(length(a) - 0.25 - 1.6 * run, 2.0)) / pow(0.004 + 2.0 * k / FIGURE_HEIGHT, 2.0));
+  col += glow * mote * 0.8 * gather * step(0.55, hash(cell + 9.0)) * run;
+  return col;
 }
 
 // The eye inside the opening: the white, the iris, the pupil, the world on
@@ -394,7 +413,7 @@ vec3 eyeball(vec2 p, float px) {
     float inIris = 1.0 - smoothstep(IRIS_R - px, IRIS_R + px * 2.0, r);
     col = mix(col, iris * lidShade, inIris);
     float inPupil = 1.0 - smoothstep(rp - px, rp + px, r);
-    col = mix(col, u_paper * 0.25 + within(d / rp, px / rp), inPupil);
+    col = mix(col, u_paper * 0.25 + within(p, px), inPupil);
 
     // The world on the cornea, plainest over the dark pupil. With the grid
     // it breaks from the pupil outward into its lines, a bright front
@@ -418,7 +437,7 @@ vec3 eyeball(vec2 p, float px) {
   // The light's own glint, small and soft, up and to the left.
   vec2 win = (d - vec2(-0.21, 0.24)) / vec2(0.055, 0.065);
   float pane = exp(-pow(dot(win, win), 2.0));
-  col += u_key * 0.6 * pane * smoothstep(0.3, 0.8, u_eye.x) * (1.0 - u_holo.y);
+  col += u_key * 0.6 * pane * smoothstep(0.3, 0.8, u_eye.x) * (1.0 - max(u_holo.y, u_holo.z));
   return col;
 }
 

@@ -3,8 +3,8 @@
 //! and the world on its cornea.
 use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK};
 use crate::{
-    band_above, compose, line_place, look, smooth, words, Look, DREAM_CYCLES, EYE_Y, IRIS_R,
-    LOOP_SECONDS, SIZE, STILL,
+    band_above, compose, line_place, look, smooth, words, Look, DREAM_CYCLES, EYE_Y, FIGURE_FEET,
+    FIGURE_HEIGHT, IRIS_R, LOOP_SECONDS, SIZE, STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -31,6 +31,8 @@ fn scene_source() -> String {
 precision highp float;
 const float EYE_Y = {EYE_Y:?};
 const float IRIS_R = {IRIS_R:?};
+const float FIGURE_FEET = {FIGURE_FEET:?};
+const float FIGURE_HEIGHT = {FIGURE_HEIGHT:?};
 const vec4 CYCLES = vec4({a:?}, {b:?}, {c:?}, {d:?});
 {}",
         include_str!("shaders/scene.frag")

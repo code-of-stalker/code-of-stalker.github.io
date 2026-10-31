@@ -20,9 +20,9 @@ Owner and only user: Art (GitHub `code-of-stalker`).
 2. All graphics and animation are Rust (see AGENTS.md). JS/TS only bridges.
 3. Rust: look up crate APIs in Context7 first (wgpu, wasm-bindgen, web-sys, js-sys…)
    for the versions pinned in `Cargo.toml`, never from memory.
-4. Themes: Дюна `light`, Мираж `mirage`, Рассвет `dawn` are light; Тишина `neutral`
-   (default), Искра `dark`, Астрал `violet`, Матрица `matrix` are dark. Mark this
-   in code only, never in the UI.
+4. Themes: Дюна `light`, Мираж `mirage`, Рассвет `dawn` are light; Матрица `matrix`
+   (default), Тишина `neutral`, Искра `dark`, Астрал `violet` are dark. Mark this
+   in code only, never in the UI. Settings list them in that order: dark first, then light.
 5. Light themes: a scene's background is exactly the page color. No paler frame,
    no white, no haze; light is inked in the theme's lamp color. Check: 0 pixels
    lighter than the page.

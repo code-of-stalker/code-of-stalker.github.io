@@ -2,6 +2,7 @@ import { ArtLoading } from '../skeleton/ArtLoading';
 import type { ReadingPage } from './readingPages';
 import { ScenePlaceholder } from './ScenePlaceholder';
 import { SphereAnchor } from './SphereAnchor.web';
+import { SphereRoom } from './SphereRoom.web';
 import { SphereWorld } from './SphereWorld.web';
 import type { ArtProps } from './types';
 import { useSystemReducedMotion } from './useSystemReducedMotion.web';
@@ -12,7 +13,9 @@ import { useSystemReducedMotion } from './useSystemReducedMotion.web';
 export function StepFiveScene({ page, width, height, active, reducedMotion }: { page: ReadingPage; width: number; height: number; active: boolean; reducedMotion: boolean }) {
   const systemReduced = useSystemReducedMotion();
   const placeholder = page.placeholder ? <ScenePlaceholder scene={page.placeholder} width={width} height={height} /> : null;
-  const Scene = page.webScene === 'sphere-world' ? SphereWorld : page.webScene === 'sphere-anchor' ? SphereAnchor : undefined;
+  const Scene = page.webScene === 'sphere-world' ? SphereWorld
+    : page.webScene === 'sphere-anchor' ? SphereAnchor
+    : page.webScene === 'sphere-room' ? SphereRoom : undefined;
   if (!Scene) return placeholder;
   // Step 5 pages have no engine art; the kind only names the load for the skeleton.
   const props: ArtProps = { kind: 'grounding-hero', webScene: page.webScene, width, height, active, reducedMotion: reducedMotion || systemReduced };

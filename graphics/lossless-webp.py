@@ -28,7 +28,7 @@ SOURCES = {
     "sphere-hero": ["parallax-base", "reflection", "figure", "foreground"],
     "sphere-world": ["panorama", "depth"],
     "sphere-anchor": ["avatar"],
-    "sphere-room": ["room"],
+    "sphere-room": ["room", "depth"],
     "sphere-lake": ["lake"],
     "sphere-everywhere": ["strip"],
 }

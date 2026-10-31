@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-10-31. `main` = the merges of `fix/home-shade-band` (the vector engine honors
+Updated 2026-11-01. `main` = the merges of `fix/home-shade-band` (the vector engine honors
 `preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip),
 `scene/call-bell` («Колокол» on «Сила Зова»), `scene/essence-flame` («Пламя» on
 «Сущностные ощущения») and `scene/true-sight` («Глаз» on «Истинное распознавание»),
@@ -38,7 +38,7 @@ Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
 Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
-первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»). 7 reading pages (text in `stepFiveContent.ts`), access via
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка» on 2026-11-01 (Art: «Пушим»). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -73,8 +73,16 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
   07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
-- Next: 04–07, one crate each, Тишина
-  first, prototype per page; ship each when Art says.
+- 04 «Ты не точка» (`graphics/sphere-orbit`, shipped to `main` 2026-11-01): no images, all 3D.
+  A point opens into a ticked ring with a runner at 3 s (Art: 9 s of the point alone was too
+  long), the ring rises into meridians and parallels (glints at the crossings), one wave
+  crosses the sphere from each named side (24–40 s), all sides on «вокруг» (44 s); the camera
+  orbits once per 54 s loop; near motes soft, far ones sharp like stars. Wired to page
+  `sphere-expand`; the exported app mounts it at phone and wide sizes. Art OK'd Тишина; all 7
+  themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
+  `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
+  over the loop (108 frames each).
+- Next: 05–07, one crate each, Тишина first, prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /

@@ -23,6 +23,7 @@ SOURCES = {
     "persona-program": ["figure", "labels"],
     "persona-belief": ["labels"],
     "call-bell": ["labels"],
+    "essence-flame": ["labels"],
 }
 
 

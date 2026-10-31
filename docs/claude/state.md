@@ -82,13 +82,14 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   themes checked in the prototype (`output/prototypes/sphere-orbit/index.html`, sheets
   `frames.jpg`, `temy.jpg`): light themes engrave in their inks, 0 px lighter than the page
   over the loop (108 frames each).
-- 05 «Используй свой голос» (`graphics/sphere-voice`, branch only, round 2 commit cdc681a): no
+- 05 «Используй свой голос» (`graphics/sphere-voice`, branch only, round 3 commit dd585c3): no
   images, one ray-traced pass. A string of light on a Chladni sand plate; each phrase (1–28 s)
   rings it, reshapes the sand, sends a bead up the axis, and builds one belt of a dome from the
   crown down (Art's note on round 1): «Я Здесь» grows the crown from a point, «Я Есть» sets the
   last belt on the plate; belts fade in softly. The camera climbs to look down on it (mandala),
-  five pulses crown-down for the verbs (33.5–40.3 s), an inner and an outer dome open (42.5 s),
-  the dome fades crown first (50 s); 56 s loop. Matrix hall behind: 4 walls of code rain,
+  five pulses crown-down for the verbs (33.5–40.3 s), an inner and an outer dome open (42.5 s)
+  and the floor's dials and glyph rings spin up each its own way («полное включение», Art),
+  resting whole turns on by 55.5 s; the dome fades crown first (50 s); 56 s loop. Matrix hall behind: 4 walls of code rain,
   5 floating panels (scrolling code, the voice's wave), floor projection (dials, glyph rings,
   code streams). No floor mirror: a dome over its reflection reads as 04's sphere, and the
   mirror is 06's image. Wired to page `sphere-voice`. Prototype

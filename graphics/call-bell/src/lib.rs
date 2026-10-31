@@ -997,7 +997,9 @@ pub struct Look {
     pub key: [f32; 3],
     /// The window's cold light, the threads' sheen.
     pub fill: [f32; 3],
-    /// What the light is inked in on light pages.
+    /// Light pages: the light is inked in the lamp's color, and only its
+    /// strongest deepens to `ink`; the dark stays the page.
+    pub lamp: [f32; 3],
     pub ink: [f32; 3],
     /// The bright and the quiet caption lines.
     pub word: [f32; 3],
@@ -1019,18 +1021,20 @@ pub fn look(code: u32) -> Look {
         paper,
         key: lerp3(highlight, [1.0; 3], 0.1),
         fill: accent,
+        lamp: [0.0; 3],
         ink: [0.0; 3],
         word: lerp3(highlight, [1.0; 3], 0.15),
         lead: lerp3(highlight, paper, 0.25),
         light: false,
     };
     match palette {
-        // Дюна: brown ink on sand, never an orange flood.
+        // Дюна: a soft sepia print on sand, never an orange flood.
         Palette::Light => Look {
             paper: rgb(0xFAE18F),
             key: rgb(0xE8912E),
             fill: rgb(0xC9601E),
-            ink: rgb(0x8E3A00),
+            lamp: rgb(0xE8912E),
+            ink: rgb(0xBE4C00),
             word: rgb(0x8E3A00),
             lead: rgb(0xC9601E),
             light: true,
@@ -1041,6 +1045,12 @@ pub fn look(code: u32) -> Look {
                 paper: c.paper,
                 key: c.detail,
                 fill: c.accent,
+                // Мираж's lamp is its cobalt, Рассвет's its copper.
+                lamp: if palette == Palette::Mirage {
+                    c.accent
+                } else {
+                    c.detail
+                },
                 ink: c.highlight,
                 word: c.highlight,
                 lead: c.accent,
@@ -1331,7 +1341,7 @@ mod tests {
             let l = look(code);
             assert_eq!(l.light, matches!(code, 1 | 5 | 6));
             if l.light {
-                for c in [l.ink, l.word, l.lead] {
+                for c in [l.lamp, l.ink, l.word, l.lead] {
                     assert!(luma(c) < luma(l.paper) - 0.2, "{code}");
                 }
             } else {

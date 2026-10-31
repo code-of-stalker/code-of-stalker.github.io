@@ -308,6 +308,7 @@ impl CallBell {
                 "u_res",
                 "u_paper",
                 "u_backdrop",
+                "u_lamp",
                 "u_ink",
                 "u_post",
                 "u_edges",
@@ -591,6 +592,7 @@ impl CallBell {
         gl.uniform2f(p.at("u_res"), width as f32, height as f32);
         gl.uniform3fv_with_f32_array(p.at("u_paper"), &self.page());
         gl.uniform3fv_with_f32_array(p.at("u_backdrop"), &self.backdrop);
+        gl.uniform3fv_with_f32_array(p.at("u_lamp"), &l.lamp);
         gl.uniform3fv_with_f32_array(p.at("u_ink"), &l.ink);
         gl.uniform4f(
             p.at("u_post"),

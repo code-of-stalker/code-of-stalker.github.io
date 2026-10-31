@@ -3,11 +3,13 @@ precision highp float;
 // The lens's blur (each pixel gathers the neighbours whose blur circle
 // reaches it), a quiet band under the words, grain and the soft edges into
 // the page. On a light page the scene was lit on black: its light is laid
-// on the page in ink, and nothing gets lighter than the page.
+// on the page in the lamp's color, deepening to ink only where it is
+// strongest, and nothing gets lighter than the page.
 uniform sampler2D u_scene;
 uniform vec2 u_res;       // canvas px
 uniform vec3 u_paper;
 uniform vec3 u_backdrop;
+uniform vec3 u_lamp;
 uniform vec3 u_ink;
 uniform vec4 u_post;      // light page, words shown, grain seed, soft edges
 uniform vec4 u_edges;     // left, right, top, bottom
@@ -44,9 +46,9 @@ void main() {
     c = mix(c, u_paper, 0.72 * strip);
     c += (hash(gl_FragCoord.xy + u_post.z) - 0.5) * 0.018;
   } else {
-    float a = clamp(max(c.r, max(c.g, c.b)) * 1.1, 0.0, 1.0);
+    float a = 1.0 - exp(-2.0 * max(c.r, max(c.g, c.b)));
     a *= 1.0 - 0.6 * strip;
-    c = mix(u_paper, u_ink, a);
+    c = a < 0.7 ? mix(u_paper, u_lamp, a / 0.7) : mix(u_lamp, u_ink, (a - 0.7) / 0.3);
   }
   c += (hash(gl_FragCoord.xy * 1.37) - 0.5) / 255.0;
   if (u_post.w > 0.5) {

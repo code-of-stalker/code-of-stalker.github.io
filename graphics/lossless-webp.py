@@ -23,6 +23,8 @@ SOURCES = {
     "persona-program": ["figure", "labels"],
     "persona-belief": ["labels"],
     "call-bell": ["labels"],
+    "essence-flame": ["labels"],
+    "true-sight": ["labels"],
     "sphere-hero": ["parallax-base", "reflection", "figure", "foreground"],
     "sphere-world": ["panorama"],
     "sphere-anchor": ["avatar"],

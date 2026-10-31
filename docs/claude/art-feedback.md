@@ -34,3 +34,13 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 
 ## Колокол (block 2 page 04)
 - Light themes must read as clearly as the 48 s flood frame: «слишком всё сливается» when only faint lamp lines sat on the page. Fix: a quiet light from the mouth and an ink S-curve (lit forms deepen to ink).
+
+## Пламя (block 2 page 07)
+- A separate wax doll melting beside the candle made no sense to him («странно… стоит отдельно и тает»). The candle itself is the person: a wax figure with the wick in its crown, melting into a plain candle.
+
+## Глаз (block 2 page 08)
+- First take (one quiet eye) was «скучно»; he picked a mix: dreams on the lid, the world turning into a grid, a person in the pupil.
+- When the camera dives into something, it must go all the way in: «глаза больше не было». Nothing of the outer object left in frame.
+- Figures of light: a clean, well-proportioned silhouette, no patterns or fibre weaves («непонятные узоры», «топорная»).
+- Torn/ragged transitions look crude («разрывы выглядят топорно»); soft melts (ripple, blur, fade) passed.
+- On light themes a light figure must not turn into a solid ink shadow: inked edge, lamp-tinted body.

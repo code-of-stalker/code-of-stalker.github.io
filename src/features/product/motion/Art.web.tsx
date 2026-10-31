@@ -13,6 +13,8 @@ import { PersonaProgram } from './PersonaProgram.web';
 import { Awakening } from './Awakening.web';
 import { Witnessing } from './Witnessing.web';
 import { CallBell } from './CallBell.web';
+import { EssenceFlame } from './EssenceFlame.web';
+import { TrueSight } from './TrueSight.web';
 import { PersonaBelief } from './PersonaBelief.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
@@ -31,6 +33,8 @@ function scene(props: ArtProps) {
   if (props.webScene === 'awakening') return <Awakening {...props} />;
   if (props.webScene === 'witnessing') return <Witnessing {...props} />;
   if (props.webScene === 'call-bell') return <CallBell {...props} />;
+  if (props.webScene === 'essence-flame') return <EssenceFlame {...props} />;
+  if (props.webScene === 'true-sight') return <TrueSight {...props} />;
   if (props.webScene === 'persona-belief') return <PersonaBelief {...props} />;
   // Inline films do not own card geometry, scanner reveal or button hit areas.
   if(props.kind==='grounding-here' && props.presentation!=='card')return <CloudDrift {...props}/>;

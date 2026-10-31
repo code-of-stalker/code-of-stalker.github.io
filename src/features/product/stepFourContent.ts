@@ -55,11 +55,11 @@ const pages: readonly ReadingPage[] = [
   { id: 'grounding-witnessing', title: 'Живое Осознавание', art: 'grounding-trace', webScene: 'witnessing', paragraphs: [
     'Это возвращение в Живое Осознавание, где ты не просто делаешь вывод — а становишься мониторингом всего процесса, Слышанием, Ощущением — становишься Свидетельствованием.',
   ] },
-  { id: 'grounding-recognition', title: 'Сущностные ощущения', art: 'grounding-contact', paragraphs: [
+  { id: 'grounding-recognition', title: 'Сущностные ощущения', art: 'grounding-contact', webScene: 'essence-flame', paragraphs: [
     'Сущностные ощущения — это не про эмоции.',
     'Это про Живое Узнавание Сути в себе, узнавание через ощущения, через тело:',
   ], spoken: ['Я — Здесь.', 'Я — Не мысль.', 'Я — Не персонаж.', 'Я — Присутствие.'], after: ['Ощущение Себя — без обозначения Я.'] },
-  { id: 'grounding-real', title: 'Истинное распознавание', art: 'grounding-presence', paragraphs: [
+  { id: 'grounding-real', title: 'Истинное распознавание', art: 'grounding-presence', webScene: 'true-sight', paragraphs: [
     'И пока ты не ощутил ступни, не услышал голос, не отследил, как мысль делает вывод, ты не проснулся.',
   ], statement: 'Но как только возникло Истинное Видение, Истинное Распознавание и Различение — возникает Ты Абсолютный, Ты Настоящий.' },
 ];

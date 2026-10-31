@@ -25,7 +25,7 @@ export async function prepareAppManifest(root, html) {
   const manifest = {
     id: '/', name, short_name: name, lang: 'ru',
     start_url: '/', scope: '/', display: 'standalone',
-    background_color: '#0d1520', theme_color: '#0d1520',
+    background_color: '#000000', theme_color: '#000000',
     icons: [
       { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -40,7 +40,7 @@ export async function prepareAppManifest(root, html) {
     `<link id="watcher-app-icon" rel="apple-touch-icon" sizes="180x180" href="${appleIcon}">`,
     '<meta id="watcher-app-capable" name="apple-mobile-web-app-capable" content="yes">',
     `<meta id="watcher-app-title" name="apple-mobile-web-app-title" content="${name}">`,
-    '<meta id="watcher-app-theme" name="theme-color" content="#0d1520">',
+    '<meta id="watcher-app-theme" name="theme-color" content="#000000">',
     `<meta id="watcher-app-og-title" property="og:title" content="${name}">`,
     `<meta id="watcher-app-og-site" property="og:site_name" content="${name}">`,
     '<meta id="watcher-app-og-type" property="og:type" content="website">',

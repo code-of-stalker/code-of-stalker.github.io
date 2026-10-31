@@ -1,8 +1,10 @@
 # Project state
 
 Updated 2026-10-31. `main` = the merges of `fix/home-shade-band` (the vector engine honors
-`preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip)
-and `scene/call-bell` («Колокол» on «Сила Зова», all 7 themes), both shipped 2026-10-31.
+`preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip),
+`scene/call-bell` («Колокол» on «Сила Зова»), `scene/essence-flame` («Пламя» on
+«Сущностные ощущения») and `scene/true-sight` («Глаз» on «Истинное распознавание»),
+all 7 themes, all shipped 2026-10-31. Every Step 4 page now has its own scene.
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
@@ -27,12 +29,12 @@ Scenes are web only (Rust WebGL2); the native app keeps the engine art.
 | 2 / 04 | grounding-call «Сила Зова» | call-bell «Колокол» | bell in a stone tower held by threads; threads snap, clapper strikes, sound floods the tower |
 | 2 / 05 | grounding-awakening «Пробуждение» | awakening | portrait with a cracking, peeling mask |
 | 2 / 06 | grounding-witnessing «Живое Осознавание» | witnessing | witnessing story, own light-theme artwork |
-| 2 / 07 | grounding-recognition «Сущностные ощущения» | none yet | engine art (shares `grounding-contact`) |
-| 2 / 08 | grounding-real «Истинное распознавание» | none yet | engine art |
+| 2 / 07 | grounding-recognition «Сущностные ощущения» | essence-flame «Пламя» | the candle is a wax figure of a person, flame in its crown; it melts into a plain candle, camera closes on the flame |
+| 2 / 08 | grounding-real «Истинное распознавание» | true-sight «Глаз» | macro eye: dreams through the closed lid melt into each other; it opens, the world on the cornea becomes a grid that runs over the face; the lens goes through the pupil to a person of light |
 
 Block 1 pages 04–06 and block 2 pages 01–02 share one look (dark room, seated person in
 profile, card bottom-right, focus pulls). Do not make a sixth one like them.
-Next: pages 07–08 (`/new-scene`).
+Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`, local only, not pushed)
 Head 9d08504. 7 reading pages (text in `stepFiveContent.ts`), access via step 4 page 14 or
@@ -48,7 +50,7 @@ settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `grap
   step 4's), a light mountain-lake panorama for page 01, scenes for pages 02–07 (placeholders).
 
 ## Shipped features (all on main)
-- Themes: 7 (Тишина default). Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
+- Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
   navy 263B6B; Рассвет peach F3D8C7 / wine 9C3857 / copper B77A43 / plum 603346; Матрица 00FF41
   on black; Искра F5DD07 on black.
 - Adaptive layout (`productLayout` in `layout.ts`): phone < 600 keeps the 480 column; 600+ uses
@@ -60,7 +62,13 @@ settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `grap
   `data-soft-scroll="off"`). Touch, keys and native stay native.
 - Security: CSP and an address guard in the web shell; Pages build job is read-only;
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
-- Step 3 end scrolls straight into Step 4.
+- Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
+  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4.
+- Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
+  pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
+  pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).
+- Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
+  2026-10-31 at the end of block 2 page 08.
 
 ## Open decisions and ideas (nothing promised)
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.

@@ -134,7 +134,7 @@ export function EssenceFlame(props: ArtProps) {
     };
   }, [controller]);
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    <div role="img" aria-label="Пламя свечи в темноте. Сквозняк треплет его, потом оно успокаивается и выпрямляется. От кончика уходят завитки дыма, восковая фигурка у свечи тает. Камера подходит к самому пламени, свеча уходит в темноту, остаётся только свет."
+    <div role="img" aria-label="Пламя свечи в темноте. Сквозняк треплет его, потом оно успокаивается и выпрямляется. От кончика уходят завитки дыма. Сама свеча — восковая фигура человека, она тает и становится простой свечой. Камера подходит к самому пламени, свеча уходит в темноту, остаётся только свет."
       style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{ width: '100%', maxWidth: props.height * 1.5, aspectRatio: '3 / 2', position: 'relative' }}>
         {/* Without WebGL2 the page keeps the product engine's vector study. */}

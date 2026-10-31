@@ -518,7 +518,7 @@ impl EssenceFlame {
         let (paper, key, fill) = self.lights();
         let c = &f.camera;
 
-        // The candle, the doll and the flame.
+        // The figure-candle and the flame.
         gl.bind_framebuffer(Gl::FRAMEBUFFER, Some(&view.frame));
         gl.viewport(0, 0, view.size[0], view.size[1]);
         gl.disable(Gl::BLEND);
@@ -528,7 +528,7 @@ impl EssenceFlame {
         gl.uniform2f(s.at("u_res"), view.size[0] as f32, view.size[1] as f32);
         gl.uniform3f(s.at("u_cam"), c.center[0], c.center[1], c.half);
         gl.uniform4fv_with_f32_array(s.at("u_flame"), &f.flame);
-        gl.uniform2fv_with_f32_array(s.at("u_light"), &f.light);
+        gl.uniform3f(s.at("u_light"), f.light[0], f.light[1], self.look.body);
         gl.uniform4f(s.at("u_state"), f.matter, f.melt, f.phase, f.crown);
         gl.uniform3fv_with_f32_array(s.at("u_paper"), &paper);
         gl.uniform3fv_with_f32_array(s.at("u_key"), &key);

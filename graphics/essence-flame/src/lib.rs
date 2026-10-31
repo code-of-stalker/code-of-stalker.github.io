@@ -500,8 +500,13 @@ pub struct Look {
     /// The bright and the quiet caption lines.
     pub word: [f32; 3],
     pub lead: [f32; 3],
+    /// Light pages: the least light the figure's body carries, so its
+    /// unlit lower half still reads as wax in the lamp's ink, not as the page.
+    pub body: f32,
     pub light: bool,
 }
+/// The light pages' least body light (see `Look::body`).
+const BODY: f32 = 0.2;
 const fn rgb(v: u32) -> [f32; 3] {
     [
         ((v >> 16) & 255) as f32 / 255.0,
@@ -521,6 +526,7 @@ pub fn look(code: u32) -> Look {
         ink: [0.0; 3],
         word: lerp3(highlight, [1.0; 3], 0.15),
         lead: lerp3(highlight, paper, 0.25),
+        body: 0.0,
         light: false,
     };
     match palette {
@@ -533,6 +539,7 @@ pub fn look(code: u32) -> Look {
             ink: rgb(0xBE4C00),
             word: rgb(0x8E3A00),
             lead: rgb(0xC9601E),
+            body: BODY,
             light: true,
         },
         Palette::Original => dark(rgb(0x000000), rgb(0xF5DD07), rgb(0xF5DD07)),
@@ -550,6 +557,7 @@ pub fn look(code: u32) -> Look {
                 ink: c.highlight,
                 word: c.highlight,
                 lead: c.accent,
+                body: BODY,
                 light: true,
             },
             Some(c) => dark(c.paper, c.accent, c.highlight),

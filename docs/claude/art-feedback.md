@@ -30,3 +30,6 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 
 ## Колокол (block 2 page 04)
 - Light themes must read as clearly as the 48 s flood frame: «слишком всё сливается» when only faint lamp lines sat on the page. Fix: a quiet light from the mouth and an ink S-curve (lit forms deepen to ink).
+
+## Пламя (block 2 page 07)
+- A separate wax doll melting beside the candle made no sense to him («странно… стоит отдельно и тает»). The candle itself is the person: a wax figure with the wick in its crown, melting into a plain candle.

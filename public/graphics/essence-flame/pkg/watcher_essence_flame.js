@@ -307,9 +307,6 @@ function __wbg_get_imports() {
         __wbg_uniform2f_a92b5bb95dc5b4d9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform2f(getObject(arg1), arg2, arg3);
         },
-        __wbg_uniform2fv_319c49f0ce340f26: function(arg0, arg1, arg2, arg3) {
-            getObject(arg0).uniform2fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
-        },
         __wbg_uniform3f_1211579ff87ccfad: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).uniform3f(getObject(arg1), arg2, arg3, arg4);
         },

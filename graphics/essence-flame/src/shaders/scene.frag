@@ -7,7 +7,7 @@
 uniform vec2 u_res;       // target px
 uniform vec3 u_cam;       // the lens's centre (cm) and half the frame's height
 uniform vec4 u_flame;     // lean, flicker, height, softness into bare light
-uniform vec2 u_light;     // the flame's light, the wax's inner glow
+uniform vec3 u_light;     // the flame's light, the wax's inner glow, the body's least light
 uniform vec4 u_state;     // matter, melt, the loop's angle, the wax's top
 uniform vec3 u_paper;
 uniform vec3 u_key;
@@ -175,7 +175,7 @@ void main() {
     float sss = exp(-(top - p.y) / 2.6);
     float thin = 1.0 - clamp(-fd / 1.1, 0.0, 1.0);
     float r = reach(p);
-    float light = lit * glow * (0.08 + 0.95 * sss * (0.55 + 0.45 * thin)) * (0.55 + 0.45 * n.z);
+    float light = lit * glow * (0.08 + u_light.z + 0.95 * sss * (0.55 + 0.45 * thin)) * (0.55 + 0.45 * n.z);
     vec3 c = wax * (light + 0.45 * r * diffuse) + u_key * r * (0.2 + 0.35 * melt) * spec;
     col = mix(col, u_paper + c, (1.0 - smoothstep(-px, px, fd)) * matter);
   }

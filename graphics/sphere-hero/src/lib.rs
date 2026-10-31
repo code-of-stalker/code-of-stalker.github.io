@@ -55,8 +55,9 @@ pub fn window(cover: bool, width: f32, height: f32) -> [f32; 4] {
     let scale = (width / full[0]).max(height / full[1]);
     let view = [width / scale, height / scale];
     let room = ((full[0] - view[0]) * 0.5).max(0.0);
+    // max/min, not clamp: clamp's runtime bound check links the panic formatter.
     [
-        FEET[0].clamp(mid[0] - room, mid[0] + room),
+        FEET[0].max(mid[0] - room).min(mid[0] + room),
         mid[1],
         view[0],
         view[1],

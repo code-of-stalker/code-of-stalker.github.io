@@ -37,7 +37,7 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Shipped features (all on main)
-- Themes: 7 (Тишина default). Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
+- Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
   navy 263B6B; Рассвет peach F3D8C7 / wine 9C3857 / copper B77A43 / plum 603346; Матрица 00FF41
   on black; Искра F5DD07 on black.
 - Adaptive layout (`productLayout` in `layout.ts`): phone < 600 keeps the 480 column; 600+ uses

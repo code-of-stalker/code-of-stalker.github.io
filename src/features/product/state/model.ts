@@ -62,7 +62,7 @@ export const OBSERVATION_MAX_BYTES = 4 * 1024 * 1024;
 export const DIARY_MAX_BYTES = 24 * 1024 * 1024;
 export const DIARY_TEXT_LIMIT = 10000;
 export const STEP_WAIT_MS = 24 * 60 * 60 * 1000;
-export const defaultSettings: ProductSettings = { theme: 'neutral', startAt: 'home', microphoneCheck: false, reducedMotion: false, smoothness: true, effectTargetFps: 60, testUnlockAll: false };
+export const defaultSettings: ProductSettings = { theme: 'matrix', startAt: 'home', microphoneCheck: false, reducedMotion: false, smoothness: true, effectTargetFps: 60, testUnlockAll: false };
 export const defaultProgress: ProductProgress = { selectedLevel: null, step: 1, questionIndex: 0, practiceStage: 0, completedAt: null, availableAt: null };
 export function resumePracticeStage(progress: ProductProgress): PracticeStage {
   if (progress.step !== 1 && progress.step !== 2) return 0;

@@ -102,11 +102,11 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
         <View style={styles.section}>
           <SectionHeading title="Тема" icon={assets.theme} />
           <View accessibilityRole="radiogroup" accessibilityLabel="Тема приложения">
+            <RadioRow label="МАТРИЦА" selected={settings.theme === 'matrix'} onPress={() => onChange({ theme: 'matrix' })} />
             <RadioRow label="ТИШИНА" selected={settings.theme === 'neutral'} onPress={() => onChange({ theme: 'neutral' })} />
             <RadioRow label="ИСКРА" selected={settings.theme === 'dark' || settings.theme === 'system'} onPress={() => onChange({ theme: 'dark' })} />
-            <RadioRow label="ДЮНА" selected={settings.theme === 'light'} onPress={() => onChange({ theme: 'light' })} />
             <RadioRow label="АСТРАЛ" selected={settings.theme === 'violet'} onPress={() => onChange({ theme: 'violet' })} />
-            <RadioRow label="МАТРИЦА" selected={settings.theme === 'matrix'} onPress={() => onChange({ theme: 'matrix' })} />
+            <RadioRow label="ДЮНА" selected={settings.theme === 'light'} onPress={() => onChange({ theme: 'light' })} />
             <RadioRow label="МИРАЖ" selected={settings.theme === 'mirage'} onPress={() => onChange({ theme: 'mirage' })} />
             <RadioRow label="РАССВЕТ" selected={settings.theme === 'dawn'} onPress={() => onChange({ theme: 'dawn' })} />
           </View>

@@ -14,7 +14,7 @@ mod browser;
 #[cfg(target_arch = "wasm32")]
 pub use browser::SphereOrbit;
 
-pub const LOOP_SECONDS: f32 = 60.0;
+pub const LOOP_SECONDS: f32 = 54.0;
 
 /// The lens: a 3:2 frame 40° tall (1 / tan 20°); a canvas of another shape
 /// keeps the whole 3:2 frame in view.
@@ -73,23 +73,23 @@ pub const MOTE_RUNNER: f32 = 1.5;
 pub const CAP_GAIN: f32 = 1.6;
 pub const MOTE_SEEN: f32 = 1.5;
 
-/// «Ты не точка»: the point alone, breathing.
+/// «Ты не точка»: the point alone, breathing, only a few seconds.
 /// «Ты — орбита (кольцо)…»: it opens into the ring; a light runs the orbit.
-pub const OPEN: [f32; 2] = [9.0, 12.5];
-pub const RUN: [f32; 2] = [12.0, 27.0];
+pub const OPEN: [f32; 2] = [3.0, 6.5];
+pub const RUN: [f32; 2] = [6.0, 21.0];
 /// The runner goes against the camera's turn: one lap in this many seconds,
 /// from the near side of the ring.
 pub const RUNNER_LAP: f32 = 6.0;
 pub const RUNNER_FROM: f32 = 222.0 * PI / 180.0;
 /// «Позволь себе чувствовать все»: the ring tilts up into the first
 /// meridian, the meridians fan around, the parallels slide off the ring.
-pub const TILT: [f32; 2] = [24.0, 26.0];
-pub const FAN: [f32; 2] = [25.5, 29.0];
-pub const SLIDE: [f32; 2] = [27.0, 30.0];
+pub const TILT: [f32; 2] = [18.0, 20.0];
+pub const FAN: [f32; 2] = [19.5, 23.0];
+pub const SLIDE: [f32; 2] = [21.0, 24.0];
 /// The first meridian stands up facing the camera.
 pub const MERIDIAN_FROM: f32 = 161.0 * PI / 180.0;
 /// «спереди, сбоку, сверху, снизу, сзади, вокруг»: 4 s each.
-pub const DIRECTION_BEATS: [f32; 6] = [30.0, 34.0, 38.0, 42.0, 46.0, 50.0];
+pub const DIRECTION_BEATS: [f32; 6] = [24.0, 28.0, 32.0, 36.0, 40.0, 44.0];
 /// In front, to the side, above, below, behind.
 pub const DIRECTIONS: [[f32; 3]; 5] = [
     [0.0, 0.0, 1.0],
@@ -107,43 +107,43 @@ pub const WAVE_SECONDS: f32 = 4.0;
 pub const WAVE_REACH: f32 = 75.0 * PI / 180.0;
 pub const WAVE_AROUND: f32 = 0.6;
 /// The sphere fades back into the dark and the point returns.
-pub const SETTLE: [f32; 2] = [54.5, 59.5];
+pub const SETTLE: [f32; 2] = [48.5, 53.5];
 /// Everything breathes about the centre: whole breaths a loop.
 pub const BREATH: f32 = 6.0;
 pub const BREATH_DEPTH: f32 = 0.012;
 /// Reduced motion: the whole sphere lit, all around.
-pub const STILL: f32 = 52.4;
+pub const STILL: f32 = 46.4;
 
 /// The orbit: one turn a loop, slowest while the ring forms, fastest
 /// through the directions.
-pub const AZIMUTH_START: f32 = 150.0 * PI / 180.0;
+pub const AZIMUTH_START: f32 = 162.0 * PI / 180.0;
 pub const AZIMUTH_SWING: f32 = 50.0 * PI / 180.0;
-pub const AZIMUTH_PEAK: f32 = 42.0;
+pub const AZIMUTH_PEAK: f32 = 36.0;
 /// The camera's height (degrees over the ring's plane) and distance, keyed
 /// through the loop: low by the point, over the orbit, high for «сверху»,
 /// under for «снизу», back out for «вокруг», then in to the point again.
 pub const ELEVATION: [(f32, f32); 11] = [
     (0.0, 6.0),
-    (9.0, 8.0),
-    (18.0, 24.0),
-    (26.0, 20.0),
-    (32.4, 12.0),
-    (36.4, 14.0),
-    (40.4, 34.0),
-    (44.4, -24.0),
-    (48.4, 8.0),
-    (52.4, 18.0),
-    (57.0, 10.0),
+    (3.0, 8.0),
+    (12.0, 24.0),
+    (20.0, 20.0),
+    (26.4, 12.0),
+    (30.4, 14.0),
+    (34.4, 34.0),
+    (38.4, -24.0),
+    (42.4, 8.0),
+    (46.4, 18.0),
+    (51.0, 10.0),
 ];
 pub const DISTANCE: [(f32, f32); 8] = [
     (0.0, 3.3),
-    (8.5, 3.4),
-    (14.0, 3.9),
-    (24.0, 4.3),
-    (31.0, 4.5),
-    (46.0, 4.5),
-    (52.0, 4.8),
-    (55.5, 4.8),
+    (2.5, 3.4),
+    (8.0, 3.9),
+    (18.0, 4.3),
+    (25.0, 4.5),
+    (40.0, 4.5),
+    (46.0, 4.8),
+    (49.5, 4.8),
 ];
 
 /// The light themes engrave the scene: brightness up to this level
@@ -303,10 +303,10 @@ pub fn compose(t: f32) -> Frame {
         up,
         forward,
         breath: 1.0 + BREATH_DEPTH * (TAU * time / BREATH).sin(),
-        point: 1.0 - window(time, 9.5, 12.0, 56.0, SETTLE[1]),
+        point: 1.0 - window(time, OPEN[0] + 0.5, OPEN[0] + 3.0, 50.0, SETTLE[1]),
         ring: smooth(OPEN[0], OPEN[1], time),
-        orbit: window(time, OPEN[0], OPEN[0] + 1.5, 55.0, 58.5),
-        ticks: window(time, 11.5, 14.5, SETTLE[0], 57.5),
+        orbit: window(time, OPEN[0], OPEN[0] + 1.5, 49.0, 52.5),
+        ticks: window(time, OPEN[0] + 2.5, OPEN[0] + 5.5, SETTLE[0], 51.5),
         runner: [
             RUNNER_FROM - TAU * (time - RUN[0]) / RUNNER_LAP,
             window(time, RUN[0], RUN[0] + 1.5, RUN[1] - 2.5, RUN[1]),
@@ -314,7 +314,7 @@ pub fn compose(t: f32) -> Frame {
         tilt: smooth(TILT[0], TILT[1], time),
         fan: smooth(FAN[0], FAN[1], time),
         slide: smooth(SLIDE[0], SLIDE[1], time),
-        sphere: window(time, TILT[0], TILT[0] + 1.5, SETTLE[0], 58.0),
+        sphere: window(time, TILT[0], TILT[0] + 1.5, SETTLE[0], 52.0),
         caps,
         waves: [0, 1, 2, 3, 4, 5].map(|i| wave(i, time)),
     }
@@ -493,7 +493,7 @@ mod tests {
     #[test]
     fn the_camera_flies_once_around() {
         let mut previous = compose(0.0).azimuth;
-        for i in 1..=600 {
+        for i in 1..=(LOOP_SECONDS * 10.0) as u32 {
             let a = compose(i as f32 / 10.0 - 1e-4).azimuth;
             assert!(a > previous, "{i}");
             previous = a;
@@ -535,15 +535,15 @@ mod tests {
 
     #[test]
     fn the_point_opens_into_the_ring_then_the_sphere() {
-        let alone = compose(4.0);
+        let alone = compose(OPEN[0] - 0.5);
         assert_eq!(alone.point, 1.0);
         assert_eq!(alone.orbit, 0.0);
-        let ring = compose(18.0);
+        let ring = compose(RUN[0] + 6.0);
         assert_eq!(ring.point, 0.0);
         assert_eq!((ring.ring, ring.orbit, ring.ticks), (1.0, 1.0, 1.0));
         assert_eq!(ring.runner[1], 1.0);
         assert_eq!(ring.sphere, 0.0);
-        let sphere = compose(31.0);
+        let sphere = compose(DIRECTION_BEATS[0] + 1.0);
         assert_eq!(
             (sphere.tilt, sphere.fan, sphere.slide, sphere.sphere),
             (1.0, 1.0, 1.0, 1.0)
@@ -556,7 +556,7 @@ mod tests {
         );
         assert_eq!(settled.point, 1.0);
         // The runner turns against the camera.
-        assert!(compose(20.0).runner[0] < compose(15.0).runner[0]);
+        assert!(compose(RUN[0] + 8.0).runner[0] < compose(RUN[0] + 3.0).runner[0]);
         // It starts on the ring's near side.
         let start = compose(RUN[0]);
         let toward = [start.runner[0].sin(), 0.0, start.runner[0].cos()];

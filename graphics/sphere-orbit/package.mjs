@@ -11,4 +11,4 @@ for (const file of ['watcher_sphere_orbit.js', 'watcher_sphere_orbit_bg.wasm']) 
 // No images: every line and mote is built on the GPU.
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_sphere_orbit_bg.wasm')))) throw new Error('Invalid sphere-orbit WASM');
-console.log('Packaged Rust «Ты не точка»: 60-second seamless loop, a point that opens into an orbit and a sphere, the camera once around.');
+console.log('Packaged Rust «Ты не точка»: 54-second seamless loop, a point that opens into an orbit and a sphere, the camera once around.');

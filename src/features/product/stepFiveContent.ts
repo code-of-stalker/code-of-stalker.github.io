@@ -34,6 +34,7 @@ export const stepFivePages: readonly ReadingPage[] = [
       'Позволь себе чувствовать все: спереди, сбоку, сверху, снизу, сзади, вокруг.',
     ] },
   { id: 'sphere-voice', title: 'Используй свой голос',
+    webScene: 'sphere-voice',
     placeholder: { name: 'Купол голоса', manner: 'полностью 3D, узор на каждую фразу' }, paragraphs: [
       'Проговори вслух:',
     ], spoken: ['«Я Здесь».\n«Я Говорю»\n«Я Слышу».\n«Я Осознаю».\n«Я Ощущаю».\n«Я Наблюдаю».\n«Я Есть».'], after: [

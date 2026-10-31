@@ -11,7 +11,7 @@ uniform vec4 u_eye;       // open, gaze x, gaze y, pupil radius
 uniform vec4 u_state;     // dreams, their flicker, the world on the cornea, its grid
 uniform vec4 u_dream;     // which dream, how far it has formed, seconds since it and the one before began
 uniform vec4 u_holo;      // the grid over the face, the person in the pupil, light gathering
-uniform vec3 u_light;     // key light, the loop's angle, the skin's least light
+uniform vec4 u_light;     // key light, the loop's angle, the skin's least light, a light page
 uniform vec3 u_paper;
 uniform vec3 u_key;
 uniform vec3 u_fill;
@@ -360,7 +360,10 @@ vec3 within(vec2 p, float k) {
               * smoothstep(0.0, 0.25, f);
   float breath = 1.0 + 0.06 * sin(7.0 * u_light.y);
   // The body's light: a fine bright edge, a soft fill that deepens inward,
-  // a wide glow around.
+  // a wide glow around. On a light page the strongest light is ink, so the
+  // fill and the glow are quieter there: an inked edge round a lamp-tinted
+  // body, not a solid shadow.
+  float soft = mix(1.0, 0.3, u_light.w);
   float inside = 1.0 - smoothstep(-k, k, d);
   float depth = smoothstep(0.0, 0.035 * FIGURE_HEIGHT, -d);
   float edge = exp(-abs(d) / (1.6 * k + 0.002 * FIGURE_HEIGHT));
@@ -368,7 +371,7 @@ vec3 within(vec2 p, float k) {
   float far = exp(-max(d, 0.0) / (0.16 * FIGURE_HEIGHT));
   float core = exp(-dot(heart, heart) / 0.004);
   vec3 glow = mix(u_fill, u_key, 0.55);
-  vec3 col = glow * (0.75 * edge + inside * (0.3 + 0.25 * depth)) + u_fill * (0.3 * near + 0.14 * far)
+  vec3 col = glow * (0.75 * edge + soft * inside * (0.3 + 0.25 * depth)) + soft * u_fill * (0.3 * near + 0.14 * far)
            + u_key * u_warm * (0.7 * core + 0.18 * inside * exp(-dot(heart, heart) / 0.03));
   col *= shown * breath;
   // Motes drift in toward the heart while the light gathers.

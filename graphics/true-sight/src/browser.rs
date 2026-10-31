@@ -499,7 +499,13 @@ impl TrueSight {
         gl.uniform4fv_with_f32_array(s.at("u_state"), &f.state);
         gl.uniform4fv_with_f32_array(s.at("u_dream"), &f.dreams);
         gl.uniform4fv_with_f32_array(s.at("u_holo"), &f.holo);
-        gl.uniform3f(s.at("u_light"), f.light, f.phase, self.look.body);
+        gl.uniform4f(
+            s.at("u_light"),
+            f.light,
+            f.phase,
+            self.look.body,
+            f32::from(self.look.light),
+        );
         gl.uniform3fv_with_f32_array(s.at("u_paper"), &paper);
         gl.uniform3fv_with_f32_array(s.at("u_key"), &key);
         gl.uniform3fv_with_f32_array(s.at("u_fill"), &fill);

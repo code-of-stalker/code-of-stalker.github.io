@@ -23,6 +23,12 @@ SOURCES = {
     "persona-program": ["figure", "labels"],
     "persona-belief": ["labels"],
     "call-bell": ["labels"],
+    "sphere-hero": ["parallax-base", "reflection", "figure", "foreground"],
+    "sphere-world": ["panorama"],
+    "sphere-anchor": ["avatar"],
+    "sphere-room": ["room"],
+    "sphere-lake": ["lake"],
+    "sphere-everywhere": ["strip"],
 }
 
 

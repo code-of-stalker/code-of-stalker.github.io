@@ -55,7 +55,7 @@ export function SphereAnchor(props: SphereAnchorProps) {
         buffer: [output.width, output.height], source: [1024, 1536], blur: [0, 0], draws: renderer.frame_count(),
         sourceUpdates: 1, blurUpdates: 0, contourUpdates: 0, idle: !removeJob, cadence,
         backend: 'Rust · sphere anchor WebGL2', textures: 1,
-        textureBytes: 1024 * 1792 * 4 * 4 / 3 + output.width * output.height * 4 });
+        textureBytes: 1024 * 1792 * 4 * 4 / 3 + 256 * 448 + output.width * output.height * 4 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);

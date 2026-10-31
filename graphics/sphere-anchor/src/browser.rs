@@ -3,7 +3,8 @@
 //! figure and paints the light, and the theme's recolor (scene-palette) maps
 //! the finished frame.
 use crate::{
-    compose, look, Look, GEOMETRY, HEADROOM, LEVELS, LOOP_SECONDS, SIZE, STILL, TEXTURE, VIEW_TAN,
+    compose, form_field, look, Look, FORM_LEVEL, FORM_RANGE, FORM_SIZE, GEOMETRY, HEADROOM, LEVELS,
+    LOOP_SECONDS, SIZE, STILL, TEXTURE, VIEW_TAN,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -89,6 +90,67 @@ fn figure(gl: &Gl, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> {
     Ok(t)
 }
 
+/// The form's distance field: the figure's alpha read back from one of its
+/// mip levels, measured in `form_field`, uploaded as one byte a pixel.
+fn form(gl: &Gl, figure: &WebGlTexture) -> Result<WebGlTexture, JsValue> {
+    let [width, height] = FORM_SIZE.map(|v| v as i32);
+    let frame = gl
+        .create_framebuffer()
+        .ok_or("Cannot allocate framebuffer")?;
+    gl.bind_framebuffer(Gl::FRAMEBUFFER, Some(&frame));
+    gl.framebuffer_texture_2d(
+        Gl::FRAMEBUFFER,
+        Gl::COLOR_ATTACHMENT0,
+        Gl::TEXTURE_2D,
+        Some(figure),
+        FORM_LEVEL,
+    );
+    let mut pixels = vec![0u8; FORM_SIZE.iter().product::<u32>() as usize * 4];
+    let read = if gl.check_framebuffer_status(Gl::FRAMEBUFFER) == Gl::FRAMEBUFFER_COMPLETE {
+        gl.read_pixels_with_opt_u8_array(
+            0,
+            0,
+            width,
+            height,
+            Gl::RGBA,
+            Gl::UNSIGNED_BYTE,
+            Some(&mut pixels),
+        )
+    } else {
+        Err("Cannot read the figure back".into())
+    };
+    gl.bind_framebuffer(Gl::FRAMEBUFFER, None);
+    gl.delete_framebuffer(Some(&frame));
+    read?;
+    let alpha: Vec<u8> = pixels.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
+    let field = form_field(&alpha, FORM_SIZE[0] as usize, FORM_SIZE[1] as usize);
+    let t = gl.create_texture().ok_or("Cannot allocate texture")?;
+    gl.active_texture(Gl::TEXTURE1);
+    gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
+    gl.pixel_storei(Gl::UNPACK_ALIGNMENT, 1);
+    let uploaded = gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        Gl::TEXTURE_2D,
+        0,
+        Gl::R8 as i32,
+        width,
+        height,
+        0,
+        Gl::RED,
+        Gl::UNSIGNED_BYTE,
+        Some(&field),
+    );
+    gl.pixel_storei(Gl::UNPACK_ALIGNMENT, 4);
+    uploaded?;
+    // One level, filtered: a line at a fixed distance runs smooth between
+    // the field's pixels.
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
+    gl.active_texture(Gl::TEXTURE0);
+    Ok(t)
+}
+
 #[wasm_bindgen]
 pub struct SphereAnchor {
     gl: Gl,
@@ -96,6 +158,7 @@ pub struct SphereAnchor {
     program: WebGlProgram,
     uniforms: Vec<(&'static str, Option<WebGlUniformLocation>)>,
     texture: WebGlTexture,
+    form: WebGlTexture,
     screen: WebGlVertexArrayObject,
     themed: Themed,
     look: Look,
@@ -135,6 +198,7 @@ impl SphereAnchor {
             "u_lightB",
             "u_lightC",
             "u_image",
+            "u_more",
             "u_glow",
             "u_deep",
             "u_mid",
@@ -145,8 +209,10 @@ impl SphereAnchor {
             .map(|name| (*name, gl.get_uniform_location(&program, name)))
             .collect();
         let texture = figure(&gl, &body)?;
+        let form = form(&gl, &texture)?;
         gl.use_program(Some(&program));
         gl.uniform1i(gl.get_uniform_location(&program, "u_fig").as_ref(), 0);
+        gl.uniform1i(gl.get_uniform_location(&program, "u_form").as_ref(), 1);
         let themed = Themed::new(&gl, false)?;
         let screen = gl
             .create_vertex_array()
@@ -157,6 +223,7 @@ impl SphereAnchor {
             program,
             uniforms,
             texture,
+            form,
             screen,
             themed,
             look: look(2),
@@ -257,6 +324,7 @@ impl SphereAnchor {
         }
         let gl = &self.gl;
         gl.delete_texture(Some(&self.texture));
+        gl.delete_texture(Some(&self.form));
         gl.delete_vertex_array(Some(&self.screen));
         gl.delete_program(Some(&self.program));
         self.themed.dispose(gl);
@@ -285,6 +353,8 @@ impl SphereAnchor {
         gl.disable(Gl::BLEND);
         gl.use_program(Some(&self.program));
         gl.bind_vertex_array(Some(&self.screen));
+        gl.active_texture(Gl::TEXTURE1);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.form));
         gl.active_texture(Gl::TEXTURE0);
         gl.bind_texture(Gl::TEXTURE_2D, Some(&self.texture));
         gl.uniform2f(self.at("u_res"), width as f32, height as f32);
@@ -307,7 +377,14 @@ impl SphereAnchor {
         gl.uniform4f(self.at("u_lightB"), f.contact, f.ring[0], f.ring[1], f.dent);
         gl.uniform4f(self.at("u_lightC"), f.aura, f.axis[0], f.axis[1], f.anchor);
         let [width, height] = TEXTURE.map(|v| v as f32);
-        gl.uniform4f(self.at("u_image"), width, height, HEADROOM as f32, 0.0);
+        gl.uniform4f(
+            self.at("u_image"),
+            width,
+            height,
+            HEADROOM as f32,
+            FORM_RANGE,
+        );
+        gl.uniform4f(self.at("u_more"), f.outline, f.breath, f.rain, 0.0);
         gl.uniform3fv_with_f32_array(self.at("u_glow"), &self.look.glow);
         gl.uniform3fv_with_f32_array(self.at("u_deep"), &self.look.deep);
         gl.uniform3fv_with_f32_array(self.at("u_mid"), &self.look.mid);

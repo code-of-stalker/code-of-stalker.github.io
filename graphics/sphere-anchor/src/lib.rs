@@ -4,8 +4,10 @@
 //! light runs down the body into the feet, the points of contact light up and
 //! a wave runs out through the floor under the body's weight; the form shows
 //! its outline, and an axis drops from the crown through the body into the
-//! ground, with the anchor in the body. Every value here is a pure function of
-//! loop time; `browser.rs` only uploads it and the shader paints it.
+//! ground, with the anchor in the body. The body breathes all the while, and
+//! behind it a digital rain falls, slowing nearly to a stop with the world.
+//! Every value here is a pure function of loop time; `browser.rs` only
+//! uploads it and the shader paints it.
 use std::f32::consts::{PI, TAU};
 use watcher_scene_palette::Palette;
 
@@ -17,11 +19,21 @@ pub use browser::SphereAnchor;
 /// Art's figure, front view, straight alpha.
 pub const SIZE: [u32; 2] = [1024, 1536];
 /// The image ends just over the crown; the texture adds empty rows above it
-/// so the blurred levels, the halo and the outline, close over the head.
+/// so the form's field, the halo and the outline, close over the head.
 pub const HEADROOM: u32 = 256;
 pub const TEXTURE: [u32; 2] = [SIZE[0], SIZE[1] + HEADROOM];
 /// The whole chain of mip levels down to one pixel.
 pub const LEVELS: i32 = (u32::BITS - TEXTURE[1].leading_zeros()) as i32;
+/// The form's outline is drawn at fixed distances from the body: a smooth
+/// distance field made from the figure's alpha at this mip level, in image
+/// px, encoded `0.5 + d / FORM_RANGE`.
+pub const FORM_LEVEL: i32 = 2;
+pub const FORM_SIZE: [u32; 2] = [TEXTURE[0] >> FORM_LEVEL, TEXTURE[1] >> FORM_LEVEL];
+pub const FORM_RANGE: f32 = 256.0;
+/// Where the alpha counts as body, and how far the field is blurred (field
+/// px) so a line at a fixed distance runs smooth past every corner.
+pub const FORM_ALPHA: u8 = 90;
+pub const FORM_BLUR: f32 = 5.0;
 /// Where the figure is in the image: crown and soles (rows), the centre line
 /// and the middle of each foot (columns).
 pub const CROWN_ROW: f32 = 34.0;
@@ -67,10 +79,17 @@ pub const ANCHOR: f32 = 33.0;
 pub const AXIS_SECONDS: f32 = 2.5;
 pub const AXIS_TOP: f32 = HEIGHT + 0.15;
 pub const AXIS_BOTTOM: f32 = -1.0;
+/// The outline draws up from the floor over the crown.
+pub const OUTLINE_SECONDS: f32 = 1.8;
 /// The lights fade, then the world moves again over `MOVE_EASE`.
 pub const RELEASE: f32 = 41.0;
 pub const MOVE: f32 = 44.0;
 pub const MOVE_EASE: f32 = 2.5;
+/// Ten slow breaths a loop, all the way through.
+pub const BREATH_SECONDS: f32 = 4.8;
+/// While the world stands still the rain behind crawls at this part of its
+/// speed.
+pub const RAIN_CRAWL: f32 = 0.12;
 
 /// The camera: half the view's height as a tangent, then the standing view
 /// (whole figure), the view down to the feet, and the drift while the world
@@ -143,6 +162,12 @@ pub struct Frame {
     /// The axis: how low it has reached, strength.
     pub axis: [f32; 2],
     pub anchor: f32,
+    /// How high the form's outline has drawn up the body.
+    pub outline: f32,
+    /// The breath: 0 out, 1 in.
+    pub breath: f32,
+    /// The rain's progress, one whole cycle a loop.
+    pub rain: f32,
 }
 
 fn smooth(a: f32, b: f32, x: f32) -> f32 {
@@ -203,6 +228,13 @@ pub fn drift(t: f32) -> f32 {
     (life(t) - life(STOP + STOP_EASE)) / lifetime()
 }
 
+/// The rain's progress: full speed while the world moves, `RAIN_CRAWL` of it
+/// while it stands still; one whole cycle from the loop's start to its end.
+pub fn rain(t: f32) -> f32 {
+    let run = |t: f32| life(t) * (1.0 - RAIN_CRAWL) + RAIN_CRAWL * t;
+    run(t) / run(LOOP_SECONDS)
+}
+
 pub fn compose(t: f32) -> Frame {
     let time = if t.is_finite() {
         t.rem_euclid(LOOP_SECONDS)
@@ -260,7 +292,122 @@ pub fn compose(t: f32) -> Frame {
         ],
         anchor: window(t, lit, lit + 0.8, RELEASE, RELEASE + 2.0)
             * (1.0 + 0.6 * crest(lit + 0.6, 0.4)),
+        outline: mix(
+            -0.1,
+            HEIGHT + 0.45,
+            smooth(FORM + 0.3, FORM + 0.3 + OUTLINE_SECONDS, t),
+        ),
+        breath: 0.5 - 0.5 * (TAU * t / BREATH_SECONDS).cos(),
+        rain: rain(t),
     }
+}
+
+/// One pass of the exact squared distance transform along a line
+/// (Felzenszwalb & Huttenlocher): `f` in, the lower envelope of the parabolas
+/// rooted at its samples out.
+fn envelope(f: &[f64], out: &mut [f64], roots: &mut [usize], bounds: &mut [f64]) {
+    let n = f.len();
+    let mut k = 0;
+    roots[0] = 0;
+    bounds[0] = f64::NEG_INFINITY;
+    bounds[1] = f64::INFINITY;
+    let square = |i: usize| (i * i) as f64;
+    for q in 1..n {
+        let mut s;
+        loop {
+            let p = roots[k];
+            s = (f[q] + square(q) - f[p] - square(p)) / (2.0 * (q - p) as f64);
+            if s > bounds[k] || k == 0 {
+                break;
+            }
+            k -= 1;
+        }
+        k += 1;
+        roots[k] = q;
+        bounds[k] = s;
+        bounds[k + 1] = f64::INFINITY;
+    }
+    k = 0;
+    for (q, value) in out.iter_mut().enumerate() {
+        while bounds[k + 1] < q as f64 {
+            k += 1;
+        }
+        let p = roots[k];
+        *value = (q as f64 - p as f64).powi(2) + f[p];
+    }
+}
+
+/// How far each pixel is from the nearest pixel where `mask` is `target`.
+fn distance(mask: &[bool], width: usize, height: usize, target: bool) -> Vec<f64> {
+    // Farther than any real distance, and still exact in f64 with a squared
+    // distance added.
+    let far = 1e12;
+    let mut grid: Vec<f64> = mask
+        .iter()
+        .map(|&m| if m == target { 0.0 } else { far })
+        .collect();
+    let longest = width.max(height);
+    let (mut line, mut out) = (vec![0.0; longest], vec![0.0; longest]);
+    let (mut roots, mut bounds) = (vec![0; longest], vec![0.0; longest + 1]);
+    for x in 0..width {
+        for y in 0..height {
+            line[y] = grid[y * width + x];
+        }
+        envelope(&line[..height], &mut out[..height], &mut roots, &mut bounds);
+        for y in 0..height {
+            grid[y * width + x] = out[y];
+        }
+    }
+    for row in grid.chunks_exact_mut(width) {
+        envelope(row, &mut out[..width], &mut roots, &mut bounds);
+        row.copy_from_slice(&out[..width]);
+    }
+    grid.iter().map(|v| v.sqrt()).collect()
+}
+
+/// A separable Gaussian blur of `sigma` px, edges clamped.
+fn blur(grid: &[f64], width: usize, height: usize, sigma: f32) -> Vec<f64> {
+    let radius = (3.0 * sigma).ceil() as isize;
+    let weights: Vec<f64> = (-radius..=radius)
+        .map(|i| (-(i * i) as f64 / (2.0 * f64::from(sigma).powi(2))).exp())
+        .collect();
+    let total: f64 = weights.iter().sum();
+    let pass = |source: &[f64], step: usize, len: usize, lines: usize, stride: usize| {
+        let mut out = vec![0.0; source.len()];
+        for l in 0..lines {
+            for i in 0..len {
+                let mut sum = 0.0;
+                for (w, o) in weights.iter().zip(-radius..=radius) {
+                    let j = (i as isize + o).clamp(0, len as isize - 1) as usize;
+                    sum += w * source[l * stride + j * step];
+                }
+                out[l * stride + i * step] = sum / total;
+            }
+        }
+        out
+    };
+    let across = pass(grid, 1, width, height, width);
+    pass(&across, width, height, width, 1)
+}
+
+/// The figure's form as the shader's `u_form`: from the alpha of `width` ×
+/// `height` px, the signed distance to the body (negative inside) in image
+/// px, blurred and encoded one byte a pixel.
+pub fn form_field(alpha: &[u8], width: usize, height: usize) -> Vec<u8> {
+    let body: Vec<bool> = alpha.iter().map(|&a| a >= FORM_ALPHA).collect();
+    let outside = distance(&body, width, height, true);
+    let within = distance(&body, width, height, false);
+    let signed: Vec<f64> = outside.iter().zip(&within).map(|(o, i)| o - i).collect();
+    let scale = f64::from(1u32 << FORM_LEVEL) / f64::from(FORM_RANGE);
+    blur(&signed, width, height, FORM_BLUR)
+        .iter()
+        .map(|d| ((0.5 + d * scale).clamp(0.0, 1.0) * 255.0).round() as u8)
+        .collect()
+}
+
+/// A byte of `form_field` back to image px, as the shader reads it.
+pub fn form_distance(byte: u8) -> f32 {
+    (f32::from(byte) / 255.0 - 0.5) * FORM_RANGE
 }
 
 /// Where `point` lands in the view, -1..1 up and across a frame of `aspect`.
@@ -499,6 +646,93 @@ mod tests {
         assert_eq!(TEXTURE, [1024, 1792]);
         assert_eq!(LEVELS, 11);
         assert_eq!(TEXTURE[1] >> (LEVELS - 1), 1);
+        assert_eq!(FORM_SIZE, [256, 448]);
+        const { assert!(FORM_LEVEL < LEVELS) };
+    }
+
+    #[test]
+    fn the_body_breathes_whole_breaths_a_loop() {
+        let breaths = LOOP_SECONDS / BREATH_SECONDS;
+        assert!(close(breaths, breaths.round(), 1e-5), "{breaths}");
+        let before = compose(LOOP_SECONDS - 0.001).breath;
+        let after = compose(0.001).breath;
+        assert!(close(before, after, 1e-3));
+        let mut last = compose(0.0).breath;
+        for i in 1..=4800 {
+            let b = compose(i as f32 * 0.01).breath;
+            assert!((0.0..=1.0).contains(&b));
+            assert!((b - last).abs() < 0.01, "{i}");
+            last = b;
+        }
+        // It breathes on through the stop.
+        let still = (0..40).map(|i| compose(10.0 + i as f32 * 0.1).breath);
+        let (low, high) = still.fold((1.0f32, 0.0f32), |(l, h), b| (l.min(b), h.max(b)));
+        assert!(high - low > 0.9);
+    }
+
+    #[test]
+    fn the_rain_slows_with_the_world_and_closes_the_loop() {
+        assert_eq!(rain(0.0), 0.0);
+        assert!(close(rain(LOOP_SECONDS), 1.0, 1e-6));
+        let rate = |t: f32| (rain(t + 0.01) - rain(t)) / 0.01;
+        assert!(close(rate(LOOP_SECONDS - 0.02), rate(0.0), 1e-4));
+        assert!(close(rate(20.0), RAIN_CRAWL * rate(1.0), 1e-4));
+        let mut last = 0.0;
+        for i in 1..4800 {
+            let r = compose(i as f32 * 0.01).rain;
+            assert!(r >= last, "{i}");
+            last = r;
+        }
+    }
+
+    #[test]
+    fn the_outline_draws_up_from_the_floor_over_the_crown() {
+        assert!(compose(FORM).outline < 0.0);
+        assert!(compose(FORM + 0.3 + OUTLINE_SECONDS).outline > HEIGHT + 0.3);
+        let mut last = compose(FORM).outline;
+        for i in 1..=30 {
+            let y = compose(FORM + i as f32 * 0.1).outline;
+            assert!(y >= last && y - last < 0.2, "{i}");
+            last = y;
+        }
+        assert!(compose(STILL).outline > HEIGHT);
+    }
+
+    #[test]
+    fn the_form_field_measures_even_distances() {
+        // A disc of radius 20 px in the middle of a 128 px field.
+        let (w, h, r) = (128usize, 128usize, 20.0f32);
+        let alpha: Vec<u8> = (0..w * h)
+            .map(|i| {
+                let (x, y) = ((i % w) as f32 - 64.0, (i / w) as f32 - 64.0);
+                if (x * x + y * y).sqrt() < r {
+                    255
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let field = form_field(&alpha, w, h);
+        let scale = (1u32 << FORM_LEVEL) as f32;
+        let at = |x: usize, y: usize| form_distance(field[y * w + x]) / scale;
+        // The edge, and 10 px out, in field px whichever way.
+        for (x, y) in [(84, 64), (64, 84), (44, 64), (64, 44)] {
+            assert!(at(x, y).abs() < 1.5, "{x} {y} {}", at(x, y));
+        }
+        for (x, y) in [(94, 64), (64, 34)] {
+            assert!(close(at(x, y), 10.0, 1.5), "{x} {y} {}", at(x, y));
+        }
+        // Rising steadily out from the flat middle, within the range.
+        let mut last = f32::MIN;
+        for x in 72..110 {
+            let d = at(x, 64);
+            assert!(d > last, "{x}");
+            last = d;
+        }
+        assert!(at(64, 64) < -12.0);
+        // No body: everything far; all body: everything deep inside.
+        assert!(form_field(&[0; 64], 8, 8).iter().all(|&v| v == 255));
+        assert!(form_field(&[255; 64], 8, 8).iter().all(|&v| v == 0));
     }
 
     #[test]

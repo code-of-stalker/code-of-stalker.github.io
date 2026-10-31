@@ -3,9 +3,10 @@ precision highp float;
 // Art's figure of light stands at the origin on a floor grid (y = 0), facing
 // the camera; the dark around it is open space. Every value that moves comes
 // from compose() in lib.rs; this pass casts one ray a pixel and paints, back
-// to front: the floor and what runs over it, the figure, then the light in
-// front of it.
+// to front: the rain far behind, the floor and what runs over it, the figure
+// mirrored in it, the figure, then the light in front of it.
 uniform sampler2D u_fig;
+uniform sampler2D u_form; // signed distance to the body, image px (lib.rs form_field)
 uniform vec2 u_res;      // target px
 uniform vec4 u_out;      // straight to the canvas, soft edges, engrave on the page, -
 uniform vec3 u_backdrop; // the page around the scene
@@ -16,7 +17,8 @@ uniform vec4 u_life;     // drift, speed, the flash as it stops, lids
 uniform vec4 u_lightA;   // side reach, side strength, band height, band strength
 uniform vec4 u_lightB;   // contact, ring radius, ring strength, dent
 uniform vec4 u_lightC;   // aura, axis bottom, axis strength, anchor
-uniform vec4 u_image;    // the texture's px across and down, its empty rows over the figure, -
+uniform vec4 u_image;    // the texture's px across and down, its empty rows over the figure, the form's range
+uniform vec4 u_more;     // how high the outline has drawn, breath, the rain's progress, -
 uniform vec3 u_glow;     // the light the beats add
 uniform vec3 u_deep;     // the engraving's deepest ink
 uniform vec3 u_mid;      // its middle ink
@@ -97,6 +99,45 @@ vec3 motes(float z, float cell, float size, float bright, float seed) {
   return u_glow * bright * exp(-r * r) * twinkle * keep * (1.0 + 2.0 * u_life.z);
 }
 
+// Digital rain on a far plane at depth z: columns of dot glyphs, cw wide,
+// falling whole periods a loop, each head bright and its trail fading; the
+// glyphs change as it falls. It crawls while the world stands still.
+vec3 rain(float z, float cw, float bright, float seed) {
+  if (abs(d.z) < 1e-4) return vec3(0.0);
+  float t = (z - eye.z) / d.z;
+  if (t <= 0.0) return vec3(0.0);
+  vec3 q = eye + d * t;
+  // Only above the floor: below it the floor is nearer.
+  if (q.y <= 0.0) return vec3(0.0);
+  vec2 g = vec2(q.x / cw, -q.y / (cw * 1.6));
+  vec2 id = floor(g);
+  float column = hash(vec2(id.x, seed));
+  if (column < 0.42) return vec3(0.0);
+  // Heads fall from over the view to under the floor, two or three periods
+  // a loop.
+  float period = 40.0;
+  float k = 2.0 + floor(hash(vec2(id.x, seed + 1.3)) * 2.0);
+  float head = fract(hash(vec2(id.x, seed + 2.7)) + u_more.z * k) * period - (period - 6.0);
+  float behind = floor(head) - id.y;
+  if (behind < 0.0) return vec3(0.0);
+  float len = 5.0 + 10.0 * hash(vec2(id.x, seed + 4.1));
+  float trail = exp(-behind / len * 1.3) * (behind < 1.0 ? 2.0 : 1.0);
+  // The glyph: 3 x 5 dots, a new one some 60 times a loop, the same at the
+  // two ends of the loop.
+  float glyph = mod(floor(u_more.z * 60.0 + hash(id + seed) * 60.0), 60.0);
+  vec2 s = (fract(g) - vec2(0.15, 0.1)) / vec2(0.7, 0.8) * vec2(3.0, 5.0);
+  vec2 dotId = floor(s);
+  float within = step(0.0, s.x) * step(s.x, 3.0) * step(0.0, s.y) * step(s.y, 5.0);
+  float on = step(0.45, hash(id * 3.1 + dotId * 0.7 + glyph * 1.37 + seed));
+  // Dots under a pixel and a half blur into their average.
+  float size = cw * 0.7 / 3.0 / (t * px);
+  float r = length(fract(s) - 0.5);
+  float dotLight = mix(0.3, 1.0 - smoothstep(0.32 - 0.5 / size, 0.32 + 0.5 / size, r), smoothstep(1.2, 2.2, size));
+  float keep = smoothstep(0.0, 0.6, q.y) * (1.0 - smoothstep(4.0, 7.5, abs(q.x)))
+             * exp(-max(t - 6.0, 0.0) * 0.07);
+  return u_glow * bright * trail * on * within * dotLight * keep * (1.0 + 1.5 * u_life.z);
+}
+
 // The floor where the ray meets it: the grid, the light running along it,
 // the figure's light on it, the side light, the wave and the well.
 vec3 floorAt(vec3 p) {
@@ -109,6 +150,12 @@ vec3 floorAt(vec3 p) {
   vec2 q = abs(fract(g - 0.5) - 0.5) / max(w, 1e-4);
   float line = max(1.0 - smoothstep(0.0, 1.2, q.x), 1.0 - smoothstep(0.0, 1.2, q.y));
   line *= 1.0 - smoothstep(0.2, 0.6, max(w.x, w.y));
+  // A finer grid close round the figure, five lines to a cell.
+  vec2 gf = xz / (CELL * 0.2);
+  vec2 wf = fwidth(gf);
+  vec2 qf = abs(fract(gf - 0.5) - 0.5) / max(wf, 1e-4);
+  float fine = max(1.0 - smoothstep(0.0, 1.2, qf.x), 1.0 - smoothstep(0.0, 1.2, qf.y));
+  fine *= (1.0 - smoothstep(0.2, 0.6, max(wf.x, wf.y))) * exp(-r * r / 1.6);
   float fog = exp(-max(dist - 4.0, 0.0) * 0.28) * (1.0 - smoothstep(6.0, 11.0, r));
   // Each grid line carries one dash of light running along it, frozen while
   // the world stands still.
@@ -130,11 +177,11 @@ vec3 floorAt(vec3 p) {
   float deep = well(xz) / max(DENT_DEPTH, 1e-4);
   float lit = 0.2 + 0.14 * exp(-r * r / 5.0) + 0.6 * deep * u_lightB.w + 1.4 * side + 2.0 * near
             + 0.6 * u_life.z;
-  vec3 c = u_glow * line * lit;
+  vec3 c = u_glow * line * lit + u_glow * 0.07 * fine;
   c += u_glow * 0.7 * dash * line * fog;
   c += u_glow * (0.09 * side + 0.5 * wave);
-  // The figure's own light on the floor around its feet.
-  c += u_glow * 0.11 * exp(-(xz.x * xz.x / 0.3 + xz.y * xz.y / 0.16));
+  // The figure's own light on the floor around its feet, breathing.
+  c += u_glow * (0.11 + 0.03 * u_more.y) * exp(-(xz.x * xz.x / 0.3 + xz.y * xz.y / 0.16));
   // The points of contact light the floor under them.
   float touch = 0.0;
   for (int i = 0; i < 2; i++) {
@@ -157,8 +204,12 @@ void main() {
   px = 2.0 * u_eye.w / max(u_res.y, 1.0);
   sink = DENT_DEPTH * u_lightB.w;
 
-  // Open space: black, a faint glow along the horizon.
+  // Open space: black, a faint glow along the horizon, and far behind the
+  // rain, three planes deep.
   vec3 c = u_glow * 0.03 * exp(-abs(d.y) * 14.0);
+  c += rain(-12.0, 0.12, 0.24, 11.0);
+  c += rain(-7.0, 0.1, 0.3, 23.0);
+  c += rain(-4.0, 0.09, 0.36, 37.0);
   c += motes(-3.2, 0.42, 1.2, 0.5, 1.0);
   c += motes(-1.6, 0.36, 1.6, 0.6, 2.0);
 
@@ -168,7 +219,21 @@ void main() {
   float dy = min(d.y, -1e-4);
   vec3 p = eye + d * (-eye.y / dy);
   for (int i = 0; i < 2; i++) p = eye + d * ((-well(p.xz) - eye.y) / dy);
-  c += floorAt(p) * step(d.y, -1e-4);
+  float ground = step(d.y, -1e-4);
+  c += floorAt(p) * ground;
+
+  // The figure stands in a plane through the origin square to the camera.
+  vec3 n = normalize(vec3(fw.x, 0.0, fw.z));
+  // The floor mirrors it, faint and softer the farther from the soles.
+  vec3 dr = vec3(d.x, -d.y, d.z);
+  float tr = -dot(p, n) / dot(dr, n);
+  vec3 qr = p + dr * tr;
+  float lr = qr.y + sink;
+  vec2 uvr = vec2(CENTRE + dot(qr, rt) / UNIT, u_image.z + SOLE - lr / UNIT) / u_image.xy;
+  float seen = ground * step(0.0, tr) * step(0.0, lr) * step(0.0, uvr.x) * step(uvr.x, 1.0) * step(0.0, uvr.y) * step(uvr.y, 1.0);
+  vec4 mirror = textureLod(u_fig, uvr, 1.5 + 2.5 * clamp(lr, 0.0, 1.0));
+  float fade = exp(-length(p.xz) * 0.5) * exp(-lr * 1.0);
+  c += (mirror.rgb * mirror.a + 0.25 * mirror.rgb * (1.0 - mirror.a)) * 0.35 * fade * seen;
 
   // The axis, from above the crown down into the ground: the point on it
   // nearest the ray, kept within the part already drawn.
@@ -186,21 +251,34 @@ void main() {
     axisGlow += u_glow * u_lightC.z * head * 2.0 * spot(vec3(0.0, u_lightC.y, 0.0), 5.0);
   }
 
-  // The figure: a plane through the origin square to the camera, the image
-  // standing on the floor of the well.
-  // Sampled for every pixel (mip levels need screen derivatives), kept
-  // within the texture and above the floor of the well.
-  vec3 n = normalize(vec3(fw.x, 0.0, fw.z));
+  // The figure, the image standing on the floor of the well.
+  // Sampled for every pixel (mip levels and the outline need screen
+  // derivatives), kept within the texture and above the floor of the well.
   float tf = -dot(eye, n) / dot(d, n);
   vec3 q = eye + d * tf;
   float ly = q.y + sink;
-  vec2 uv = vec2(CENTRE + dot(q, rt) / UNIT, u_image.z + SOLE - ly / UNIT) / u_image.xy;
+  // Each breath in widens the chest a little and lifts the shoulders.
+  float breath = u_more.y;
+  float chest = 1.0 + 0.016 * breath * exp(-pow((ly - 1.28) / 0.24, 2.0));
+  float lift = 0.004 * breath * smoothstep(0.95, 1.45, ly);
+  vec2 uv = vec2(CENTRE + dot(q, rt) / UNIT / chest, u_image.z + SOLE - (ly - lift) / UNIT) / u_image.xy;
   float inside = step(0.0, tf) * step(0.0, ly) * step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
   vec4 body = texture(u_fig, uv) * inside;
-  float soft = textureLod(u_fig, uv, 4.0).a * inside;
-  float wide = textureLod(u_fig, uv, 6.0).a * inside;
-  float halo = soft * (1.0 - body.a);
-  float contour = exp(-pow((wide - 0.22) / 0.06, 2.0)) * (1.0 - soft) * inside;
+  // How far outside the body, image px.
+  float dist = (texture(u_form, uv).r - 0.5) * u_image.w;
+  float aa = max(fwidth(dist), 1e-3);
+  float halo = exp(-max(dist, 0.0) / 24.0) * (1.0 - body.a) * inside;
+  // The form's outline: two even lines at fixed distances, drawn up from the
+  // floor over the crown, a spark at their front; the near one breathes.
+  float rise = u_more.x;
+  float drawn = (1.0 - smoothstep(rise - 0.1, rise, ly)) * inside * step(0.0, dist);
+  float near = 28.0 + 5.0 * breath;
+  float l1 = 1.0 - smoothstep(0.5, 1.5, abs(dist - near) / aa);
+  float l2 = 1.0 - smoothstep(0.5, 1.5, abs(dist - 62.0) / aa);
+  float glowLine = exp(-pow((dist - near) / 9.0, 2.0));
+  float climbing = 1.0 - smoothstep(HEIGHT, HEIGHT + 0.35, rise);
+  float tip = exp(-pow((ly - rise) / 0.05, 2.0)) * climbing * inside * step(0.0, dist);
+  float contour = drawn * (l1 + 0.45 * l2 + 0.18 * glowLine) + tip * (2.0 * l1 + l2 + 0.6 * glowLine);
   // Engraved on a light page the soft glow around the body would be a dark
   // cloud: there it stays at half, so the figure and its lines lead.
   float cloud = u_out.z > 0.5 ? 0.5 : 1.0;
@@ -213,11 +291,11 @@ void main() {
   // its glow there.
   float passed = smoothstep(u_lightA.z - 0.02, u_lightA.z + 0.06, ly);
   float band = exp(-pow((ly - u_lightA.z) / 0.02, 2.0)) * u_lightA.w;
-  vec3 lit = body.rgb * (1.0 + 0.7 * u_target.w * passed + 0.6 * u_life.z) + u_glow * 1.6 * band;
+  vec3 lit = body.rgb * (1.0 + 0.12 * breath + 0.7 * u_target.w * passed + 0.6 * u_life.z) + u_glow * 1.6 * band;
   c = mix(c, lit, body.a);
   // The band rings the body as it falls; then the form's outline holds.
   float bandHalo = exp(-pow((ly - u_lightA.z) / 0.05, 2.0)) * u_lightA.w;
-  c += u_glow * cloud * (0.6 * bandHalo * halo + 0.25 * u_life.z * halo);
+  c += u_glow * cloud * (0.6 * bandHalo * halo + 0.25 * u_life.z * halo + 0.06 * breath * halo);
   c += u_glow * u_lightC.x * (0.9 * contour + 0.2 * cloud * halo);
 
   c += axisGlow;

@@ -12,7 +12,7 @@ pub fn svg(kind: &str) -> Option<String> {
         return crate::practice_art::svg(kind);
     }
     if kind == "home-shade" {
-        return Some(r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="home-copy-y" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".32" stop-color="var(--book-cover)" stop-opacity=".5"/><stop offset=".78" stop-color="var(--book-cover)" stop-opacity=".96"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".98"/></linearGradient><linearGradient id="home-copy-x"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".07" stop-color="#fff"/><stop offset=".83" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="home-copy-mask" style="mask-type:alpha"><rect width="320" height="160" fill="url(#home-copy-x)"/></mask></defs><rect width="320" height="160" fill="url(#home-copy-y)" mask="url(#home-copy-mask)"/></svg>"##.into());
+        return Some(r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="home-copy-y" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".32" stop-color="var(--book-cover)" stop-opacity=".5"/><stop offset=".78" stop-color="var(--book-cover)" stop-opacity=".96"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".98"/></linearGradient></defs><rect width="320" height="160" fill="url(#home-copy-y)"/></svg>"##.into());
     }
     None
 }

@@ -988,20 +988,8 @@ impl VectorGpu {
         if v.len() == 4 {
             self.viewbox.copy_from_slice(&v);
         }
-        let view = self.viewbox;
-        let scale = (width / view[2]).min(height / view[3]);
-        let offset = [
-            (width - view[2] * scale) / 2.,
-            (height - view[3] * scale) / 2.,
-        ];
-        let viewport = Matrix([
-            scale,
-            0.,
-            0.,
-            scale,
-            offset[0] - view[0] * scale,
-            offset[1] - view[1] * scale,
-        ]);
+        let stretch = attr(&self.svg, "preserveAspectRatio") == "none";
+        let viewport = vector_geometry::viewport(self.viewbox, width, height, stretch);
         self.states.iter_mut().for_each(State::refresh);
         let mut order_changed = false;
         for (id, previous) in &mut self.paint_orders {

@@ -5,6 +5,7 @@ import type { ReadingPage } from './motion/readingPages';
  * place. The hero above the panel is the eighth scene. */
 export const stepFivePages: readonly ReadingPage[] = [
   { id: 'sphere-first-level', title: 'Первый уровень Наблюдения: Сферичное Восприятие Внешнего — Практика сканирования Пространства в Присутствии',
+    webScene: 'sphere-world',
     placeholder: { name: 'Мир вокруг', manner: 'панорама на 3D-сфере, взгляд изнутри' }, paragraphs: [
       'Когда ты говоришь или молчишь, идешь, садишься или стоишь —\nмир вокруг тебя вибрирует, движется и звучит.',
       'Наблюдение начинается не с мысли и не с идеи.\nОно начинается с Намерения и Правды — видеть, слышать, ощущать все, как есть.',

@@ -14,6 +14,7 @@ import { ScrollGate } from './ScrollGate';
 import type { ReadingLayout } from './ReadingExpansion';
 import { readingPages } from './readingPages';
 import { ScenePlaceholder } from './ScenePlaceholder';
+import { StepFiveScene } from './StepFiveScene';
 import type { ReadingStep } from '../stepSections';
 import { useProductLayout } from '../layout';
 
@@ -73,7 +74,8 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               kind === 'dream-inward' && styles.stageArt,
               { marginHorizontal: -reading.contentInset - pageInset }, extra > 0 && (kind === 'reflections' || kind === 'single-hero' || kind === 'dream-inward' ? { paddingTop: 64 + extra, paddingBottom: 64 + extra } : { paddingTop: 40 + extra, paddingBottom: 36 + extra })]}>
               {kind ? <Art kind={kind} webScene={page.webScene} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
-                : page.placeholder && <ScenePlaceholder scene={page.placeholder} width={artWidth} height={artHeight} />}
+                : page.webScene ? <StepFiveScene page={page} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
+                  : page.placeholder && <ScenePlaceholder scene={page.placeholder} width={artWidth} height={artHeight} />}
             </View>}
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}

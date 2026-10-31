@@ -37,8 +37,8 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
-Shipped to `main` 2026-10-31 on Art's word («как сделаешь первую анимацию запуш»): hero, home
-card, forward scroll and page 01. 7 reading pages (text in `stepFiveContent.ts`), access via
+Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -51,13 +51,22 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   through Art's dark panorama in 90 s; beats at 2/20/38/56/74 s (gust, ripple, bird, ring with
   meridians, stars and a falling star). Light themes print the panorama as a sepia engraving
   (Art chose A). Prototype: 0 px lighter over the whole loop in Дюна/Мираж/Рассвет.
+  Art asked for depth and a living head: a Depth Anything V2 depth map (`assets/depth.webp`,
+  tools in `tools/`) gives parallax; the head sways, leans in and zooms a little at each beat;
+  the pitch keeps the bird painted in the sky out of the 3:2 frame (Art: a still raster bird
+  «выглядит тупо»).
+- 02 «Якорь» (`graphics/sphere-anchor`): Art's glowing figure on a floor grid in a 48 s loop;
+  the world stops, a band grounds the body, support points light, the form's outline draws up
+  from the floor at 27 s, an axis and anchor sink in. After Art's notes: an even outline from a
+  distance field (Rust `form_field`), Matrix-like dot rain in three depths behind, breathing,
+  a soft floor reflection.
 - Art chose direction A for every page (2026-10-31): 02 the figure on a floor grid, everything
   freezes, a wave down from the feet lights the support points; 03 the room as a point cloud
   with a scanner plane, one layer per list line; 04 a point → orbit ring → meridians → sphere,
   camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
   07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
-- Next: 02 «Якорь» (`graphics/sphere-anchor`), then 03–07, one crate each, Тишина first,
+- Next: 03 (point-cloud room with a scanner plane), then 04–07, one crate each, Тишина first,
   prototype per page; ship each when Art says.
 
 ## Shipped features (all on main)

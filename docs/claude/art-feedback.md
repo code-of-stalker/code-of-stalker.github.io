@@ -57,3 +57,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A flat walk along a painted strip with a ball floating beside the camera, and stripes of light on the glass, read as «нелепо». He liked the sphere in the middle of the ring of places («сфера и вокруг картины по кругу»), so the whole loop now lives in that ring. (Page 07.)
 - Places that just light up on the ring were not enough: «сфера как бы проецировала эти изображения». The ball became a projector (lamp, beams in the air, a blank ring screen). A lamp drowns against a bright painting in the dark recolor: keep the thrown place to the side so the lamp stands against the dark. (Page 07.)
 - A sequence of places reads better one at a time: each switches on as the next one switches off, and all of them come on together only at the closing run round the ring. (Page 07.)
+
+## Step 7 «Динамическая сфера»
+- The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
+- Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
+- A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)

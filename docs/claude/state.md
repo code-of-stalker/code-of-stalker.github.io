@@ -98,8 +98,23 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   Рассвет 0 px lighter than the page over 108 frames each.
   The exported app mounts it at phone (295 px wide) and wide (544 px, the plate's width) sizes,
   no console or GPU error.
-- Next: 06 «stilling» (direction A: the ripple weakens with each «Не…», the last leaves a
-  mirror), then 07; one crate each, Тишина first; ship each when Art says.
+- Set aside on 2026-11-01 (Art: «пока оставим пятый шаг»). Left: 06 «stilling» (direction A:
+  the ripple weakens with each «Не…», the last leaves a mirror), then 07; one crate each.
+- Step 5's last page (07) scrolls on into Step 6 page 01.
+
+## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
+сайт вместе с заглушками»). 10 reading pages, author's text unchanged
+(`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
+Menu groups: Второй уровень [01], Обозревание Внутреннего Кольца [02–08], Итог [09, 10].
+Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ ШАГ»; bookmark
+`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`: the hero is a
+`ScenePlaceholder` too (no painting yet), signature on page 10.
+- Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
+  02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
+  08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
+  the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
+- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
@@ -115,7 +130,8 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
 - Security: CSP and an address guard in the web shell; Pages build job is read-only;
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
 - Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
-  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4.
+  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4,
+  Step 4 into Step 5, Step 5 into Step 6.
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).

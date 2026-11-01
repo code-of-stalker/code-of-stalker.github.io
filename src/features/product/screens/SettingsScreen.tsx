@@ -28,6 +28,7 @@ export type SettingsScreenProps = {
   onOpenFourthStep: () => void;
   onOpenFifthStep: () => void;
   onOpenSixthStep: () => void;
+  onOpenSeventhStep: () => void;
   onReset: () => Promise<void>;
   resetting?: boolean;
 };
@@ -77,7 +78,7 @@ function ToggleRow({ label, detail, enabled, onToggle }: { label: string; detail
   );
 }
 
-export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onReset, resetting = false }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onOpenSeventhStep, onReset, resetting = false }: SettingsScreenProps) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [confirmReset, setConfirmReset] = useState(false), [resetError, setResetError] = useState('');
@@ -144,6 +145,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
           <ProductButton label="ОТКРЫТЬ ЧЕТВЁРТЫЙ ШАГ" kind="outline" onPress={onOpenFourthStep} />
           <ProductButton label="ОТКРЫТЬ ПЯТЫЙ ШАГ" kind="outline" onPress={onOpenFifthStep} />
           <ProductButton label="ОТКРЫТЬ ШЕСТОЙ ШАГ" kind="outline" onPress={onOpenSixthStep} />
+          <ProductButton label="ОТКРЫТЬ СЕДЬМОЙ ШАГ" kind="outline" onPress={onOpenSeventhStep} />
         </>}
         <View style={styles.divider} />
         <Pressable accessibilityRole="button" accessibilityLabel="Второй шаг с таймером"

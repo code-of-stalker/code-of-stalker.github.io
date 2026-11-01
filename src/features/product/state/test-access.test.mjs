@@ -143,3 +143,16 @@ test('sixth-step access follows step five\'s last page, stays earned and falls b
   assert.equal(model.validateSnapshot(snapshot),snapshot);
   snapshot.progress.stepSixReading.page=10; assert.throws(()=>model.validateSnapshot(snapshot),/настройки/);
 });
+test('seventh-step access follows step six\'s last page, stays earned and falls back to step six', () => {
+  const progress={...model.defaultProgress,step:7,sixthStepUnlocked:true,fifthStepUnlocked:true,fourthStepUnlocked:true,secondStepCompletedAt:1000,stepSixReading:{page:8,offset:0}};
+  assert.equal(model.canOpenSeventhStep(progress),false);
+  assert.equal(model.accessibleProgress(progress).step,6);
+  progress.stepSixReading.page=9;
+  assert.equal(model.canOpenSeventhStep(progress),true);
+  assert.equal(model.accessibleProgress(progress).step,7);
+  progress.seventhStepUnlocked=true; progress.stepSixReading.page=0;
+  assert.equal(model.canOpenSeventhStep(progress),true);
+  const snapshot=model.emptyProduct(); snapshot.progress={...snapshot.progress,stepSevenReading:{page:9,offset:0},seventhStepUnlocked:true};
+  assert.equal(model.validateSnapshot(snapshot),snapshot);
+  snapshot.progress.stepSevenReading.page=10; assert.throws(()=>model.validateSnapshot(snapshot),/настройки/);
+});

@@ -19,6 +19,7 @@ export type StepThreeReading = { chapter: 0 | 1; page: number; offset: number; p
 export type StepFourReading = { page: number; offset: number };
 export type StepFiveReading = { page: number; offset: number };
 export type StepSixReading = { page: number; offset: number };
+export type StepSevenReading = { page: number; offset: number };
 export type ProductProgress = {
   selectedLevel: ProductLevel | null;
   step: number;
@@ -32,6 +33,8 @@ export type ProductProgress = {
   fifthStepUnlocked?: boolean;
   stepSixReading?: StepSixReading;
   sixthStepUnlocked?: boolean;
+  stepSevenReading?: StepSevenReading;
+  seventhStepUnlocked?: boolean;
   secondStepCompletedAt?: number;
   completedAt: number | null;
   availableAt: number | null;
@@ -83,6 +86,9 @@ export function patchProgress(current: ProductProgress, patch: Partial<ProductPr
 /** Preview access never creates completion; turning it off restores an earned step. */
 export function accessibleProgress(progress: ProductProgress, testUnlockAll = false): ProductProgress {
   if (testUnlockAll) return progress;
+  if (progress.step === 7 && !canOpenSeventhStep(progress)) {
+    return accessibleProgress(patchProgress(progress, { step: 6 }), false);
+  }
   if (progress.step === 6 && !canOpenSixthStep(progress)) {
     return accessibleProgress(patchProgress(progress, { step: 5 }), false);
   }
@@ -108,6 +114,10 @@ export function canOpenFifthStep(progress: ProductProgress, testUnlockAll = fals
 /** Reaching step five's last page (index 6, «Позволь телу запомнить») opens step six. */
 export function canOpenSixthStep(progress: ProductProgress, testUnlockAll = false) {
   return testUnlockAll || !!progress.sixthStepUnlocked || canOpenFifthStep(progress) && progress.stepFiveReading?.page === 6;
+}
+/** Reaching step six's last page (index 9, «Пробуй в любой среде») opens step seven. */
+export function canOpenSeventhStep(progress: ProductProgress, testUnlockAll = false) {
+  return testUnlockAll || !!progress.seventhStepUnlocked || canOpenSixthStep(progress) && progress.stepSixReading?.page === 9;
 }
 export function emptyProduct(): ProductSnapshot {
   return { version: 1, settings: { ...defaultSettings }, progress: { ...defaultProgress }, observations: [] };
@@ -168,6 +178,9 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
       (progress.sixthStepUnlocked !== undefined && typeof progress.sixthStepUnlocked !== 'boolean') ||
       (progress.stepSixReading !== undefined && (!progress.stepSixReading ||
         !whole(progress.stepSixReading.page, 0, 9) || !whole(progress.stepSixReading.offset, 0, 1000000))) ||
+      (progress.seventhStepUnlocked !== undefined && typeof progress.seventhStepUnlocked !== 'boolean') ||
+      (progress.stepSevenReading !== undefined && (!progress.stepSevenReading ||
+        !whole(progress.stepSevenReading.page, 0, 9) || !whole(progress.stepSevenReading.offset, 0, 1000000))) ||
       (progress.completedAt !== null && !whole(progress.completedAt, 1)) ||
       (progress.availableAt !== null && !whole(progress.availableAt, 1)) || !Array.isArray(value.observations)) {
     throw new Error('Локальные настройки не удалось прочитать. Сохранённые записи не изменены.');

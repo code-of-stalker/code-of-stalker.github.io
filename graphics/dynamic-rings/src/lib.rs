@@ -1,11 +1,14 @@
-//! Step 7 «Наблюдение в Динамике»: the third level. A figure of light
-//! stands inside the outer ring of Step 5 (a ticked orbit at the height of
-//! its chest, a runner on it looking out at the world) with the inner
-//! sphere of Step 6 in its chest, and gains a third ring at its waist that
-//! moves with the body. The rings fall into one rhythm, lock, and are held
-//! while the figure walks. Every value is a pure function of the chapter
-//! and its loop time (`story.rs`); `browser.rs` only uploads it and the
-//! shaders draw it. Metres; the figure faces +z, its left is +x.
+//! Step 7 «Наблюдение в Динамике»: the third level. A figure of light walks
+//! over the top of a small planet inside a sphere of glass, the dynamic
+//! sphere of the body. Inside it the rings of the first two levels move:
+//! the outer one, a double ring that scans the world and settles over the
+//! crown; the inner ones, strings of beads round the torso (the breath) and
+//! the legs (the steps). Their rhythms meet and lock, the third ring rises
+//! up the glass and lights the sphere, and everything is held while the
+//! figure walks. The camera goes from the eyes, to over the right
+//! shoulder, to the side from above. Every value is a pure function of the
+//! chapter and its loop time (`story.rs`); `browser.rs` only uploads it and
+//! the shaders draw it. Metres; the figure faces +z, its left is +x.
 use watcher_scene_palette::Palette;
 
 pub mod body;
@@ -21,76 +24,104 @@ use body::{Body, PRIMITIVES};
 use math::V3;
 pub use story::{Chapter, Story};
 
-/// One breath: the inner sphere's beat, which the other two rings join.
+/// One breath: the torso ring's rhythm, which the crown ring joins.
 pub const BEAT: f32 = 4.4;
-/// After the inner flash the waist ring answers this much later, then the
-/// outer ring as its runner passes the front: one ripple from the inside
-/// out.
-pub const RIPPLE_ACTION: f32 = 0.12;
-pub const RIPPLE_ORBIT: f32 = 0.25;
 
-/// The lens: a 3:2 frame 40° tall (1 / tan 20°); a canvas of another shape
-/// keeps the whole 3:2 frame in view.
+/// The lens: a 3:2 frame 40° tall (1 / tan 20°) at zoom 1; a canvas of
+/// another shape keeps the whole 3:2 frame in view.
 pub const FOCAL: f32 = 2.747_477_4;
 pub const FRAME_ASPECT: f32 = 1.5;
-/// Lens blur, canvas heights per unit of |depth − focus| / depth.
-pub const APERTURE: f32 = 0.011;
 /// A line's Gaussian width in canvas heights; its halo is `HALO_SPREAD`
 /// times wider at `HALO` of its peak.
 pub const LINE_WIDTH: f32 = 0.0011;
 pub const HALO: f32 = 0.1;
 pub const HALO_SPREAD: f32 = 3.5;
 
-/// Ring 1, the outer orbit: level with the chest around the figure, a dial
-/// of ticks outward from it (short, and long every sixth; of its radius),
-/// a runner and its gaze out into the world (from and to, of its radius).
-pub const ORBIT_RADIUS: f32 = 1.3;
-pub const ORBIT_HEIGHT: f32 = 1.25;
-pub const RING_SEGMENTS: u32 = 256;
-pub const TICKS: u32 = 72;
-pub const TICK: [f32; 2] = [0.035, 0.075];
-pub const GAZE: [f32; 2] = [1.08, 2.1];
-pub const GAZE_SEGMENTS: u32 = 12;
-/// The runner passes the front of the ring here, 0 toward the figure's
-/// front turning to its left; it runs toward smaller angles.
-pub const ORBIT_START: f32 = 45.0 * std::f32::consts::PI / 180.0;
-/// Its trail along the ring, radians to fade by 1/e.
-pub const RUNNER_TAIL: f32 = 0.9;
+/// The sphere of the third level: its centre this high over the ground,
+/// sunk into it so that its base lies on the ground in a circle. Its shell
+/// is a glass this thick that glows by how much of it a ray crosses: faint
+/// face on, bright at the rim.
+pub const SPHERE_RADIUS: f32 = 1.4;
+pub const SPHERE_HEIGHT: f32 = 1.0;
+pub const SHELL: f32 = 0.03;
+/// Light per metre of glass crossed, its grid's light, how lit it is
+/// before the third ring fills it.
+pub const SHELL_LIGHT: f32 = 1.5;
+pub const SHELL_GRID: f32 = 0.11;
+pub const SHELL_LATENT: f32 = 0.35;
+/// The air inside the glass glows this much a metre where it is filled.
+pub const GLASS_FOG: f32 = 0.05;
+/// Each landing sends a band of light up the glass this fast (m/s).
+pub const SHELL_WAVE: f32 = 1.5;
 
-/// Ring 2, the inner sphere in the chest: latitudes that slide open from
-/// its equator, meridians that rise through its poles.
-pub const SPHERE_RADIUS: f32 = 0.1;
-pub const SPHERE_LATITUDES: [f32; 5] = [0.0, 35.0, -35.0, 65.0, -65.0];
-pub const SPHERE_MERIDIANS: u32 = 3;
-pub const SPHERE_SEGMENTS: u32 = 64;
+/// The planet under the figure; the floor bends over it.
+pub const PLANET_RADIUS: f32 = 60.0;
+/// Its grid's cell (two strides) and how far the grid reaches, metres.
+pub const PLANET_CELL: f32 = 1.24;
+pub const PLANET_REACH: f32 = 24.0;
 
-/// Ring 3, action: round the hips, tilting with them as they move. Before
-/// it holds it is a string of beads; its last positions trail behind it.
-pub const WAIST_RADIUS: f32 = 0.5;
-/// How much more than the pelvis it tilts.
-pub const WAIST_TILT: f32 = 2.6;
-pub const ACTION_SEGMENTS: u32 = 160;
-pub const BEADS: u32 = 24;
-pub const GHOSTS: usize = 8;
-pub const GHOST_STEP: f32 = 0.095;
-pub const GHOST_SEGMENTS: u32 = 96;
+/// The rings inside the sphere: 0 the crown (level 1, the world outside),
+/// 1 the torso (level 2, the breath inside), 2 the legs (level 3, the
+/// steps: it forms once the first two lock), 3 the sweep that rises up the
+/// glass and fills it.
+pub const RINGS: usize = 4;
+/// The crown ring runs on a sphere this share of the glass: two lines this
+/// far apart, a band of beads between them.
+pub const CROWN_SHARE: f32 = 0.955;
+pub const CROWN_GAP: f32 = 0.026;
+/// Where the crown ring holds (latitude on its sphere) and how far it
+/// rises and falls with each breath, radians; how far it tilts.
+pub const CROWN_LAT: f32 = 0.72;
+pub const CROWN_SWING: f32 = 0.13;
+pub const CROWN_TILT: f32 = 0.12;
+/// Before it joins the breath the crown ring keeps its own time.
+pub const CROWN_PERIOD: f32 = 6.1;
+/// The torso ring: from the navel on the out-breath to the chest on the
+/// in-breath; its radius out and in.
+pub const TORSO: [f32; 2] = [0.98, 1.3];
+pub const TORSO_RADIUS: [f32; 2] = [0.38, 0.45];
+/// The legs ring this far over the knees, pitching this far (radians) with
+/// the stride.
+pub const LEGS_HEIGHT: f32 = 0.08;
+pub const LEGS_RADIUS: f32 = 0.33;
+pub const LEGS_SWING: f32 = 0.12;
+/// The third ring on a sphere this share of the glass.
+pub const THIRD_SHARE: f32 = 0.985;
+pub const RING_SEGMENTS: u32 = 192;
+/// Beads on each of the crown, torso and legs rings.
+pub const BEADS: u32 = 120;
+/// The crown ring's last positions trail behind it.
+pub const GHOSTS: usize = 6;
+pub const GHOST_STEP: f32 = 0.06;
+pub const GHOST_SEGMENTS: u32 = 128;
+/// After the lock, streams of beads spiral up from the legs ring through
+/// the torso ring to the crown.
+pub const THREADS: u32 = 7;
+pub const THREAD_BEADS: u32 = 26;
+/// The crown ring's plane lights the world it passes, this wide (m).
+pub const SCAN_WIDTH: f32 = 0.16;
 
 /// The ground: a print for each of the newest landings, fading, and a
-/// ripple from each heel strike; a lattice of dots lit in a pool round the
-/// figure.
+/// ripple from each heel strike; a lattice of dots lit round the figure.
 pub const PRINTS: usize = 8;
 pub const PRINT_SEGMENTS: u32 = 40;
 pub const PRINT_FADE: f32 = 2.8;
-pub const RIPPLE_SECONDS: f32 = 1.3;
-pub const RIPPLE_REACH: f32 = 0.55;
-pub const RIPPLE_SEGMENTS: u32 = 64;
+pub const RIPPLE_SECONDS: f32 = 1.6;
+pub const RIPPLE_REACH: f32 = 1.3;
+pub const RIPPLE_SEGMENTS: u32 = 80;
 pub const FLOOR_CELL: f32 = 0.155;
-pub const FLOOR_GRID: u32 = 72;
-pub const FLOOR_POOL: f32 = 3.2;
-/// The world: motes in the air round the figure, far stars.
-pub const MOTES: u32 = 900;
+pub const FLOOR_GRID: u32 = 84;
+pub const FLOOR_POOL: f32 = 3.6;
+/// The world: motes in the air round the figure, far stars, some joined
+/// into figures, and columns of data standing over the horizon.
+pub const MOTES: u32 = 700;
 pub const MOTE_SPAN: [f32; 2] = [4.0, 3.4];
-pub const STARS: u32 = 700;
+pub const STARS: u32 = 900;
+pub const CONSTELLATIONS: u32 = 9;
+pub const CONSTELLATION_STARS: u32 = 6;
+pub const COLUMNS: u32 = 120;
+pub const COLUMN_DOTS: u32 = 34;
+pub const COLUMN_GAP: f32 = 0.34;
 /// The figure: points of light on its skin, each this wide (Gaussian, of
 /// the canvas height).
 pub const BODY_POINTS: u32 = 26000;
@@ -99,21 +130,26 @@ pub const BODY_SIZE: f32 = 0.0006;
 pub const BODY_DOT: f32 = 0.003;
 
 /// Peak light of each family.
-pub const ORBIT_LIGHT: f32 = 0.9;
-pub const TICK_LIGHT: f32 = 0.45;
-pub const GAZE_LIGHT: f32 = 0.45;
-pub const RUNNER_GLOW: f32 = 1.4;
-pub const SPHERE_LIGHT: f32 = 0.6;
-pub const ACTION_LIGHT: f32 = 0.95;
-pub const GHOST_LIGHT: f32 = 0.32;
+pub const CROWN_LIGHT: f32 = 1.0;
+pub const BEAD_LIGHT: f32 = 1.1;
+pub const INNER_LINE_LIGHT: f32 = 0.36;
+pub const THIRD_LIGHT: f32 = 1.3;
+pub const CONTACT_LIGHT: f32 = 0.7;
+pub const GHOST_LIGHT: f32 = 0.3;
+pub const THREAD_LIGHT: f32 = 0.9;
+pub const SCAN_LIGHT: f32 = 2.2;
 pub const PRINT_LIGHT: f32 = 0.5;
-pub const RIPPLE_LIGHT: f32 = 0.6;
+pub const RIPPLE_LIGHT: f32 = 0.55;
 pub const FLOOR_LIGHT: f32 = 0.45;
-pub const FLOOR_RING_LIGHT: f32 = 0.25;
-pub const MOTE_LIGHT: f32 = 0.6;
-pub const MOTE_GAZE: f32 = 1.6;
+pub const PLANET_LIGHT: f32 = 0.09;
+pub const ATMOSPHERE_LIGHT: f32 = 0.22;
+/// The sky's band of light.
+pub const NEBULA_LIGHT: f32 = 0.035;
+pub const MOTE_LIGHT: f32 = 0.5;
 pub const STAR_LIGHT: f32 = 0.5;
-pub const BODY_LIGHT: f32 = 0.6;
+pub const CONSTELLATION_LIGHT: f32 = 0.16;
+pub const COLUMN_LIGHT: f32 = 0.7;
+pub const BODY_LIGHT: f32 = 0.78;
 /// A ring's flash adds this much; the lock's wave this much to what it
 /// passes.
 pub const FLASH_GAIN: f32 = 1.3;
@@ -124,8 +160,7 @@ pub const WAVE_GAIN: f32 = 2.2;
 pub const ENGRAVE_WHITE: f32 = 0.9;
 pub const ENGRAVE_GAMMA: f32 = 0.75;
 
-/// A ring this frame: where, facing which way, how big and lit; `extra`
-/// holds each ring's own values (story.rs).
+/// A ring this frame: where, facing which way, how big and lit.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Ring {
     pub center: V3,
@@ -133,7 +168,23 @@ pub struct Ring {
     pub radius: f32,
     pub light: f32,
     pub flash: f32,
-    pub extra: [f32; 5],
+    /// How far its beads have run round it, radians.
+    pub flow: f32,
+    /// 0 its beads scattered in the air … 1 gathered on the ring.
+    pub form: f32,
+    /// How much its plane lights the world it passes.
+    pub scan: f32,
+}
+
+impl Ring {
+    /// A point of the ring at angle `s`, from its +z side (common.glsl
+    /// onTilted).
+    pub fn at(&self, s: f32) -> V3 {
+        let z = math::v3(0.0, 0.0, 1.0);
+        let e1 = self.normal.cross(z).normalize();
+        let e2 = e1.cross(self.normal);
+        self.center + (e1 * s.sin() + e2 * s.cos()) * self.radius
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -143,38 +194,50 @@ pub struct Frame {
     pub right: V3,
     pub up: V3,
     pub forward: V3,
+    /// Focus distance, zoom (1 is the 40° lens), aperture (canvas heights
+    /// of blur per unit of |depth − focus| / depth).
     pub focus: f32,
+    pub lens: f32,
+    pub aperture: f32,
     /// 0 out … 1 in.
     pub breath: f32,
     pub body: Body,
     pub body_light: f32,
-    pub orbit: Ring,
-    pub inner: Ring,
-    pub action: Ring,
-    /// The waist ring a moment ago: centre, normal, light.
-    pub ghosts: [(V3, V3, f32); GHOSTS],
+    pub sphere: V3,
+    /// The glass before it fills, once filled, and the height it is filled
+    /// to.
+    pub latent: f32,
+    pub filled: f32,
+    pub fill: f32,
+    pub rings: [Ring; RINGS],
+    /// The crown ring a moment ago: centre, normal, radius, light.
+    pub ghosts: [(V3, V3, f32, f32); GHOSTS],
+    pub threads: f32,
     /// The newest landings: x, z, yaw, seconds since.
     pub prints: [[f32; 4]; PRINTS],
     /// Where each foot meets the ground and how much it presses.
     pub feet: [[f32; 4]; 2],
     pub floor: f32,
-    pub motes: f32,
+    pub world: f32,
     /// The lock's wave: its origin, light and radius (< 0 none).
     pub lock: [f32; 4],
     pub lock_radius: f32,
     /// The floor and the motes repeat every `distance` and `mote_box`
-    /// metres along z, so the loop closes on a figure that has walked on.
+    /// metres along z, so the loop closes on a figure that has walked on;
+    /// `track` is where the walk is, under the planet's top.
     pub distance: f32,
     pub mote_box: f32,
+    pub track: f32,
     pub amount: f32,
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
-pub const SLOTS: usize = 44;
+pub const SLOTS: usize = 45;
 pub const SLOT_VIEW: usize = 4;
-pub const SLOT_GHOST: usize = 17;
-pub const SLOT_GHOST_NORMAL: usize = SLOT_GHOST + GHOSTS;
-pub const SLOT_PRINT: usize = SLOT_GHOST_NORMAL + GHOSTS;
+pub const SLOT_RING: usize = 7;
+pub const SLOT_WORLD: usize = SLOT_RING + 3 * RINGS;
+pub const SLOT_GHOST: usize = SLOT_WORLD + 3;
+pub const SLOT_PRINT: usize = SLOT_GHOST + 2 * GHOSTS;
 pub const SLOT_FEET: usize = SLOT_PRINT + PRINTS;
 pub const SLOT_META: usize = SLOT_FEET + 2;
 
@@ -187,31 +250,32 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     d[1] = with(f.right, f.time);
     d[2] = with(f.up, f.breath);
     d[3] = with(f.forward, f.amount);
-    let o = &f.orbit;
-    d[5] = with(o.center, o.radius);
-    d[6] = [o.light, o.extra[0], o.extra[1], o.flash];
-    d[7] = [o.extra[2], o.extra[3], o.extra[4], 0.0];
-    let s = &f.inner;
-    d[8] = with(s.center, s.radius);
-    d[9] = [s.light, s.extra[0], s.flash, s.extra[1]];
-    d[10] = [s.extra[2], f.time.rem_euclid(BEAT), 0.0, 0.0];
-    let a = &f.action;
-    d[11] = with(a.center, a.radius);
-    d[12] = with(a.normal, a.light);
-    d[13] = [a.flash, a.extra[0], a.extra[1], a.extra[2]];
-    d[14] = [f.distance, f.mote_box, f.floor, f.motes];
-    d[15] = f.lock;
-    d[16] = [f.lock_radius, f.body_light, 0.0, 0.0];
-    for (k, (c, n, w)) in f.ghosts.iter().enumerate() {
-        d[SLOT_GHOST + k] = with(*c, *w);
-        d[SLOT_GHOST_NORMAL + k] = with(*n, 0.0);
+    d[5] = with(f.sphere, SPHERE_RADIUS);
+    d[6] = [f.latent, f.filled, f.fill, f.track];
+    for (k, r) in f.rings.iter().enumerate() {
+        let s = SLOT_RING + 3 * k;
+        d[s] = with(r.center, r.radius);
+        d[s + 1] = with(r.normal, r.light);
+        d[s + 2] = [r.flash, r.flow, r.form, r.scan];
+    }
+    d[SLOT_WORLD] = [f.distance, f.mote_box, f.floor, f.world];
+    d[SLOT_WORLD + 1] = f.lock;
+    d[SLOT_WORLD + 2] = [
+        f.lock_radius,
+        f.body_light,
+        f.threads,
+        f.time.rem_euclid(BEAT),
+    ];
+    for (k, (c, n, r, w)) in f.ghosts.iter().enumerate() {
+        d[SLOT_GHOST + 2 * k] = with(*c, *r);
+        d[SLOT_GHOST + 2 * k + 1] = with(*n, *w);
     }
     for (k, p) in f.prints.iter().enumerate() {
         d[SLOT_PRINT + k] = *p;
     }
     d[SLOT_FEET] = f.feet[0];
     d[SLOT_FEET + 1] = f.feet[1];
-    d[SLOT_META] = [story.loop_seconds, 0.0, 0.0, 0.0];
+    d[SLOT_META] = [story.loop_seconds, f.lens, f.aperture, 0.0];
     d
 }
 
@@ -258,8 +322,8 @@ pub fn project(f: &Frame, point: V3) -> Option<[f32; 2]> {
     let z = v.dot(f.forward);
     (z > 0.0).then(|| {
         [
-            v.dot(f.right) / z * FOCAL / FRAME_ASPECT,
-            v.dot(f.up) / z * FOCAL,
+            v.dot(f.right) / z * FOCAL * f.lens / FRAME_ASPECT,
+            v.dot(f.up) / z * FOCAL * f.lens,
         ]
     })
 }
@@ -326,7 +390,7 @@ pub fn engrave(look: &Look, page: [f32; 3], dark: [f32; 3]) -> [f32; 3] {
 mod tests {
     use super::*;
     use crate::math::v3;
-    use crate::story::{arrive_lap, arrive_runner, ARRIVE_LOOP, HERO_LOOP};
+    use crate::story::{crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP};
 
     fn chapters() -> [Story; 2] {
         [Story::new(Chapter::Hero), Story::new(Chapter::Arrive)]
@@ -339,20 +403,18 @@ mod tests {
     /// The frame seen from the figure: everything a loop's walk apart
     /// should look the same.
     fn relative(f: &Frame) -> Vec<f32> {
-        let o = f.orbit.center;
+        let o = f.sphere;
         let mut v = vec![];
-        for p in [f.eye, f.inner.center, f.action.center, f.body.head] {
+        for p in [f.eye, f.body.head] {
             v.extend((p - o).arr());
         }
+        for r in &f.rings {
+            v.extend((r.center - o).arr());
+            v.extend(r.normal.arr());
+            v.extend([r.radius, r.light, r.form]);
+        }
         v.extend(f.forward.arr());
-        v.extend([
-            f.orbit.light,
-            f.orbit.light * f.orbit.extra[1],
-            f.inner.light,
-            f.action.light,
-            f.breath,
-            f.focus,
-        ]);
+        v.extend([f.latent, f.filled, f.threads, f.breath, f.focus, f.lens]);
         v
     }
 
@@ -364,14 +426,14 @@ mod tests {
             assert_eq!(story.compose(f32::NAN), story.compose(0.0));
             let (a, b) = (story.compose(l - 1e-3), story.compose(1e-3));
             for (x, y) in relative(&a).iter().zip(relative(&b)) {
-                assert!(close(*x, y, 4e-3), "{:?}: {x} {y}", story.chapter);
+                assert!(close(*x, y, 5e-3), "{:?}: {x} {y}", story.chapter);
             }
-            // The floor and the motes repeat over the walk.
-            let cells = story.distance / FLOOR_CELL;
-            assert!(close(cells, cells.round(), 1e-3), "{cells}");
-            let boxes = story.distance / story.mote_box;
-            assert!(close(boxes, boxes.round(), 1e-4), "{boxes}");
-            let walked = story.compose(l - 1e-4).orbit.center.z - story.compose(0.0).orbit.center.z;
+            // The floor, the planet's grid and the motes repeat over the walk.
+            for cell in [FLOOR_CELL, PLANET_CELL, story.mote_box] {
+                let cells = story.distance / cell;
+                assert!(close(cells, cells.round(), 1e-3), "{cells}");
+            }
+            let walked = story.compose(l - 1e-4).track - story.compose(0.0).track;
             assert!(close(walked, story.distance, 2e-3), "{walked}");
         }
     }
@@ -385,24 +447,27 @@ mod tests {
             while t < story.loop_seconds {
                 let f = story.compose(t);
                 let moved = (f.eye - previous.eye).length();
-                assert!(moved < 0.05, "{:?} eye at {t}: {moved}", story.chapter);
+                assert!(moved < 0.06, "{:?} eye at {t}: {moved}", story.chapter);
                 let turned = (f.forward - previous.forward).length();
-                assert!(turned < 0.012, "{:?} view at {t}: {turned}", story.chapter);
-                for (a, b) in [
-                    (f.orbit.light, previous.orbit.light),
-                    (f.orbit.extra[0], previous.orbit.extra[0]),
-                    (f.orbit.extra[3], previous.orbit.extra[3]),
-                    (f.inner.light, previous.inner.light),
-                    (f.inner.extra[0], previous.inner.extra[0]),
-                    (f.inner.extra[1], previous.inner.extra[1]),
-                    (f.action.light, previous.action.light),
-                    (f.action.extra[0], previous.action.extra[0]),
-                ] {
-                    assert!((a - b).abs() < 0.05, "{:?} light at {t}", story.chapter);
+                assert!(turned < 0.025, "{:?} view at {t}: {turned}", story.chapter);
+                assert!((f.lens - previous.lens).abs() < 0.01);
+                // An unlit ring may wait anywhere.
+                let lit = f.rings.iter().zip(&previous.rings);
+                for (a, b) in lit.filter(|(a, b)| a.light.max(b.light) > 0.0) {
+                    let jumped = (a.center - b.center).length() + (a.radius - b.radius).abs();
+                    assert!(jumped < 0.06, "{:?} ring at {t}: {jumped}", story.chapter);
+                    assert!((a.normal - b.normal).length() < 0.03, "{t}");
+                    for (x, y) in [(a.light, b.light), (a.form, b.form), (a.scan, b.scan)] {
+                        assert!((x - y).abs() < 0.05, "{:?} light at {t}", story.chapter);
+                    }
                 }
-                // The runner never jumps along its ring.
-                let ran = (f.orbit.extra[2] - previous.orbit.extra[2]).abs();
-                assert!(ran < 0.05, "{:?} runner at {t}: {ran}", story.chapter);
+                for (a, b) in [
+                    (f.latent, previous.latent),
+                    (f.filled, previous.filled),
+                    (f.threads, previous.threads),
+                ] {
+                    assert!((a - b).abs() < 0.05, "{:?} glass at {t}", story.chapter);
+                }
                 previous = f;
                 t += step;
             }
@@ -410,33 +475,92 @@ mod tests {
     }
 
     #[test]
-    fn the_figure_and_its_rings_stay_in_the_frame() {
+    fn the_rings_move_inside_the_sphere() {
         for story in chapters() {
             let mut t = 0.0;
             while t < story.loop_seconds {
                 let f = story.compose(t);
-                // Page 01 moves in close on the chest for the inner light.
-                let close_up = story.chapter == Chapter::Arrive && (5.0..11.0).contains(&t);
-                let (lo, hi) = (f.body.low, f.body.high);
-                for corner in 0..8 {
-                    let pick = |bit: u32, a: f32, b: f32| if corner & bit == 0 { a } else { b };
-                    let p = v3(
-                        pick(1, lo.x, hi.x),
-                        pick(2, lo.y, hi.y),
-                        pick(4, lo.z, hi.z),
-                    );
-                    let [x, y] = project(&f, p).expect("in front");
-                    if !close_up {
-                        assert!(x.abs() < 0.8 && y.abs() < 0.9, "{t}: {x} {y}");
+                for (k, r) in f.rings.iter().enumerate() {
+                    for i in 0..24 {
+                        let p = r.at(i as f32 / 24.0 * std::f32::consts::TAU);
+                        let out = (p - f.sphere).length();
+                        assert!(out <= SPHERE_RADIUS + 1e-3, "{t} ring {k}: {out}");
+                        assert!(p.y > 0.0, "{t} ring {k} under the ground");
                     }
                 }
-                for k in 0..24 {
-                    let a = k as f32 / 24.0 * std::f32::consts::TAU;
-                    let p = f.orbit.center + v3(a.sin(), 0.0, a.cos()) * f.orbit.radius;
-                    let [x, y] = project(&f, p).expect("the ring in front");
-                    if !close_up && f.orbit.light > 0.0 {
-                        assert!(x.abs() < 0.92 && y.abs() < 0.9, "{t}: ring {x} {y}");
+                t += 0.1;
+            }
+        }
+        // They travel: over the cover each ring rises and falls, and the
+        // crown ring tilts round.
+        let story = Story::new(Chapter::Hero);
+        let frames: Vec<Frame> = (0..264).map(|i| story.compose(i as f32 / 10.0)).collect();
+        for k in 0..3 {
+            let heights = frames.iter().map(|f| f.rings[k].center.y - f.sphere.y);
+            let (lo, hi) = heights.fold((9.0f32, -9.0f32), |(a, b), y| (a.min(y), b.max(y)));
+            assert!(hi - lo > 0.04, "ring {k} keeps its height: {lo} {hi}");
+        }
+        let tilts = frames.iter().map(|f| f.rings[0].normal.x);
+        let (lo, hi) = tilts.fold((9.0f32, -9.0f32), |(a, b), x| (a.min(x), b.max(x)));
+        assert!(lo < -0.05 && hi > 0.05, "{lo} {hi}");
+    }
+
+    #[test]
+    fn the_camera_goes_from_the_eyes_to_the_shoulder_to_the_side() {
+        let story = Story::new(Chapter::Arrive);
+        for i in 0..100 {
+            let f = story.compose(0.5 + i as f32 * 0.09);
+            // From the eyes: inside the head, looking ahead.
+            assert!((f.eye - f.body.head).length() < 0.16, "{}", f.time);
+            assert!(f.forward.z > 0.9);
+        }
+        for i in 0..80 {
+            let f = story.compose(14.5 + i as f32 * 0.09);
+            let rel = f.eye - f.body.head;
+            // Behind the right shoulder, a little above it.
+            assert!(
+                rel.z < -0.6 && rel.x < -0.25 && rel.y > 0.3,
+                "{}: {rel:?}",
+                f.time
+            );
+            assert!(f.forward.z > 0.8);
+        }
+        for i in 0..90 {
+            let f = story.compose(26.5 + i as f32 * 0.09);
+            let rel = f.eye - f.sphere;
+            // From the side, above.
+            assert!(
+                rel.x < -3.5 && rel.y > 1.8 && rel.z.abs() < 2.0,
+                "{}: {rel:?}",
+                f.time
+            );
+        }
+    }
+
+    #[test]
+    fn the_figure_and_its_sphere_stay_in_the_frame() {
+        for story in chapters() {
+            let mut t = 0.0;
+            while t < story.loop_seconds {
+                let f = story.compose(t);
+                // Once the camera stands well outside the glass; on the way out
+                // a crane may crop the feet.
+                let seen_from_outside = (f.eye - f.sphere).length() > SPHERE_RADIUS * 2.5;
+                if seen_from_outside {
+                    let (lo, hi) = (f.body.low, f.body.high);
+                    for corner in 0..8 {
+                        let pick = |bit: u32, a: f32, b: f32| if corner & bit == 0 { a } else { b };
+                        let p = v3(
+                            pick(1, lo.x, hi.x),
+                            pick(2, lo.y, hi.y),
+                            pick(4, lo.z, hi.z),
+                        );
+                        let [x, y] = project(&f, p).expect("in front");
+                        assert!(x.abs() < 0.8 && y.abs() < 0.9, "{t}: {x} {y}");
                     }
+                    let top = f.sphere + math::Y * SPHERE_RADIUS;
+                    let [_, y] = project(&f, top).expect("in front");
+                    assert!(y < 0.95, "{t}: the sphere's top {y}");
                 }
                 t += 0.2;
             }
@@ -445,71 +569,90 @@ mod tests {
 
     #[test]
     fn on_page_one_the_rings_meet_lock_and_hold() {
-        let lap = arrive_lap();
-        let mut previous = arrive_runner(0.0, lap);
-        for i in 1..=3520 {
-            let r = arrive_runner(i as f32 / 100.0, lap);
-            assert!(r > previous, "{i}");
-            previous = r;
-        }
-        // The runner draws faster than the breath, then keeps its time.
-        assert!(lap < BEAT - 0.5, "{lap}");
         let story = Story::new(Chapter::Arrive);
-        let before = story.compose(10.0);
-        assert_eq!(before.action.light, 0.0);
-        assert!(before.inner.light > 0.99 && before.orbit.light > 0.99);
-        // On the lock's beat the inner ring flashes, the outer runner
-        // reaches the front just after it.
-        let lock = 17.6;
-        assert!(close(lock / BEAT, (lock / BEAT).round(), 1e-6));
-        let front = arrive_runner(lock + RIPPLE_ORBIT, lap);
-        assert!(close(front, front.round(), 1e-3), "{front}");
-        let flash = story.compose(lock + 0.1);
-        assert!(flash.inner.flash > 0.5 && flash.orbit.flash > 0.5);
+        // From the eyes the crown ring passes through eye level, lit.
+        let crossings = (0..1000)
+            .map(|i| story.compose(i as f32 / 100.0))
+            .filter(|f| {
+                let r = &f.rings[0];
+                r.light > 0.9 && ((f.eye - r.center).dot(r.normal)).abs() < 0.01
+            })
+            .count();
+        assert!(crossings > 0);
+        // The crown keeps its own time, then joins the breath on a beat.
+        assert!(close(
+            ARRIVE_LOCK / BEAT,
+            (ARRIVE_LOCK / BEAT).round(),
+            1e-5
+        ));
+        let mut previous = crown_phase(0.0);
+        for i in 1..=3960 {
+            let p = crown_phase(i as f32 / 100.0);
+            assert!(p > previous, "{i}");
+            previous = p;
+        }
+        let at_lock = crown_phase(ARRIVE_LOCK);
+        assert!(close(at_lock, at_lock.round(), 1e-4), "{at_lock}");
+        let rate = (crown_phase(ARRIVE_LOCK + 0.5) - crown_phase(ARRIVE_LOCK)) / 0.5;
+        assert!(close(rate, 1.0 / BEAT, 1e-3));
+        let early = (crown_phase(16.0) - crown_phase(15.0)) * BEAT;
+        assert!(!close(early, 1.0, 0.1), "{early}");
+        let flash = story.compose(ARRIVE_LOCK + 0.1);
+        assert!(flash.rings[0].flash > 0.5 && flash.rings[1].flash > 0.5);
         assert!(flash.lock[3] > 0.5 && flash.lock_radius > 0.0);
-        // Walking, all three are held.
-        let walking = story.compose(28.0);
-        assert!(walking.amount > 0.99);
-        for light in [
-            walking.orbit.light,
-            walking.inner.light,
-            walking.action.light,
-        ] {
-            assert!(light > 0.99, "{light}");
+        // Before the lock the glass waits; walking after it, all is held.
+        let before = story.compose(20.0);
+        assert!(before.filled < 1e-3 && before.threads < 1e-3);
+        assert!(before.rings[1].light > 0.99 && before.rings[0].light > 0.99);
+        let held = story.compose(32.0);
+        assert!(held.amount > 0.99);
+        for r in &held.rings[..3] {
+            assert!(r.light > 0.99 && r.form > 0.99);
         }
-        assert!(walking.action.extra[0] > 0.99);
-        // The loop ends dark but for the figure.
+        assert!(held.filled > 0.99 && held.fill > SPHERE_HEIGHT + SPHERE_RADIUS);
+        assert!(held.threads > 0.99);
+        // The loop ends with the rings out, back in the eyes.
         let end = story.compose(ARRIVE_LOOP - 0.05);
-        for light in [end.orbit.light, end.inner.light, end.action.light] {
-            assert!(light < 1e-3, "{light}");
+        for r in &end.rings {
+            assert!(r.light < 1e-3, "{}", r.light);
         }
+        assert!(end.filled < 1e-3 && end.threads < 1e-3);
     }
 
     #[test]
-    fn the_cover_holds_three_rings_in_one_rhythm() {
+    fn the_cover_holds_every_ring_in_one_rhythm() {
         let story = Story::new(Chapter::Hero);
         assert!(close(HERO_LOOP / BEAT, (HERO_LOOP / BEAT).round(), 1e-5));
         for i in 0..264 {
             let f = story.compose(i as f32 / 10.0);
             assert!(f.amount > 0.99);
-            assert_eq!(
-                (f.orbit.light, f.inner.light, f.action.light),
-                (1.0, 1.0, 1.0)
-            );
+            for r in &f.rings[..3] {
+                assert_eq!((r.light, r.form), (1.0, 1.0));
+            }
+            assert_eq!((f.filled, f.threads), (1.0, 1.0));
         }
-        // The flashes ripple out: inner, waist, outer.
-        let beat = 2.0 * BEAT;
-        let at = |dt: f32| story.compose(beat + dt);
-        assert!(at(0.03).inner.flash > at(0.03).action.flash);
-        assert!(at(RIPPLE_ACTION + 0.03).action.flash > at(RIPPLE_ACTION + 0.03).orbit.flash);
+        // The crown and the torso rise together on the in-breath.
+        let rise = |t: f32| {
+            let (a, b) = (story.compose(t), story.compose(t + 0.2));
+            (
+                b.rings[0].center.y - a.rings[0].center.y,
+                b.rings[1].center.y - a.rings[1].center.y,
+            )
+        };
+        for t in [1.0, 2.0, 3.0, 5.4, 6.4, 7.4] {
+            let (crown, torso) = rise(t);
+            assert!(crown * torso > 0.0, "{t}: {crown} {torso}");
+        }
     }
 
     #[test]
-    fn the_still_frames_hold_all_three_rings() {
+    fn the_still_frames_hold_every_ring() {
         for story in chapters() {
             let f = story.compose(story.chapter.still());
-            assert!(f.orbit.light > 0.99 && f.inner.light > 0.99 && f.action.light > 0.99);
-            assert!(f.amount > 0.99, "{:?}", story.chapter);
+            for r in &f.rings[..3] {
+                assert!(r.light > 0.99, "{:?}", story.chapter);
+            }
+            assert!(f.filled > 0.99 && f.amount > 0.99, "{:?}", story.chapter);
         }
     }
 

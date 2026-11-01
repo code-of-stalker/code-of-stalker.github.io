@@ -11,4 +11,4 @@ for (const file of ['watcher_dynamic_rings.js', 'watcher_dynamic_rings_bg.wasm']
 // No images: the figure, the rings and the world are built on the GPU.
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_dynamic_rings_bg.wasm')))) throw new Error('Invalid dynamic-rings WASM');
-console.log('Packaged Rust «Наблюдение в Динамике»: a figure of light walking inside three rings, one chapter per page.');
+console.log('Packaged Rust «Наблюдение в Динамике»: a figure of light walking in a glass sphere with three rings, one chapter per page.');

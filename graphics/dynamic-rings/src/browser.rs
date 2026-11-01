@@ -5,15 +5,17 @@
 //! finished frame.
 use crate::body::{BLEND, PRIMITIVES};
 use crate::{
-    cone_points, look, pack, Chapter, Look, Story, ACTION_LIGHT, ACTION_SEGMENTS, APERTURE, BEADS,
-    BODY_DOT, BODY_LIGHT, BODY_POINTS, BODY_SIZE, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN,
-    FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT, FLOOR_POOL, FLOOR_RING_LIGHT, FOCAL, FRAME_ASPECT, GAZE,
-    GAZE_LIGHT, GAZE_SEGMENTS, GHOSTS, GHOST_LIGHT, GHOST_SEGMENTS, HALO, HALO_SPREAD, LINE_WIDTH,
-    MID_AT, MOTES, MOTE_GAZE, MOTE_LIGHT, MOTE_SPAN, ORBIT_LIGHT, ORBIT_START, PRINTS, PRINT_FADE,
-    PRINT_LIGHT, PRINT_SEGMENTS, RING_SEGMENTS, RIPPLE_LIGHT, RIPPLE_REACH, RIPPLE_SECONDS,
-    RIPPLE_SEGMENTS, RUNNER_GLOW, RUNNER_TAIL, SLOTS, SLOT_FEET, SLOT_GHOST, SLOT_GHOST_NORMAL,
-    SLOT_META, SLOT_PRINT, SLOT_VIEW, SPHERE_LATITUDES, SPHERE_LIGHT, SPHERE_MERIDIANS,
-    SPHERE_SEGMENTS, STARS, STAR_LIGHT, TICK, TICKS, TICK_LIGHT, WAVE_GAIN,
+    cone_points, look, pack, Chapter, Look, Story, ATMOSPHERE_LIGHT, BEADS, BEAD_LIGHT, BODY_DOT,
+    BODY_LIGHT, BODY_POINTS, BODY_SIZE, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
+    CONSTELLATIONS, CONSTELLATION_LIGHT, CONSTELLATION_STARS, CONTACT_LIGHT, CROWN_GAP,
+    CROWN_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN, FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT,
+    FLOOR_POOL, FOCAL, FRAME_ASPECT, GHOSTS, GHOST_LIGHT, GHOST_SEGMENTS, GLASS_FOG, HALO,
+    HALO_SPREAD, INNER_LINE_LIGHT, LINE_WIDTH, MID_AT, MOTES, MOTE_LIGHT, MOTE_SPAN, NEBULA_LIGHT,
+    PLANET_CELL, PLANET_LIGHT, PLANET_RADIUS, PLANET_REACH, PRINTS, PRINT_FADE, PRINT_LIGHT,
+    PRINT_SEGMENTS, RING_SEGMENTS, RIPPLE_LIGHT, RIPPLE_REACH, RIPPLE_SECONDS, RIPPLE_SEGMENTS,
+    SCAN_LIGHT, SCAN_WIDTH, SHELL, SHELL_GRID, SHELL_LATENT, SHELL_LIGHT, SHELL_WAVE, SLOTS,
+    SLOT_FEET, SLOT_GHOST, SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_VIEW, SLOT_WORLD, STARS,
+    STAR_LIGHT, THIRD_LIGHT, THREADS, THREAD_BEADS, THREAD_LIGHT, WAVE_GAIN,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -29,6 +31,7 @@ const SPRITE_VERT: &str = include_str!("shaders/sprite.vert");
 const SPRITE_FRAG: &str = include_str!("shaders/sprite.frag");
 const BODY_VERT: &str = include_str!("shaders/body.vert");
 const BODY_FRAG: &str = include_str!("shaders/body.frag");
+const WORLD_FRAG: &str = include_str!("shaders/world.frag");
 const SCREEN: &str = include_str!("shaders/screen.vert");
 const FINISH: &str = include_str!("shaders/finish.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
@@ -54,73 +57,71 @@ fn defines() -> String {
     let n = |v: u32| v.to_string();
     let mut lines = vec![
         ("SLOTS", SLOTS.to_string()),
+        ("SLOT_RING", SLOT_RING.to_string()),
+        ("SLOT_WORLD", SLOT_WORLD.to_string()),
         ("SLOT_GHOST", SLOT_GHOST.to_string()),
-        ("SLOT_GHOST_NORMAL", SLOT_GHOST_NORMAL.to_string()),
         ("SLOT_PRINT", SLOT_PRINT.to_string()),
         ("SLOT_FEET", SLOT_FEET.to_string()),
         ("SLOT_META", SLOT_META.to_string()),
+        ("PRINTS", PRINTS.to_string()),
         ("CONES", PRIMITIVES.to_string()),
-        ("APERTURE", f(APERTURE)),
+        ("RING_SEGMENTS", n(RING_SEGMENTS)),
+        ("BEADS", n(BEADS)),
+        ("GHOST_SEGMENTS", n(GHOST_SEGMENTS)),
+        ("THREADS", n(THREADS)),
+        ("THREAD_BEADS", n(THREAD_BEADS)),
+        ("PRINT_SEGMENTS", n(PRINT_SEGMENTS)),
+        ("RIPPLE_SEGMENTS", n(RIPPLE_SEGMENTS)),
+        ("FLOOR_GRID", n(FLOOR_GRID)),
+        ("STARS", n(STARS)),
+        ("CONSTELLATION_STARS", n(CONSTELLATION_STARS)),
+        ("COLUMN_DOTS", n(COLUMN_DOTS)),
         ("LINE_WIDTH", f(LINE_WIDTH)),
         ("HALO", f(HALO)),
         ("HALO_SPREAD", f(HALO_SPREAD)),
-        ("RING_SEGMENTS", n(RING_SEGMENTS)),
-        ("TICKS", n(TICKS)),
-        ("TICK_SHORT", f(TICK[0])),
-        ("TICK_LONG", f(TICK[1])),
-        ("GAZE_FROM", f(GAZE[0])),
-        ("GAZE_TO", f(GAZE[1])),
-        ("GAZE_SEGMENTS", n(GAZE_SEGMENTS)),
-        ("ORBIT_START", f(ORBIT_START)),
-        ("RUNNER_TAIL", f(RUNNER_TAIL)),
-        ("SPHERE_MERIDIANS", n(SPHERE_MERIDIANS)),
-        ("SPHERE_SEGMENTS", n(SPHERE_SEGMENTS)),
-        ("ACTION_SEGMENTS", n(ACTION_SEGMENTS)),
-        ("BEADS", n(BEADS)),
-        ("GHOST_SEGMENTS", n(GHOST_SEGMENTS)),
-        ("PRINTS", PRINTS.to_string()),
-        ("PRINT_SEGMENTS", n(PRINT_SEGMENTS)),
+        ("SHELL", f(SHELL)),
+        ("SHELL_LIGHT", f(SHELL_LIGHT)),
+        ("SHELL_GRID", f(SHELL_GRID)),
+        ("SHELL_LATENT", f(SHELL_LATENT)),
+        ("SHELL_WAVE", f(SHELL_WAVE)),
+        ("GLASS_FOG", f(GLASS_FOG)),
+        ("PLANET_RADIUS", f(PLANET_RADIUS)),
+        ("PLANET_CELL", f(PLANET_CELL)),
+        ("PLANET_REACH", f(PLANET_REACH)),
+        ("CROWN_GAP", f(CROWN_GAP)),
+        ("SCAN_WIDTH", f(SCAN_WIDTH)),
         ("PRINT_FADE", f(PRINT_FADE)),
         ("RIPPLE_SECONDS", f(RIPPLE_SECONDS)),
         ("RIPPLE_REACH", f(RIPPLE_REACH)),
-        ("RIPPLE_SEGMENTS", n(RIPPLE_SEGMENTS)),
         ("FLOOR_CELL", f(FLOOR_CELL)),
-        ("FLOOR_GRID", n(FLOOR_GRID)),
         ("FLOOR_POOL", f(FLOOR_POOL)),
-        ("MOTE_SPAN_X", f(MOTE_SPAN[0])),
-        ("MOTE_SPAN_Y", f(MOTE_SPAN[1])),
+        ("COLUMN_GAP", f(COLUMN_GAP)),
         ("BODY_SIZE", f(BODY_SIZE)),
         ("BODY_DOT", f(BODY_DOT)),
-        ("ORBIT_LIGHT", f(ORBIT_LIGHT)),
-        ("TICK_LIGHT", f(TICK_LIGHT)),
-        ("GAZE_LIGHT", f(GAZE_LIGHT)),
-        ("RUNNER_GLOW", f(RUNNER_GLOW)),
-        ("SPHERE_LIGHT", f(SPHERE_LIGHT)),
-        ("ACTION_LIGHT", f(ACTION_LIGHT)),
+        ("CROWN_LIGHT", f(CROWN_LIGHT)),
+        ("BEAD_LIGHT", f(BEAD_LIGHT)),
+        ("INNER_LINE_LIGHT", f(INNER_LINE_LIGHT)),
+        ("THIRD_LIGHT", f(THIRD_LIGHT)),
+        ("CONTACT_LIGHT", f(CONTACT_LIGHT)),
         ("GHOST_LIGHT", f(GHOST_LIGHT)),
+        ("THREAD_LIGHT", f(THREAD_LIGHT)),
+        ("SCAN_LIGHT", f(SCAN_LIGHT)),
         ("PRINT_LIGHT", f(PRINT_LIGHT)),
         ("RIPPLE_LIGHT", f(RIPPLE_LIGHT)),
         ("FLOOR_LIGHT", f(FLOOR_LIGHT)),
-        ("FLOOR_RING_LIGHT", f(FLOOR_RING_LIGHT)),
+        ("PLANET_LIGHT", f(PLANET_LIGHT)),
+        ("ATMOSPHERE_LIGHT", f(ATMOSPHERE_LIGHT)),
+        ("NEBULA_LIGHT", f(NEBULA_LIGHT)),
         ("MOTE_LIGHT", f(MOTE_LIGHT)),
-        ("MOTE_GAZE", f(MOTE_GAZE)),
         ("STAR_LIGHT", f(STAR_LIGHT)),
+        ("CONSTELLATION_LIGHT", f(CONSTELLATION_LIGHT)),
+        ("COLUMN_LIGHT", f(COLUMN_LIGHT)),
         ("BODY_LIGHT", f(BODY_LIGHT)),
         ("FLASH_GAIN", f(FLASH_GAIN)),
         ("WAVE_GAIN", f(WAVE_GAIN)),
+        ("MOTE_SPAN_X", f(MOTE_SPAN[0])),
+        ("MOTE_SPAN_Y", f(MOTE_SPAN[1])),
     ];
-    for (i, latitude) in SPHERE_LATITUDES.iter().enumerate() {
-        lines.push((
-            [
-                "SPHERE_LAT_0",
-                "SPHERE_LAT_1",
-                "SPHERE_LAT_2",
-                "SPHERE_LAT_3",
-                "SPHERE_LAT_4",
-            ][i],
-            f(latitude.to_radians()),
-        ));
-    }
     let list = |items: Vec<String>| items.join(", ");
     lines.push(("BLENDS", list(BLEND.iter().map(|&b| f(b)).collect())));
     lines.push((
@@ -306,6 +307,7 @@ impl Target {
 pub struct DynamicRings {
     gl: Gl,
     canvas: HtmlCanvasElement,
+    world: Prog,
     line: Prog,
     sprite: Prog,
     body: Prog,
@@ -341,6 +343,7 @@ impl DynamicRings {
             .ok_or("WebGL2 unavailable")?
             .dyn_into()?;
         let defines = defines();
+        let world = Prog::new(&gl, SCREEN, &scene_source(&defines, WORLD_FRAG))?;
         let line = Prog::new(
             &gl,
             &scene_source(&defines, LINE_VERT),
@@ -370,6 +373,7 @@ impl DynamicRings {
         Ok(Self {
             gl,
             canvas,
+            world,
             line,
             sprite,
             body,
@@ -491,7 +495,13 @@ impl DynamicRings {
         let gl = &self.gl;
         self.target.dispose(gl);
         gl.delete_vertex_array(Some(&self.empty));
-        for p in [&self.line, &self.sprite, &self.body, &self.finish] {
+        for p in [
+            &self.world,
+            &self.line,
+            &self.sprite,
+            &self.body,
+            &self.finish,
+        ] {
             gl.delete_program(Some(&p.program));
         }
         self.themed.dispose(gl);
@@ -519,8 +529,8 @@ impl DynamicRings {
         let (w, h) = (width as f32, height as f32);
         let aspect = w / h;
         slots[SLOT_VIEW] = [
-            FOCAL / aspect.max(FRAME_ASPECT),
-            FOCAL * aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
+            FOCAL * f.lens / aspect.max(FRAME_ASPECT),
+            FOCAL * f.lens * aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
             w,
             h,
         ];
@@ -543,11 +553,15 @@ impl DynamicRings {
             gl.uniform4f(p.at("u_kind"), kind, largest, 0.0, 0.0);
         };
 
-        // The world: far stars, the floor, the motes in the air.
+        // The world: the planet, the air, the glass.
+        scene(&self.world, 0.0);
+        gl.draw_arrays(Gl::TRIANGLES, 0, 3);
+        // Far stars, the columns over the horizon, the floor, the motes.
         let sprites = [
-            (f.motes, STARS, 3.0),
+            (f.world, STARS + CONSTELLATIONS * CONSTELLATION_STARS, 3.0),
+            (f.world, COLUMNS * COLUMN_DOTS, 6.0),
             (f.floor, FLOOR_GRID * FLOOR_GRID, 1.0),
-            (f.motes, MOTES, 0.0),
+            (f.world, MOTES, 0.0),
         ];
         for (on, count, kind) in sprites {
             if on > 0.0 {
@@ -556,24 +570,19 @@ impl DynamicRings {
             }
         }
         // The lines.
-        let ghosts = f.ghosts.iter().map(|g| g.2).fold(0.0, f32::max);
+        let [crown, torso, legs, sweep] = f.rings.map(|r| r.light);
+        let ghosts = f.ghosts.iter().map(|g| g.3).fold(0.0, f32::max);
+        let glass = f.floor * (SHELL_LATENT * f.latent + f.filled);
         let families = [
-            (f.orbit.light, RING_SEGMENTS),
-            (f.orbit.light * f.orbit.extra[0], TICKS),
-            (
-                f.orbit.light * f.orbit.extra[3] * f.orbit.extra[4],
-                GAZE_SEGMENTS,
-            ),
-            (
-                f.inner.light,
-                (SPHERE_LATITUDES.len() as u32 + SPHERE_MERIDIANS) * SPHERE_SEGMENTS,
-            ),
-            (f.action.light, ACTION_SEGMENTS),
+            (crown, 2 * RING_SEGMENTS),
             (ghosts, GHOSTS as u32 * GHOST_SEGMENTS),
+            (torso.max(legs), 2 * RING_SEGMENTS),
+            (sweep, RING_SEGMENTS),
+            (glass, RING_SEGMENTS),
             (f.floor, PRINTS as u32 * RIPPLE_SEGMENTS),
             (f.floor, PRINTS as u32 * PRINT_SEGMENTS),
-            (f.orbit.light * f.floor, RING_SEGMENTS),
             (f.lock[3] * f32::from(f.lock_radius > 0.0), RING_SEGMENTS),
+            (f.world, CONSTELLATIONS * (CONSTELLATION_STARS - 1)),
         ];
         for (kind, (on, count)) in families.iter().enumerate() {
             if *on > 0.0 {
@@ -587,12 +596,18 @@ impl DynamicRings {
             gl.uniform4fv_with_f32_array(self.body.at("u_b"), &cones);
             gl.draw_arrays(Gl::POINTS, 0, BODY_POINTS as i32);
         }
-        // The lights, and the waist ring's beads.
-        scene(&self.sprite, 2.0);
-        gl.draw_arrays_instanced(Gl::TRIANGLES, 0, 6, 8);
-        if f.action.light > 0.0 {
-            scene(&self.sprite, 4.0);
-            gl.draw_arrays_instanced(Gl::TRIANGLES, 0, 6, BEADS as i32);
+        // The lights, the rings' beads and the threads through them.
+        let beads = crown.max(torso).max(legs);
+        let lights = [
+            (1.0, 4, 2.0),
+            (beads, 3 * BEADS, 4.0),
+            (f.threads, THREADS * THREAD_BEADS, 5.0),
+        ];
+        for (on, count, kind) in lights {
+            if on > 0.0 {
+                scene(&self.sprite, kind);
+                gl.draw_arrays_instanced(Gl::TRIANGLES, 0, 6, count as i32);
+            }
         }
         gl.disable(Gl::BLEND);
 

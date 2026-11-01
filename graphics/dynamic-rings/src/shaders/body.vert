@@ -2,8 +2,8 @@
 // the body's rounded cones (lib.rs cone_points) at a place fixed by its
 // number; it is set on that cone, then onto the blended surface of all of
 // them, so the points ride the limbs as the figure moves. Its light
-// gathers at the outline, dims on the far side, and answers the inner
-// beat and the lock's wave.
+// gathers at the outline, dims on the far side, and answers the rings
+// round it, the breath's beat and the lock's wave.
 uniform vec4 u_b[CONES * 3];
 out vec3 v_color;
 
@@ -104,16 +104,26 @@ void main() {
   vec3 toEye = normalize(EYE.xyz - p);
   float facing = dot(n, toEye);
   float rim = 1.0 - abs(facing);
-  light *= mix(0.28, 1.0, rim * rim) * (facing > 0.0 ? 1.0 : 0.5);
+  light *= mix(0.4, 1.0, rim * rim) * (facing > 0.0 ? 1.0 : 0.5);
   float w = loopPhase();
   light *= mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
   // Fine bands of the hologram drifting up the body.
   light *= 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
-  // The inner beat runs out from the chest through the body.
-  float since = R2X.y;
-  float out_ = (length(p - R2C.xyz) - 0.95 * since) / 0.07;
-  light *= 1.0 + 1.6 * R2.w * exp(-out_ * out_) * exp(-since / 0.8);
-  light *= 1.0 + WAVE_GAIN * lockWave(p);
+  // On each full in-breath a beat runs out from the torso ring through the
+  // body.
+  float since = LOCK2.w;
+  float out_ = (length(p - RC(1).xyz) - 0.95 * since) / 0.07;
+  float lift = 1.6 * RN(1).w * exp(-out_ * out_) * exp(-since / 0.8);
+  // Each ring lights the skin it passes.
+  for (int k = 0; k < 3; k++) {
+    vec3 q = p - RC(k).xyz;
+    float h = dot(q, RN(k).xyz);
+    float r = length(q - RN(k).xyz * h) - RC(k).w;
+    lift += 1.4 * RN(k).w * RX(k).z * exp(-(h * h + r * r) / (0.12 * 0.12));
+  }
+  // The crown ring's plane scans the figure as it passes.
+  lift += SCAN_LIGHT * scanned(p);
+  light *= 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
   // Its own size in metres, but never finer than a pixel's worth.
   float s0 = max(max(BODY_DOT / v.z * VIEW.y * 0.5 * VIEW.w, BODY_SIZE * VIEW.w), 0.65);
   float blur = lensBlur(v.z);

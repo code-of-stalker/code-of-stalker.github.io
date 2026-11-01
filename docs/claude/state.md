@@ -37,7 +37,7 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
-Branch head: the handoff after d306007 (page 07 round 3, the projector, in Тишина). Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
+Branch head: the handoff after c91bdc7 (page 07 round 4, places one at a time, in Тишина). Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
 первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
@@ -110,18 +110,21 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
   темы»); light themes engrave the night painting (light pack unused), the storm water prints
   lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
-- 07 «Позволь телу запомнить» «Везде» (`graphics/sphere-everywhere`, on the branch, round 3
-  commit d306007, NOT shipped): Art's 6:1 strip (room, street, crowd, field) uploaded as two
+- 07 «Позволь телу запомнить» «Везде» (`graphics/sphere-everywhere`, on the branch, round 4
+  commit c91bdc7, NOT shipped): Art's 6:1 strip (room, street, crowd, field) uploaded as two
   halves, one ray-traced pass. Round 1 (a walk along the flat strip) was rejected except its
   ending (the ball in the ring of places); round 2 kept the whole loop in that ring with places
   simply lighting up. Round 3 per Art («сфера как бы проецировала эти изображения»): the ring
   is a blank screen and the ball a projector with a lamp at its centre; it throws each place
   onto the ring, beams visible in the air (18 ray-march samples, 58 fps in the export). The
-  thrown place sits left-behind the ball (AIM) so the lamp stands against the dark. Beats: the
+  thrown place sits left-behind the ball (AIM) so the lamp stands against the dark. Round 4
+  (Art: on and off «по очереди», all together on the run round): one place at a time. The
   room is thrown at first; the ring turns each next blank stretch under the beam (6/14.5/23 s),
-  the ball rings (1.5/11.5/20/28.5 s) and the place spreads behind the wave; the camera rises
-  a step per place, then over the whole ring with beams to every place (30–37 s); a light runs
-  round (39–45 s), the seam heals with a flash (46–49 s); the camera comes down, the ball stops
+  the ball rings (1.5/11.5/20/28.5 s), the place spreads behind the wave and the one before
+  goes out (PASS); the lamp still grows with every place rung; the camera rises a step per
+  place, then over the ring (30–37 s, the field alone); as a light runs round (39–45 s) the
+  ball throws every place together (ALL 39–40.2 s); the seam heals with a flash (46–49 s);
+  the camera comes down, the ball stops
   throwing the others, the seam opens (51–59 s); 60 s loop, reduced motion shows 49 s. Wired to
   page `sphere-anywhere`; the exported app mounts it at phone (295 px) and 1024 px wide (376 px)
   sizes, gpu error 0. Prototype `output/prototypes/sphere-everywhere/index.html`, sheet

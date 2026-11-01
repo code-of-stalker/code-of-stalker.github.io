@@ -109,9 +109,6 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
             <RadioRow label="ТИШИНА" selected={settings.theme === 'neutral'} onPress={() => onChange({ theme: 'neutral' })} />
             <RadioRow label="ИСКРА" selected={settings.theme === 'dark' || settings.theme === 'system'} onPress={() => onChange({ theme: 'dark' })} />
             <RadioRow label="АСТРАЛ" selected={settings.theme === 'violet'} onPress={() => onChange({ theme: 'violet' })} />
-            <RadioRow label="ДЮНА" selected={settings.theme === 'light'} onPress={() => onChange({ theme: 'light' })} />
-            <RadioRow label="МИРАЖ" selected={settings.theme === 'mirage'} onPress={() => onChange({ theme: 'mirage' })} />
-            <RadioRow label="РАССВЕТ" selected={settings.theme === 'dawn'} onPress={() => onChange({ theme: 'dawn' })} />
           </View>
         </View>
         <View style={styles.divider} />

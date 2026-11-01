@@ -60,6 +60,8 @@ export const dawnColors: ProductColors = {
 /**
  * THEME KINDS (developer note, never shown in the app).
  * Light themes: Дюна (lightColors), Мираж (mirageColors), Рассвет (dawnColors).
+ *   Retired 2026-11-01: no setting selects them any more (see `archive/light-themes`);
+ *   their palettes and light branches stay until a cleanup removes them.
  *   Their illustrations are recolored programmatically for a light page
  *   (Rust: Palette::is_light in product-engine palette.rs and scene-palette).
  * Dark themes: Искра (colors), Тишина, Астрал, Матрица. Their illustrations

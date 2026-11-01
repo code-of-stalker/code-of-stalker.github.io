@@ -38,7 +38,7 @@ Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
 Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
-первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка» and page 05 «Используй свой голос» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -98,8 +98,35 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   Рассвет 0 px lighter than the page over 108 frames each.
   The exported app mounts it at phone (295 px wide) and wide (544 px, the plate's width) sizes,
   no console or GPU error.
-- Next: 06 «stilling» (direction A: the ripple weakens with each «Не…», the last leaves a
-  mirror), then 07; one crate each, Тишина first; ship each when Art says.
+- 06 «Итог» (`graphics/sphere-lake`, shipped to `main` 2026-11-01): Art's night lake; the
+  water below the shore line is computed (wave trains, rain rings, glossy reflection, glints).
+  Starts as an almost-storm (slanting rain, clouds, big waves with foam, rocking camera).
+  Each «Не…» (2.5/8.5/14.5/20.5 s) stills one cause of motion; the rain eases at the first and
+  ends at the second. The lake is a mirror at 25 s and
+  the ring closes into a whole circle with its reflection, the camera lowers to the shore line
+  (31–39 s), the circle sounds at 42 s, the wind returns 52–60 s; 60 s loop, reduced motion
+  shows 40 s. Wired to page `sphere-summary`; the exported app mounts it at phone (295 px) and
+  wide (544 px) sizes, gpu error 0. Prototype `output/prototypes/sphere-lake/index.html`,
+  sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
+  темы»); light themes engrave the night painting (light pack unused), the storm water prints
+  lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
+- Left: 07 «Позволь телу запомнить» (`sphere-anywhere`, direction A: the camera travels the
+  strip, room, street, crowd, field, the sphere goes along; light assets already exist).
+- Step 5's last page (07) scrolls on into Step 6 page 01.
+
+## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
+сайт вместе с заглушками»). 10 reading pages, author's text unchanged
+(`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
+Menu groups: Второй уровень [01], Обозревание Внутреннего Кольца [02–08], Итог [09, 10].
+Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ ШАГ»; bookmark
+`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`: the hero is a
+`ScenePlaceholder` too (no painting yet), signature on page 10.
+- Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
+  02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
+  08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
+  the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
+- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
@@ -115,7 +142,8 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
 - Security: CSP and an address guard in the web shell; Pages build job is read-only;
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
 - Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
-  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4.
+  the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4,
+  Step 4 into Step 5, Step 5 into Step 6.
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).

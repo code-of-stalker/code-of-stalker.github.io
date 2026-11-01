@@ -20,8 +20,9 @@ import { Reveal } from '../motion/Reveal';
 import { EconomyReadingPages, type ReadingPagePosition } from '../motion/EconomyReadingPages';
 
 /** One reading block of seven pages, each with its own scene, and no questions. The author's
- * signature closes the last page; scrolling back from the first page returns to step four. */
-export function StepFiveScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false }: PracticeIntroScreenProps) {
+ * signature closes the last page; scrolling back from the first page returns to step four and
+ * on from the last page enters step six. */
+export function StepFiveScreen({ onSelectStep, onPreviousStep, onNextStep, onClose, availableAt, testUnlockAll, reducedMotion = false }: PracticeIntroScreenProps) {
   const focused = useIsFocused(), destination = useReadingDestination();
   const { initial, record, flush } = useStepFiveBookmark();
   const [open, setOpen] = useState(false), [expanded, setExpanded] = useState(false);
@@ -73,16 +74,16 @@ export function StepFiveScreen({ onSelectStep, onPreviousStep, onClose, availabl
               menu={open ? <StepDropdown step={5} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion}
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
               <EconomyReadingPages step={5} chapter={0} active={focused && !open} enabled={focused && !open}
-                initialIndex={initial.page} initialOffset={initial.offset} canAdvance={false} startAtEnd={false}
+                initialIndex={initial.page} initialOffset={initial.offset} canAdvance={!!onNextStep} startAtEnd={false}
                 reading={layout} width={width} reducedMotion={reducedMotion}
-                onReady={setReady} onProgress={setProgress} onAdvance={() => {}} onRetreat={retreat} onPageChange={reportPage}
+                onReady={setReady} onProgress={setProgress} onAdvance={() => { if (onNextStep) { flush(); onNextStep(); } }} onRetreat={retreat} onPageChange={reportPage}
                 endContent={<StepSignature active={focused && !open} reducedMotion={reducedMotion} />} />
             </StepPanel>
           </Reveal>}
         </ReadingExpansion>
       </View>
-      <ScrollCue visible={ready && !open && (!lastPage || progress < 0)} progress={progress} reducedMotion={reducedMotion}
-        label={progress < 0 ? page.index > 0 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 4' : 'ПРОКРУТИ ДАЛЬШЕ'}
+      <ScrollCue visible={ready && !open && (!lastPage || progress < 0 || !!onNextStep)} progress={progress} reducedMotion={reducedMotion}
+        label={progress < 0 ? page.index > 0 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 4' : lastPage ? 'ПРОКРУТИ К ШАГУ 6' : 'ПРОКРУТИ ДАЛЬШЕ'}
         style={{ left: gutter + 28, right: gutter + 28 }} />
     </View>
   </ProductScreen>;

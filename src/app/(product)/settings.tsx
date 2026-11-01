@@ -6,7 +6,7 @@ import { ProductText, ScreenTransition } from '../../features/product/ui';
 
 export default function Settings() {
   const { settings, updateSettings, updateProgress, error, resetProduct, resetting } = useProduct();
-  async function openStep(step: 2 | 3 | 4 | 5) {
+  async function openStep(step: 2 | 3 | 4 | 5 | 6) {
     if (!settings.testUnlockAll) return;
     try {
       await updateProgress({ selectedLevel: 'basic', step, practiceStage: 0 });
@@ -21,6 +21,7 @@ export default function Settings() {
       onOpenThirdStep={() => { void openStep(3); }}
       onOpenFourthStep={() => { void openStep(4); }}
       onOpenFifthStep={() => { void openStep(5); }}
+      onOpenSixthStep={() => { void openStep(6); }}
       onReset={async () => { await resetProduct(); router.dismissAll(); router.replace('/launch'); }} />
     {error ? <ProductText accessibilityRole="alert" style={{ backgroundColor: '#000', padding: 16 }}>{error}</ProductText> : null}
   </ScreenTransition>;

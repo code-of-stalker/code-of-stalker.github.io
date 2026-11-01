@@ -36,6 +36,9 @@ const float MID_AT = 0.45;
 const float GLINT_MEAN = 0.13995;
 // The mean of a fleck's swell, sin(pi x) sin(pi y) over its facet: 4 / pi^2.
 const float FLECK_MEAN = 0.405285;
+// Rough water lifts the ring's path of glints this much, so it reads at a
+// glance; still water has no lift.
+const float PATH = 4.0;
 
 #define SHORE u_geo[0].x
 #define FOCAL u_geo[0].y
@@ -116,15 +119,20 @@ float ring(vec2 q, float blur) {
   return glow * smoothstep(SHORE + 1.0, SHORE - 1.0, q.y);
 }
 
-// The painted night at q and the ring over it. The stars twinkle, each a
-// whole number of times a loop, so the loop closes.
-vec3 sky(vec2 q, float lod, float blur) {
+// The painted night at q. The stars twinkle, each a whole number of times a
+// loop, so the loop closes.
+vec3 painted(vec2 q, float lod) {
   vec3 base = textureLod(u_lake, q / SIZE, lod).rgb;
   vec2 cell = floor(q / 3.0);
   float times = 20.0 + floor(hash12(cell) * 24.0);
   float twinkle = pow(0.5 + 0.5 * sin(hash12(cell + 7.0) * TAU + u_time.y * times), 10.0);
   float spark = smoothstep(0.1, 0.4, luma(base)) * smoothstep(TREES, TREES - 30.0, q.y);
-  return base * (1.0 + 0.6 * twinkle * spark) + u_glow * ring(q, blur);
+  return base * (1.0 + 0.6 * twinkle * spark);
+}
+
+// The night and the ring over it.
+vec3 sky(vec2 q, float lod, float blur) {
+  return painted(q, lod) + u_glow * ring(q, blur);
 }
 
 // The light themes engrave the night on the page: black is the page, the
@@ -214,8 +222,9 @@ void main() {
             dropRough += 0.5 * pow(DROP_STEEP * fade * env, 2.0);
             // The ring's front catches a little of the light, a thin line
             // that keeps its light when it is too fine to draw.
+            // Far off, where the rings are too small to read, it fades.
             float thin = max(0.3 * DROP_WAVE, 0.8 * foot);
-            crest += fade * 0.3 * DROP_WAVE / thin * exp(-x * x / (thin * thin));
+            crest += fade * 0.3 * DROP_WAVE / thin * exp(-x * x / (thin * thin)) * mix(0.1, 1.0, sharp);
             float size = max(0.008, 0.7 * foot);
             pin += strength * pow(0.008 / size, 2.0) * exp(-rho * rho / (size * size)) * exp(-age * age / 0.006);
           }
@@ -241,17 +250,21 @@ void main() {
     float side = 2.0 * sqrt(rough.x) * FOCAL * below;
     float blur = max(0.6 * spread, side);
     float tapLod = clamp(log2(max(px, blur)), 0.0, 8.0);
-    vec3 mirror = vec3(0.0);
+    vec3 night = vec3(0.0);
+    float light = 0.0;
     float total = 0.0;
     for (int k = -2; k <= 2; k++) {
       float o = 0.8 * float(k);
       float weight = exp(-0.5 * o * o);
       vec2 tap = vec2(q.x, min(q.y + o * spread, SHORE - 0.5));
-      mirror += weight * sky(tap, tapLod, blur);
+      night += weight * painted(tap, tapLod);
+      light += weight * ring(tap, blur);
       total += weight;
     }
-    mirror /= total;
-    // Rough water breaks the reflection into glints that keep its light.
+    night /= total;
+    light /= total;
+    // Rough water breaks the ring's reflection into a path of glints that
+    // keep its light; the dim night only blurs, so the lake stays calm to the eye.
     float rough1 = sqrt(rough.x + rough.y);
     // A glint is a few pixels each way: far off, a long thin facet.
     vec2 facet = max(vec2(0.01), 2.5 * vec2(length(vec2(ax.x, ay.x)), length(vec2(ax.y, ay.y))));
@@ -260,14 +273,16 @@ void main() {
     // Each row of facets slides its own way, so they never line up in columns.
     cellAt.x += hash12(vec2(floor(cellAt.y), band.y + 3.0));
     vec2 grain = floor(cellAt) + 17.0 * band;
-    float glint = pow(0.5 + 0.5 * sin(hash12(grain) * TAU + u_time.y * (90.0 + floor(hash12(grain - 5.0) * 120.0))), 16.0);
+    // Slow glints, under a second each, so the path shimmers rather than flickers.
+    float glint = pow(0.5 + 0.5 * sin(hash12(grain) * TAU + u_time.y * (24.0 + floor(hash12(grain - 5.0) * 24.0))), 16.0);
     // Each glint swells and fades across its facet, a soft fleck, not a tile.
     vec2 swell = sin(PI * fract(cellAt));
     glint *= swell.x * swell.y / FLECK_MEAN;
-    mirror *= mix(1.0, glint / GLINT_MEAN, 0.75 * smoothstep(0.004, 0.04, rough1));
+    float glitter = smoothstep(0.004, 0.04, rough1);
+    vec3 mirror = night + u_glow * light * (1.0 + (PATH - 1.0) * glitter) * mix(1.0, glint / GLINT_MEAN, 0.8 * glitter);
 
     vec3 body = textureLod(u_lake, vec2(p.x, max(p.y, SHORE + 48.0)) / SIZE, 5.0).rgb;
-    vec3 water = fresnel * mirror + (1.0 - fresnel) * BODY * body + u_glow * (0.8 * pin + 0.4 * crest);
+    vec3 water = fresnel * mirror + (1.0 - fresnel) * BODY * body + u_glow * (0.8 * pin + 0.6 * crest);
     // The waterline: one pixel's blend from the painted shore into the lake.
     c = mix(sky(p, lod, 0.0), water, smoothstep(SHORE - px, SHORE + px, p.y));
   }

@@ -75,11 +75,11 @@ pub const GRAVITY: f32 = 3.0;
 /// One wave train: its part, where it travels (radians, 0 away from the
 /// viewer, PI toward), wavelength in eye heights, steepness.
 pub const TRAINS: [(usize, f32, f32, f32); 12] = [
-    (SWELL, 3.05, 0.9, 0.022),
-    (SWELL, 3.4, 0.62, 0.017),
-    (SWELL, 2.75, 1.3, 0.013),
-    (CROSS, 1.75, 0.35, 0.05),
-    (CROSS, 1.25, 0.27, 0.04),
+    (SWELL, 3.05, 0.9, 0.01),
+    (SWELL, 3.4, 0.62, 0.008),
+    (SWELL, 2.75, 1.3, 0.006),
+    (CROSS, 2.35, 0.35, 0.05),
+    (CROSS, 0.8, 0.27, 0.04),
     (CHOP, 0.4, 0.085, 0.03),
     (CHOP, 2.1, 0.11, 0.03),
     (CHOP, 4.2, 0.07, 0.025),

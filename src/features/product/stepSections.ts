@@ -3,15 +3,18 @@ import { stepThreePractice } from './stepThreePractice';
 import { stepFourGroups, stepFourTitle } from './stepFourContent';
 import { stepFiveGroups, stepFiveTitle } from './stepFiveContent';
 import { stepSixGroups, stepSixTitle } from './stepSixContent';
+import { stepSevenGroups, stepSevenTitle } from './stepSevenContent';
 import type { PracticeStage } from './state/model';
 
-export type ReadingStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type ReadingStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type StepDestination = { step: ReadingStep; stage: PracticeStage; chapter: 0 | 1; page: number; section: boolean };
 export type StepSection = { title: string; destination: StepDestination };
 export type StepSectionGroup = { title: string; items: StepSection[] };
 const item = (step: ReadingStep, title: string, stage: PracticeStage, chapter: 0 | 1, page = 0): StepSection =>
   ({ title, destination: { step, stage, chapter, page, section: true } });
 export function stepSections(step: ReadingStep): StepSectionGroup[] {
+  if (step === 7) return stepSevenGroups.map(group => ({ title: group.title,
+    items: group.pages.map(page => item(7, stepSevenTitle(page), 0, 0, page)) }));
   if (step === 6) return stepSixGroups.map(group => ({ title: group.title,
     items: group.pages.map(page => item(6, stepSixTitle(page), 0, 0, page)) }));
   if (step === 5) return stepFiveGroups.map(group => ({ title: group.title,

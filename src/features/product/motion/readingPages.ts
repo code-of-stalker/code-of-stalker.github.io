@@ -5,6 +5,7 @@ import { stepThreePractice } from '../stepThreePractice';
 import { stepFourBlocks } from '../stepFourContent';
 import { stepFivePages } from '../stepFiveContent';
 import { stepSixPages } from '../stepSixContent';
+import { stepSevenPages } from '../stepSevenContent';
 
 /** Holds a planned scene's place until its Rust scene exists. */
 export type ScenePlaceholderInfo = { name: string; manner: string };
@@ -33,4 +34,4 @@ const dream: readonly ReadingPage[] = stepTwoDream.blocks.map((block, index) => 
 }));
 /** Reading order and content are application data; motion stays in Rust. */
 const voice: readonly ReadingPage[] = stepThreeBlocks.map(({ emphasis, ...block }) => ({ ...block, statement: emphasis }));
-export const readingPages = (step: 1 | 2 | 3 | 4 | 5 | 6, chapter: 0 | 1) => step === 6 ? stepSixPages : step === 5 ? stepFivePages : step === 4 ? stepFourBlocks[chapter] : step === 3 ? chapter === 0 ? voice : stepThreePractice : step === 1 ? first : chapter === 0 ? hero : dream;
+export const readingPages = (step: 1 | 2 | 3 | 4 | 5 | 6 | 7, chapter: 0 | 1) => step === 7 ? stepSevenPages : step === 6 ? stepSixPages : step === 5 ? stepFivePages : step === 4 ? stepFourBlocks[chapter] : step === 3 ? chapter === 0 ? voice : stepThreePractice : step === 1 ? first : chapter === 0 ? hero : dream;

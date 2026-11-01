@@ -1,10 +1,8 @@
 # Project state
 
-Updated 2026-11-01. `main` = the merges of `fix/home-shade-band` (the vector engine honors
-`preserveAspectRatio="none"`, so the home card shade spans the card instead of a centred strip),
-`scene/call-bell` («Колокол» on «Сила Зова»), `scene/essence-flame` («Пламя» on
-«Сущностные ощущения») and `scene/true-sight` («Глаз» on «Истинное распознавание»),
-all 7 themes, all shipped 2026-10-31. Every Step 4 page now has its own scene.
+Updated 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+scene), Step 5 pages 04–06 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
+has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
@@ -126,7 +124,24 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
+- Step 6's last page (10) scrolls on into Step 7 page 01.
 - Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
+
+## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
+Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.
+The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
+(`src/features/product/stepSevenContent.ts`). Menu groups: Третий уровень [01, 02], Три кольца
+одновременно [03–08], Итог [09, 10]. Access via step 6 page 10 (index 9) or settings «ОТКРЫТЬ
+СЕДЬМОЙ ШАГ»; bookmark `stepSevenReading`, flag `seventhStepUnlocked`. Screen
+`StepSevenScreen.tsx`; the last step for now (no scroll-on).
+- One 3D world for the whole step (`graphics/dynamic-rings`, concept A): a figure of light
+  points walks a curved planet inside a glass sphere; ring 1 the crown sweeps the sphere, ring 2
+  a scanner runs the body, ring 3 the sphere spins. Things get scanned and wires break on the
+  glass, one at a time, then more. One chapter per page via Rust `chapter(code)`: 0 hero,
+  1 page 01 (first person → over the shoulder → side). Bridge `DynamicRings.web.tsx`; beats in
+  the crate's `README.txt`. Art approved Матрица, then all 7 themes («Ок, дальше», «Оставить»).
+- Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
+  the same world; a stage-finale screen after page 10 needs Art's wording first.
 
 ## Shipped features (all on main)
 - Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
@@ -143,7 +158,7 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   `/network`, `/sdk`, `/recovery` redirect to `/launch` on web.
 - Scrolling crosses step boundaries both ways: back from the start of Steps 2, 3 and 4 into
   the end of the previous step (Step 2's cover fixed 2026-10-31); Step 3 end scrolls into Step 4,
-  Step 4 into Step 5, Step 5 into Step 6.
+  Step 4 into Step 5, Step 5 into Step 6, Step 6 into Step 7.
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { PracticeIntroScreen } from '../../features/product/screens/PracticeIntroScreen';
 import { ObservationFlow } from '../../features/product/ObservationFlow';
 import { useProduct } from '../../features/product/state/ProductProvider';
-import { canOpenFifthStep, canOpenFourthStep, canOpenSixthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
+import { canOpenFifthStep, canOpenFourthStep, canOpenSeventhStep, canOpenSixthStep, resumePracticeStage, STEP_WAIT_MS } from '../../features/product/state/model';
 import { ProductText, ScreenTransition } from '../../features/product/ui';
 import { stepThreePractice } from '../../features/product/stepThreePractice';
 
@@ -40,12 +40,14 @@ export default function Practice() {
         ...(!previewing && progress.step === 5 ? { stepFourReading: { page: 14, offset: 0 } } : {}),
         // Step six's first page scrolls back onto step five's last page.
         ...(!previewing && progress.step === 6 ? { stepFiveReading: { page: 6, offset: 0 } } : {}),
+        // Step seven's first page scrolls back onto step six's last page.
+        ...(!previewing && progress.step === 7 ? { stepSixReading: { page: 9, offset: 0 } } : {}),
       });
       if (previewing) router.replace({ pathname: '/practice', params: { entry: 'end' } });
     } catch { /* The provider reports persistence errors. */ }
   }
   async function nextStep() {
-    if (previewing || progress.step < 3 || progress.step > 5) return;
+    if (previewing || progress.step < 3 || progress.step > 6) return;
     setReturnToEnd(false);
     try {
       // A forwards boundary crossing enters the start of the next step, like the
@@ -56,8 +58,11 @@ export default function Practice() {
         : progress.step === 4
           ? { step: 5, practiceStage: 0, stepFiveReading: { page: 0, offset: 0 },
             ...(!settings.testUnlockAll ? { fifthStepUnlocked: true } : {}) }
-          : { step: 6, practiceStage: 0, stepSixReading: { page: 0, offset: 0 },
-            ...(!settings.testUnlockAll ? { sixthStepUnlocked: true } : {}) });
+          : progress.step === 5
+            ? { step: 6, practiceStage: 0, stepSixReading: { page: 0, offset: 0 },
+              ...(!settings.testUnlockAll ? { sixthStepUnlocked: true } : {}) }
+            : { step: 7, practiceStage: 0, stepSevenReading: { page: 0, offset: 0 },
+              ...(!settings.testUnlockAll ? { seventhStepUnlocked: true } : {}) });
     } catch { /* The provider reports persistence errors. */ }
   }
   return <ScreenTransition reducedMotion={settings.reducedMotion}>
@@ -76,7 +81,7 @@ export default function Practice() {
       onQuestions={step => { void questions(step); }} onSelectStep={step => {
         setReturnToEnd(false);
         if (previewing) { if (step === 1) void updateProgress({ step: 1 }).then(() => router.replace('/practice')).catch(() => {}); return; }
-        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll) || step === 4 && canOpenFourthStep(progress, settings.testUnlockAll) || step === 5 && canOpenFifthStep(progress, settings.testUnlockAll) || step === 6 && canOpenSixthStep(progress, settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
+        if (step === 1 || step === 2 && (progress.availableAt !== null || settings.testUnlockAll) || step === 3 && (progress.secondStepCompletedAt || settings.testUnlockAll) || step === 4 && canOpenFourthStep(progress, settings.testUnlockAll) || step === 5 && canOpenFifthStep(progress, settings.testUnlockAll) || step === 6 && canOpenSixthStep(progress, settings.testUnlockAll) || step === 7 && canOpenSeventhStep(progress, settings.testUnlockAll)) void updateProgress({ step }).catch(() => {});
       }}
       onCompleteSecondStep={completeSecondStep}
       renderQuestions={previewing ? undefined : (active, onBack, registerNavigation, onQuestionHeight, effectsActive, onAnswered) => <ObservationFlow embedded active={active} onAnswered={onAnswered} effectsActive={effectsActive} startAtEnd={returnToEnd} onBack={() => { setReturnToEnd(false); onBack(); }} onNavigationReady={registerNavigation} onQuestionHeight={onQuestionHeight} />} />

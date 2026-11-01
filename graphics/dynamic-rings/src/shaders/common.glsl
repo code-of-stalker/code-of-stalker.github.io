@@ -24,12 +24,15 @@ uniform vec4 u_kind;   // what this draw is, the largest point size
 #define RX(k)  u_d[SLOT_RING + 3 * (k) + 2] // its flash, flow, form, scan; ring 2: flash, turned, speed
 #define WORLD  u_d[SLOT_WORLD]     // floor repeat, mote box, floor light, world light
 #define LOCK   u_d[SLOT_WORLD + 1] // the lock's wave: origin, light
-#define LOCK2  u_d[SLOT_WORLD + 2] // its radius (< 0 none), the figure's light, spokes, seconds since the beat
+#define LOCK2  u_d[SLOT_WORLD + 2] // its radius (< 0 none), the figure's light, spokes, seconds since the sweep's top
 #define META   u_d[SLOT_META]      // loop seconds, lens, aperture, the things and the wires
 // Wire t: its curve's points with how far it has grown, seconds since it
 // broke (< 0 not yet), its light, its writhe; where it met the glass and
 // its writhe then.
 #define TT(t, j) u_d[SLOT_TENTACLE + 5 * (t) + (j)]
+// Things 2c and 2c + 1: where along the walk each stands (z), whether it is
+// in this chapter.
+#define THING(c) u_d[SLOT_THING + (c) / 2]
 
 uint mixBits(uint x) {
   x ^= x >> 16;

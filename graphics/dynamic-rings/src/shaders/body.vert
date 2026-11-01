@@ -116,7 +116,7 @@ void main() {
   float lift = 1.6 * RN(1).w * exp(-out_ * out_) * exp(-since / 0.8);
   // The scanner cuts the skin in a bright line where its plane runs; what
   // it has just passed glows on, and the rest of the figure waits dim.
-  float rate = -sin(TAU * since / BEAT);
+  float rate = -sin(TAU * since / SWEEP);
   float level = p.y - RC(1).y;
   float behind = -level * sign(rate);
   float scanning = RN(1).w * smoothstep(0.5, 1.0, RX(1).z);

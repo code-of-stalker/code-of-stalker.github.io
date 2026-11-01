@@ -6,7 +6,7 @@ use crate::math::{hermite, min_jerk, mix, monotone, pulse, smooth, v3, window, V
 use crate::{
     Frame, Ring, Tentacle, BEAT, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT, CROWN_TOP,
     GHOSTS, GHOST_STEP, PRINTS, SCANNER, SCANNER_FLOOR, SPHERE_HEIGHT, SPHERE_RADIUS, SPHERE_SHARE,
-    SPIN_PERIOD, TENTACLES, WRITHE,
+    SPIN_PERIOD, SWEEP, TENTACLES, THINGS, WRITHE,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -17,9 +17,10 @@ const CROWN_ROCK: f32 = 0.35;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Chapter {
     /// The step's cover: the figure walks inside its turning sphere, every
-    /// ring held in one rhythm, seen from behind its right shoulder and
-    /// above; what it passes is scanned, the wires that reach for it
-    /// crumble on the glass.
+    /// ring held in one slow rhythm, seen from behind and above. At first
+    /// there is only that; then one thing it passes is scanned, one wire
+    /// reaches for it and crumbles on the glass, and more and more of both
+    /// come, till it quietens again.
     Hero,
     /// Page 01: from the eyes the outer ring sweeps the glass and scans the
     /// world; over the shoulder the scanner gathers round the figure and
@@ -45,18 +46,44 @@ impl Chapter {
     /// Reduced motion holds one moment with every ring.
     pub fn still(self) -> f32 {
         match self {
-            Chapter::Hero => 11.3,
-            Chapter::Arrive => 32.4,
+            Chapter::Hero => 40.0,
+            Chapter::Arrive => 36.0,
+        }
+    }
+    /// When the glass passes each thing the walk meets (s).
+    pub fn things(self) -> &'static [f32] {
+        match self {
+            Chapter::Hero => &HERO_THINGS,
+            Chapter::Arrive => &ARRIVE_THINGS,
+        }
+    }
+    /// When each wire breaks on the glass (s); they take turns, wire `i` is
+    /// `i % TENTACLES`.
+    pub fn wires(self) -> &'static [f32] {
+        match self {
+            Chapter::Hero => &HERO_WIRES,
+            Chapter::Arrive => &ARRIVE_WIRES,
         }
     }
 }
 
-/// The cover: 6 breaths, 48 steps.
-pub const HERO_LOOP: f32 = 26.4;
-const HERO_STEPS: i32 = 48;
-/// Page 01: 9 breaths, 72 steps.
-pub const ARRIVE_LOOP: f32 = 39.6;
-const ARRIVE_STEPS: i32 = 72;
+/// The cover: 12 breaths, 96 steps.
+pub const HERO_LOOP: f32 = 52.8;
+const HERO_STEPS: i32 = 96;
+/// On the cover, after a quiet start, one thing, then one wire, then more
+/// and more of both, closer together, and a quiet end.
+const HERO_THINGS: [f32; 11] = [
+    7.0, 18.0, 24.5, 29.0, 32.5, 35.0, 37.0, 38.8, 40.4, 42.0, 43.4,
+];
+const HERO_WIRES: [f32; 11] = [
+    13.0, 21.5, 27.0, 31.0, 34.0, 36.3, 38.2, 39.8, 41.2, 42.6, 44.0,
+];
+/// On page 01 the same, once the sphere turns.
+const ARRIVE_THINGS: [f32; 5] = [28.6, 31.6, 33.8, 35.4, 36.6];
+const ARRIVE_WIRES: [f32; 4] = [30.2, 32.8, 34.6, 36.0];
+/// Page 01: 10 breaths, 80 steps.
+pub const ARRIVE_LOOP: f32 = 44.0;
+const ARRIVE_STEPS: i32 = 80;
 /// A step every `CADENCE` s, `STRIDE` m long: eight steps a breath.
 pub const CADENCE: f32 = 0.55;
 pub const STRIDE: f32 = 0.62;
@@ -66,21 +93,21 @@ pub const STRIDE: f32 = 0.62;
 const IGNITE: f32 = 1.2;
 /// The scanner gathers out of scattered beads.
 const INNER: [f32; 2] = [12.0, 14.2];
-/// The crown keeps its own time until it eases onto the breath; they lock
-/// on a full in-breath, both at the top.
+/// The crown keeps its own time until it eases onto the scanner's; they
+/// lock at the top of a sweep.
 pub const ARRIVE_LOCK: f32 = 26.4;
-const CONVERGE: [f32; 2] = [20.0, ARRIVE_LOCK];
-const LOCK_TURNS: f32 = 4.0;
+const CONVERGE: [f32; 2] = [18.0, ARRIVE_LOCK];
+const LOCK_TURNS: f32 = 2.0;
 /// From the lock's wave the sphere's ring lights and turns, from rest to
 /// rest, speeding up and slowing down over `SPIN_RAMP` s; spokes run out
 /// from the scanner to the crown, and the things and the wires come.
-const SPIN: [f32; 2] = [26.7, 36.4];
+const SPIN: [f32; 2] = [26.7, 40.8];
 const SPIN_RAMP: f32 = 2.0;
 const SPOKES_ON: [f32; 2] = [27.2, 28.8];
-const WORLD_ON: [f32; 4] = [27.0, 29.0, 34.4, 35.6];
+const WORLD_ON: [f32; 4] = [27.0, 29.0, 38.8, 40.0];
 /// The rings go out one by one, the sphere's, the crown, the scanner, and
 /// the glass empties.
-const OUT: [[f32; 2]; 3] = [[35.2, 36.4], [35.6, 37.0], [36.0, 37.4]];
+const OUT: [[f32; 2]; 3] = [[39.6, 40.8], [40.0, 41.4], [40.4, 41.8]];
 /// The lock's wave runs out from the scanner this fast, for this long.
 const WAVE_SPEED: f32 = 2.4;
 const WAVE_SECONDS: f32 = 2.6;
@@ -93,8 +120,8 @@ const SWING: [f32; 2] = [21.2, 26.4];
 /// from this share on.
 const GAZE_LEAD: f32 = 0.6;
 const SWING_LAG: f32 = 0.12;
-const BACK: [f32; 2] = [33.6, 37.8];
-const DIVE: [f32; 2] = [37.0, 39.6];
+const BACK: [f32; 2] = [38.0, 42.2];
+const DIVE: [f32; 2] = [41.4, 44.0];
 /// The way out of the head and back in passes over it.
 const OVER_HEAD: V3 = v3(-0.15, 2.45, 0.05);
 /// From the eyes the gaze follows the crown ring up and down: this much
@@ -102,12 +129,10 @@ const OVER_HEAD: V3 = v3(-0.15, 2.45, 0.05);
 const GAZE_FOLLOW: f32 = 0.3;
 const GAZE_SLOPE: [f32; 2] = [-0.32, 0.16];
 
-/// The wires: each reaches for the glass once a cycle of about this many
-/// seconds, from its own moment, for this share of the cycle; then it
-/// breaks.
-const TENTACLE_ABOUT: [f32; TENTACLES] = [6.6, 5.3, 8.8, 6.0, 7.6, 5.6];
-const TENTACLE_SHIFT: [f32; TENTACLES] = [0.0, 0.43, 0.21, 0.71, 0.57, 0.88];
-const TENTACLE_REACH: f32 = 0.42;
+/// A wire reaches for the glass this long (s) before it breaks, and is
+/// gone this long after.
+const WIRE_REACH: f32 = 3.2;
+const WIRE_AFTER: f32 = 3.4;
 /// Their roots stand either side of the walk, this far aside and on ahead
 /// of the line across the cover camera's view through where the glass is
 /// when they break (m): they come in out of the dark and meet its rim.
@@ -215,6 +240,11 @@ fn breath(t: f32) -> f32 {
     0.5 + 0.5 * (TAU * t / BEAT).cos()
 }
 
+/// The scanner's height, 0 the feet … 1 the head; the top on each sweep.
+fn sweep(t: f32) -> f32 {
+    0.5 + 0.5 * (TAU * t / SWEEP).cos()
+}
+
 /// How far through `[a, b]` `t` is, 0..1.
 fn stage(t: f32, [a, b]: [f32; 2]) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)
@@ -231,17 +261,25 @@ fn rand(x: u32) -> f32 {
     (x >> 8) as f32 / 16_777_215.0
 }
 
-/// The crown ring's breath in turns: its own time from when it lights,
-/// then eased onto the breath so that a full in-breath falls on the lock.
+/// The crown ring's sweeps in turns: its own time from when it lights,
+/// then eased onto the scanner's so that both are at the top on the lock.
 pub fn crown_phase(t: f32) -> f32 {
     let [a, b] = CONVERGE;
     let free = |t: f32| (t - IGNITE) / CROWN_PERIOD;
     if t < a {
         free(t)
     } else if t < b {
-        hermite(a, free(a), 1.0 / CROWN_PERIOD, b, LOCK_TURNS, 1.0 / BEAT, t)
+        hermite(
+            a,
+            free(a),
+            1.0 / CROWN_PERIOD,
+            b,
+            LOCK_TURNS,
+            1.0 / SWEEP,
+            t,
+        )
     } else {
-        LOCK_TURNS + (t - b) / BEAT
+        LOCK_TURNS + (t - b) / SWEEP
     }
 }
 
@@ -367,14 +405,14 @@ impl Story {
     fn crown(&self, t: f32) -> Ring {
         let at = t.rem_euclid(self.loop_seconds);
         let (high, light, flash, scan) = match self.chapter {
-            Chapter::Hero => (breath(t), 1.0, 0.45 * pulse(at.rem_euclid(BEAT)), 1.0),
+            Chapter::Hero => (sweep(t), 1.0, 0.45 * pulse(at.rem_euclid(SWEEP)), 1.0),
             Chapter::Arrive => arrive_crown(at),
         };
         let h = crown_height(high);
         // Its axis leans and goes round, rocking to and fro with each step;
         // near the ground it lies level.
         let gait = TAU * t / (2.0 * CADENCE);
-        let round = self.cycle(t, 8.8) + CROWN_ROCK * gait.sin();
+        let round = self.cycle(t, 17.6) + CROWN_ROCK * gait.sin();
         let lean = CROWN_TILT * smooth(CROWN_FLOOR - SPHERE_HEIGHT, -0.3, h);
         let normal = (Y + v3(round.sin(), 0.0, round.cos()) * lean).normalize();
         let rho = CROWN_SHARE * SPHERE_RADIUS;
@@ -384,7 +422,7 @@ impl Story {
             radius: (rho * rho - h * h).max(0.0).sqrt(),
             light,
             flash,
-            flow: self.cycle(t, 13.0),
+            flow: self.cycle(t, 26.0),
             form: 1.0,
             scan,
         }
@@ -405,20 +443,31 @@ impl Story {
         }
     }
 
-    /// Wire `k`: once a cycle it grows out of the ground and reaches for
-    /// the glass, writhing, its tip following the walking figure; it
-    /// breaks on the glass and crumbles from the tip back to the root.
+    /// Wire `k`: on each of its turns in the chapter's list it grows out
+    /// of the ground and reaches for the glass, writhing, its tip following
+    /// the walking figure; it breaks on the glass and crumbles from the tip
+    /// back to the root. Between turns it is dark.
     fn tentacle(&self, k: usize, t: f32, light: f32) -> Tentacle {
         let l = self.loop_seconds;
-        let n = (l / TENTACLE_ABOUT[k]).round().max(1.0);
-        let period = l / n;
-        let phase = t / period + TENTACLE_SHIFT[k];
-        let since = phase.rem_euclid(1.0) * period;
-        let cycle = phase.floor().rem_euclid(n) as u32;
-        let r = |j: u32| rand(k as u32 * 977 + cycle * 131 + j * 7 + 5);
-        let reach_for = TENTACLE_REACH * period;
-        let breaks = t - since + reach_for;
-        let side = if k.is_multiple_of(2) { 1.0 } else { -1.0 };
+        let lasts = WIRE_REACH + WIRE_AFTER;
+        // Its turn now, or else its next one.
+        let (mut now, mut next) = (None, None::<(usize, f32)>);
+        let turns = self.chapter.wires().iter().enumerate();
+        for (i, &b) in turns.skip(k).step_by(TENTACLES) {
+            for start in [-l, 0.0, l].map(|m| b - WIRE_REACH + m) {
+                if (start..=start + lasts).contains(&t) {
+                    now = Some((i, start));
+                } else if start > t && next.is_none_or(|(_, s)| start < s) {
+                    next = Some((i, start));
+                }
+            }
+        }
+        let (i, start) = now.or(next).unwrap_or((TENTACLES + k, t + 1.0));
+        let since = t - start;
+        let r = |j: u32| rand(i as u32 * 131 + j * 7 + 5);
+        let reach_for = WIRE_REACH;
+        let breaks = start + reach_for;
+        let side = if i.is_multiple_of(2) { 1.0 } else { -1.0 };
         let (aside, ahead) = (
             side * mix(TENTACLE_ASIDE[0], TENTACLE_ASIDE[1], r(1)),
             mix(TENTACLE_AHEAD[0], TENTACLE_AHEAD[1], r(0)),
@@ -441,12 +490,12 @@ impl Story {
         let near = tip + toward * (0.3 * span.length());
         let writhe = |t: f32| self.cycle(t, TAU / WRITHE) + 1.7 * k as f32;
         let broken = since - reach_for;
-        let s = (since / reach_for).min(1.0);
+        let s = (since / reach_for).clamp(0.0, 1.0);
         Tentacle {
             points: [root, rise, near, tip],
             reach: s * s * (2.0 - s),
             broken: if broken >= 0.0 { broken } else { -1.0 },
-            light: light * smooth(0.0, 0.5, since) * (1.0 - smooth(period - 0.5, period, since)),
+            light: light * smooth(0.0, 0.5, since) * (1.0 - smooth(lasts - 0.5, lasts, since)),
             writhe: if broken >= 0.0 {
                 writhe(breaks) + 0.25 * WRITHE * (1.0 - (-broken / 0.25).exp())
             } else {
@@ -475,7 +524,7 @@ impl Story {
             focus: (eye - self.sphere(t)).length(),
             aperture: 0.007,
         };
-        let beat = t.rem_euclid(BEAT);
+        let beat = t.rem_euclid(SWEEP);
         let cues = Cues {
             inner: 1.0,
             form: 1.0,
@@ -514,7 +563,7 @@ impl Story {
             let at = build(&self.walk.pose(ARRIVE_LOCK, breath(ARRIVE_LOCK)));
             let fade = 1.0 - age / WAVE_SECONDS;
             (
-                scanner(&at, breath(ARRIVE_LOCK)).0,
+                scanner(&at, sweep(ARRIVE_LOCK)).0,
                 WAVE_SPEED * age,
                 fade * fade * smooth(0.0, 0.1, age),
             )
@@ -525,7 +574,7 @@ impl Story {
         let cues = Cues {
             inner,
             form,
-            flash: (0.5 * pulse(t.rem_euclid(BEAT)) * form).max(1.2 * locked),
+            flash: (0.5 * pulse(t.rem_euclid(SWEEP)) * form).max(1.2 * locked),
             spin: [
                 window(t, SPIN[0] - 0.3, SPIN[0] + 0.5, OUT[0][0], OUT[0][1]),
                 turned,
@@ -534,7 +583,7 @@ impl Story {
             ],
             filled: window(t, SPIN[0] - 0.1, SPIN[0] + 0.7, OUT[1][0], OUT[2][1]),
             fill: turned,
-            spokes: window(t, SPOKES_ON[0], SPOKES_ON[1], 35.0, 36.4),
+            spokes: window(t, SPOKES_ON[0], SPOKES_ON[1], 39.4, 40.8),
             world: window(t, on, full, off, out),
             wave,
         };
@@ -595,7 +644,7 @@ impl Story {
         let forward = (shot.target - shot.eye).normalize();
         let right = forward.cross(Y).normalize();
         let up = right.cross(forward);
-        let (scan_center, scan_radius) = scanner(&body, breath);
+        let (scan_center, scan_radius) = scanner(&body, sweep(t));
         let rings = [
             self.crown(t),
             Ring {
@@ -604,7 +653,7 @@ impl Story {
                 radius: scan_radius,
                 light: cues.inner,
                 flash: cues.flash,
-                flow: self.cycle(t, 8.8),
+                flow: self.cycle(t, 17.6),
                 form: cues.form,
                 scan: 0.0,
             },
@@ -616,6 +665,10 @@ impl Story {
             (r.center, r.normal, r.radius, r.light * fade * fade)
         });
         let tentacles = std::array::from_fn(|k| self.tentacle(k, t, cues.world));
+        let mut things_at = [[0.0; 2]; THINGS as usize];
+        for (slot, &at) in things_at.iter_mut().zip(self.chapter.things()) {
+            *slot = [self.ground(at).z, 1.0];
+        }
         let mut prints = [[0.0, 0.0, 0.0, 99.0]; PRINTS];
         for (slot, s) in prints.iter_mut().zip(walk.landings(t)) {
             let yaw = if s.side == 0 { TOE_OUT } else { -TOE_OUT };
@@ -652,6 +705,7 @@ impl Story {
             ghosts,
             spokes: cues.spokes,
             things: cues.world,
+            things_at,
             tentacles,
             prints,
             feet,

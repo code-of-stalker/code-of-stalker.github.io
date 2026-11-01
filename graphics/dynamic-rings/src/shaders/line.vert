@@ -42,7 +42,7 @@ void main() {
     float fade = 1.0;
     if (kind == 2 && strand == 1) {
       // The echo lags where the scanner has just been.
-      float rate = -sin(TAU * LOCK2.w / BEAT);
+      float rate = -sin(TAU * LOCK2.w / SWEEP);
       off = -n.xyz * 0.06 * rate;
       fade = 0.35 * abs(rate);
     }
@@ -190,7 +190,10 @@ void main() {
     bool air = rand(seed) < 0.5;
     float side = rand(seed + 1u) < 0.5 ? -1.0 : 1.0;
     float size = mix(0.07, 0.13, rand(seed + 2u));
-    float dz = mod(rand(seed + 3u) * L - SPH.z + 0.5 * L, L) - 0.5 * L;
+    // Where the walk passes it, and whether it is there at all.
+    vec4 placed = THING(c);
+    vec2 own = c % 2 == 0 ? placed.xy : placed.zw;
+    float dz = mod(own.x - SPH.z + 0.5 * L, L) - 0.5 * L;
     vec3 at = vec3(side * mix(0.42, 0.95, rand(seed + 4u)),
                    air ? mix(0.75, 1.85, rand(seed + 5u)) : size,
                    SPH.z + dz);
@@ -220,11 +223,11 @@ void main() {
       pa = ea * (float(bits & 1) * 2.0 - 1.0);
       pb = eb * (float(bits >> 1) * 2.0 - 1.0);
     }
-    float edge = smoothstep(0.5 * L, 0.5 * L - 2.0, abs(dz));
+    float edge = smoothstep(0.5 * L, 0.5 * L - 2.0, abs(dz)) * own.y;
     float inside = smoothstep(0.04, -0.1, length(at - SPH.xyz) - SPH.w);
-    // Its scanning ring, up and down it a few times a second's walk.
+    // Its scanning ring, slowly up and down it.
     float tall = air ? 1.5 * size : size;
-    float ringY = at.y + 1.15 * tall * sin(w * pace(seed + 11u, 1.4));
+    float ringY = at.y + 1.15 * tall * sin(w * pace(seed + 11u, 3.0));
     if (local >= edges) {
       int j = local - edges;
       float s0 = TAU * float(j) / float(THING_RING);

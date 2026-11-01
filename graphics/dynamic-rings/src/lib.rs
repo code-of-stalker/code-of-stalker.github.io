@@ -28,8 +28,11 @@ use body::{Body, PRIMITIVES};
 use math::V3;
 pub use story::{Chapter, Story};
 
-/// One breath: the torso ring's rhythm, which the crown ring joins.
+/// One breath.
 pub const BEAT: f32 = 4.4;
+/// The scanner runs the body and back, and the crown ring the glass, once
+/// in two breaths: slow enough to follow.
+pub const SWEEP: f32 = 2.0 * BEAT;
 
 /// The lens: a 3:2 frame 40° tall (1 / tan 20°) at zoom 1; a canvas of
 /// another shape keeps the whole 3:2 frame in view.
@@ -78,11 +81,11 @@ pub const CROWN_GAP: f32 = 0.026;
 pub const CROWN_TOP: f32 = 1.42;
 pub const CROWN_FLOOR: f32 = 0.06;
 pub const CROWN_TILT: f32 = 0.12;
-/// Before it joins the breath the crown ring keeps its own time.
-pub const CROWN_PERIOD: f32 = 6.1;
-/// The body's scanner runs from the feet on the out-breath to the top of
-/// the head on the in-breath, hugging the figure: its radius by height
-/// (m) over the ground.
+/// Before it joins the scanner the crown ring keeps its own, slower time.
+pub const CROWN_PERIOD: f32 = 13.8;
+/// The body's scanner runs from the feet to the top of the head and back
+/// once a sweep, hugging the figure: its radius by height (m) over the
+/// ground.
 pub const SCANNER: [(f32, f32); 7] = [
     (0.0, 0.36),
     (0.45, 0.31),
@@ -105,8 +108,8 @@ pub const UNSCANNED: f32 = 0.45;
 pub const SPHERE_SHARE: f32 = 0.985;
 pub const SPIN_TRAIL: u32 = 12;
 pub const SPIN_STEP: f32 = 0.05;
-/// A turn of the sphere every two breaths.
-pub const SPIN_PERIOD: f32 = 2.0 * BEAT;
+/// A turn of the sphere every four breaths.
+pub const SPIN_PERIOD: f32 = 4.0 * BEAT;
 pub const RING_SEGMENTS: u32 = 192;
 /// Beads on each of the crown and the scanner.
 pub const BEADS: u32 = 120;
@@ -136,7 +139,7 @@ pub const DEBRIS: u32 = 64;
 pub const TENTACLE_BREAK: f32 = 1.3;
 pub const DEBRIS_FADE: f32 = 0.6;
 /// How fast it writhes (radians a second) and how far, of its length.
-pub const WRITHE: f32 = 3.6;
+pub const WRITHE: f32 = 2.4;
 pub const WRITHE_REACH: f32 = 0.09;
 /// Spires stand along the horizon, their stays running to the ground.
 pub const SPIRES: u32 = 22;
@@ -283,6 +286,9 @@ pub struct Frame {
     pub spokes: f32,
     /// The things the walk passes and the wires: how lit.
     pub things: f32,
+    /// Each thing: where along the walk it stands (z), 1 if it is in this
+    /// chapter, 0 if not.
+    pub things_at: [[f32; 2]; THINGS as usize],
     pub tentacles: [Tentacle; TENTACLES],
     /// The newest landings: x, z, yaw, seconds since.
     pub prints: [[f32; 4]; PRINTS],
@@ -311,7 +317,8 @@ pub const SLOT_PRINT: usize = SLOT_GHOST + 2 * GHOSTS;
 pub const SLOT_FEET: usize = SLOT_PRINT + PRINTS;
 pub const SLOT_TENTACLE: usize = SLOT_FEET + 2;
 pub const SLOT_META: usize = SLOT_TENTACLE + 5 * TENTACLES;
-pub const SLOTS: usize = SLOT_META + 1;
+pub const SLOT_THING: usize = SLOT_META + 1;
+pub const SLOTS: usize = SLOT_THING + THINGS as usize / 2;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -336,7 +343,7 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
         f.lock_radius,
         f.body_light,
         f.spokes,
-        f.time.rem_euclid(BEAT),
+        f.time.rem_euclid(SWEEP),
     ];
     for (k, (c, n, r, w)) in f.ghosts.iter().enumerate() {
         d[SLOT_GHOST + 2 * k] = with(*c, *r);
@@ -357,6 +364,9 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
         d[s + 4] = with(w.contact, w.writhe_at_break);
     }
     d[SLOT_META] = [story.loop_seconds, f.lens, f.aperture, f.things];
+    for (k, two) in f.things_at.chunks(2).enumerate() {
+        d[SLOT_THING + k] = [two[0][0], two[0][1], two[1][0], two[1][1]];
+    }
     d
 }
 
@@ -511,6 +521,9 @@ mod tests {
             for (x, y) in relative(&a).iter().zip(relative(&b)) {
                 assert!(close(*x, y, 5e-3), "{:?}: {x} {y}", story.chapter);
             }
+            for (x, y) in a.things_at.iter().zip(b.things_at) {
+                assert_eq!(*x, y);
+            }
             // The floor, the planet's grid and the motes repeat over the walk.
             for cell in [FLOOR_CELL, PLANET_CELL, story.mote_box] {
                 let cells = story.distance / cell;
@@ -580,7 +593,9 @@ mod tests {
         // its top to the ground, the scanner the figure from its feet to the
         // top of its head, and the crown ring tilts round.
         let story = Story::new(Chapter::Hero);
-        let frames: Vec<Frame> = (0..264).map(|i| story.compose(i as f32 / 10.0)).collect();
+        let frames: Vec<Frame> = (0..(HERO_LOOP * 10.0) as i32)
+            .map(|i| story.compose(i as f32 / 10.0))
+            .collect();
         let span = |k: usize| {
             let heights = frames.iter().map(|f| f.rings[k].center.y);
             heights.fold((9.0f32, -9.0f32), |(a, b), y| (a.min(y), b.max(y)))
@@ -684,10 +699,11 @@ mod tests {
             })
             .count();
         assert!(crossings > 0);
-        // The crown keeps its own time, then joins the breath on a beat.
+        // The crown keeps its own time, then joins the scanner at the top
+        // of a sweep.
         assert!(close(
-            ARRIVE_LOCK / BEAT,
-            (ARRIVE_LOCK / BEAT).round(),
+            ARRIVE_LOCK / SWEEP,
+            (ARRIVE_LOCK / SWEEP).round(),
             1e-5
         ));
         let mut previous = crown_phase(0.0);
@@ -699,8 +715,8 @@ mod tests {
         let at_lock = crown_phase(ARRIVE_LOCK);
         assert!(close(at_lock, at_lock.round(), 1e-4), "{at_lock}");
         let rate = (crown_phase(ARRIVE_LOCK + 0.5) - crown_phase(ARRIVE_LOCK)) / 0.5;
-        assert!(close(rate, 1.0 / BEAT, 1e-3));
-        let early = (crown_phase(16.0) - crown_phase(15.0)) * BEAT;
+        assert!(close(rate, 1.0 / SWEEP, 1e-3));
+        let early = (crown_phase(16.0) - crown_phase(15.0)) * SWEEP;
         assert!(!close(early, 1.0, 0.1), "{early}");
         let flash = story.compose(ARRIVE_LOCK + 0.1);
         assert!(flash.rings[0].flash > 0.5 && flash.rings[1].flash > 0.5);
@@ -710,7 +726,7 @@ mod tests {
         assert!(before.filled < 1e-3 && before.spokes < 1e-3 && before.things < 1e-3);
         assert!(before.rings[2].light < 1e-3);
         assert!(before.rings[1].light > 0.99 && before.rings[0].light > 0.99);
-        let held = story.compose(32.0);
+        let held = story.compose(35.0);
         assert!(held.amount > 0.99);
         for r in &held.rings {
             assert!(r.light > 0.99 && r.form > 0.99);
@@ -730,8 +746,8 @@ mod tests {
     #[test]
     fn the_cover_holds_every_ring_in_one_rhythm() {
         let story = Story::new(Chapter::Hero);
-        assert!(close(HERO_LOOP / BEAT, (HERO_LOOP / BEAT).round(), 1e-5));
-        for i in 0..264 {
+        assert!(close(HERO_LOOP / SWEEP, (HERO_LOOP / SWEEP).round(), 1e-5));
+        for i in 0..(HERO_LOOP * 10.0) as i32 {
             let f = story.compose(i as f32 / 10.0);
             assert!(f.amount > 0.99);
             for r in &f.rings {
@@ -739,7 +755,7 @@ mod tests {
             }
             assert_eq!((f.filled, f.spokes, f.things), (1.0, 1.0, 1.0));
         }
-        // The crown and the scanner rise together on the in-breath.
+        // The crown and the scanner rise together.
         let rise = |t: f32| {
             let (a, b) = (story.compose(t), story.compose(t + 0.2));
             (
@@ -767,8 +783,9 @@ mod tests {
     #[test]
     fn the_wires_reach_for_the_glass_and_break_on_it() {
         for story in chapters() {
-            let mut breaks = [0; TENTACLES];
+            let mut breaks = 0;
             let mut was = [false; TENTACLES];
+            let mut lit = [false; TENTACLES];
             let mut t = 0.0;
             while t < story.loop_seconds {
                 let f = story.compose(t);
@@ -784,8 +801,11 @@ mod tests {
                         assert!(off.abs() < 0.03, "{t} wire {k}: {off}");
                     }
                     if broken && !was[k] {
-                        breaks[k] += 1;
+                        breaks += 1;
                         assert!(w.reach > 0.99, "{t} wire {k} broke short");
+                    }
+                    if w.light > 0.0 {
+                        lit[k] = true;
                     }
                     was[k] = broken;
                     // Its root keeps clear of the cameras' side and of the glass.
@@ -794,9 +814,38 @@ mod tests {
                 }
                 t += 1.0 / 30.0;
             }
-            for (k, n) in breaks.iter().enumerate() {
-                assert!(*n >= 2, "{:?} wire {k} broke {n} times", story.chapter);
+            // Each wire in the chapter's list breaks once, and only those.
+            let wires = story.chapter.wires().len();
+            assert_eq!(breaks, wires, "{:?}", story.chapter);
+            let used = lit.iter().filter(|l| **l).count();
+            assert_eq!(used, wires.min(TENTACLES), "{:?}", story.chapter);
+        }
+    }
+
+    #[test]
+    fn the_world_comes_in_one_thing_at_a_time() {
+        for story in chapters() {
+            let (things, wires) = (story.chapter.things(), story.chapter.wires());
+            assert!(things.len() <= THINGS as usize);
+            // First a thing is scanned, then a wire breaks, and then more and
+            // more of both, closer and closer together.
+            assert!(things[0] < wires[0] && wires[0] < things[1]);
+            for list in [things, wires] {
+                let gaps: Vec<f32> = list.windows(2).map(|w| w[1] - w[0]).collect();
+                assert!(gaps.iter().all(|g| *g > 0.0));
+                assert!(gaps.last() < gaps.first(), "{:?}", story.chapter);
             }
+            let f = story.compose(things[0]);
+            let lit = f.things_at.iter().filter(|t| t[1] > 0.0).count();
+            assert_eq!(lit, things.len());
+            // The thing's place is where the glass is as it passes.
+            assert!(close(f.things_at[0][0], f.sphere.z, 1e-3));
+        }
+        // The cover starts and ends quiet: nothing but the rings.
+        let story = Story::new(Chapter::Hero);
+        for t in [0.0, 4.0, HERO_LOOP - 4.0] {
+            let f = story.compose(t);
+            assert!(f.tentacles.iter().all(|w| w.light == 0.0), "{t}");
         }
     }
 

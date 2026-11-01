@@ -128,6 +128,9 @@ const OVER_HEAD: V3 = v3(-0.15, 2.45, 0.05);
 /// slope a metre it is above the eyes, within these.
 const GAZE_FOLLOW: f32 = 0.3;
 const GAZE_SLOPE: [f32; 2] = [-0.32, 0.16];
+/// From the eyes the head looks round before it rises out: each turn
+/// (start, end, to this yaw in radians, left is +x) eases from rest to rest.
+const LOOK_ROUND: [[f32; 3]; 3] = [[1.2, 3.6, 0.75], [4.4, 7.4, -0.75], [8.0, 10.2, 0.0]];
 
 /// A wire reaches for the glass this long (s) before it breaks, and is
 /// gone this long after.
@@ -590,12 +593,19 @@ impl Story {
         self.frame(t, shot, cues)
     }
 
-    /// From the eyes, the gaze following the crown ring up and down.
+    /// From the eyes, the gaze following the crown ring up and down while
+    /// the head turns left, then right, then ahead again.
     fn eyes(&self, t: f32, body: &Body) -> Shot {
-        let eye = body.head + v3(0.0, -0.03, 0.1) + self.drift(t) * 0.3;
+        let yaw = LOOK_ROUND.iter().fold(0.0, |yaw, &[a, b, to]| {
+            mix(yaw, to, min_jerk(stage(t, [a, b])))
+        });
+        let (sin, cos) = yaw.sin_cos();
+        // The eyes turn round the neck, so they stay at the front of the head.
+        let eye = body.head + v3(0.1 * sin, -0.03, 0.1 * cos) + self.drift(t) * 0.3;
         let [low, high] = GAZE_SLOPE;
         let slope = (GAZE_FOLLOW * (self.crown(t).center.y - eye.y)).clamp(low, high);
-        let look = v3(0.03 * self.cycle(t, 9.9).sin(), slope, 1.0).normalize();
+        let ahead = 0.03 * self.cycle(t, 9.9).sin();
+        let look = v3(sin + ahead * cos, slope, cos).normalize();
         Shot {
             eye,
             target: eye + look * 6.0,

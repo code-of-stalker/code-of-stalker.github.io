@@ -53,3 +53,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A loop must not open with a long empty beat: «9 секунд без сюжета это слишком много». The lone point of page 04 now lasts about 4 s before it opens. (Page 04.)
 - A dome is built from the top down: the crown first, then belts below it. Every step must come in softly, the first one too («остальные появляются мягко, а первый резко»). More Matrix detail behind: code rain, projections. (Page 05.)
 - He liked the floor projection rings; at the frame beat (42 s) they should spin «красиво… в разные стороны, словно произошло полное включение». (Page 05.)
+- A stilling story needs a dramatic start: a soft ripple was too quiet and drew the eye in the wrong way («ряб очень сильно перенимает внимание»); he asked for big waves, wind and rain, «что-то типа шторма почти». Each calming step must read on its own; the rain fades in two steps (weaker at the first «Не», gone at the second). (Page 06.)

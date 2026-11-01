@@ -38,7 +38,7 @@ Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
 Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
-первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка» and page 05 «Используй свой голос» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -98,8 +98,20 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   Рассвет 0 px lighter than the page over 108 frames each.
   The exported app mounts it at phone (295 px wide) and wide (544 px, the plate's width) sizes,
   no console or GPU error.
-- Set aside on 2026-11-01 (Art: «пока оставим пятый шаг»). Left: 06 «stilling» (direction A:
-  the ripple weakens with each «Не…», the last leaves a mirror), then 07; one crate each.
+- 06 «Итог» (`graphics/sphere-lake`, shipped to `main` 2026-11-01): Art's night lake; the
+  water below the shore line is computed (wave trains, rain rings, glossy reflection, glints).
+  Starts as an almost-storm (slanting rain, clouds, big waves with foam, rocking camera).
+  Each «Не…» (2.5/8.5/14.5/20.5 s) stills one cause of motion; the rain eases at the first and
+  ends at the second. The lake is a mirror at 25 s and
+  the ring closes into a whole circle with its reflection, the camera lowers to the shore line
+  (31–39 s), the circle sounds at 42 s, the wind returns 52–60 s; 60 s loop, reduced motion
+  shows 40 s. Wired to page `sphere-summary`; the exported app mounts it at phone (295 px) and
+  wide (544 px) sizes, gpu error 0. Prototype `output/prototypes/sphere-lake/index.html`,
+  sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
+  темы»); light themes engrave the night painting (light pack unused), the storm water prints
+  lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
+- Left: 07 «Позволь телу запомнить» (`sphere-anywhere`, direction A: the camera travels the
+  strip, room, street, crowd, field, the sphere goes along; light assets already exist).
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
 ## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)

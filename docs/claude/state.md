@@ -1,7 +1,7 @@
 # Project state
 
 Updated 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
-scene), Step 5 pages 04–06 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
+scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
@@ -35,8 +35,9 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
-Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
-первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
+Branch head: the handoff for shipping page 07 (2026-11-01); every Step 5 page is on `main`. Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
+первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each), then page 07 «Позволь телу запомнить» on 2026-11-01
+(Art: «пуш так»). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
 (`webScene` on the page); pages without one keep their placeholder.
@@ -70,7 +71,7 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   with a scanner plane, one layer per list line; 04 a point → orbit ring → meridians → sphere,
   camera orbits 360°; 05 a dome of sound, each phrase «Я Здесь»…«Я Есть» adds a wave and a
   pattern belt; 06 stilling: the ripple weakens with each «Не…», the last leaves a mirror;
-  07 the camera travels the strip (room, street, crowd, field), the sphere goes along.
+  07 the ring of places (room, street, crowd, field) the sphere projects (round 4).
 - 04 «Ты не точка» (`graphics/sphere-orbit`, shipped to `main` 2026-11-01): no images, all 3D.
   A point opens into a ticked ring with a runner at 3 s (Art: 9 s of the point alone was too
   long), the ring rises into meridians and parallels (glints at the crossings), one wave
@@ -108,8 +109,30 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
   темы»); light themes engrave the night painting (light pack unused), the storm water prints
   lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
-- Left: 07 «Позволь телу запомнить» (`sphere-anywhere`, direction A: the camera travels the
-  strip, room, street, crowd, field, the sphere goes along; light assets already exist).
+- 07 «Позволь телу запомнить» «Везде» (`graphics/sphere-everywhere`, shipped to `main`
+  2026-11-01, round 4): Art's 6:1 strip (room, street, crowd, field) uploaded as two
+  halves, one ray-traced pass. Round 1 (a walk along the flat strip) was rejected except its
+  ending (the ball in the ring of places); round 2 kept the whole loop in that ring with places
+  simply lighting up. Round 3 per Art («сфера как бы проецировала эти изображения»): the ring
+  is a blank screen and the ball a projector with a lamp at its centre; it throws each place
+  onto the ring, beams visible in the air (18 ray-march samples, 58 fps in the export). The
+  thrown place sits left-behind the ball (AIM) so the lamp stands against the dark. Round 4
+  (Art: on and off «по очереди», all together on the run round): one place at a time. The
+  room is thrown at first; the ring turns each next blank stretch under the beam (6/14.5/23 s),
+  the ball rings (1.5/11.5/20/28.5 s), the place spreads behind the wave and the one before
+  goes out (PASS); the lamp still grows with every place rung; the camera rises a step per
+  place, then over the ring (30–37 s, the field alone); as a light runs round (39–45 s) the
+  ball throws every place together (ALL 39–40.2 s); the seam heals with a flash (46–49 s);
+  the camera comes down, the ball stops throwing the others, the seam opens (51–59 s); 60 s
+  loop, reduced motion shows 49 s. Wired to
+  page `sphere-anywhere`; the exported app mounts it at phone (295 px) and 1024 px wide (376 px)
+  sizes, gpu error 0. Prototype `output/prototypes/sphere-everywhere/index.html`, sheet
+  `frames.jpg`. Art OK'd Тишина; the dark themes (Искра, Астрал, Матрица) read right from the
+  recolor. Light themes were NOT adapted: Art «забей на светлые темы пуш так», he thinks of
+  removing them from the site. There the plain engraving prints the lamp and beams as dark ink;
+  a lamp-colour wash for the ball's light was drafted and dropped (light pack unused).
+  QA tip: in the hidden pane, open a Step 5 page via the step menu («Выбрать шаг» → the page's
+  title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
 ## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)

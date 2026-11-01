@@ -13,6 +13,11 @@ the viewport center; a reload there can take ~10 s before the page renders.
   `.expo-rust-web-export/` with an SPA fallback (unknown paths → `index.html`), e.g.
   `npx serve -s .expo-rust-web-export -l 8081`. The dev server shows an old
   "Unexpected text node" toast that is not a bug of yours.
+- In a worktree (no own `node_modules`) the Metro cache is shared with the main checkout and
+  can bundle the other checkout's `src/app`. If anyone exported elsewhere since, export with
+  `npx expo export --platform web --output-dir .expo-rust-web-export --clear`, then
+  `node scripts/prepare-web-cache.mjs .expo-rust-web-export`, and grep the entry bundle for
+  your scene's `rust-<scene>` id.
 - The service worker caches graphics: after a rebuild a normal profile may run a stale
   `runtime.js`. Use a fresh/incognito profile (or open `/update`).
 - Theme is per browser profile; set it in the same page session you check.

@@ -3,6 +3,7 @@ import { DynamicRings } from './DynamicRings.web';
 import type { ReadingPage } from './readingPages';
 import { ScenePlaceholder } from './ScenePlaceholder';
 import { SphereAnchor } from './SphereAnchor.web';
+import { SphereEverywhere } from './SphereEverywhere.web';
 import { SphereLake } from './SphereLake.web';
 import { SphereOrbit } from './SphereOrbit.web';
 import { SphereRoom } from './SphereRoom.web';
@@ -23,6 +24,7 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'sphere-orbit' ? SphereOrbit
     : page.webScene === 'sphere-voice' ? SphereVoice
     : page.webScene === 'sphere-lake' ? SphereLake
+    : page.webScene === 'sphere-everywhere' ? SphereEverywhere
     : page.webScene === 'dynamic-rings' ? DynamicRings : undefined;
   if (!Scene) return placeholder;
   // These pages have no engine art; the kind only names the load for the skeleton.

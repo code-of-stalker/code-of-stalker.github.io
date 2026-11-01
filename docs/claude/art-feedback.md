@@ -27,6 +27,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A dark painting with no light pair: Rust prints it on light themes as a soft engraving (black
   becomes the page, light becomes ink); he chose this over painting a light one. (Step 5 page 01.)
 - Tablet/PC: illustrations as wide as the plate below, never a centered shrunk hero.
+- He does not like the light themes and thinks of removing them from the site («мне они не
+  нравятся»); page 07 shipped with them unadapted. Ask before spending work on light themes.
 - Words placed literally where he says: the tuning-questions conclusion sits at lip height.
 - Hairlines must survive 125% display scaling (draw outlines outside the clip path).
 
@@ -54,6 +56,9 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A dome is built from the top down: the crown first, then belts below it. Every step must come in softly, the first one too («остальные появляются мягко, а первый резко»). More Matrix detail behind: code rain, projections. (Page 05.)
 - He liked the floor projection rings; at the frame beat (42 s) they should spin «красиво… в разные стороны, словно произошло полное включение». (Page 05.)
 - A stilling story needs a dramatic start: a soft ripple was too quiet and drew the eye in the wrong way («ряб очень сильно перенимает внимание»); he asked for big waves, wind and rain, «что-то типа шторма почти». Each calming step must read on its own; the rain fades in two steps (weaker at the first «Не», gone at the second). (Page 06.)
+- A flat walk along a painted strip with a ball floating beside the camera, and stripes of light on the glass, read as «нелепо». He liked the sphere in the middle of the ring of places («сфера и вокруг картины по кругу»), so the whole loop now lives in that ring. (Page 07.)
+- Places that just light up on the ring were not enough: «сфера как бы проецировала эти изображения». The ball became a projector (lamp, beams in the air, a blank ring screen). A lamp drowns against a bright painting in the dark recolor: keep the thrown place to the side so the lamp stands against the dark. (Page 07.)
+- A sequence of places reads better one at a time: each switches on as the next one switches off, and all of them come on together only at the closing run round the ring. (Page 07.)
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

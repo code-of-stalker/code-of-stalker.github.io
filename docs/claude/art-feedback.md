@@ -27,6 +27,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A dark painting with no light pair: Rust prints it on light themes as a soft engraving (black
   becomes the page, light becomes ink); he chose this over painting a light one. (Step 5 page 01.)
 - Tablet/PC: illustrations as wide as the plate below, never a centered shrunk hero.
+- He does not like the light themes and thinks of removing them from the site («мне они не
+  нравятся»); page 07 shipped with them unadapted. Ask before spending work on light themes.
 - Words placed literally where he says: the tuning-questions conclusion sits at lip height.
 - Hairlines must survive 125% display scaling (draw outlines outside the clip path).
 

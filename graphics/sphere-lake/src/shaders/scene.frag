@@ -39,6 +39,11 @@ const float FLECK_MEAN = 0.405285;
 // Rough water lifts the ring's path of glints this much, so it reads at a
 // glance; still water has no lift.
 const float PATH = 4.0;
+// The storm. The wind blows from the left: it slants the rain this much
+// from the vertical, drives the clouds right and tears whitecaps off the
+// crests, each in a cell of water this wide (eye heights) and a period
+// that divides the loop.
+const float SLANT = 0.26;
 
 #define SHORE u_geo[0].x
 #define FOCAL u_geo[0].y
@@ -119,15 +124,74 @@ float ring(vec2 q, float blur) {
   return glow * smoothstep(SHORE + 1.0, SHORE - 1.0, q.y);
 }
 
+// How stormy it is: the mean stir of the four parts, 1 … 0 calm.
+float storm() { return dot(u_stir, vec4(0.25)); }
+
+// How near q is to the ring's light, 1 on its line: the half in the air,
+// and below the shore its feet.
+float nearRing(vec2 q, float reach) {
+  vec2 d = q - RING_CENTRE;
+  float x = d.y < 0.0 ? length(d) - RING_RADIUS : abs(abs(d.x) - RING_RADIUS) + d.y;
+  return exp(-x * x / (2.0 * reach * reach));
+}
+
+// Value noise that repeats every `period` cells across.
+float vnoise(vec2 x, float period) {
+  vec2 i = floor(x), f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  vec2 j = vec2(mod(i.x, period), i.y), k = vec2(mod(i.x + 1.0, period), i.y);
+  return mix(mix(hash12(j), hash12(k), f.x), mix(hash12(j + vec2(0.0, 1.0)), hash12(k + vec2(0.0, 1.0)), f.x), f.y);
+}
+
+// Storm clouds over the stars, 0 clear … 1 covered. They drift right with
+// the wind; each octave crosses whole tiles a loop, so the loop closes.
+float clouds(vec2 q) {
+  float drift = 6.0 * u_time.x / LOOP;
+  vec2 x = q / vec2(260.0, 110.0);
+  float n = 0.55 * vnoise(x - vec2(drift, 0.0), 6.0)
+          + 0.3 * vnoise(2.0 * x - vec2(4.0 * drift, 0.0), 12.0)
+          + 0.15 * vnoise(4.0 * x - vec2(12.0 * drift, 0.0), 24.0);
+  return smoothstep(0.4, 0.68, n) * smoothstep(TREES + 10.0, TREES - 60.0, q.y);
+}
+
 // The painted night at q. The stars twinkle, each a whole number of times a
-// loop, so the loop closes.
+// loop, so the loop closes. Storm clouds hide them, faintly lit near the ring.
 vec3 painted(vec2 q, float lod) {
   vec3 base = textureLod(u_lake, q / SIZE, lod).rgb;
   vec2 cell = floor(q / 3.0);
   float times = 20.0 + floor(hash12(cell) * 24.0);
   float twinkle = pow(0.5 + 0.5 * sin(hash12(cell + 7.0) * TAU + u_time.y * times), 10.0);
   float spark = smoothstep(0.1, 0.4, luma(base)) * smoothstep(TREES, TREES - 30.0, q.y);
-  return base * (1.0 + 0.6 * twinkle * spark);
+  float cover = storm() * clouds(q);
+  return base * (1.0 + 0.6 * twinkle * spark) * (1.0 - 0.85 * cover)
+       + u_glow * cover * (0.03 + 0.14 * nearRing(q, 180.0));
+}
+
+// Rain in the air, three depths, slanting with the wind. Each depth falls a
+// whole number of tiles a loop; a streak is faint on the night and catches
+// the ring's light near it.
+float rainfall(vec2 p, float px) {
+  vec2 down = vec2(sin(SLANT), cos(SLANT));
+  float a = dot(p, vec2(down.y, -down.x));
+  float sum = 0.0;
+  for (int l = 0; l < 3; l++) {
+    float fl = float(l);
+    vec2 cell = vec2(16.0, 80.0) * (1.0 + 0.8 * fl);
+    float tile = 8.0 * cell.y;
+    float streak = 0.45 * cell.y;
+    float col = floor(a / cell.x) + 101.0 * fl;
+    vec3 h = hash32(vec2(col, 3.0));
+    float along = dot(p, down) - (44.0 + 4.0 * fl) * tile * u_time.x / LOOP + h.z * tile;
+    vec3 g = hash32(vec2(col, mod(floor(along / cell.y), 8.0) + 11.0));
+    if (g.z > 0.65) continue;
+    float y = fract(along / cell.y) * cell.y - g.y * (cell.y - streak);
+    float x = (fract(a / cell.x) - 0.25 - 0.5 * h.x) * cell.x;
+    float wide = 0.6 + 0.45 * fl;
+    float w = max(wide, px);
+    float seg = smoothstep(0.0, 0.3 * streak, y) * (1.0 - smoothstep(0.6 * streak, streak, y));
+    sum += (0.5 + 0.35 * fl) * wide / w * exp(-x * x / (w * w)) * seg;
+  }
+  return sum;
 }
 
 // The night and the ring over it.
@@ -170,13 +234,15 @@ void main() {
   } else {
     // Wind patches: the ripple gathers and thins as gusts drift over the
     // lake, whole cycles a loop. Too far to see apart, they average.
-    float gust = sin(0.8 * at.x + 0.3 * at.y - u_time.y * 2.0) * sin(0.25 * at.x - 0.55 * at.y + u_time.y * 3.0 + 1.3);
-    float gusts = mix(0.45, 0.35 + 0.65 * smoothstep(-0.3, 0.7, gust), exp(-foot * foot * 0.3));
+    float gust = sin(0.8 * at.x + 0.3 * at.y - u_time.y * 4.0) * sin(0.25 * at.x - 0.55 * at.y + u_time.y * 5.0 + 1.3);
+    float gusts = mix(0.45, 0.2 + 0.8 * smoothstep(-0.3, 0.7, gust), exp(-foot * foot * 0.3));
 
     // Wave trains: what is finer than a few pixels is not drawn but kept as
     // roughness, the spread of the slopes across and ahead.
     vec2 slope = vec2(0.0);
     vec2 rough = vec2(0.0);
+    float height = 0.0;
+    float power = 0.0;
     for (int i = 0; i < 12; i++) {
       vec4 w = u_wave[i];
       float part = u_part[i];
@@ -185,7 +251,10 @@ void main() {
       float f = dot(w.xy, ax) * dot(w.xy, ax) + dot(w.xy, ay) * dot(w.xy, ay);
       float keep = exp(-0.45 * f);
       vec2 s = w.z * stir * w.xy;
-      slope += s * keep * cos(dot(w.xy, at) - w.w * t + hash12(vec2(float(i), 3.0)) * TAU);
+      float arg = dot(w.xy, at) - w.w * t + hash12(vec2(float(i), 3.0)) * TAU;
+      slope += s * keep * cos(arg);
+      height += w.z * stir * keep * sin(arg);
+      power += 0.5 * pow(w.z * stir * keep, 2.0);
       rough += 0.5 * s * s * (1.0 - keep * keep);
     }
 
@@ -281,11 +350,31 @@ void main() {
     float glitter = smoothstep(0.004, 0.04, rough1);
     vec3 mirror = night + u_glow * light * (1.0 + (PATH - 1.0) * glitter) * mix(1.0, glint / GLINT_MEAN, 0.8 * glitter);
 
+    // The big waves, in spreads of their height: the highest crests catch
+    // a sheen, troughs fall dark, and where the wind blows a crest tears
+    // into foam, long across the view. The foam rides the water; the crests
+    // pass through it.
+    float spread0 = sqrt(power);
+    float swing = height / max(spread0, 1e-5) * smoothstep(0.0, 0.006, spread0);
+    float ridge = smoothstep(0.7, 1.7, swing);
+    float trough = smoothstep(-0.4, -1.4, swing);
+    float fleck = vnoise(at * vec2(2.2, 6.0), 1e4) * 0.65 + vnoise(at * vec2(7.0, 19.0) + 31.0, 1e4) * 0.35;
+    float foam = u_stir.z * gusts * smoothstep(1.2, 2.0, swing) * smoothstep(0.42, 0.62, fleck);
+    // Near, it is torn into streaks along the crest; far, they average out.
+    float torn = smoothstep(0.35, 0.75, vnoise(at * vec2(16.0, 45.0) + 7.0, 1e4));
+    foam *= mix(0.5, 1.6 * torn, exp(-pow(foot * 45.0, 2.0)));
+    float lane = exp(-pow((p.x - RING_CENTRE.x) / 320.0, 2.0));
+
     vec3 body = textureLod(u_lake, vec2(p.x, max(p.y, SHORE + 48.0)) / SIZE, 5.0).rgb;
     vec3 water = fresnel * mirror + (1.0 - fresnel) * BODY * body + u_glow * (0.8 * pin + 0.6 * crest);
+    water = water * (1.0 - 0.45 * storm() * trough)
+          + u_glow * (0.45 * foam + 0.15 * storm() * ridge) * (0.35 + 1.4 * lane);
     // The waterline: one pixel's blend from the painted shore into the lake.
     c = mix(sky(p, lod, 0.0), water, smoothstep(SHORE - px, SHORE + px, p.y));
   }
+
+  // The rain falls in front of it all.
+  if (u_stir.x > 0.0) c += u_glow * u_stir.x * rainfall(p, px) * (0.1 + 0.8 * u_time.z * nearRing(p, 130.0));
 
   if (u_out.z > 0.5) c = engrave(c);
   // Dither against banding in the glows.

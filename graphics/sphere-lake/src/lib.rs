@@ -1,8 +1,10 @@
 //! «Тишина воды», page 06 of Step 5 «Внешнее кольцо», the page «Итог». Art's
-//! night lake under the stars, a ring of light over the water. At first the
-//! lake is stirred four ways (drops, a cross swell, wind ripples, a long
-//! swell) and the ring's reflection breaks into glints. Each «Не…» stills
-//! one of them; the last leaves a mirror, where the ring and its reflection
+//! night lake under the stars, a ring of light over the water. At first a
+//! storm all but breaks over it: rain slants through the ring's light, clouds
+//! hide the stars, the wind raises whitecaps, and the lake is stirred four
+//! ways (drops, a cross swell, wind ripples, a long swell) that break the
+//! ring's reflection into glints. Each «Не…» stills one of them; the sky
+//! clears as the lake calms, and the last leaves a mirror, where the ring and its reflection
 //! close into one circle. Then the view settles level on the shore line and
 //! the circle sounds once. Every value here is a pure function of loop time;
 //! `browser.rs` only uploads it and the shader paints it.
@@ -48,10 +50,10 @@ pub const LEAN: f32 = 0.07;
 pub const LEAN_IN: [f32; 2] = [40.0, 48.0];
 /// Both ease back as the wind returns.
 pub const UNLEVEL: [f32; 2] = [51.5, 59.0];
-/// While the water is stirred the view is restless: it rolls and drifts,
-/// whole cycles a loop. Still, it only breathes. Radians and painting px.
-pub const ROLL: f32 = 0.6 * PI / 180.0;
-pub const DRIFT: [f32; 2] = [3.0, 4.0];
+/// While the storm lasts the view is buffeted: it rolls and drifts, whole
+/// cycles a loop. Still, it only breathes. Radians and painting px.
+pub const ROLL: f32 = 1.6 * PI / 180.0;
+pub const DRIFT: [f32; 2] = [6.0, 9.0];
 pub const BREATH: f32 = 2.5;
 pub const BREATH_TIMES: f32 = 12.0;
 
@@ -70,27 +72,27 @@ pub const SOUND_GAP: f32 = 0.8;
 pub const SOUND_SPEED: f32 = 95.0;
 pub const SOUND_FADE: f32 = 4.5;
 
-/// Gravity in eye heights a second², a little slowed so the lake moves calmly.
+/// Gravity in eye heights a second², a little slowed so the big waves roll slowly.
 pub const GRAVITY: f32 = 3.0;
 /// One wave train: its part, where it travels (radians, 0 away from the
 /// viewer, PI toward), wavelength in eye heights, steepness.
 pub const TRAINS: [(usize, f32, f32, f32); 12] = [
-    (SWELL, 3.05, 0.9, 0.01),
-    (SWELL, 3.4, 0.62, 0.008),
-    (SWELL, 2.75, 1.3, 0.006),
-    (CROSS, 2.35, 0.35, 0.05),
-    (CROSS, 0.8, 0.27, 0.04),
-    (CHOP, 0.4, 0.085, 0.03),
-    (CHOP, 2.1, 0.11, 0.03),
-    (CHOP, 4.2, 0.07, 0.025),
-    (CHOP, 5.3, 0.13, 0.03),
-    (CHOP, 3.6, 0.06, 0.02),
-    (CHOP, 1.0, 0.095, 0.025),
-    (CHOP, 2.9, 0.15, 0.03),
+    (SWELL, 3.05, 1.8, 0.07),
+    (SWELL, 3.4, 1.2, 0.05),
+    (SWELL, 2.75, 2.6, 0.045),
+    (CROSS, 2.35, 0.7, 0.07),
+    (CROSS, 0.8, 0.5, 0.055),
+    (CHOP, 0.4, 0.085, 0.022),
+    (CHOP, 2.1, 0.11, 0.022),
+    (CHOP, 4.2, 0.07, 0.018),
+    (CHOP, 5.3, 0.13, 0.022),
+    (CHOP, 3.6, 0.06, 0.015),
+    (CHOP, 1.0, 0.095, 0.018),
+    (CHOP, 2.9, 0.15, 0.022),
 ];
 /// Drops: each cell of water this wide (eye heights) gets two drops a
 /// period; rings spread from where they land and die down.
-pub const RAIN_CELL: f32 = 0.6;
+pub const RAIN_CELL: f32 = 0.45;
 pub const RAIN_PERIOD: f32 = 3.0;
 pub const DROP_SPEED: f32 = 0.14;
 pub const DROP_LIFE: f32 = 1.4;
@@ -178,10 +180,10 @@ pub fn view(t: f32, restless: f32) -> [f32; 4] {
     let phase = t / LOOP_SECONDS * TAU;
     let width = mix(VIEW_STIRRED[2], VIEW_LEVEL[2], k) * (1.0 - LEAN * lean(t));
     let roll =
-        ROLL * restless * (0.6 * (13.0 * phase + 0.3).sin() + 0.4 * (29.0 * phase + 1.1).sin());
-    let dx = DRIFT[0] * restless * (11.0 * phase + 0.7).sin();
+        ROLL * restless * (0.6 * (7.0 * phase + 0.3).sin() + 0.4 * (11.0 * phase + 1.1).sin());
+    let dx = DRIFT[0] * restless * (5.0 * phase + 0.7).sin();
     let dy =
-        DRIFT[1] * restless * (17.0 * phase + 2.0).sin() + BREATH * (BREATH_TIMES * phase).sin();
+        DRIFT[1] * restless * (9.0 * phase + 2.0).sin() + BREATH * (BREATH_TIMES * phase).sin();
     [
         mix(VIEW_STIRRED[0], VIEW_LEVEL[0], k) + dx,
         mix(VIEW_STIRRED[1], VIEW_LEVEL[1], k) + dy,

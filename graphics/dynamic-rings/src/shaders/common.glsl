@@ -18,14 +18,18 @@ uniform vec4 u_kind;   // what this draw is, the largest point size
 #define FWD    u_d[3]  // view axis, how much the figure walks
 #define VIEW   u_d[4]  // lens scale x and y, canvas width and height px
 #define SPH    u_d[5]  // the glass: centre, radius
-#define SHELLS u_d[6]  // its light before filling, filled, filled up to (y), the walk's track
+#define SHELLS u_d[6]  // its light before filling, filled, how far round it is lit (radians), the walk's track
 #define RC(k)  u_d[SLOT_RING + 3 * (k)]     // ring k: centre, radius
 #define RN(k)  u_d[SLOT_RING + 3 * (k) + 1] // its normal, light
-#define RX(k)  u_d[SLOT_RING + 3 * (k) + 2] // its flash, flow, form, scan
+#define RX(k)  u_d[SLOT_RING + 3 * (k) + 2] // its flash, flow, form, scan; ring 2: flash, turned, speed
 #define WORLD  u_d[SLOT_WORLD]     // floor repeat, mote box, floor light, world light
 #define LOCK   u_d[SLOT_WORLD + 1] // the lock's wave: origin, light
-#define LOCK2  u_d[SLOT_WORLD + 2] // its radius (< 0 none), the figure's light, threads, seconds since the beat
-#define META   u_d[SLOT_META]      // loop seconds, lens, aperture
+#define LOCK2  u_d[SLOT_WORLD + 2] // its radius (< 0 none), the figure's light, spokes, seconds since the beat
+#define META   u_d[SLOT_META]      // loop seconds, lens, aperture, the things and the wires
+// Wire t: its curve's points with how far it has grown, seconds since it
+// broke (< 0 not yet), its light, its writhe; where it met the glass and
+// its writhe then.
+#define TT(t, j) u_d[SLOT_TENTACLE + 5 * (t) + (j)]
 
 uint mixBits(uint x) {
   x ^= x >> 16;
@@ -44,10 +48,10 @@ vec3 onRing(float a, float r) {
   return r * vec3(sin(a), 0.0, cos(a));
 }
 
-// A circle of radius r about c, square to n, from its +z side (lib.rs
-// Ring::at).
+// A circle of radius r about c, square to n, from its +z side, or its +x
+// side when it faces along z (lib.rs Ring::at).
 vec3 onTilted(vec3 c, vec3 n, float r, float s) {
-  vec3 e1 = normalize(cross(n, vec3(0.0, 0.0, 1.0)));
+  vec3 e1 = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0)));
   vec3 e2 = cross(e1, n);
   return c + r * (sin(s) * e1 + cos(s) * e2);
 }
@@ -121,6 +125,36 @@ float scanned(vec3 p) {
   float d = dot(p - RC(0).xyz, RN(0).xyz) / SCAN_WIDTH;
   return RX(0).w * RN(0).w * exp(-d * d);
 }
+// Wire t's middle at s (0 its root … 1 its tip), writhing at phase w: a
+// wave runs along it, still at both ends.
+vec3 wire(int t, float s, float w) {
+  vec3 p0 = TT(t, 0).xyz;
+  vec3 p3 = TT(t, 3).xyz;
+  float r = 1.0 - s;
+  vec3 p = r * r * r * p0 + 3.0 * r * r * s * TT(t, 1).xyz + 3.0 * r * s * s * TT(t, 2).xyz + s * s * s * p3;
+  vec3 chord = p3 - p0;
+  vec3 e1 = normalize(cross(chord, vec3(0.0, 1.0, 0.0)) + vec3(1e-4, 0.0, 0.0));
+  vec3 e2 = normalize(cross(e1, chord));
+  return p + length(chord) * WRITHE_REACH * sin(PI * s)
+           * (e1 * sin(9.0 * s - w) + e2 * sin(7.0 * s - 1.3 * w + 1.0));
+}
+// Where wire t has crumbled back to (1 whole … 0 gone).
+float wireCut(int t) {
+  float broken = TT(t, 1).w;
+  return broken < 0.0 ? 1.0 : 1.0 - clamp(broken / TENTACLE_BREAK, 0.0, 1.0);
+}
+// Spire c over the horizon: its foot on the flat ground and its height,
+// repeating every loop's walk.
+vec4 spire(int c) {
+  uint seed = uint(c) * 23u + 811u;
+  float L = WORLD.x;
+  float side = rand(seed) < 0.55 ? 1.0 : -1.0;
+  float x = side * mix(4.5, 26.0, pow(rand(seed + 1u), 0.9));
+  float zc = SHELLS.w + 6.0;
+  float dz = mod(rand(seed + 2u) * L - zc + 0.5 * L, L) - 0.5 * L;
+  return vec4(x, 0.0, zc + dz, mix(3.5, 11.0, rand(seed + 3u)));
+}
+
 // Whole cycles a loop, for anything that twinkles.
 float loopPhase() {
   return TAU * RIGHT.w / META.x;

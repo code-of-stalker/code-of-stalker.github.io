@@ -1,12 +1,16 @@
 //! Step 7 «Наблюдение в Динамике»: the third level. A figure of light walks
 //! over the top of a small planet inside a sphere of glass, the dynamic
 //! sphere of the body. Inside it the rings of the first two levels move:
-//! the outer one, a double ring that scans the world and settles over the
-//! crown; the inner ones, strings of beads round the torso (the breath) and
-//! the legs (the steps). Their rhythms meet and lock, the third ring rises
-//! up the glass and lights the sphere, and everything is held while the
-//! figure walks. The camera goes from the eyes, to over the right
-//! shoulder, to the side from above. Every value is a pure function of the
+//! the outer one, a double ring that sweeps the whole glass from its top
+//! to the ground and back, scanning the world; the inner one, a string of
+//! beads that runs up and down the figure with the breath and scans it.
+//! Their rhythms meet and lock, and the third ring, the sphere's own,
+//! starts to turn: a ring upright on the glass whose turning is the
+//! sphere, lighting it as it goes. Then everything is held while the
+//! figure walks; what comes into the glass is scanned, and the wires that
+//! reach for the figure crumble on it. The camera goes from the eyes, to
+//! over the right shoulder, to the side from above. Every value is a pure
+//! function of the
 //! chapter and its loop time (`story.rs`); `browser.rs` only uploads it and
 //! the shaders draw it. Metres; the figure faces +z, its left is +x.
 use watcher_scene_palette::Palette;
@@ -61,45 +65,82 @@ pub const PLANET_CELL: f32 = 1.24;
 pub const PLANET_REACH: f32 = 24.0;
 
 /// The rings inside the sphere: 0 the crown (level 1, the world outside),
-/// 1 the torso (level 2, the breath inside), 2 the legs (level 3, the
-/// steps: it forms once the first two lock), 3 the sweep that rises up the
-/// glass and fills it.
-pub const RINGS: usize = 4;
+/// 1 the body's scanner (level 2, the breath inside), 2 the sphere's own
+/// (level 3: it starts to turn once the first two lock).
+pub const RINGS: usize = 3;
 /// The crown ring runs on a sphere this share of the glass: two lines this
 /// far apart, a band of beads between them.
 pub const CROWN_SHARE: f32 = 0.955;
 pub const CROWN_GAP: f32 = 0.026;
-/// Where the crown ring holds (latitude on its sphere) and how far it
-/// rises and falls with each breath, radians; how far it tilts.
-pub const CROWN_LAT: f32 = 0.72;
-pub const CROWN_SWING: f32 = 0.13;
+/// It sweeps from this latitude at the top of its sphere down to this
+/// high (m) over the ground, and back; it tilts this far (radians) except
+/// near the ground.
+pub const CROWN_TOP: f32 = 1.42;
+pub const CROWN_FLOOR: f32 = 0.06;
 pub const CROWN_TILT: f32 = 0.12;
 /// Before it joins the breath the crown ring keeps its own time.
 pub const CROWN_PERIOD: f32 = 6.1;
-/// The torso ring: from the navel on the out-breath to the chest on the
-/// in-breath; its radius out and in.
-pub const TORSO: [f32; 2] = [0.98, 1.3];
-pub const TORSO_RADIUS: [f32; 2] = [0.38, 0.45];
-/// The legs ring this far over the knees, pitching this far (radians) with
-/// the stride.
-pub const LEGS_HEIGHT: f32 = 0.08;
-pub const LEGS_RADIUS: f32 = 0.33;
-pub const LEGS_SWING: f32 = 0.12;
-/// The third ring on a sphere this share of the glass.
-pub const THIRD_SHARE: f32 = 0.985;
+/// The body's scanner runs from the feet on the out-breath to the top of
+/// the head on the in-breath, hugging the figure: its radius by height
+/// (m) over the ground.
+pub const SCANNER: [(f32, f32); 7] = [
+    (0.0, 0.36),
+    (0.45, 0.31),
+    (0.9, 0.37),
+    (1.22, 0.43),
+    (1.38, 0.41),
+    (1.5, 0.24),
+    (1.72, 0.16),
+];
+pub const SCANNER_FLOOR: f32 = 0.05;
+/// It lights the skin in its plane: a line this thick (m), this bright, and
+/// what it has just passed for this far behind it; skin it has not passed
+/// for a while keeps this share of its light.
+pub const SLICE: f32 = 0.03;
+pub const SLICE_LIGHT: f32 = 5.0;
+pub const SLICE_GLOW: f32 = 0.55;
+pub const UNSCANNED: f32 = 0.45;
+/// The sphere's ring, upright on a sphere this share of the glass; it
+/// trails this many fading copies this far apart (radians) at full speed.
+pub const SPHERE_SHARE: f32 = 0.985;
+pub const SPIN_TRAIL: u32 = 12;
+pub const SPIN_STEP: f32 = 0.05;
+/// A turn of the sphere every two breaths.
+pub const SPIN_PERIOD: f32 = 2.0 * BEAT;
 pub const RING_SEGMENTS: u32 = 192;
-/// Beads on each of the crown, torso and legs rings.
+/// Beads on each of the crown and the scanner.
 pub const BEADS: u32 = 120;
 /// The crown ring's last positions trail behind it.
 pub const GHOSTS: usize = 6;
 pub const GHOST_STEP: f32 = 0.06;
 pub const GHOST_SEGMENTS: u32 = 128;
-/// After the lock, streams of beads spiral up from the legs ring through
-/// the torso ring to the crown.
-pub const THREADS: u32 = 7;
-pub const THREAD_BEADS: u32 = 26;
+/// After the lock, spokes of beads run out from the scanner to the crown.
+pub const SPOKES: u32 = 28;
+pub const SPOKE_BEADS: u32 = 12;
 /// The crown ring's plane lights the world it passes, this wide (m).
 pub const SCAN_WIDTH: f32 = 0.16;
+/// Things the walk passes, some on the ground, some in the air, scanned
+/// while they are inside the glass: so many a loop's walk, each edge in
+/// this many pieces, and a ring of so many running up and down each.
+pub const THINGS: u32 = 16;
+pub const THING_PIECES: u32 = 6;
+pub const THING_RING: u32 = 32;
+/// Wires that reach out of the ground for the figure and crumble on the
+/// glass: three strands of so many pieces each, and the dust each leaves.
+pub const TENTACLES: usize = 6;
+pub const TENTACLE_STRANDS: u32 = 3;
+pub const TENTACLE_SEGMENTS: u32 = 56;
+pub const DEBRIS: u32 = 64;
+/// It breaks from the tip back to the root over this long (s); its dust
+/// dims by e this often (s).
+pub const TENTACLE_BREAK: f32 = 1.3;
+pub const DEBRIS_FADE: f32 = 0.6;
+/// How fast it writhes (radians a second) and how far, of its length.
+pub const WRITHE: f32 = 3.6;
+pub const WRITHE_REACH: f32 = 0.09;
+/// Spires stand along the horizon, their stays running to the ground.
+pub const SPIRES: u32 = 22;
+pub const SPIRE_PIECES: u32 = 40;
 
 /// The ground: a print for each of the newest landings, fading, and a
 /// ripple from each heel strike; a lattice of dots lit round the figure.
@@ -132,12 +173,16 @@ pub const BODY_DOT: f32 = 0.003;
 /// Peak light of each family.
 pub const CROWN_LIGHT: f32 = 1.0;
 pub const BEAD_LIGHT: f32 = 1.1;
-pub const INNER_LINE_LIGHT: f32 = 0.36;
-pub const THIRD_LIGHT: f32 = 1.3;
+pub const INNER_LINE_LIGHT: f32 = 0.85;
+pub const SPIN_LIGHT: f32 = 1.3;
 pub const CONTACT_LIGHT: f32 = 0.7;
 pub const GHOST_LIGHT: f32 = 0.3;
-pub const THREAD_LIGHT: f32 = 0.9;
+pub const SPOKE_LIGHT: f32 = 0.6;
 pub const SCAN_LIGHT: f32 = 2.2;
+pub const THING_LIGHT: f32 = 0.9;
+pub const TENTACLE_LIGHT: f32 = 1.4;
+pub const DEBRIS_LIGHT: f32 = 1.2;
+pub const SPIRE_LIGHT: f32 = 1.4;
 pub const PRINT_LIGHT: f32 = 0.5;
 pub const RIPPLE_LIGHT: f32 = 0.55;
 pub const FLOOR_LIGHT: f32 = 0.45;
@@ -149,7 +194,7 @@ pub const MOTE_LIGHT: f32 = 0.5;
 pub const STAR_LIGHT: f32 = 0.5;
 pub const CONSTELLATION_LIGHT: f32 = 0.16;
 pub const COLUMN_LIGHT: f32 = 0.7;
-pub const BODY_LIGHT: f32 = 0.78;
+pub const BODY_LIGHT: f32 = 1.0;
 /// A ring's flash adds this much; the lock's wave this much to what it
 /// passes.
 pub const FLASH_GAIN: f32 = 1.3;
@@ -168,23 +213,45 @@ pub struct Ring {
     pub radius: f32,
     pub light: f32,
     pub flash: f32,
-    /// How far its beads have run round it, radians.
+    /// How far its beads have run round it, radians; the sphere's ring:
+    /// how far it has turned.
     pub flow: f32,
-    /// 0 its beads scattered in the air … 1 gathered on the ring.
+    /// 0 its beads scattered in the air … 1 gathered on the ring; the
+    /// sphere's ring: how fast it turns, of full speed.
     pub form: f32,
     /// How much its plane lights the world it passes.
     pub scan: f32,
 }
 
 impl Ring {
-    /// A point of the ring at angle `s`, from its +z side (common.glsl
-    /// onTilted).
+    /// A point of the ring at angle `s`, from its +z side, or its +x side
+    /// when it faces along z (common.glsl onTilted).
     pub fn at(&self, s: f32) -> V3 {
-        let z = math::v3(0.0, 0.0, 1.0);
-        let e1 = self.normal.cross(z).normalize();
+        let side = if self.normal.z.abs() < 0.9 {
+            math::v3(0.0, 0.0, 1.0)
+        } else {
+            math::v3(1.0, 0.0, 0.0)
+        };
+        let e1 = self.normal.cross(side).normalize();
         let e2 = e1.cross(self.normal);
         self.center + (e1 * s.sin() + e2 * s.cos()) * self.radius
     }
+}
+
+/// A wire reaching for the figure: the four points of its curve (root on
+/// the ground, tip on the glass), how far it has grown, seconds since it
+/// broke on the glass (< 0 not yet), its light, how it writhes now and
+/// when it broke, and where on the glass it broke (a unit direction from
+/// the sphere's centre).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tentacle {
+    pub points: [V3; 4],
+    pub reach: f32,
+    pub broken: f32,
+    pub light: f32,
+    pub writhe: f32,
+    pub writhe_at_break: f32,
+    pub contact: V3,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -204,15 +271,19 @@ pub struct Frame {
     pub body: Body,
     pub body_light: f32,
     pub sphere: V3,
-    /// The glass before it fills, once filled, and the height it is filled
-    /// to.
+    /// The glass before it fills, once filled, and how far round (radians)
+    /// the sphere's ring has lit it since it started to turn: all of it
+    /// from π, since the ring lights both its sides.
     pub latent: f32,
     pub filled: f32,
     pub fill: f32,
     pub rings: [Ring; RINGS],
     /// The crown ring a moment ago: centre, normal, radius, light.
     pub ghosts: [(V3, V3, f32, f32); GHOSTS],
-    pub threads: f32,
+    pub spokes: f32,
+    /// The things the walk passes and the wires: how lit.
+    pub things: f32,
+    pub tentacles: [Tentacle; TENTACLES],
     /// The newest landings: x, z, yaw, seconds since.
     pub prints: [[f32; 4]; PRINTS],
     /// Where each foot meets the ground and how much it presses.
@@ -232,14 +303,15 @@ pub struct Frame {
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
-pub const SLOTS: usize = 45;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_RING: usize = 7;
 pub const SLOT_WORLD: usize = SLOT_RING + 3 * RINGS;
 pub const SLOT_GHOST: usize = SLOT_WORLD + 3;
 pub const SLOT_PRINT: usize = SLOT_GHOST + 2 * GHOSTS;
 pub const SLOT_FEET: usize = SLOT_PRINT + PRINTS;
-pub const SLOT_META: usize = SLOT_FEET + 2;
+pub const SLOT_TENTACLE: usize = SLOT_FEET + 2;
+pub const SLOT_META: usize = SLOT_TENTACLE + 5 * TENTACLES;
+pub const SLOTS: usize = SLOT_META + 1;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -263,7 +335,7 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     d[SLOT_WORLD + 2] = [
         f.lock_radius,
         f.body_light,
-        f.threads,
+        f.spokes,
         f.time.rem_euclid(BEAT),
     ];
     for (k, (c, n, r, w)) in f.ghosts.iter().enumerate() {
@@ -275,7 +347,16 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     }
     d[SLOT_FEET] = f.feet[0];
     d[SLOT_FEET + 1] = f.feet[1];
-    d[SLOT_META] = [story.loop_seconds, f.lens, f.aperture, 0.0];
+    for (k, w) in f.tentacles.iter().enumerate() {
+        let s = SLOT_TENTACLE + 5 * k;
+        let [a, b, c, e] = w.points;
+        d[s] = with(a, w.reach);
+        d[s + 1] = with(b, w.broken);
+        d[s + 2] = with(c, w.light);
+        d[s + 3] = with(e, w.writhe);
+        d[s + 4] = with(w.contact, w.writhe_at_break);
+    }
+    d[SLOT_META] = [story.loop_seconds, f.lens, f.aperture, f.things];
     d
 }
 
@@ -414,7 +495,9 @@ mod tests {
             v.extend([r.radius, r.light, r.form]);
         }
         v.extend(f.forward.arr());
-        v.extend([f.latent, f.filled, f.threads, f.breath, f.focus, f.lens]);
+        v.extend([
+            f.latent, f.filled, f.spokes, f.things, f.breath, f.focus, f.lens,
+        ]);
         v
     }
 
@@ -464,7 +547,8 @@ mod tests {
                 for (a, b) in [
                     (f.latent, previous.latent),
                     (f.filled, previous.filled),
-                    (f.threads, previous.threads),
+                    (f.spokes, previous.spokes),
+                    (f.things, previous.things),
                 ] {
                     assert!((a - b).abs() < 0.05, "{:?} glass at {t}", story.chapter);
                 }
@@ -485,21 +569,42 @@ mod tests {
                         let p = r.at(i as f32 / 24.0 * std::f32::consts::TAU);
                         let out = (p - f.sphere).length();
                         assert!(out <= SPHERE_RADIUS + 1e-3, "{t} ring {k}: {out}");
-                        assert!(p.y > 0.0, "{t} ring {k} under the ground");
+                        // The sphere's own ring runs on through the ground.
+                        assert!(k == 2 || p.y > 0.0, "{t} ring {k} under the ground");
                     }
                 }
                 t += 0.1;
             }
         }
-        // They travel: over the cover each ring rises and falls, and the
-        // crown ring tilts round.
+        // They travel: over the cover the crown ring sweeps the glass from
+        // its top to the ground, the scanner the figure from its feet to the
+        // top of its head, and the crown ring tilts round.
         let story = Story::new(Chapter::Hero);
         let frames: Vec<Frame> = (0..264).map(|i| story.compose(i as f32 / 10.0)).collect();
-        for k in 0..3 {
-            let heights = frames.iter().map(|f| f.rings[k].center.y - f.sphere.y);
-            let (lo, hi) = heights.fold((9.0f32, -9.0f32), |(a, b), y| (a.min(y), b.max(y)));
-            assert!(hi - lo > 0.04, "ring {k} keeps its height: {lo} {hi}");
+        let span = |k: usize| {
+            let heights = frames.iter().map(|f| f.rings[k].center.y);
+            heights.fold((9.0f32, -9.0f32), |(a, b), y| (a.min(y), b.max(y)))
+        };
+        let (lo, hi) = span(0);
+        assert!(lo < 0.1 && hi > SPHERE_HEIGHT + 1.2, "the crown: {lo} {hi}");
+        let (lo, hi) = span(1);
+        let head = frames.iter().map(|f| f.body.high.y).fold(9.0f32, f32::min);
+        assert!(lo < 0.1 && hi > head - 0.1, "the scanner: {lo} {hi}");
+        for f in &frames {
+            // It hugs the figure: round the body's axis, close to its skin.
+            let r = &f.rings[1];
+            let off = v3(r.center.x - f.body.head.x, 0.0, r.center.z - f.body.head.z);
+            assert!(off.length() < 0.25 && r.radius < 0.45, "{}", f.time);
         }
+        // The sphere's ring turns about the upright axis, whole turns a loop.
+        let turned: f32 = frames
+            .windows(2)
+            .map(|w| {
+                let (a, b) = (w[0].rings[2].normal, w[1].rings[2].normal);
+                a.cross(b).y.asin()
+            })
+            .sum();
+        assert!(turned.abs() > 2.0 * std::f32::consts::TAU, "{turned}");
         let tilts = frames.iter().map(|f| f.rings[0].normal.x);
         let (lo, hi) = tilts.fold((9.0f32, -9.0f32), |(a, b), x| (a.min(x), b.max(x)));
         assert!(lo < -0.05 && hi > 0.05, "{lo} {hi}");
@@ -602,21 +707,24 @@ mod tests {
         assert!(flash.lock[3] > 0.5 && flash.lock_radius > 0.0);
         // Before the lock the glass waits; walking after it, all is held.
         let before = story.compose(20.0);
-        assert!(before.filled < 1e-3 && before.threads < 1e-3);
+        assert!(before.filled < 1e-3 && before.spokes < 1e-3 && before.things < 1e-3);
+        assert!(before.rings[2].light < 1e-3);
         assert!(before.rings[1].light > 0.99 && before.rings[0].light > 0.99);
         let held = story.compose(32.0);
         assert!(held.amount > 0.99);
-        for r in &held.rings[..3] {
+        for r in &held.rings {
             assert!(r.light > 0.99 && r.form > 0.99);
         }
-        assert!(held.filled > 0.99 && held.fill > SPHERE_HEIGHT + SPHERE_RADIUS);
-        assert!(held.threads > 0.99);
+        // By then the sphere's ring has turned past half a turn: it has lit
+        // all the glass.
+        assert!(held.filled > 0.99 && held.fill >= std::f32::consts::PI);
+        assert!(held.spokes > 0.99 && held.things > 0.99);
         // The loop ends with the rings out, back in the eyes.
         let end = story.compose(ARRIVE_LOOP - 0.05);
         for r in &end.rings {
             assert!(r.light < 1e-3, "{}", r.light);
         }
-        assert!(end.filled < 1e-3 && end.threads < 1e-3);
+        assert!(end.filled < 1e-3 && end.spokes < 1e-3 && end.things < 1e-3);
     }
 
     #[test]
@@ -626,12 +734,12 @@ mod tests {
         for i in 0..264 {
             let f = story.compose(i as f32 / 10.0);
             assert!(f.amount > 0.99);
-            for r in &f.rings[..3] {
+            for r in &f.rings {
                 assert_eq!((r.light, r.form), (1.0, 1.0));
             }
-            assert_eq!((f.filled, f.threads), (1.0, 1.0));
+            assert_eq!((f.filled, f.spokes, f.things), (1.0, 1.0, 1.0));
         }
-        // The crown and the torso rise together on the in-breath.
+        // The crown and the scanner rise together on the in-breath.
         let rise = |t: f32| {
             let (a, b) = (story.compose(t), story.compose(t + 0.2));
             (
@@ -649,10 +757,46 @@ mod tests {
     fn the_still_frames_hold_every_ring() {
         for story in chapters() {
             let f = story.compose(story.chapter.still());
-            for r in &f.rings[..3] {
+            for r in &f.rings {
                 assert!(r.light > 0.99, "{:?}", story.chapter);
             }
             assert!(f.filled > 0.99 && f.amount > 0.99, "{:?}", story.chapter);
+        }
+    }
+
+    #[test]
+    fn the_wires_reach_for_the_glass_and_break_on_it() {
+        for story in chapters() {
+            let mut breaks = [0; TENTACLES];
+            let mut was = [false; TENTACLES];
+            let mut t = 0.0;
+            while t < story.loop_seconds {
+                let f = story.compose(t);
+                for (k, w) in f.tentacles.iter().enumerate() {
+                    let [root, .., tip] = w.points;
+                    assert!(root.y.abs() < 1e-6, "rooted in the ground");
+                    assert!((0.0..=1.0).contains(&w.reach) && (0.0..=1.0).contains(&w.light));
+                    assert!((w.contact.length() - 1.0).abs() < 1e-4 && w.contact.y > 0.0);
+                    let broken = w.broken >= 0.0;
+                    if !broken {
+                        // Its tip is on the glass the figure carries.
+                        let off = (tip - f.sphere).length() - SPHERE_RADIUS;
+                        assert!(off.abs() < 0.03, "{t} wire {k}: {off}");
+                    }
+                    if broken && !was[k] {
+                        breaks[k] += 1;
+                        assert!(w.reach > 0.99, "{t} wire {k} broke short");
+                    }
+                    was[k] = broken;
+                    // Its root keeps clear of the cameras' side and of the glass.
+                    let off = root - f.sphere;
+                    assert!(off.x.hypot(off.z) > 1.5, "{t} wire {k}");
+                }
+                t += 1.0 / 30.0;
+            }
+            for (k, n) in breaks.iter().enumerate() {
+                assert!(*n >= 2, "{:?} wire {k} broke {n} times", story.chapter);
+            }
         }
     }
 

@@ -2,7 +2,8 @@
 // ground with its grid, the air over it thickening to the horizon, the
 // sky's band of light, and the glass sphere round the figure, which glows
 // by how much of its shell a ray crosses, brightest at its rim and at its
-// foot, and fills with light up to where the third ring has risen.
+// foot, is lit by its own ring as that turns, and rings where the wires
+// break on it.
 out vec4 o;
 
 // Where a ray from o along unit d enters and leaves a sphere; x > y none.
@@ -17,16 +18,6 @@ vec2 throughSphere(vec3 o_, vec3 d, vec3 c, float r) {
 // How long [a, b] is, clipped to [0, cut].
 float span(float a, float b, float cut) {
   return max(min(b, cut) - max(a, 0.0), 0.0);
-}
-// How much of [a, b] (clipped to [0, cut]) lies under `level`, the ray
-// rising `rise` a metre.
-float under(float a, float b, float cut, float rise, float level) {
-  a = max(a, 0.0);
-  b = min(b, cut);
-  if (b <= a) return 0.0;
-  if (abs(rise) < 1e-5) return EYE.y < level ? b - a : 0.0;
-  float t = (level - EYE.y) / rise;
-  return rise > 0.0 ? max(min(b, t) - a, 0.0) : max(b - max(a, t), 0.0);
 }
 // Height over the planet.
 float altitude(vec3 p) {
@@ -44,7 +35,28 @@ float lines(vec2 g, vec2 fw, float blur) {
 // The glass at a point of its shell: what lights it there.
 float shellLight(vec3 m) {
   float y = altitude(m);
-  float lit = SHELL_LATENT * SHELLS.x + SHELLS.y * smoothstep(SHELLS.z + 0.12, SHELLS.z - 0.12, y);
+  // The sphere's ring lights both halves of it as it turns: lit where it
+  // has passed, brightest just behind it.
+  vec3 rel = m - SPH.xyz;
+  float az = atan(rel.x, rel.z);
+  float painted = SHELLS.z >= PI + 0.4 ? 1.0 : smoothstep(0.0, 0.3, SHELLS.z - mod(az, PI));
+  float wake = exp(-mod(RX(2).y - az, PI) / 0.45) * RN(2).w * RX(2).z;
+  float lit = SHELL_LATENT * SHELLS.x + SHELLS.y * painted + 0.9 * wake;
+  // Where a wire's tip nears the glass it glows; where it breaks a ring of
+  // light runs out over it.
+  for (int t = 0; t < TENTACLES; t++) {
+    float on = TT(t, 2).w;
+    if (on <= 0.0) continue;
+    float broken = TT(t, 1).w;
+    if (broken < 0.0) {
+      float r = TT(t, 0).w;
+      lit += 2.0 * on * r * r * r * r * exp(-length(m - TT(t, 3).xyz) / 0.12);
+    } else if (broken < 1.4) {
+      float d = (length(rel - TT(t, 4).xyz * SPH.w) - 1.1 * broken) / 0.05;
+      float fade = 1.0 - broken / 1.4;
+      lit += 1.6 * on * fade * fade * exp(-d * d);
+    }
+  }
   // Its foot glows where it stands on the ground.
   lit *= 1.0 + 2.0 * exp(-y / 0.14);
   // Each landing sends a ring of light up the glass from the foot.
@@ -123,8 +135,9 @@ void main() {
   vec2 outer = throughSphere(EYE.xyz, d, SPH.xyz, SPH.w);
   vec2 inner = throughSphere(EYE.xyz, d, SPH.xyz, SPH.w - SHELL);
   bool crossesIn = inner.x <= inner.y;
-  // Its grid, at the front and the back of the shell, turning slowly.
-  float spin = TAU * RIGHT.w / META.x;
+  // Its grid, at the front and the back of the shell, turning with its
+  // ring.
+  float spin = -RX(2).y;
   vec3 front = EYE.xyz + d * outer.x - SPH.xyz;
   vec3 back = EYE.xyz + d * outer.y - SPH.xyz;
   float cell = PI / 12.0;
@@ -149,10 +162,8 @@ void main() {
     // The air inside it, lit as it fills.
     if (crossesIn) {
       float chord = span(inner.x, inner.y, cut);
-      float rise = d.y;
-      float filledPart = 0.5 * (under(inner.x, inner.y, cut, rise, SHELLS.z + 0.08)
-                              + under(inner.x, inner.y, cut, rise, SHELLS.z - 0.08));
-      light += GLASS_FOG * (0.12 * SHELLS.x * chord + SHELLS.y * filledPart);
+      float filled = 0.4 * SHELLS.y * min(SHELLS.z / PI, 1.0);
+      light += GLASS_FOG * chord * (0.12 * SHELLS.x + filled);
     }
   }
   o = vec4(u_glow * light, 1.0);

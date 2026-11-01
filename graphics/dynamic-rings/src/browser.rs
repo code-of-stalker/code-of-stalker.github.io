@@ -5,17 +5,20 @@
 //! finished frame.
 use crate::body::{BLEND, PRIMITIVES};
 use crate::{
-    cone_points, look, pack, Chapter, Look, Story, ATMOSPHERE_LIGHT, BEADS, BEAD_LIGHT, BODY_DOT,
-    BODY_LIGHT, BODY_POINTS, BODY_SIZE, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
+    cone_points, look, pack, Chapter, Look, Story, ATMOSPHERE_LIGHT, BEADS, BEAD_LIGHT, BEAT,
+    BODY_DOT, BODY_LIGHT, BODY_POINTS, BODY_SIZE, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
     CONSTELLATIONS, CONSTELLATION_LIGHT, CONSTELLATION_STARS, CONTACT_LIGHT, CROWN_GAP,
-    CROWN_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN, FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT,
-    FLOOR_POOL, FOCAL, FRAME_ASPECT, GHOSTS, GHOST_LIGHT, GHOST_SEGMENTS, GLASS_FOG, HALO,
-    HALO_SPREAD, INNER_LINE_LIGHT, LINE_WIDTH, MID_AT, MOTES, MOTE_LIGHT, MOTE_SPAN, NEBULA_LIGHT,
-    PLANET_CELL, PLANET_LIGHT, PLANET_RADIUS, PLANET_REACH, PRINTS, PRINT_FADE, PRINT_LIGHT,
-    PRINT_SEGMENTS, RING_SEGMENTS, RIPPLE_LIGHT, RIPPLE_REACH, RIPPLE_SECONDS, RIPPLE_SEGMENTS,
-    SCAN_LIGHT, SCAN_WIDTH, SHELL, SHELL_GRID, SHELL_LATENT, SHELL_LIGHT, SHELL_WAVE, SLOTS,
-    SLOT_FEET, SLOT_GHOST, SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_VIEW, SLOT_WORLD, STARS,
-    STAR_LIGHT, THIRD_LIGHT, THREADS, THREAD_BEADS, THREAD_LIGHT, WAVE_GAIN,
+    CROWN_LIGHT, DEBRIS, DEBRIS_FADE, DEBRIS_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN,
+    FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT, FLOOR_POOL, FOCAL, FRAME_ASPECT, GHOSTS, GHOST_LIGHT,
+    GHOST_SEGMENTS, GLASS_FOG, HALO, HALO_SPREAD, INNER_LINE_LIGHT, LINE_WIDTH, MID_AT, MOTES,
+    MOTE_LIGHT, MOTE_SPAN, NEBULA_LIGHT, PLANET_CELL, PLANET_LIGHT, PLANET_RADIUS, PLANET_REACH,
+    PRINTS, PRINT_FADE, PRINT_LIGHT, PRINT_SEGMENTS, RING_SEGMENTS, RIPPLE_LIGHT, RIPPLE_REACH,
+    RIPPLE_SECONDS, RIPPLE_SEGMENTS, SCAN_LIGHT, SCAN_WIDTH, SHELL, SHELL_GRID, SHELL_LATENT,
+    SHELL_LIGHT, SHELL_WAVE, SLICE, SLICE_GLOW, SLICE_LIGHT, SLOTS, SLOT_FEET, SLOT_GHOST,
+    SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_TENTACLE, SLOT_VIEW, SLOT_WORLD, SPIN_LIGHT, SPIN_STEP,
+    SPIN_TRAIL, SPIRES, SPIRE_LIGHT, SPIRE_PIECES, SPOKES, SPOKE_BEADS, SPOKE_LIGHT, STARS,
+    STAR_LIGHT, TENTACLES, TENTACLE_BREAK, TENTACLE_LIGHT, TENTACLE_SEGMENTS, TENTACLE_STRANDS,
+    THINGS, THING_LIGHT, THING_PIECES, THING_RING, UNSCANNED, WAVE_GAIN, WRITHE, WRITHE_REACH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -62,20 +65,38 @@ fn defines() -> String {
         ("SLOT_GHOST", SLOT_GHOST.to_string()),
         ("SLOT_PRINT", SLOT_PRINT.to_string()),
         ("SLOT_FEET", SLOT_FEET.to_string()),
+        ("SLOT_TENTACLE", SLOT_TENTACLE.to_string()),
         ("SLOT_META", SLOT_META.to_string()),
         ("PRINTS", PRINTS.to_string()),
+        ("TENTACLES", TENTACLES.to_string()),
         ("CONES", PRIMITIVES.to_string()),
         ("RING_SEGMENTS", n(RING_SEGMENTS)),
         ("BEADS", n(BEADS)),
         ("GHOST_SEGMENTS", n(GHOST_SEGMENTS)),
-        ("THREADS", n(THREADS)),
-        ("THREAD_BEADS", n(THREAD_BEADS)),
+        ("SPOKES", n(SPOKES)),
+        ("SPOKE_BEADS", n(SPOKE_BEADS)),
+        ("SPIN_TRAIL", n(SPIN_TRAIL)),
+        ("TENTACLE_STRANDS", n(TENTACLE_STRANDS)),
+        ("TENTACLE_SEGMENTS", n(TENTACLE_SEGMENTS)),
+        ("DEBRIS", n(DEBRIS)),
+        ("THING_PIECES", n(THING_PIECES)),
+        ("THING_RING", n(THING_RING)),
+        ("SPIRE_PIECES", n(SPIRE_PIECES)),
         ("PRINT_SEGMENTS", n(PRINT_SEGMENTS)),
         ("RIPPLE_SEGMENTS", n(RIPPLE_SEGMENTS)),
         ("FLOOR_GRID", n(FLOOR_GRID)),
         ("STARS", n(STARS)),
         ("CONSTELLATION_STARS", n(CONSTELLATION_STARS)),
         ("COLUMN_DOTS", n(COLUMN_DOTS)),
+        ("BEAT", f(BEAT)),
+        ("SPIN_STEP", f(SPIN_STEP)),
+        ("SLICE", f(SLICE)),
+        ("SLICE_GLOW", f(SLICE_GLOW)),
+        ("UNSCANNED", f(UNSCANNED)),
+        ("TENTACLE_BREAK", f(TENTACLE_BREAK)),
+        ("DEBRIS_FADE", f(DEBRIS_FADE)),
+        ("WRITHE", f(WRITHE)),
+        ("WRITHE_REACH", f(WRITHE_REACH)),
         ("LINE_WIDTH", f(LINE_WIDTH)),
         ("HALO", f(HALO)),
         ("HALO_SPREAD", f(HALO_SPREAD)),
@@ -101,10 +122,15 @@ fn defines() -> String {
         ("CROWN_LIGHT", f(CROWN_LIGHT)),
         ("BEAD_LIGHT", f(BEAD_LIGHT)),
         ("INNER_LINE_LIGHT", f(INNER_LINE_LIGHT)),
-        ("THIRD_LIGHT", f(THIRD_LIGHT)),
+        ("SPIN_LIGHT", f(SPIN_LIGHT)),
+        ("SLICE_LIGHT", f(SLICE_LIGHT)),
         ("CONTACT_LIGHT", f(CONTACT_LIGHT)),
         ("GHOST_LIGHT", f(GHOST_LIGHT)),
-        ("THREAD_LIGHT", f(THREAD_LIGHT)),
+        ("SPOKE_LIGHT", f(SPOKE_LIGHT)),
+        ("THING_LIGHT", f(THING_LIGHT)),
+        ("TENTACLE_LIGHT", f(TENTACLE_LIGHT)),
+        ("DEBRIS_LIGHT", f(DEBRIS_LIGHT)),
+        ("SPIRE_LIGHT", f(SPIRE_LIGHT)),
         ("SCAN_LIGHT", f(SCAN_LIGHT)),
         ("PRINT_LIGHT", f(PRINT_LIGHT)),
         ("RIPPLE_LIGHT", f(RIPPLE_LIGHT)),
@@ -448,7 +474,7 @@ impl DynamicRings {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: the figure mid-step, all three rings.
+    /// Reduced motion holds one moment: the figure mid-step, every ring.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -570,19 +596,26 @@ impl DynamicRings {
             }
         }
         // The lines.
-        let [crown, torso, legs, sweep] = f.rings.map(|r| r.light);
+        let [crown, scanner, spin] = f.rings.map(|r| r.light);
         let ghosts = f.ghosts.iter().map(|g| g.3).fold(0.0, f32::max);
         let glass = f.floor * (SHELL_LATENT * f.latent + f.filled);
+        let wires = f.tentacles.iter().map(|w| w.light).fold(0.0, f32::max);
         let families = [
             (crown, 2 * RING_SEGMENTS),
             (ghosts, GHOSTS as u32 * GHOST_SEGMENTS),
-            (torso.max(legs), 2 * RING_SEGMENTS),
-            (sweep, RING_SEGMENTS),
+            (scanner, 2 * RING_SEGMENTS),
+            (spin, SPIN_TRAIL * RING_SEGMENTS),
             (glass, RING_SEGMENTS),
             (f.floor, PRINTS as u32 * RIPPLE_SEGMENTS),
             (f.floor, PRINTS as u32 * PRINT_SEGMENTS),
             (f.lock[3] * f32::from(f.lock_radius > 0.0), RING_SEGMENTS),
             (f.world, CONSTELLATIONS * (CONSTELLATION_STARS - 1)),
+            (
+                wires,
+                TENTACLES as u32 * TENTACLE_STRANDS * TENTACLE_SEGMENTS,
+            ),
+            (f.things, THINGS * (12 * THING_PIECES + THING_RING)),
+            (f.world, SPIRES * SPIRE_PIECES),
         ];
         for (kind, (on, count)) in families.iter().enumerate() {
             if *on > 0.0 {
@@ -596,12 +629,13 @@ impl DynamicRings {
             gl.uniform4fv_with_f32_array(self.body.at("u_b"), &cones);
             gl.draw_arrays(Gl::POINTS, 0, BODY_POINTS as i32);
         }
-        // The lights, the rings' beads and the threads through them.
-        let beads = crown.max(torso).max(legs);
+        // The lights, the rings' beads, the spokes between them, the wires'
+        // dust and the spires' lights.
         let lights = [
             (1.0, 4, 2.0),
-            (beads, 3 * BEADS, 4.0),
-            (f.threads, THREADS * THREAD_BEADS, 5.0),
+            (crown.max(scanner), 2 * BEADS, 4.0),
+            (f.spokes, SPOKES * SPOKE_BEADS, 5.0),
+            (f.world, TENTACLES as u32 * (DEBRIS + 2) + SPIRES, 7.0),
         ];
         for (on, count, kind) in lights {
             if on > 0.0 {

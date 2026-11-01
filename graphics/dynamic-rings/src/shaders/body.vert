@@ -2,8 +2,8 @@
 // the body's rounded cones (lib.rs cone_points) at a place fixed by its
 // number; it is set on that cone, then onto the blended surface of all of
 // them, so the points ride the limbs as the figure moves. Its light
-// gathers at the outline, dims on the far side, and answers the rings
-// round it, the breath's beat and the lock's wave.
+// gathers at the outline, dims on the far side, and answers the scanner
+// running up and down it, the breath's beat and the lock's wave.
 uniform vec4 u_b[CONES * 3];
 out vec3 v_color;
 
@@ -109,23 +109,32 @@ void main() {
   light *= mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
   // Fine bands of the hologram drifting up the body.
   light *= 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
-  // On each full in-breath a beat runs out from the torso ring through the
-  // body.
+  // On each full in-breath a beat runs down from the scanner, at the top
+  // of the head, through the body.
   float since = LOCK2.w;
   float out_ = (length(p - RC(1).xyz) - 0.95 * since) / 0.07;
   float lift = 1.6 * RN(1).w * exp(-out_ * out_) * exp(-since / 0.8);
-  // Each ring lights the skin it passes.
-  for (int k = 0; k < 3; k++) {
-    vec3 q = p - RC(k).xyz;
-    float h = dot(q, RN(k).xyz);
-    float r = length(q - RN(k).xyz * h) - RC(k).w;
-    lift += 1.4 * RN(k).w * RX(k).z * exp(-(h * h + r * r) / (0.12 * 0.12));
-  }
-  // The crown ring's plane scans the figure as it passes.
-  lift += SCAN_LIGHT * scanned(p);
+  // The scanner cuts the skin in a bright line where its plane runs; what
+  // it has just passed glows on, and the rest of the figure waits dim.
+  float rate = -sin(TAU * since / BEAT);
+  float level = p.y - RC(1).y;
+  float behind = -level * sign(rate);
+  float scanning = RN(1).w * smoothstep(0.5, 1.0, RX(1).z);
+  float passed = behind > 0.0 ? sqrt(abs(rate)) * exp(-behind / SLICE_GLOW) : 0.0;
+  float cut = scanning * exp(-level * level / (SLICE * SLICE));
+  lift += SLICE_LIGHT * cut;
+  light *= mix(1.0, mix(UNSCANNED, 1.0, passed), scanning);
+  // The crown ring lights the skin it comes near.
+  vec3 q = p - RC(0).xyz;
+  float along = dot(q, RN(0).xyz);
+  float r = length(q - RN(0).xyz * along) - RC(0).w;
+  lift += 1.4 * RN(0).w * exp(-(along * along + r * r) / (0.12 * 0.12));
   light *= 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
   // Its own size in metres, but never finer than a pixel's worth.
   float s0 = max(max(BODY_DOT / v.z * VIEW.y * 0.5 * VIEW.w, BODY_SIZE * VIEW.w), 0.65);
+  // In the scanner's cut the points swell into a line, as wide close up
+  // as far off.
+  s0 += 1.3 * BODY_SIZE * VIEW.w * cut;
   float blur = lensBlur(v.z);
   float sigma = min(sqrt(s0 * s0 + blur * blur), u_kind.y / 6.0);
   gl_Position = pxToClip(toPx(v));

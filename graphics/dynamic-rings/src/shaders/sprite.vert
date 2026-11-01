@@ -1,28 +1,16 @@
 // Round glows: the motes in the air (kind 0), the dots of the floor (1),
 // the lights (2: where the feet press, the crown ring's two knots), the far
-// stars (3), the beads of the three rings (4), the threads of beads that
-// run up through them once they lock (5), the columns of data over the
-// horizon (6). Each instance is a square three blurred widths out from its
-// centre (sprite.frag).
+// stars (3), the beads of the crown and the scanner (4), the spokes of
+// beads that run between them once they lock (5), the columns of data over
+// the horizon (6), and (7) the dust of the crumbling wires, their tips and
+// roots, the lights on the spires. Each instance is a square three blurred
+// widths out from its centre (sprite.frag).
 out vec3 v_color;
 out vec2 v_q;
 
 // Pixels of a size in metres at depth z.
 float worldPx(float metres, float z) {
   return metres / z * VIEW.y * 0.5 * VIEW.w;
-}
-
-// A point between the rings: u 0 on the legs ring, 0.5 the torso's, 1 the
-// crown's, at angle s round them.
-vec3 between(float u, float s) {
-  int k = u < 0.5 ? 2 : 1;
-  int l = u < 0.5 ? 1 : 0;
-  float x = smoothstep(0.0, 1.0, u < 0.5 ? u * 2.0 : u * 2.0 - 1.0);
-  vec3 c = mix(RC(k).xyz, RC(l).xyz, x);
-  vec3 n = normalize(mix(RN(k).xyz, RN(l).xyz, x));
-  // Fuller between the rings, as round a body.
-  float r = mix(RC(k).w, RC(l).w, x) * (1.0 + 0.12 * sin(PI * x));
-  return onTilted(c, n, r, s);
 }
 
 void main() {
@@ -131,8 +119,9 @@ void main() {
     most = 0.0009;
     far = true;
   } else if (kind == 4) {
-    // The rings' beads: gathered on their ring, or scattered in a cloud
-    // round where it will be, each coming in at its own moment.
+    // The beads of the crown and the scanner: gathered on their ring, or
+    // scattered in a cloud round where it will be, each coming in at its
+    // own moment.
     int k = i / BEADS;
     int j = i - k * BEADS;
     uint seed = uint(i) * 5u + 101u;
@@ -157,17 +146,74 @@ void main() {
     sigma0 = mix(0.0045, 0.0075, big) * (k == 0 ? 0.8 : 1.0);
     sized = true;
   } else if (kind == 5) {
-    // The threads: beads spiralling up from the legs through the torso to
-    // the crown, whole laps a loop.
-    int h = i / THREAD_BEADS;
-    int b = i - h * THREAD_BEADS;
-    float laps = max(1.0, floor(META.x / 2.6 + 0.5));
-    float u = fract((float(b) + 0.5) / float(THREAD_BEADS) + laps * RIGHT.w / META.x);
-    float s = TAU * float(h) / float(THREADS) + 1.4 * PI * u + RX(1).y;
-    p = between(u, s);
-    light = LOCK2.z * THREAD_LIGHT * sin(PI * u) * (1.0 + WAVE_GAIN * lockWave(p));
-    sigma0 = 0.0035;
+    // The spokes: beads running out from the scanner to the crown ring and
+    // back in along every other one, whole laps a loop.
+    int h = i / SPOKE_BEADS;
+    int b = i - h * SPOKE_BEADS;
+    float laps = max(1.0, floor(META.x / 2.2 + 0.5));
+    float u = fract((float(b) + 0.5) / float(SPOKE_BEADS) + laps * RIGHT.w / META.x);
+    if (h % 2 == 1) u = 1.0 - u;
+    float s = TAU * float(h) / float(SPOKES) + RX(1).y;
+    vec3 from = onTilted(RC(1).xyz, RN(1).xyz, RC(1).w, s);
+    vec3 to = onTilted(RC(0).xyz, RN(0).xyz, RC(0).w, s + 0.4);
+    p = mix(from, to, u);
+    light = LOCK2.z * SPOKE_LIGHT * sin(PI * u) * (1.0 + WAVE_GAIN * lockWave(p));
+    sigma0 = 0.003;
     sized = true;
+  } else if (kind == 7) {
+    sized = true;
+    int dust = TENTACLES * DEBRIS;
+    if (i < dust) {
+      // A wire's dust: each grain comes loose as the crumbling reaches
+      // it, flies off and falls, dimming.
+      int t = i / DEBRIS;
+      int d = i - t * DEBRIS;
+      uint seed = uint(i) * 7u + 3001u;
+      float broken = TT(t, 1).w;
+      float s = (float(d) + rand(seed)) / float(DEBRIS);
+      float loose = (1.0 - s) * TENTACLE_BREAK;
+      float age = broken - loose;
+      if (broken >= 0.0 && age >= 0.0) {
+        float w = TT(t, 4).w + 0.25 * WRITHE * (1.0 - exp(-loose / 0.25));
+        vec3 jitter = vec3(rand(seed + 1u), rand(seed + 2u), rand(seed + 3u)) * 2.0 - 1.0;
+        vec3 v = 0.35 * jitter + TT(t, 4).xyz * (0.6 * s * s) + vec3(0.0, 0.12, 0.0);
+        p = bend(wire(t, s, w) + 0.03 * jitter + v * DEBRIS_FADE * (1.0 - exp(-age / DEBRIS_FADE)))
+          - vec3(0.0, 0.1 * age * age, 0.0);
+        float spark = 0.6 + 0.4 * sin(w * 3.0 + 40.0 * rand(seed + 4u) + 9.0 * age);
+        light = DEBRIS_LIGHT * TT(t, 2).w * exp(-age / (1.5 * DEBRIS_FADE)) * mix(0.4, 1.0, rand(seed + 5u)) * spark
+              * (1.0 + 2.0 * exp(-age / 0.08));
+        sigma0 = mix(0.004, 0.008, rand(seed + 6u));
+      }
+    } else if (i < dust + 2 * TENTACLES) {
+      // A wire's growing tip, its flash on the glass where it breaks, and
+      // its root's glow on the ground.
+      int t = (i - dust) / 2;
+      bool tip = (i - dust) % 2 == 0;
+      float broken = TT(t, 1).w;
+      float reach = TT(t, 0).w;
+      if (tip) {
+        p = broken < 0.0 ? bend(wire(t, reach, TT(t, 3).w)) : TT(t, 3).xyz;
+        light = broken < 0.0 ? 0.5 * reach * reach : 2.4 * exp(-broken / 0.3);
+        sigma0 = broken < 0.0 ? 0.02 : 0.05;
+      } else {
+        p = bend(TT(t, 0).xyz) + vec3(0.0, 0.01, 0.0);
+        light = 0.35 * (broken < 0.0 ? 1.0 : exp(-broken / 1.0));
+        sigma0 = 0.06;
+      }
+      light *= DEBRIS_LIGHT * TT(t, 2).w;
+    } else {
+      // A light at a spire's top, blinking now and then.
+      int c = i - dust - 2 * TENTACLES;
+      vec4 f = spire(c);
+      uint seed = uint(c) * 23u + 811u;
+      p = bend(vec3(f.x, f.w, f.z));
+      float blink = fract(pace(seed + 8u, 3.0) * RIGHT.w / META.x + rand(seed + 9u));
+      float dz = f.z - (SHELLS.w + 6.0);
+      light = SPIRE_LIGHT * 2.5 * WORLD.w * (0.25 + exp(-blink / 0.06))
+            * smoothstep(0.5 * WORLD.x, 0.5 * WORLD.x - 5.0, abs(dz));
+      if (hidden(p)) light = 0.0;
+      sigma0 = 0.06;
+    }
   } else {
     // A column of data over the horizon: a bright head falls, the code it
     // leaves fading above it.

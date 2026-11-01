@@ -1,10 +1,11 @@
 // The lines: the crown ring's two strands (kind 0) and its trail of last
-// positions (1), the torso and legs rings' fine lines (2), the sweep that
-// fills the glass (3), where the glass meets the ground (4), the ripples of
+// positions (1), the scanner and its echo (2), the sphere's turning ring
+// and its trail (3), where the glass meets the ground (4), the ripples of
 // the heel strikes (5), the footprints (6), the lock's wave along the
-// ground (7), the figures among the stars (8). Each instance is one
-// straight piece of a curve, drawn as a band a few blurred widths across
-// (line.frag).
+// ground (7), the figures among the stars (8), the wires (9), the things
+// the walk passes (10), the spires over the horizon (11). Each instance is
+// one straight piece of a curve, drawn as a band a few blurred widths
+// across (line.frag).
 out vec3 v_color;
 out float v_across;
 out float v_sigma;
@@ -27,17 +28,31 @@ void main() {
   float width = 1.0;
   bool sharp = false;
   if (kind == 0 || kind == 2 || kind == 3) {
-    // The rings: two strands of the crown, the torso's and the legs' lines,
-    // the sweep.
+    // The rings: two strands of the crown, the scanner and its echo, the
+    // sphere's ring and the trail it leaves as it turns.
     int strand = i / RING_SEGMENTS;
     int j = i - strand * RING_SEGMENTS;
-    int k = kind == 0 ? 0 : (kind == 2 ? 1 + strand : 3);
+    int k = kind == 0 ? 0 : (kind == 2 ? 1 : 2);
     float s0 = TAU * float(j) / float(RING_SEGMENTS);
     float s1 = TAU * float(j + 1) / float(RING_SEGMENTS);
     vec4 c = RC(k);
     vec4 n = RN(k);
     vec4 x = RX(k);
     vec3 off = kind == 0 ? n.xyz * (CROWN_GAP * (float(strand) - 0.5)) : vec3(0.0);
+    float fade = 1.0;
+    if (kind == 2 && strand == 1) {
+      // The echo lags where the scanner has just been.
+      float rate = -sin(TAU * LOCK2.w / BEAT);
+      off = -n.xyz * 0.06 * rate;
+      fade = 0.35 * abs(rate);
+    }
+    if (kind == 3 && strand > 0) {
+      // Behind the turning ring its last places, fading.
+      float turned = x.y - SPIN_STEP * float(strand) * x.z;
+      n.xyz = vec3(cos(turned), 0.0, -sin(turned));
+      float f = 1.0 - float(strand) / float(SPIN_TRAIL);
+      fade = 0.4 * f * f * x.z;
+    }
     a = onTilted(c.xyz + off, n.xyz, c.w, s0);
     b = onTilted(c.xyz + off, n.xyz, c.w, s1);
     vec3 mid = 0.5 * (a + b);
@@ -49,11 +64,12 @@ void main() {
             * (1.0 + 1.5 * x.w);
       width = 1.15;
     } else if (kind == 2) {
-      light = n.w * INNER_LINE_LIGHT * smoothstep(0.5, 1.0, x.z) * flash * facing(mid);
-      width = 0.8;
+      light = n.w * INNER_LINE_LIGHT * smoothstep(0.5, 1.0, x.z) * flash * facing(mid) * fade;
+      width = 1.1;
     } else {
-      light = n.w * THIRD_LIGHT * facing(mid);
-      width = 1.5;
+      // Under the ground it is gone.
+      light = n.w * SPIN_LIGHT * flash * facing(mid) * fade * smoothstep(-0.02, 0.06, min(a.y, b.y));
+      width = strand == 0 ? 1.3 : 1.0;
     }
   } else if (kind == 1) {
     int k = i / GHOST_SEGMENTS;
@@ -124,6 +140,152 @@ void main() {
       light = LOCK.w * 0.9 * WORLD.z * exp(-r / 4.0);
       width = 1.6;
     }
+  } else if (kind == 9) {
+    // A wire: three strands braided round its writhing middle, grown out
+    // of the ground as far as it has reached, crumbling back from the
+    // glass once it has broken there.
+    int per = TENTACLE_STRANDS * TENTACLE_SEGMENTS;
+    int t = i / per;
+    int strand = (i - t * per) / TENTACLE_SEGMENTS;
+    int j = i - t * per - strand * TENTACLE_SEGMENTS;
+    float w = TT(t, 3).w;
+    float shown = min(TT(t, 0).w, wireCut(t));
+    float s0 = float(j) / float(TENTACLE_SEGMENTS);
+    float s1 = min(float(j + 1) / float(TENTACLE_SEGMENTS), shown);
+    if (s0 < shown && TT(t, 2).w > 0.0) {
+      vec3 ends[2];
+      for (int e = 0; e < 2; e++) {
+        float s = e == 0 ? s0 : s1;
+        vec3 c = wire(t, s, w);
+        vec3 along = normalize(wire(t, min(s + 0.01, 1.0), w) - wire(t, max(s - 0.01, 0.0), w));
+        vec3 n1 = normalize(cross(along, abs(along.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+        vec3 n2 = cross(along, n1);
+        float turn = TAU * float(strand) / float(TENTACLE_STRANDS) + 16.0 * s + 0.6 * w;
+        ends[e] = bend(c + mix(0.06, 0.008, s) * (n1 * cos(turn) + n2 * sin(turn)));
+      }
+      a = ends[0];
+      b = ends[1];
+      float s = 0.5 * (s0 + s1);
+      // Light runs along it toward the figure; its growing tip and its
+      // crumbling edge burn.
+      float run = pow(fract(2.0 * s - 0.8 * RIGHT.w + 0.33 * float(strand)), 8.0);
+      float edge = exp(-(shown - s) / 0.03);
+      light = TENTACLE_LIGHT * TT(t, 2).w * (0.45 + 1.4 * run + 3.0 * edge) * mix(0.8, 1.2, s)
+            * (1.0 + WAVE_GAIN * lockWave(0.5 * (a + b)));
+      width = mix(1.8, 0.9, s);
+    }
+  } else if (kind == 10) {
+    // A thing the walk passes, a cube on the ground or a crystal in the
+    // air: faint outside the glass; once inside, a ring runs up and down it
+    // and its edges light where the ring and the crown ring's plane cross
+    // them.
+    int edges = 12 * THING_PIECES;
+    int per = edges + THING_RING;
+    int c = i / per;
+    int local = i - c * per;
+    int e = min(local, edges - 1) / THING_PIECES;
+    int piece = min(local, edges - 1) - e * THING_PIECES;
+    uint seed = uint(c) * 17u + 601u;
+    float L = WORLD.x;
+    bool air = rand(seed) < 0.5;
+    float side = rand(seed + 1u) < 0.5 ? -1.0 : 1.0;
+    float size = mix(0.07, 0.13, rand(seed + 2u));
+    float dz = mod(rand(seed + 3u) * L - SPH.z + 0.5 * L, L) - 0.5 * L;
+    vec3 at = vec3(side * mix(0.42, 0.95, rand(seed + 4u)),
+                   air ? mix(0.75, 1.85, rand(seed + 5u)) : size,
+                   SPH.z + dz);
+    float w = loopPhase();
+    float yaw = TAU * rand(seed + 6u) + (air ? w * pace(seed + 7u, 9.0) : 0.0);
+    float tilt = air ? 0.5 * sin(w * pace(seed + 8u, 13.0) + TAU * rand(seed + 9u)) : 0.0;
+    if (air) at.y += 0.05 * sin(w * pace(seed + 10u, 7.0));
+    // Edge e of a cube (on the ground) or an octahedron (in the air).
+    vec3 pa;
+    vec3 pb;
+    if (!air) {
+      int axis = e / 4;
+      int bits = e - axis * 4;
+      float u = float(bits & 1) * 2.0 - 1.0;
+      float v = float(bits >> 1) * 2.0 - 1.0;
+      vec3 one = axis == 0 ? vec3(1.0, 0.0, 0.0) : (axis == 1 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
+      vec3 two = axis == 0 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+      vec3 three = axis == 2 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+      vec3 q = two * u + three * v;
+      pa = q - one;
+      pb = q + one;
+    } else {
+      int pair = e / 4;
+      int bits = e - pair * 4;
+      vec3 ea = pair == 2 ? vec3(0.0, 1.5, 0.0) : vec3(1.0, 0.0, 0.0);
+      vec3 eb = pair == 0 ? vec3(0.0, 1.5, 0.0) : vec3(0.0, 0.0, 1.0);
+      pa = ea * (float(bits & 1) * 2.0 - 1.0);
+      pb = eb * (float(bits >> 1) * 2.0 - 1.0);
+    }
+    float edge = smoothstep(0.5 * L, 0.5 * L - 2.0, abs(dz));
+    float inside = smoothstep(0.04, -0.1, length(at - SPH.xyz) - SPH.w);
+    // Its scanning ring, up and down it a few times a second's walk.
+    float tall = air ? 1.5 * size : size;
+    float ringY = at.y + 1.15 * tall * sin(w * pace(seed + 11u, 1.4));
+    if (local >= edges) {
+      int j = local - edges;
+      float s0 = TAU * float(j) / float(THING_RING);
+      float s1 = TAU * float(j + 1) / float(THING_RING);
+      // Wider where it passes the thing's middle, as round its girth.
+      float r = size * mix(1.25, 1.75, 1.0 - abs(ringY - at.y) / (1.15 * tall));
+      vec3 round_ = vec3(at.x, ringY, at.z);
+      a = bend(round_ + onRing(s0, r));
+      b = bend(round_ + onRing(s1, r));
+      light = THING_LIGHT * META.w * edge * inside * 1.4 * (1.0 + WAVE_GAIN * lockWave(round_));
+      width = 0.8;
+    } else {
+      vec3 qa = mix(pa, pb, float(piece) / float(THING_PIECES));
+      vec3 qb = mix(pa, pb, float(piece + 1) / float(THING_PIECES));
+      mat3 turn = mat3(cos(yaw), 0.0, -sin(yaw), 0.0, 1.0, 0.0, sin(yaw), 0.0, cos(yaw))
+                * mat3(1.0, 0.0, 0.0, 0.0, cos(tilt), sin(tilt), 0.0, -sin(tilt), cos(tilt));
+      a = bend(at + turn * qa * size);
+      b = bend(at + turn * qb * size);
+      vec3 m = 0.5 * (a + b);
+      // Once inside, light runs along its edges.
+      float run = pow(fract(float(piece) / float(THING_PIECES) - 1.5 * RIGHT.w + rand(seed + uint(e))), 6.0);
+      float cut = (m.y - ringY) / (0.3 * size);
+      light = THING_LIGHT * META.w * edge * (0.12 + inside * (0.6 + 0.7 * run + 2.5 * exp(-cut * cut)))
+            * (1.0 + 4.0 * scanned(m) * inside) * (1.0 + WAVE_GAIN * lockWave(m));
+      width = 0.9;
+    }
+  } else if (kind == 11) {
+    // A spire over the horizon: a mast and three stays to the ground; a
+    // light climbs the mast.
+    int c = i / SPIRE_PIECES;
+    int j = i - c * SPIRE_PIECES;
+    vec4 f = spire(c);
+    uint seed = uint(c) * 23u + 811u;
+    vec3 foot = vec3(f.x, 0.0, f.z);
+    float h = f.w;
+    float climb = fract(pace(seed + 5u, 6.0) * RIGHT.w / META.x + rand(seed + 6u));
+    if (j < 16) {
+      float u0 = float(j) / 16.0;
+      float u1 = float(j + 1) / 16.0;
+      a = bend(foot + vec3(0.0, h * u0, 0.0));
+      b = bend(foot + vec3(0.0, h * u1, 0.0));
+      float d = (0.5 * (u0 + u1) - climb) / 0.05;
+      light = 0.8 + 2.0 * exp(-d * d);
+    } else {
+      int stay = (j - 16) / 8;
+      int k = j - 16 - stay * 8;
+      float az = TAU * (float(stay) / 3.0 + rand(seed + 7u));
+      vec3 top = foot + vec3(0.0, 0.72 * h, 0.0);
+      vec3 low = foot + 0.5 * h * vec3(sin(az), 0.0, cos(az));
+      float u0 = float(k) / 8.0;
+      float u1 = float(k + 1) / 8.0;
+      // Each stay sags a little.
+      a = bend(mix(top, low, u0) - vec3(0.0, 0.06 * h * sin(PI * u0), 0.0));
+      b = bend(mix(top, low, u1) - vec3(0.0, 0.06 * h * sin(PI * u1), 0.0));
+      light = 0.45;
+    }
+    float dz = f.z - (SHELLS.w + 6.0);
+    float edge = smoothstep(0.5 * WORLD.x, 0.5 * WORLD.x - 5.0, abs(dz));
+    light *= SPIRE_LIGHT * WORLD.w * edge;
+    if (hidden(0.5 * (a + b))) light = 0.0;
+    width = 0.8;
   } else {
     // A figure of stars: each joined to the next.
     int per = CONSTELLATION_STARS - 1;

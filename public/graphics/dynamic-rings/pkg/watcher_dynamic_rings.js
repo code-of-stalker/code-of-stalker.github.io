@@ -99,7 +99,7 @@ export class DynamicRings {
         wasm.dynamicrings_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: the figure mid-step, all three rings.
+     * Reduced motion holds one moment: the figure mid-step, every ring.
      * @param {boolean} value
      */
     reduced(value) {

@@ -1,14 +1,17 @@
 //! «Везде», page 07 of Step 5 «Внешнее кольцо», the page «Позволь телу
 //! запомнить». Art's long strip of places (a room, a street, a crowd, a
 //! field) closed into a ring, and a clear glass ball, the sphere of
-//! attention, floating at its centre. The camera looks down over the ring
-//! at the ball and the place behind it. At first only the room is lit; the
-//! ring turns each next place round to the ball, and there the ball rings:
-//! it trembles and a wave of light runs over the place and leaves it lit
-//! (the body's response, remembered). With every place lit the camera
-//! rises to see them all round the one sphere, a light runs round the
-//! ring, and the seam where the strip's ends meet heals. Then the camera
-//! comes back down to the room and the other places sink into the dark.
+//! attention, floating at its centre. The ring is a blank screen and the
+//! ball a projector: a lamp burns at its centre and the places show only
+//! where it throws them, its beams seen in the air. The camera looks down
+//! over the ring at the ball and the beam to the place it throws. At first
+//! it throws only the room; the ring turns each next blank stretch round to
+//! the beam, and there the ball rings: it trembles and the place spreads
+//! over the screen behind a wave of light and stays (the body's response,
+//! remembered). With every place thrown the camera rises to see them all
+//! round the one sphere, a light runs round the ring, and the seam where
+//! the strip's ends meet heals. Then the camera comes back down to the
+//! room and the ball stops throwing the other places.
 //! Every value here is a pure function of loop time; `browser.rs` only
 //! uploads it and the shader traces it.
 use std::f32::consts::{PI, TAU};
@@ -38,8 +41,8 @@ pub const BALL_RADIUS: f32 = 195.0;
 pub const IOR: f32 = 1.5;
 pub const F0: f32 = 0.04;
 
-/// The places, in the order the ring brings them to the ball: the strip
-/// column behind the ball while it rests there.
+/// The places, in the order the ring brings them to the ball's beam: the
+/// strip column at AIM while it rests there.
 pub const ROOM: usize = 0;
 pub const STREET: usize = 1;
 pub const CROWD: usize = 2;
@@ -54,8 +57,9 @@ pub const BORDERS: [f32; PLACES - 1] = [
     (PLACE_AT[2] + PLACE_AT[3]) / 2.0,
 ];
 const BORDER_SOFT: f32 = 250.0;
-/// How much of an unlit place shows.
-const DIM: f32 = 0.35;
+/// The ring is a blank screen: how much of a place shows before the ball
+/// throws it there.
+const GHOST: f32 = 0.05;
 /// The ring turning each next place to the ball, s.
 pub const TURNS: [[f32; 2]; PLACES - 1] = [[6.0, 11.0], [14.5, 19.5], [23.0, 28.0]];
 /// When the ball rings at each place, s.
@@ -94,6 +98,10 @@ const WIDE: [f32; 3] = [-1088.0, -2900.0, 0.32];
 const LOOK_NEAR: [f32; 2] = [230.0, 80.0];
 const LOOK_WIDE: [f32; 2] = [240.0, 0.0];
 const STEP: f32 = 0.2;
+/// Low over the ring the camera stands to the right and looks to the left
+/// of the ball, so the beam crosses the view to the place it throws, px.
+const SIDE_EYE: f32 = 420.0;
+const SIDE_LOOK: f32 = -260.0;
 /// The camera sways side to side once a loop, px.
 const SWAY: f32 = 120.0;
 /// The ball floats and breathes, whole cycles a loop.
@@ -107,10 +115,28 @@ const SCAN_WIDTH: f32 = 260.0;
 /// what lies beyond it shows through.
 const BACK_LIGHT: f32 = 0.3;
 const BACK_SEE: f32 = 0.7;
-/// The ball shines as the places light: how much it brightens the places
-/// round it, and how much light it holds itself.
-const SHINE_ON_RING: f32 = 1.2;
-const SHINE_IN_BALL: f32 = 0.3;
+/// The ball is the projector: the faint light the blank screen catches
+/// from it, the glow in its glass, the lamp at its centre and that lamp's
+/// size as a share of the radius.
+const SCREEN: f32 = 0.07;
+const SHINE_IN_BALL: f32 = 0.2;
+const CORE: f32 = 1.5;
+const CORE_SIZE: f32 = 0.5;
+/// How much of the ring shows through the lit glass.
+const SEE_IN_BALL: f32 = 0.55;
+/// Where round the ring the ball throws the place it rings for: radians
+/// from behind it, to the left, so the beam crosses the view.
+pub const AIM: f32 = -1.15;
+/// The lamp's glare round the ball.
+const HALO: f32 = 0.06;
+/// The light it throws, seen in the air between it and the ring: how
+/// bright per px of air, how blurred (a mip level of the strip), and the
+/// even light under the picture's own.
+const BEAM: f32 = 0.011;
+const BEAM_LOD: f32 = 3.0;
+const BEAM_BASE: f32 = 0.06;
+/// The beam's top and bottom melt over this many strip px.
+const BEAM_SOFT: f32 = 160.0;
 /// The strip's edges melt over this many px; while the seam is open its
 /// two ends darken toward it over this many.
 const EDGE: f32 = 20.0;
@@ -121,7 +147,7 @@ pub const ENGRAVE_WHITE: f32 = 0.6307;
 pub const ENGRAVE_GAMMA: f32 = 0.75;
 
 /// The shader's `u_geo`.
-pub const GEOMETRY: [f32; 32] = [
+pub const GEOMETRY: [f32; 40] = [
     RING,
     SIZE[0] as f32,
     SIZE[1] as f32,
@@ -142,16 +168,24 @@ pub const GEOMETRY: [f32; 32] = [
     BORDERS[1],
     BORDERS[2],
     BORDER_SOFT,
-    DIM,
+    GHOST,
     SCAN_WIDTH,
     BACK_LIGHT,
     BACK_SEE,
     EDGE,
     SEAM,
     ASPECT,
-    0.0,
-    SHINE_ON_RING,
+    CORE_SIZE,
+    SCREEN,
     SHINE_IN_BALL,
+    CORE,
+    BEAM,
+    BEAM_LOD,
+    BEAM_BASE,
+    HALO,
+    AIM,
+    SEE_IN_BALL,
+    BEAM_SOFT,
     0.0,
     0.0,
 ];
@@ -159,7 +193,7 @@ pub const GEOMETRY: [f32; 32] = [
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
     pub time: f32,
-    /// The strip column behind the ball, 0..SIZE[0].
+    /// The strip column the ball throws, at AIM, 0..SIZE[0].
     pub along: f32,
     /// The camera, and the tan of half its view's height.
     pub eye: [f32; 4],
@@ -169,7 +203,8 @@ pub struct Frame {
     pub ball: [f32; 4],
     /// Seconds since each place's ring, negative before it.
     pub rang: [f32; PLACES],
-    /// How lit each place is, 0..1; the shader spreads it with the wave.
+    /// How much of each place the ball throws, 0..1; the shader spreads it
+    /// with the wave.
     pub lit: [f32; PLACES],
     /// The ball's hum 0..1.
     pub hum: f32,
@@ -184,8 +219,8 @@ pub struct Frame {
     pub phase: f32,
 }
 
-/// How far the ring has turned before wrapping: the strip column behind
-/// the ball.
+/// How far the ring has turned before wrapping: the strip column the ball
+/// throws.
 pub fn turned(t: f32) -> f32 {
     let mut at = PLACE_AT[ROOM];
     for (i, [a, b]) in TURNS.iter().enumerate() {
@@ -206,8 +241,8 @@ pub fn risen(t: f32) -> f32 {
         - ease(DESCEND[0], DESCEND[1], t)
 }
 
-/// The room is always lit; every other place lights as it rings and sinks
-/// back into the dark at the end.
+/// The ball always throws the room; every other place it throws from its
+/// ring on, and stops throwing at the end.
 pub fn lit(place: usize, t: f32) -> f32 {
     if place == ROOM {
         return 1.0;
@@ -253,13 +288,13 @@ pub fn compose(t: f32) -> Frame {
         BALL_RADIUS * (1.0 + BREATH * (BREATH_TIMES * phase).sin()),
     ];
     let eye = [
-        SWAY * phase.sin(),
+        SWAY * phase.sin() + SIDE_EYE * (1.0 - w),
         mix(NEAR[0], WIDE[0], w),
         mix(NEAR[1], WIDE[1], w),
         mix(NEAR[2], WIDE[2], w),
     ];
     let target = [
-        0.0,
+        SIDE_LOOK * (1.0 - w),
         BALL_HIGH + mix(LOOK_NEAR[0], LOOK_WIDE[0], w),
         mix(LOOK_NEAR[1], LOOK_WIDE[1], w),
     ];

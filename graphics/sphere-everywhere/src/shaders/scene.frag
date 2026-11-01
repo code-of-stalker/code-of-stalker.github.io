@@ -2,11 +2,12 @@
 precision highp float;
 // Art's strip of places closed into a ring and a clear glass ball, the
 // sphere of attention, at its centre. Each pixel traces one ray from the
-// camera. The ring's painting faces in, its back is a dim see-through
-// film; each place shows lit or dim, and a place that rings lights with
-// the wave it sends. The ball reflects and refracts the ring. Positions
-// are strip px, y down like the painting. Timing and geometry mirror
-// lib.rs.
+// camera. The ring is a blank screen facing in, its back a dim see-through
+// film; the ball is a projector with a lamp at its centre, and a place
+// shows only where the ball throws it, spreading with the wave its ring
+// sends. The thrown light glows in the air between the ball and the ring.
+// The ball reflects and refracts the ring. Positions are strip px, y down
+// like the painting. Timing and geometry mirror lib.rs.
 uniform sampler2D u_left;  // the strip's columns 0 .. HALF
 uniform sampler2D u_right; // HALF .. SIZE
 uniform vec2 u_res;        // target px
@@ -17,13 +18,13 @@ uniform vec4 u_eye;        // the camera, tan of half the view's height
 uniform vec4 u_target;     // where it looks, the seam 1 open … 0 healed
 uniform vec4 u_ball;       // the ball's centre and radius
 uniform vec4 u_rang;       // seconds since each place rang
-uniform vec4 u_lit;        // how lit each place is
+uniform vec4 u_lit;        // how much of each place the ball throws
 uniform vec4 u_state;      // the column behind the ball, the hum, the running light's column and strength
 uniform vec4 u_time;       // loop time, loop phase, the ball's shine, the seam's flash
 uniform vec3 u_glow;       // the light the ball and the waves add
 uniform vec3 u_deep;       // the engraving's deepest ink
 uniform vec3 u_mid;        // its middle ink
-uniform vec4 u_geo[8];     // GEOMETRY in lib.rs
+uniform vec4 u_geo[10];    // GEOMETRY in lib.rs
 in vec2 v_uv;
 out vec4 o;
 
@@ -33,6 +34,8 @@ const float MID_AT = 0.45;
 // The ball's light: head on, its edge, and the hum's.
 const float RIM = 0.12;
 const float RIM_HUM = 0.25;
+// Samples of the light in the air along one ray.
+const int BEAM_STEPS = 18;
 
 #define RING u_geo[0].x
 #define SIZE u_geo[0].yz
@@ -48,15 +51,24 @@ const float RIM_HUM = 0.25;
 #define ENGRAVE_GAMMA u_geo[3].w
 #define BORDER u_geo[4].xyz
 #define BORDER_SOFT u_geo[4].w
-#define DIM u_geo[5].x
+#define GHOST u_geo[5].x
 #define SCAN_WIDTH u_geo[5].y
 #define BACK_LIGHT u_geo[5].z
 #define BACK_SEE u_geo[5].w
 #define EDGE u_geo[6].x
 #define SEAM u_geo[6].y
 #define ASPECT u_geo[6].z
-#define SHINE_ON_RING u_geo[7].x
+#define CORE_SIZE u_geo[6].w
+#define SCREEN u_geo[7].x
 #define SHINE_IN_BALL u_geo[7].y
+#define SEE_IN_BALL u_geo[9].x
+#define BEAM_SOFT u_geo[9].y
+#define CORE u_geo[7].z
+#define BEAM u_geo[7].w
+#define BEAM_LOD u_geo[8].x
+#define BEAM_BASE u_geo[8].y
+#define HALO u_geo[8].z
+#define AIM u_geo[8].w
 
 float hash12(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -96,8 +108,9 @@ float response(vec2 q) {
   return light;
 }
 
-// How lit the place at q is: its level, spread over it by the wave its
-// ring sends, the room always lit; neighbours blend at the borders.
+// How much the ball throws of the place at q: its level, spread over it
+// by the wave its ring sends, the room always thrown; neighbours blend at
+// the borders.
 float placeLit(vec2 q) {
   float ages[4] = float[4](u_rang.x, u_rang.y, u_rang.z, u_rang.w);
   float places[4] = float[4](PLACE.x, PLACE.y, PLACE.z, PLACE.w);
@@ -113,18 +126,26 @@ float placeLit(vec2 q) {
   return lit;
 }
 
-// The ring's painting where a ray meets it, dim or lit, brightened by the
-// waves and by the ball's shine; its long edges melt, and while the seam
-// is open the strip's two ends darken toward it.
+// The strip's long edges melt, and while the seam is open its two ends
+// darken toward it.
+float framed(vec2 q) {
+  float edge = smoothstep(0.0, EDGE, q.y) * smoothstep(0.0, EDGE, SIZE.y - q.y);
+  return edge * (1.0 - 0.85 * u_target.w * (1.0 - smoothstep(0.0, SEAM, min(q.x, SIZE.x - q.x))));
+}
+// What the ball throws toward q, brightened by the waves.
+vec3 thrown(vec2 q, float lod) {
+  return painted(q, lod) * placeLit(q) * (1.0 + 2.2 * response(q)) * framed(q);
+}
+
+// The ring where a ray meets it: a blank screen faintly lit by the ball,
+// the place where the ball throws it, and the waves' own light.
 vec3 surface(vec2 q, float lod) {
   float light = response(q);
   float dy = q.y - u_ball.y;
-  float shone = u_time.z * RING * RING / (RING * RING + dy * dy);
-  vec3 paint = painted(q, lod) * mix(DIM, 1.0, placeLit(q));
-  vec3 c = paint * (1.0 + 2.2 * light + SHINE_ON_RING * shone) + u_glow * 0.05 * light;
-  float edge = smoothstep(0.0, EDGE, q.y) * smoothstep(0.0, EDGE, SIZE.y - q.y);
-  float seam = 1.0 - 0.85 * u_target.w * (1.0 - smoothstep(0.0, SEAM, min(q.x, SIZE.x - q.x)));
-  return c * edge * seam;
+  float shone = (0.3 + 0.7 * u_time.z) * RING * RING / (RING * RING + dy * dy);
+  vec3 c = painted(q, lod) * (GHOST + placeLit(q) * (1.0 + 2.2 * light))
+         + u_glow * (0.05 * light + SCREEN * shone);
+  return c * framed(q);
 }
 
 struct Hit {
@@ -136,37 +157,43 @@ struct Hit {
 
 Hit none() { return Hit(-1.0, vec2(0.0), 0.0, 1.0); }
 
+// The strip column the ring holds in the direction xz from its axis: the
+// column the ball throws now sits at the angle AIM round from behind it.
+float column(vec2 xz) {
+  return mod(u_state.x + RING * (atan(xz.x, xz.y) - AIM), SIZE.x);
+}
+
 // One root of the ray with the ring, if it lands within the strip's height.
 Hit landing(vec3 ro, vec3 rd, float t) {
   if (t <= 0.5) return none();
   vec3 p = ro + rd * t;
   if (p.y < 0.0 || p.y > SIZE.y) return none();
-  // The angle round from the column behind the ball, as (sin, cos), which
-  // is also the outward normal there.
+  // The outward normal there.
   vec2 sc = p.xz / RING;
-  float u = mod(u_state.x + RING * atan(sc.x, sc.y), SIZE.x);
   float facing = dot(rd.xz, sc);
-  return Hit(t, vec2(u, p.y), facing > 0.0 ? 1.0 : 0.0, abs(facing));
+  return Hit(t, vec2(column(sc), p.y), facing > 0.0 ? 1.0 : 0.0, abs(facing));
 }
 
-// Where a ray meets the ring |p.xz| = RING, nearest first, the roots
-// taken the stable way.
-void meet(vec3 ro, vec3 rd, out Hit a, out Hit b) {
+// Where a ray crosses the ring's wall |p.xz| = RING, nearer first, the
+// roots taken the stable way; -1 for none.
+vec2 crossings(vec3 ro, vec3 rd) {
   vec2 o2 = ro.xz, d2 = rd.xz;
   float qa = dot(d2, d2);
   float qb = 2.0 * dot(o2, d2);
   float qc = dot(o2, o2) - RING * RING;
-  float t0 = -1.0, t1 = -1.0;
   float disc = qb * qb - 4.0 * qa * qc;
-  if (qa > 1e-12 && disc >= 0.0) {
-    float q = -0.5 * (qb + (qb >= 0.0 ? 1.0 : -1.0) * sqrt(disc));
-    float r0 = q / qa;
-    float r1 = abs(q) > 1e-9 ? qc / q : -1.0;
-    t0 = min(r0, r1);
-    t1 = max(r0, r1);
-  }
-  a = landing(ro, rd, t0);
-  b = landing(ro, rd, t1);
+  if (qa <= 1e-12 || disc < 0.0) return vec2(-1.0);
+  float q = -0.5 * (qb + (qb >= 0.0 ? 1.0 : -1.0) * sqrt(disc));
+  float r0 = q / qa;
+  float r1 = abs(q) > 1e-9 ? qc / q : -1.0;
+  return vec2(min(r0, r1), max(r0, r1));
+}
+
+// Where a ray meets the strip, nearest first.
+void meet(vec3 ro, vec3 rd, out Hit a, out Hit b) {
+  vec2 t = crossings(ro, rd);
+  a = landing(ro, rd, t.x);
+  b = landing(ro, rd, t.y);
   if (a.t < 0.0) {
     a = b;
     b = none();
@@ -207,15 +234,45 @@ vec3 strip(vec3 ro, vec3 rd, float foot, float spread) {
   return c + keep * space(rd);
 }
 
-// The glass trembles when its place rings, and while it hums.
-vec3 tremble(vec3 n) {
+// The light the ball throws, seen in the air from t0 to t1 along a ray:
+// each point glows with what the ball throws its way, most near the ball.
+vec3 beams(vec3 ro, vec3 rd, float t0, float t1) {
+  if (t1 <= t0) return vec3(0.0);
+  float dt = (t1 - t0) / float(BEAM_STEPS);
+  // Interleaved gradient noise staggers the samples from px to px.
+  float j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  vec3 c = vec3(0.0);
+  for (int i = 0; i < BEAM_STEPS; i++) {
+    vec3 v = ro + rd * (t0 + (float(i) + j) * dt) - u_ball.xyz;
+    float across = length(v.xz);
+    float r = length(v);
+    if (r < u_ball.w || across < 1.0) continue;
+    // Where the ball's light through this point lands on the ring.
+    float y = u_ball.y + v.y * RING / across;
+    if (y < 0.0 || y > SIZE.y) continue;
+    vec2 q = vec2(column(v.xz), y);
+    float near = u_ball.w / r;
+    // The beam's own edges are soft, wider than the strip's.
+    float soft = smoothstep(0.0, BEAM_SOFT, y) * smoothstep(0.0, BEAM_SOFT, SIZE.y - y);
+    c += (thrown(q, BEAM_LOD) + u_glow * BEAM_BASE * placeLit(q) * framed(q)) * near * sqrt(near) * soft;
+  }
+  return c * dt * BEAM;
+}
+
+// How freshly the places have rung: a jolt that dies in about 2 s.
+float rung() {
   float ages[4] = float[4](u_rang.x, u_rang.y, u_rang.z, u_rang.w);
   float a = 0.0;
   for (int i = 0; i < 4; i++) {
     float age = ages[i];
     if (age > 0.0 && age < 2.0) a += exp(-2.2 * age) * smoothstep(0.0, 0.08, age);
   }
-  a = 0.07 * a + 0.025 * u_state.y;
+  return a;
+}
+
+// The glass trembles when its place rings, and while it hums.
+vec3 tremble(vec3 n) {
+  float a = 0.07 * rung() + 0.025 * u_state.y;
   if (a <= 0.0) return n;
   float t = u_time.x;
   vec3 w = vec3(sin(23.0 * n.y + 40.0 * t), sin(19.0 * n.z - 37.0 * t + 1.3), sin(17.0 * n.x + 43.0 * t + 2.1));
@@ -223,8 +280,8 @@ vec3 tremble(vec3 n) {
 }
 
 // The ball where the ray meets it at t: the strip reflected in its face
-// and refracted through it upside down, a rim, its own shine and one
-// highlight. `pix` is the tan of one screen px.
+// and refracted through it upside down, a rim, its own shine, the lamp at
+// its centre and one highlight. `pix` is the tan of one screen px.
 vec3 glass(vec3 ro, vec3 rd, float t, float pix) {
   vec3 centre = u_ball.xyz;
   float r = u_ball.w;
@@ -242,10 +299,15 @@ vec3 glass(vec3 ro, vec3 rd, float t, float pix) {
   vec3 out2 = refract(inside, -n2, IOR);
   if (dot(out2, out2) < 0.5) out2 = reflect(inside, -n2);
   // A ball lens: the rays through one px fan out by its focal length.
-  vec3 refracted = 0.94 * strip(p2, out2, 0.0, foot / (1.5 * r));
+  vec3 refracted = SEE_IN_BALL * strip(p2, out2, 0.0, foot / (1.5 * r));
   vec3 c = mix(refracted, reflected, fresnel);
   c += u_glow * pow(1.0 - cosi, 3.0) * (RIM + RIM_HUM * u_state.y);
   c += u_glow * u_time.z * SHINE_IN_BALL * (0.4 + 0.6 * cosi * cosi);
+  // The lamp grows as the ball throws more places and flares as each
+  // one rings.
+  vec3 toc = centre - ro;
+  float miss = length(toc - rd * dot(toc, rd)) / (CORE_SIZE * r);
+  c += u_glow * exp(-miss * miss) * (CORE * (0.55 + 0.45 * u_time.z) + 0.5 * rung());
   vec3 light = normalize(vec3(-0.5, -0.8, -0.35));
   c += u_glow * 0.5 * pow(max(dot(mirror, light), 0.0), 80.0);
   return c;
@@ -310,6 +372,25 @@ void main() {
     keep *= 1.0 - cover;
   }
   c += keep * space(rd);
+  // The lamp's glare round the ball.
+  if (near > 0.0) {
+    float out1 = max(miss - r, 0.0) / (0.3 * r);
+    c += u_glow * HALO * (0.3 + 0.7 * u_time.z + rung()) * exp(-out1) * (1.0 - cover);
+  }
+
+  // The thrown light in the air inside the ring, between its top and
+  // bottom, up to the first thing that hides what lies beyond; seen
+  // through the strip's back where the ray comes in that way.
+  vec2 wall = crossings(eye, rd);
+  float fall = abs(rd.y) < 1e-5 ? 1e-5 : rd.y;
+  float ya = -eye.y / fall, yb = (SIZE.y - eye.y) / fall;
+  float from = max(max(wall.x, min(ya, yb)), 0.0);
+  float to = min(wall.y, max(ya, yb));
+  if (a.t > 0.0 && a.front > 0.5) to = min(to, a.t);
+  else if (b.t > 0.0 && b.front > 0.5) to = min(to, b.t);
+  if (cover > 0.5) to = min(to, tb);
+  float through = a.t > 0.0 && a.front < 0.5 ? BACK_SEE : 1.0;
+  c += through * beams(eye, rd, from, to);
 
   if (u_out.z > 0.5) c = engrave(c);
   // Dither against banding in the glows.

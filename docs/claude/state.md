@@ -135,7 +135,7 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
-## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+## Step 6 «Внутреннее кольцо» (scenes on branch `claude/step-6-scenes`)
 Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
 сайт вместе с заглушками»). 10 reading pages, author's text unchanged
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
@@ -148,7 +148,13 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
+- Page 01 «Внутрь» first (Art: «занимайся тогда шагом номер 6», 2026-11-01). Three directions
+  shown as still frames in Тишина (`output/prototypes/inner-through/varianty.jpg`, made by
+  `varianty.html`, concept only): А «Сквозь кольцо» glass body, cold orbit of points, the camera
+  flies inside to a warm ring, the orbit seen through the glass (recommended); Б «Срез» seated
+  figure from above in height lines, radar sweep on the floor, a slice rises to the chest and
+  shows the warm ring; В «Одна линия» one line draws the person, closes the orbit, spirals in to
+  the heart. Waiting for his choice. Hero, 06, 09, 10 need his pictures (briefs in the doc).
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.

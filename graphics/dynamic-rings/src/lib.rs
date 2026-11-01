@@ -628,12 +628,17 @@ mod tests {
     #[test]
     fn the_camera_goes_from_the_eyes_to_the_shoulder_to_the_side() {
         let story = Story::new(Chapter::Arrive);
+        let (mut left, mut right) = (0.0f32, 0.0f32);
         for i in 0..100 {
             let f = story.compose(0.5 + i as f32 * 0.09);
-            // From the eyes: inside the head, looking ahead.
+            // From the eyes: inside the head, looking round and never back.
             assert!((f.eye - f.body.head).length() < 0.16, "{}", f.time);
-            assert!(f.forward.z > 0.9);
+            assert!(f.forward.z > 0.6, "{}", f.time);
+            (left, right) = (left.max(f.forward.x), right.min(f.forward.x));
         }
+        // The head turns left (+x) and right, then looks ahead again.
+        assert!(left > 0.6 && right < -0.6, "{left} {right}");
+        assert!(story.compose(10.3).forward.z > 0.9);
         for i in 0..80 {
             let f = story.compose(14.5 + i as f32 * 0.09);
             let rel = f.eye - f.body.head;

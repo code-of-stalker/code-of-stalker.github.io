@@ -141,7 +141,7 @@ export function SphereEverywhere(props: SphereEverywhereProps) {
     };
   }, [controller]);
   return <View testID="sphere-everywhere" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Стеклянный шар плывёт по длинной ленте мест: комната с окном и луной, ночная улица, толпа, пустое поле. В каждом месте по ленте от шара расходится кольцо света. Потом лента замыкается в кольцо вокруг шара, и все места видны сразу; свет обегает круг. Шар возвращается в комнату."
+    {failed ? props.fallback : <div role="img" aria-label="Твоя лента мест — комната, улица, толпа, поле — стоит кольцом вокруг прозрачного стеклянного шара. Сначала горит только комната. Кольцо поворачивается, и каждое следующее место загорается, когда шар звенит. Потом взгляд поднимается над кольцом, свет обегает все места, шов между концами ленты исчезает. Взгляд возвращается в комнату, остальные места гаснут."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
       <canvas ref={outputRef} data-graphics="rust-sphere-everywhere" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

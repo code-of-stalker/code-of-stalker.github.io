@@ -1,16 +1,17 @@
 //! «Везде», page 07 of Step 5 «Внешнее кольцо», the page «Позволь телу
 //! запомнить». Art's long strip of places (a room, a street, a crowd, a
-//! field) and a clear glass ball, the sphere of attention, that goes along.
-//! The camera travels the strip and rests at each place; there the ball
-//! rings: it trembles, a wave of light runs over the place (the body's
-//! response) and a band of light stays on the glass (the body remembers).
-//! In the field all four bands glow together. Then the strip curls into a
-//! ring round the ball; the camera rises out of it and sees every place
-//! round the one sphere at once. A light runs round the ring, the ring
-//! turns the room to the front, and the strip unrolls into the room again.
+//! field) closed into a ring, and a clear glass ball, the sphere of
+//! attention, floating at its centre. The camera looks down over the ring
+//! at the ball and the place behind it. At first only the room is lit; the
+//! ring turns each next place round to the ball, and there the ball rings:
+//! it trembles and a wave of light runs over the place and leaves it lit
+//! (the body's response, remembered). With every place lit the camera
+//! rises to see them all round the one sphere, a light runs round the
+//! ring, and the seam where the strip's ends meet heals. Then the camera
+//! comes back down to the room and the other places sink into the dark.
 //! Every value here is a pure function of loop time; `browser.rs` only
 //! uploads it and the shader traces it.
-use std::f32::consts::TAU;
+use std::f32::consts::{PI, TAU};
 use watcher_scene_palette::Palette;
 
 #[cfg(target_arch = "wasm32")]
@@ -23,103 +24,95 @@ pub const SIZE: [u32; 2] = [6144, 1024];
 pub const HALF: u32 = 3072;
 pub const LOOP_SECONDS: f32 = 60.0;
 
-/// The world is in strip px, y down like the painting. Flat, the strip
-/// stands at z = RING facing the camera (−z); curled, it bends toward the
-/// camera, and closed it is a ring of radius RING round the origin (its
-/// length is one turn), where the ball floats.
+/// The world is in strip px, y down like the painting. The strip is a ring
+/// of radius RING round the origin (its length is one turn), its painting
+/// facing in, its top at y = 0; the ball floats at the centre.
 pub const RING: f32 = SIZE[0] as f32 / TAU;
-/// The camera's distance to the flat strip, and the tan of half the view's
-/// height there: a window 960 px high on the 1024 px strip, 30° high.
-pub const DISTANCE: f32 = 1878.0;
-pub const VIEW_TAN: f32 = 480.0 / DISTANCE;
 /// The view is 3:2; a narrower screen crops its sides.
 pub const ASPECT: f32 = 1.5;
-/// The strip's middle row. The horizon runs at one height all along it.
-pub const MIDDLE: f32 = 512.0;
 
-/// The ball's radius, and how far below the view's centre it sits as seen
-/// against the flat strip, strip px.
-pub const BALL_RADIUS: f32 = 75.0;
-pub const BALL_BELOW: f32 = 80.0;
+/// The ball's centre height and radius.
+pub const BALL_HIGH: f32 = 220.0;
+pub const BALL_RADIUS: f32 = 195.0;
 /// Glass: index of refraction and reflectance head on.
 pub const IOR: f32 = 1.5;
 pub const F0: f32 = 0.04;
-/// Each band of memory on the glass is a line of latitude round an axis
-/// tilted this far toward the camera, rad.
-pub const BAND_LATITUDE: [f32; 4] = [-0.5, -0.17, 0.17, 0.5];
-pub const TILT: f32 = 0.38;
 
-/// The places, in the order the camera visits them: the strip column at
-/// the view's centre while it rests there.
+/// The places, in the order the ring brings them to the ball: the strip
+/// column behind the ball while it rests there.
 pub const ROOM: usize = 0;
 pub const STREET: usize = 1;
 pub const CROWD: usize = 2;
 pub const FIELD: usize = 3;
 pub const PLACES: usize = 4;
 pub const PLACE_AT: [f32; PLACES] = [820.0, 2400.0, 3700.0, 5376.0];
-/// Leaving one place and arriving at the next, s.
-pub const TRAVEL: [[f32; 2]; PLACES - 1] = [[5.0, 11.0], [16.0, 22.0], [27.0, 33.0]];
+/// Where one place gives way to the next, halfway between them, and over
+/// how many px.
+pub const BORDERS: [f32; PLACES - 1] = [
+    (PLACE_AT[0] + PLACE_AT[1]) / 2.0,
+    (PLACE_AT[1] + PLACE_AT[2]) / 2.0,
+    (PLACE_AT[2] + PLACE_AT[3]) / 2.0,
+];
+const BORDER_SOFT: f32 = 250.0;
+/// How much of an unlit place shows.
+const DIM: f32 = 0.35;
+/// The ring turning each next place to the ball, s.
+pub const TURNS: [[f32; 2]; PLACES - 1] = [[6.0, 11.0], [14.5, 19.5], [23.0, 28.0]];
 /// When the ball rings at each place, s.
-pub const RINGS: [f32; PLACES] = [2.0, 12.5, 23.5, 34.5];
-/// The wave of light each ring sends over its place: px/s, s, px.
+pub const RINGS: [f32; PLACES] = [1.5, 11.5, 20.0, 28.5];
+/// The wave of light each ring sends over its place: the row it starts
+/// from, px/s, s, px.
+pub const WAVE_ROW: f32 = 592.0;
 pub const WAVE_SPEED: f32 = 700.0;
 pub const WAVE_LIFE: f32 = 2.6;
 pub const WAVE_WIDTH: f32 = 70.0;
-/// «Позволь телу запомнить»: all the bands glow and the ball hums.
-pub const REMEMBER: [f32; 2] = [36.5, 38.0];
-pub const HUSH: [f32; 2] = [40.0, 41.5];
-/// The strip curls into the ring, the camera lifts out of it, the ring
-/// turns the room to the front and a light runs round it once; the camera
-/// comes back down and the strip unrolls in the room.
-pub const CURL: [f32; 2] = [40.5, 44.5];
-pub const LIFT: [f32; 2] = [41.0, 46.5];
-pub const TURN: [f32; 2] = [44.5, 52.5];
-pub const SCAN: [f32; 2] = [47.0, 51.0];
-pub const LAND: [f32; 2] = [50.0, 55.5];
-pub const UNCURL: [f32; 2] = [52.5, 56.0];
-/// The bands fade as the loop comes back to the room.
-pub const FORGET: [f32; 2] = [56.0, 59.5];
-/// Reduced motion: the ring round the ball, every band lit.
-pub const STILL: f32 = 46.7;
+/// «Позволь телу запомнить»: the camera rises over the whole ring and the
+/// ball hums; meanwhile the ring turns the long way from the field round
+/// to the room again.
+pub const RISE: [f32; 2] = [30.0, 37.0];
+pub const REMEMBER: [f32; 2] = [30.0, 31.0];
+pub const HUSH: [f32; 2] = [38.0, 39.5];
+pub const HOME: [f32; 2] = [31.5, 58.0];
+/// «Перепроверяй себя»: a light runs round the ring once.
+pub const SCAN: [f32; 2] = [39.0, 45.0];
+/// «Целостность и Неделимость»: the seam heals with a flash.
+pub const HEAL: [f32; 2] = [46.0, 49.0];
+/// «Снова в комнате»: the camera comes down, the other places dim, the
+/// seam opens again.
+pub const DESCEND: [f32; 2] = [51.0, 59.0];
+pub const FORGET: [f32; 2] = [53.0, 58.0];
+pub const OPEN: [f32; 2] = [56.0, 59.0];
+/// Reduced motion: the whole ring round the ball, every place lit.
+pub const STILL: f32 = 49.0;
 
-/// Lifted out, the camera is this far above and behind where it stood,
-/// high enough to see the ball over the ring's near side, sees this much
-/// wider, and looks this far below the ball's centre.
-const RISE: f32 = 1600.0;
-const BACK: f32 = 2000.0;
-const RING_TAN: f32 = 0.32;
-const LOOK_BELOW: f32 = 240.0;
-/// In the ring the ball swells to hold every place round it and rises to
-/// this height, where it sees the ring's far side, not the night below.
-const GROW: f32 = 2.6;
-const BALL_HIGH: f32 = 220.0;
-/// Walking: the view bobs this much, whole steps a loop, at this speed.
-const BOB: f32 = 6.0;
-const STEPS: f32 = 110.0;
-const WALK: f32 = 500.0;
-/// Resting, the view leans in this much.
-const SETTLE: f32 = 0.04;
-/// The ball lags the camera's acceleration (s²), floats and breathes,
-/// whole cycles a loop.
-const LAG: f32 = 0.1;
+/// The camera low over the ring and risen over it: its height (up is
+/// negative y), its distance in front of the centre and the tan of half
+/// its view's height; and how far below the ball's centre and how far
+/// behind it it looks. Each place that rings lifts it a step of the way.
+const NEAR: [f32; 3] = [-800.0, -2300.0, 0.29];
+const WIDE: [f32; 3] = [-1088.0, -2900.0, 0.32];
+const LOOK_NEAR: [f32; 2] = [230.0, 80.0];
+const LOOK_WIDE: [f32; 2] = [240.0, 0.0];
+const STEP: f32 = 0.2;
+/// The camera sways side to side once a loop, px.
+const SWAY: f32 = 120.0;
+/// The ball floats and breathes, whole cycles a loop.
 const FLOAT: f32 = 4.0;
 const FLOAT_TIMES: f32 = 4.0;
 const BREATH: f32 = 0.015;
 const BREATH_TIMES: f32 = 10.0;
-/// The light that runs round the ring, px wide; a band flashes as it
-/// passes the band's place, within this many px.
+/// The light that runs round the ring, px wide.
 const SCAN_WIDTH: f32 = 260.0;
-const SCAN_REACH: f32 = 500.0;
 /// The strip seen from behind: how much of its painting shows, how much of
 /// what lies beyond it shows through.
 const BACK_LIGHT: f32 = 0.3;
 const BACK_SEE: f32 = 0.7;
-/// In the ring the ball shines: how much it brightens the places round it,
-/// and how much light it holds itself.
+/// The ball shines as the places light: how much it brightens the places
+/// round it, and how much light it holds itself.
 const SHINE_ON_RING: f32 = 1.2;
 const SHINE_IN_BALL: f32 = 0.3;
-/// The strip's edges melt over this many px; closed, its two ends darken
-/// toward the seam over this many.
+/// The strip's edges melt over this many px; while the seam is open its
+/// two ends darken toward it over this many.
 const EDGE: f32 = 20.0;
 const SEAM: f32 = 220.0;
 /// How the dark scene engraves on a light page: the level that prints the
@@ -137,7 +130,7 @@ pub const GEOMETRY: [f32; 32] = [
     PLACE_AT[1],
     PLACE_AT[2],
     PLACE_AT[3],
-    MIDDLE + BALL_BELOW,
+    WAVE_ROW,
     WAVE_SPEED,
     WAVE_LIFE,
     WAVE_WIDTH,
@@ -145,11 +138,11 @@ pub const GEOMETRY: [f32; 32] = [
     F0,
     ENGRAVE_WHITE,
     ENGRAVE_GAMMA,
-    BAND_LATITUDE[0],
-    BAND_LATITUDE[1],
-    BAND_LATITUDE[2],
-    BAND_LATITUDE[3],
-    TILT,
+    BORDERS[0],
+    BORDERS[1],
+    BORDERS[2],
+    BORDER_SOFT,
+    DIM,
     SCAN_WIDTH,
     BACK_LIGHT,
     BACK_SEE,
@@ -166,10 +159,8 @@ pub const GEOMETRY: [f32; 32] = [
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
     pub time: f32,
-    /// The strip column the camera faces, 0..SIZE[0].
+    /// The strip column behind the ball, 0..SIZE[0].
     pub along: f32,
-    /// 0 flat … 1 a closed ring.
-    pub curl: f32,
     /// The camera, and the tan of half its view's height.
     pub eye: [f32; 4],
     /// Where it looks.
@@ -178,52 +169,51 @@ pub struct Frame {
     pub ball: [f32; 4],
     /// Seconds since each place's ring, negative before it.
     pub rang: [f32; PLACES],
-    /// The light of each band on the glass.
-    pub bands: [f32; PLACES],
+    /// How lit each place is, 0..1; the shader spreads it with the wave.
+    pub lit: [f32; PLACES],
     /// The ball's hum 0..1.
     pub hum: f32,
     /// The running light's strip column and its strength 0..1.
     pub scan: [f32; 2],
-    /// How much the ball shines in the ring, 0..1.
+    /// How much the ball shines, 0..1.
     pub shine: f32,
+    /// 1 while the seam is open … 0 healed, and its flash as it heals.
+    pub seam: f32,
+    pub flash: f32,
     /// The loop's phase, 0..TAU.
     pub phase: f32,
 }
 
-/// Where the camera stands along the strip before wrapping, its speed and
-/// acceleration from walking (the ring's turn moves no camera).
-pub fn walk(t: f32) -> [f32; 3] {
-    let mut at = [PLACE_AT[0], 0.0, 0.0];
-    for (i, [a, b]) in TRAVEL.iter().enumerate() {
-        let d = PLACE_AT[i + 1] - PLACE_AT[i];
-        at[0] += d * ease(*a, *b, t);
-        at[1] += d * ease_speed(*a, *b, t);
-        at[2] += d * ease_accel(*a, *b, t);
+/// How far the ring has turned before wrapping: the strip column behind
+/// the ball.
+pub fn turned(t: f32) -> f32 {
+    let mut at = PLACE_AT[ROOM];
+    for (i, [a, b]) in TURNS.iter().enumerate() {
+        at += (PLACE_AT[i + 1] - PLACE_AT[i]) * ease(*a, *b, t);
     }
-    at[0] += turn_length() * ease(TURN[0], TURN[1], t);
-    at
+    at + home_length() * ease(HOME[0], HOME[1], t)
 }
 
 /// From the field round to the room again.
-fn turn_length() -> f32 {
+fn home_length() -> f32 {
     PLACE_AT[ROOM] + SIZE[0] as f32 - PLACE_AT[FIELD]
 }
 
-pub fn curl(t: f32) -> f32 {
-    ease(CURL[0], CURL[1], t) - ease(UNCURL[0], UNCURL[1], t)
+/// How far the camera has risen, 0 low over the room … 1 over the ring.
+pub fn risen(t: f32) -> f32 {
+    let steps: f32 = TURNS.iter().map(|[a, b]| STEP * ease(*a, *b, t)).sum();
+    steps + (1.0 - STEP * TURNS.len() as f32) * ease(RISE[0], RISE[1], t)
+        - ease(DESCEND[0], DESCEND[1], t)
 }
 
-/// How far the camera has lifted out of the ring, 0..1.
-pub fn lift(t: f32) -> f32 {
-    ease(LIFT[0], LIFT[1], t) - ease(LAND[0], LAND[1], t)
-}
-
-/// How much the camera is under way, 0 resting … 1 walking.
-fn moving(t: f32) -> f32 {
-    TRAVEL
-        .iter()
-        .map(|[a, b]| smooth(a - 1.0, a + 0.5, t) * (1.0 - smooth(b - 0.5, b + 1.2, t)))
-        .fold(0.0, f32::max)
+/// The room is always lit; every other place lights as it rings and sinks
+/// back into the dark at the end.
+pub fn lit(place: usize, t: f32) -> f32 {
+    if place == ROOM {
+        return 1.0;
+    }
+    let ring = RINGS[place];
+    smooth(ring, ring + 0.4, t) * (1.0 - smooth(FORGET[0], FORGET[1], t))
 }
 
 /// The running light: its strip column and strength.
@@ -234,26 +224,17 @@ pub fn scan(t: f32, along: f32) -> [f32; 2] {
     [column, strength]
 }
 
-/// The band each place leaves on the glass.
-pub fn band(place: usize, t: f32, scan: [f32; 2]) -> f32 {
-    let ring = RINGS[place];
-    let appear = smooth(ring + 0.1, ring + 0.6, t);
-    let flash = 0.6 * smooth(ring + 0.1, ring + 0.5, t) * (-(t - ring - 0.5).max(0.0) / 0.7).exp();
-    let remember = smooth(REMEMBER[0], REMEMBER[1], t);
-    let gap = wrapped(scan[0] - PLACE_AT[place]);
-    let passed = 0.5 * scan[1] * (-(gap / SCAN_REACH).powi(2)).exp();
-    let forget = 1.0 - smooth(FORGET[0], FORGET[1], t);
-    (appear * (0.5 + 0.4 * remember) + flash + passed) * forget
-}
-
 pub fn hum(t: f32) -> f32 {
-    smooth(REMEMBER[0], REMEMBER[0] + 1.0, t) * (1.0 - smooth(HUSH[0], HUSH[1], t))
+    smooth(REMEMBER[0], REMEMBER[1], t) * (1.0 - smooth(HUSH[0], HUSH[1], t))
 }
 
-/// The shortest way between two strip columns on the closed ring.
-fn wrapped(d: f32) -> f32 {
-    let size = SIZE[0] as f32;
-    (d + size / 2.0).rem_euclid(size) - size / 2.0
+pub fn seam(t: f32) -> f32 {
+    1.0 - ease(HEAL[0], HEAL[1], t) + ease(OPEN[0], OPEN[1], t)
+}
+
+fn flash(t: f32) -> f32 {
+    let x = ((t - HEAL[0]) / (HEAL[1] - HEAL[0])).clamp(0.0, 1.0);
+    (PI * x).sin().max(0.0)
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -263,53 +244,39 @@ pub fn compose(t: f32) -> Frame {
         0.0
     };
     let phase = time / LOOP_SECONDS * TAU;
-    let [walked, speed, accel] = walk(time);
-    let along = walked.rem_euclid(SIZE[0] as f32);
-    let curl = curl(time);
-    let lift = lift(time);
-    // Walking bobs the view; resting, it leans in a little.
-    let step = (speed.abs() / WALK).min(1.0);
-    let up = MIDDLE + BOB * step * (STEPS * phase).sin();
-    let tan = VIEW_TAN * (1.0 - SETTLE * (1.0 - moving(time)));
-    // The ball goes along a little behind the camera, at the ring's centre.
-    let swell = smooth(0.2, 1.0, lift);
-    let below = up + BALL_BELOW * (DISTANCE - RING) / DISTANCE;
+    let along = turned(time).rem_euclid(SIZE[0] as f32);
+    let w = risen(time);
     let ball = [
-        -LAG * accel,
-        mix(below, BALL_HIGH, swell) + FLOAT * (FLOAT_TIMES * phase).sin(),
         0.0,
-        BALL_RADIUS * (1.0 + BREATH * (BREATH_TIMES * phase).sin()) * mix(1.0, GROW, swell),
+        BALL_HIGH + FLOAT * (FLOAT_TIMES * phase).sin(),
+        0.0,
+        BALL_RADIUS * (1.0 + BREATH * (BREATH_TIMES * phase).sin()),
     ];
-    // Lifting, it rises above the strip's top before it backs out over it,
-    // and keeps the ball in view: what it looks at comes to the ball's
-    // depth first, while that hardly turns the view.
-    let rise = smooth(0.0, 0.7, lift);
-    let back = smooth(0.3, 1.0, lift);
-    let turn = smooth(0.0, 1.0, lift);
     let eye = [
-        0.0,
-        up - RISE * rise,
-        RING - DISTANCE - BACK * back,
-        mix(tan, RING_TAN, turn),
+        SWAY * phase.sin(),
+        mix(NEAR[0], WIDE[0], w),
+        mix(NEAR[1], WIDE[1], w),
+        mix(NEAR[2], WIDE[2], w),
     ];
     let target = [
         0.0,
-        mix(up, ball[1] + LOOK_BELOW, turn),
-        mix(RING, 0.0, smooth(0.0, 0.35, lift)),
+        BALL_HIGH + mix(LOOK_NEAR[0], LOOK_WIDE[0], w),
+        mix(LOOK_NEAR[1], LOOK_WIDE[1], w),
     ];
-    let scan = scan(time, along);
+    let lit = [ROOM, STREET, CROWD, FIELD].map(|place| lit(place, time));
     Frame {
         time,
         along,
-        curl,
         eye,
         target,
         ball,
         rang: RINGS.map(|ring| time - ring),
-        bands: [ROOM, STREET, CROWD, FIELD].map(|place| band(place, time, scan)),
+        lit,
         hum: hum(time),
-        scan,
-        shine: smooth(0.3, 1.0, lift),
+        scan: scan(time, along),
+        shine: lit.iter().sum::<f32>() / PLACES as f32,
+        seam: seam(time),
+        flash: flash(time),
         phase,
     }
 }
@@ -389,14 +356,6 @@ fn ease(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 }
-fn ease_speed(a: f32, b: f32, x: f32) -> f32 {
-    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
-    30.0 * t * t * (t - 1.0) * (t - 1.0) / (b - a)
-}
-fn ease_accel(a: f32, b: f32, x: f32) -> f32 {
-    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
-    60.0 * t * (2.0 * t - 1.0) * (t - 1.0) / ((b - a) * (b - a))
-}
 
 #[cfg(test)]
 mod tests {
@@ -408,122 +367,112 @@ mod tests {
     fn times() -> impl Iterator<Item = f32> {
         (0..=6000).map(|i| i as f32 * 0.01)
     }
+    /// The shortest way between two strip columns round the ring.
+    fn wrapped(d: f32) -> f32 {
+        let size = SIZE[0] as f32;
+        (d + size / 2.0).rem_euclid(size) - size / 2.0
+    }
 
     #[test]
     fn the_loop_closes_without_a_jump() {
         assert_eq!(compose(0.0), compose(LOOP_SECONDS));
         let before = compose(LOOP_SECONDS - 0.001);
         let after = compose(0.001);
-        assert!(close(before.along, after.along, 1e-2));
-        assert!((0..4).all(|i| close(before.eye[i], after.eye[i], 1e-2)));
+        assert!(close(wrapped(before.along - after.along), 0.0, 1e-2));
+        assert!((0..4).all(|i| close(before.eye[i], after.eye[i], 0.1)));
+        assert!((0..3).all(|i| close(before.target[i], after.target[i], 1e-2)));
         assert!((0..4).all(|i| close(before.ball[i], after.ball[i], 0.1)));
-        assert!((0..PLACES).all(|i| close(before.bands[i], after.bands[i], 1e-3)));
-        assert_eq!(before.curl, 0.0);
+        assert!((0..PLACES).all(|i| close(before.lit[i], after.lit[i], 1e-3)));
+        assert!(close(before.seam, after.seam, 1e-3));
+        assert!(close(before.shine, after.shine, 1e-3));
         assert_eq!(compose(f32::NAN), compose(0.0));
         assert_eq!(compose(-LOOP_SECONDS), compose(0.0));
     }
 
     #[test]
-    fn the_turn_brings_the_room_back_to_the_front() {
+    fn the_ring_turns_each_place_to_the_ball_and_the_room_back() {
         assert!(close(
-            walk(LOOP_SECONDS)[0] - SIZE[0] as f32,
+            turned(LOOP_SECONDS) - SIZE[0] as f32,
             PLACE_AT[ROOM],
             1e-2
         ));
-        // Only the closed ring may wrap the strip's ends round.
-        let mut last = compose(0.0);
-        for t in times() {
-            let f = compose(t);
-            if (f.along - last.along).abs() > SIZE[0] as f32 / 2.0 {
-                assert_eq!(f.curl, 1.0, "{t}");
-            }
-            if (TURN[0]..=TURN[1]).contains(&t) {
-                assert_eq!(f.curl, 1.0, "{t}");
-            }
-            last = f;
-        }
-    }
-
-    #[test]
-    fn flat_the_view_stays_on_the_strip() {
-        for t in times() {
-            let f = compose(t);
-            if f.curl > 0.0 || lift(t) > 0.0 {
-                continue;
-            }
-            // Looking straight at the strip.
-            assert_eq!(f.target[1], f.eye[1]);
-            let half_high = f.eye[3] * DISTANCE;
-            let half_wide = half_high * ASPECT;
-            assert!(
-                f.eye[1] - half_high >= 0.0 && f.eye[1] + half_high <= SIZE[1] as f32,
-                "{t}"
-            );
-            assert!(
-                f.along - half_wide >= 0.0 && f.along + half_wide <= SIZE[0] as f32,
-                "{t}"
-            );
-        }
-    }
-
-    #[test]
-    fn the_camera_never_passes_through_the_strip() {
-        for t in times() {
-            let f = compose(t);
-            let [x, y, z, _] = f.eye;
-            if y < -EDGE || y > SIZE[1] as f32 + EDGE {
-                continue;
-            }
-            // Within the strip's height the camera stays on its painted
-            // side, inside the circle it bends along, well off the surface.
-            let k = f.curl / RING;
-            let local = [x, z - RING];
-            if k == 0.0 {
-                assert!(local[1] < -500.0, "{t}");
-            } else {
-                let off = (local[0].powi(2) + (local[1] + 1.0 / k).powi(2)).sqrt();
-                assert!(off < 1.0 / k - 50.0, "{t} {off} {}", 1.0 / k);
-            }
-        }
-    }
-
-    #[test]
-    fn each_place_rings_while_the_view_rests_on_it() {
         for (place, ring) in RINGS.iter().enumerate() {
+            // The ring rests while its place rings and the wave runs out.
             for i in 0..=26 {
                 let t = ring + i as f32 * WAVE_LIFE / 26.0;
-                let f = compose(t);
-                assert!(close(f.along, PLACE_AT[place], 1e-3), "{place} {t}");
-                assert_eq!(f.curl, 0.0);
-                assert_eq!(lift(t), 0.0);
-                assert!(close(f.ball[0], 0.0, 1e-3));
+                assert!(
+                    close(compose(t).along, PLACE_AT[place], 1e-3),
+                    "{place} {t}"
+                );
             }
         }
         // The rings come in the order of the places, each after arriving.
-        for (i, [_, arrive]) in TRAVEL.iter().enumerate() {
-            assert!(RINGS[i] + WAVE_LIFE <= TRAVEL[i][0]);
+        for (i, [_, arrive]) in TURNS.iter().enumerate() {
+            assert!(RINGS[i] + WAVE_LIFE <= TURNS[i][0]);
             assert!(*arrive < RINGS[i + 1]);
         }
-        const { assert!(RINGS[FIELD] + WAVE_LIFE <= CURL[0]) };
+        const { assert!(RINGS[FIELD] + WAVE_LIFE <= HOME[0]) };
     }
 
     #[test]
-    fn the_body_remembers_each_place_then_lets_go() {
-        for (place, &ring) in RINGS.iter().enumerate() {
-            assert_eq!(compose(ring).bands[place], band(place, ring, [0.0, 0.0]));
-            assert!(compose(ring - 0.01).bands[place] < 0.02, "{place}");
-            assert!(compose(ring + 1.5).bands[place] >= 0.5, "{place}");
-            assert_eq!(compose(0.0).bands[place], 0.0);
-            assert_eq!(compose(FORGET[1]).bands[place], 0.0);
-        }
-        // «Позволь телу запомнить»: every band glows, the ball hums.
-        for i in 0..=20 {
-            let t = REMEMBER[1] + (HUSH[0] - REMEMBER[1]) * i as f32 / 20.0;
+    fn the_camera_stays_above_and_outside_the_ring() {
+        for t in times() {
             let f = compose(t);
-            assert!(f.bands.iter().all(|b| *b >= 0.85), "{t}");
+            let [x, y, z, _] = f.eye;
+            assert!(y < -EDGE, "{t}");
+            assert!((x * x + z * z).sqrt() > RING + 500.0, "{t}");
+        }
+    }
+
+    #[test]
+    fn the_ball_is_seen_over_the_near_side_not_through_it() {
+        for t in times() {
+            let f = compose(t);
+            let [_, y, z, r] = f.ball;
+            let [_, ey, ez, _] = f.eye;
+            // The sight line to the ball's lowest point crosses the near
+            // side above its top edge.
+            let lead = (-RING - ez) / (z - ez);
+            let over = ey + (y + r - ey) * lead;
+            assert!(over < -60.0, "{t} {over}");
+            assert!(y - r > 0.0 && y + r < SIZE[1] as f32);
+            assert!(r < 0.5 * RING);
+        }
+    }
+
+    #[test]
+    fn each_place_lights_as_it_rings_and_dims_at_the_end() {
+        for t in times() {
+            assert_eq!(compose(t).lit[ROOM], 1.0);
+        }
+        for (place, &ring) in RINGS.iter().enumerate().skip(1) {
+            assert_eq!(compose(0.0).lit[place], 0.0);
+            assert_eq!(compose(ring).lit[place], 0.0, "{place}");
+            assert_eq!(compose(ring + 0.4).lit[place], 1.0, "{place}");
+            assert_eq!(compose(FORGET[0]).lit[place], 1.0, "{place}");
+            assert_eq!(compose(FORGET[1]).lit[place], 0.0, "{place}");
+        }
+        // «Позволь телу запомнить»: every place lit, the camera over the
+        // whole ring, the ball shining and humming.
+        for i in 0..=20 {
+            let t = RISE[1] + (HUSH[0] - RISE[1]) * i as f32 / 20.0;
+            let f = compose(t);
+            assert!(f.lit.iter().all(|l| *l == 1.0), "{t}");
+            assert_eq!(risen(t), 1.0);
+            assert_eq!(f.shine, 1.0);
             assert_eq!(f.hum, 1.0);
         }
-        // The light passes every place once round the ring.
+        // The ball fills with light place by place.
+        let mut last = 0.0;
+        for t in times().filter(|t| *t < FORGET[0]) {
+            let s = compose(t).shine;
+            assert!(s >= last, "{t}");
+            last = s;
+        }
+    }
+
+    #[test]
+    fn the_light_runs_round_once_and_the_seam_heals() {
         for (place, &at) in PLACE_AT.iter().enumerate() {
             let best = times()
                 .map(|t| compose(t).scan)
@@ -532,49 +481,46 @@ mod tests {
                 .fold(f32::MAX, f32::min);
             assert!(best < 40.0, "{place} {best}");
         }
+        assert_eq!(compose(0.0).seam, 1.0);
+        assert_eq!(compose(HEAL[1]).seam, 0.0);
+        assert_eq!(compose(OPEN[0]).seam, 0.0);
+        assert!(compose((HEAL[0] + HEAL[1]) / 2.0).flash > 0.99);
+        assert!(times()
+            .filter(|t| !(HEAL[0]..=HEAL[1]).contains(t))
+            .all(|t| compose(t).flash == 0.0));
     }
 
     #[test]
-    fn the_ball_stays_near_the_middle_and_everything_moves_gently() {
+    fn everything_moves_gently() {
         let mut last = compose(0.0);
-        let mut walked = walk(0.0)[0];
         for t in times() {
             let f = compose(t);
-            assert!(f.ball[0].abs() < 40.0, "{t}");
             // At 100 frames a second.
-            let w = walk(t)[0];
-            assert!((w - walked).abs() < 9.0, "{t}");
-            walked = w;
+            assert!(wrapped(f.along - last.along).abs() < 7.0, "{t}");
             assert!(
-                (0..3).all(|i| (f.eye[i] - last.eye[i]).abs() < 18.0),
+                (0..3).all(|i| (f.eye[i] - last.eye[i]).abs() < 3.0),
                 "{t} {:?} {:?}",
                 f.eye,
                 last.eye
             );
             assert!(
-                (0..3).all(|i| (f.target[i] - last.target[i]).abs() < 24.0),
+                (0..3).all(|i| (f.target[i] - last.target[i]).abs() < 3.0),
                 "{t}"
             );
-            assert!((f.curl - last.curl).abs() < 0.01, "{t}");
+            assert!((f.seam - last.seam).abs() < 0.01, "{t}");
             last = f;
         }
     }
 
     #[test]
-    fn the_still_is_the_ring_round_the_ball() {
+    fn the_still_is_the_whole_ring_round_the_ball() {
         let f = compose(STILL);
-        assert_eq!(f.curl, 1.0);
-        assert_eq!(lift(STILL), 1.0);
-        assert!(f.bands.iter().all(|b| *b >= 0.85));
+        assert_eq!(risen(STILL), 1.0);
+        assert!(f.lit.iter().all(|l| *l == 1.0));
+        assert_eq!(f.seam, 0.0);
         assert_eq!(f.scan[1], 0.0);
-        // The swollen ball stays well inside the ring and is seen over its
-        // near side, not through it.
-        let [x, y, z, r] = f.ball;
-        assert!((x * x + z * z).sqrt() + r < 0.5 * RING);
-        assert!(y - r > 0.0 && y + r < SIZE[1] as f32);
-        let lead = (-RING - f.eye[2]) / (z - f.eye[2]);
-        let over = f.eye[1] + (y + r - f.eye[1]) * lead;
-        assert!(over < -60.0, "{over}");
+        assert!(f.flash < 1e-3);
+        assert_eq!(f.hum, 0.0);
     }
 
     #[test]

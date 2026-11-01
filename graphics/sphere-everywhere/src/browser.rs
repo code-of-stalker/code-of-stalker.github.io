@@ -136,7 +136,7 @@ impl SphereEverywhere {
             "u_target",
             "u_ball",
             "u_rang",
-            "u_bands",
+            "u_lit",
             "u_state",
             "u_time",
             "u_glow",
@@ -320,13 +320,13 @@ impl SphereEverywhere {
             f.target[0],
             f.target[1],
             f.target[2],
-            f.curl,
+            f.seam,
         );
         gl.uniform4fv_with_f32_array(self.at("u_ball"), &f.ball);
         gl.uniform4fv_with_f32_array(self.at("u_rang"), &f.rang);
-        gl.uniform4fv_with_f32_array(self.at("u_bands"), &f.bands);
+        gl.uniform4fv_with_f32_array(self.at("u_lit"), &f.lit);
         gl.uniform4f(self.at("u_state"), f.along, f.hum, f.scan[0], f.scan[1]);
-        gl.uniform4f(self.at("u_time"), f.time, f.phase, f.shine, 0.0);
+        gl.uniform4f(self.at("u_time"), f.time, f.phase, f.shine, f.flash);
         gl.uniform3fv_with_f32_array(self.at("u_glow"), &self.look.glow);
         gl.uniform3fv_with_f32_array(self.at("u_deep"), &self.look.deep);
         gl.uniform3fv_with_f32_array(self.at("u_mid"), &self.look.mid);

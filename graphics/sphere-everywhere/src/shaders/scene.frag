@@ -1,12 +1,12 @@
 #version 300 es
 precision highp float;
-// Art's strip of places and a clear glass ball, the sphere of attention.
-// Each pixel traces one ray from the camera. The strip is a surface that
-// stands flat at z = RING facing the camera, or bends toward it into a
-// ring round the origin, where the ball floats; its painting faces the
-// camera, its back is a dim see-through film. The ball reflects and
-// refracts the strip and carries the bands of memory. Positions are strip
-// px, y down like the painting. Timing and geometry mirror lib.rs.
+// Art's strip of places closed into a ring and a clear glass ball, the
+// sphere of attention, at its centre. Each pixel traces one ray from the
+// camera. The ring's painting faces in, its back is a dim see-through
+// film; each place shows lit or dim, and a place that rings lights with
+// the wave it sends. The ball reflects and refracts the ring. Positions
+// are strip px, y down like the painting. Timing and geometry mirror
+// lib.rs.
 uniform sampler2D u_left;  // the strip's columns 0 .. HALF
 uniform sampler2D u_right; // HALF .. SIZE
 uniform vec2 u_res;        // target px
@@ -14,12 +14,12 @@ uniform vec4 u_out;        // straight to the canvas, soft edges, engrave on the
 uniform vec3 u_backdrop;   // the page around the scene
 uniform vec4 u_edges;      // left, right, top, bottom
 uniform vec4 u_eye;        // the camera, tan of half the view's height
-uniform vec4 u_target;     // where it looks, the curl 0 flat … 1 a closed ring
+uniform vec4 u_target;     // where it looks, the seam 1 open … 0 healed
 uniform vec4 u_ball;       // the ball's centre and radius
 uniform vec4 u_rang;       // seconds since each place rang
-uniform vec4 u_bands;      // the light of each band on the glass
-uniform vec4 u_state;      // the column facing the camera, the hum, the running light's column and strength
-uniform vec4 u_time;       // loop time, loop phase, the ball's shine in the ring, -
+uniform vec4 u_lit;        // how lit each place is
+uniform vec4 u_state;      // the column behind the ball, the hum, the running light's column and strength
+uniform vec4 u_time;       // loop time, loop phase, the ball's shine, the seam's flash
 uniform vec3 u_glow;       // the light the ball and the waves add
 uniform vec3 u_deep;       // the engraving's deepest ink
 uniform vec3 u_mid;        // its middle ink
@@ -38,7 +38,7 @@ const float RIM_HUM = 0.25;
 #define SIZE u_geo[0].yz
 #define HALF u_geo[0].w
 #define PLACE u_geo[1]
-#define WAVE_Y u_geo[2].x
+#define WAVE_ROW u_geo[2].x
 #define WAVE_SPEED u_geo[2].y
 #define WAVE_LIFE u_geo[2].z
 #define WAVE_WIDTH u_geo[2].w
@@ -46,8 +46,9 @@ const float RIM_HUM = 0.25;
 #define F0 u_geo[3].y
 #define ENGRAVE_WHITE u_geo[3].z
 #define ENGRAVE_GAMMA u_geo[3].w
-#define LATITUDE u_geo[4]
-#define TILT u_geo[5].x
+#define BORDER u_geo[4].xyz
+#define BORDER_SOFT u_geo[4].w
+#define DIM u_geo[5].x
 #define SCAN_WIDTH u_geo[5].y
 #define BACK_LIGHT u_geo[5].z
 #define BACK_SEE u_geo[5].w
@@ -70,8 +71,8 @@ vec3 painted(vec2 q, float lod) {
   return textureLod(u_right, vec2((q.x - HALF) / HALF, q.y / SIZE.y), lod).rgb;
 }
 
-// The light running over the strip: the wave each ring sends over its
-// place, and the light that runs round the closed ring.
+// The light running over the ring: the wave each ring sends over its
+// place, the light that runs round once, and the seam's flash.
 float response(vec2 q) {
   float ages[4] = float[4](u_rang.x, u_rang.y, u_rang.z, u_rang.w);
   float places[4] = float[4](PLACE.x, PLACE.y, PLACE.z, PLACE.w);
@@ -79,7 +80,7 @@ float response(vec2 q) {
   for (int i = 0; i < 4; i++) {
     float age = ages[i];
     if (age <= 0.0 || age >= WAVE_LIFE) continue;
-    float rho = length(q - vec2(places[i], WAVE_Y));
+    float rho = length(q - vec2(places[i], WAVE_ROW));
     float x = (rho - WAVE_SPEED * age) / WAVE_WIDTH;
     float fade = pow(1.0 - age / WAVE_LIFE, 2.0) * smoothstep(0.0, 0.15, age);
     light += exp(-x * x) * fade;
@@ -88,17 +89,39 @@ float response(vec2 q) {
     float d = mod(q.x - u_state.z + 0.5 * SIZE.x, SIZE.x) - 0.5 * SIZE.x;
     light += u_state.w * exp(-0.5 * d * d / (SCAN_WIDTH * SCAN_WIDTH));
   }
+  if (u_time.w > 0.0) {
+    float e = min(q.x, SIZE.x - q.x);
+    light += u_time.w * exp(-0.5 * e * e / (SCAN_WIDTH * SCAN_WIDTH));
+  }
   return light;
 }
 
-// The strip's painting where a ray meets it, lit by the waves and, in the
-// ring, by the ball's shine; its long edges melt, and as it closes its two
-// ends darken toward the seam.
+// How lit the place at q is: its level, spread over it by the wave its
+// ring sends, the room always lit; neighbours blend at the borders.
+float placeLit(vec2 q) {
+  float ages[4] = float[4](u_rang.x, u_rang.y, u_rang.z, u_rang.w);
+  float places[4] = float[4](PLACE.x, PLACE.y, PLACE.z, PLACE.w);
+  float levels[4] = float[4](u_lit.x, u_lit.y, u_lit.z, u_lit.w);
+  float borders[4] = float[4](0.0, BORDER.x, BORDER.y, BORDER.z);
+  float lit = levels[0];
+  for (int i = 1; i < 4; i++) {
+    float rho = length(q - vec2(places[i], WAVE_ROW));
+    float reached = smoothstep(-WAVE_WIDTH, WAVE_WIDTH, WAVE_SPEED * ages[i] - rho);
+    float x = borders[i];
+    lit = mix(lit, levels[i] * reached, smoothstep(x - BORDER_SOFT, x + BORDER_SOFT, q.x));
+  }
+  return lit;
+}
+
+// The ring's painting where a ray meets it, dim or lit, brightened by the
+// waves and by the ball's shine; its long edges melt, and while the seam
+// is open the strip's two ends darken toward it.
 vec3 surface(vec2 q, float lod) {
   float light = response(q);
   float dy = q.y - u_ball.y;
-  float lit = u_time.z * RING * RING / (RING * RING + dy * dy);
-  vec3 c = painted(q, lod) * (1.0 + 2.2 * light + SHINE_ON_RING * lit) + u_glow * 0.05 * light;
+  float shone = u_time.z * RING * RING / (RING * RING + dy * dy);
+  vec3 paint = painted(q, lod) * mix(DIM, 1.0, placeLit(q));
+  vec3 c = paint * (1.0 + 2.2 * light + SHINE_ON_RING * shone) + u_glow * 0.05 * light;
   float edge = smoothstep(0.0, EDGE, q.y) * smoothstep(0.0, EDGE, SIZE.y - q.y);
   float seam = 1.0 - 0.85 * u_target.w * (1.0 - smoothstep(0.0, SEAM, min(q.x, SIZE.x - q.x)));
   return c * edge * seam;
@@ -113,55 +136,37 @@ struct Hit {
 
 Hit none() { return Hit(-1.0, vec2(0.0), 0.0, 1.0); }
 
-// One root of the ray with the strip's surface, if it lands on the strip.
-Hit landing(vec3 ro, vec3 rd, float t, float k) {
+// One root of the ray with the ring, if it lands within the strip's height.
+Hit landing(vec3 ro, vec3 rd, float t) {
   if (t <= 0.5) return none();
   vec3 p = ro + rd * t;
   if (p.y < 0.0 || p.y > SIZE.y) return none();
-  // The bend's angle from the column facing the camera, as (sin, cos);
-  // flat, the arc is just x.
-  vec2 sc = vec2(0.0, 1.0);
-  float s = p.x;
-  if (k > 1e-7) {
-    sc = vec2(k * p.x, 1.0 + k * (p.z - RING));
-    s = atan(sc.x, sc.y) / k;
-  }
-  float u = u_state.x + s;
-  if (k > 1e-7) {
-    float turn = TAU / k;
-    if (u < 0.0) u += turn;
-    else if (u > SIZE.x) u -= turn;
-  }
-  if (u < 0.0 || u > SIZE.x) return none();
+  // The angle round from the column behind the ball, as (sin, cos), which
+  // is also the outward normal there.
+  vec2 sc = p.xz / RING;
+  float u = mod(u_state.x + RING * atan(sc.x, sc.y), SIZE.x);
   float facing = dot(rd.xz, sc);
   return Hit(t, vec2(u, p.y), facing > 0.0 ? 1.0 : 0.0, abs(facing));
 }
 
-// Where a ray meets the strip, nearest first. Flat or bent with curvature
-// k toward the camera, its surface is k |p|^2 / 2 + p.z = 0 in xz about
-// the column facing the camera; the roots are taken the stable way, so
-// flat is the same formula with k = 0.
+// Where a ray meets the ring |p.xz| = RING, nearest first, the roots
+// taken the stable way.
 void meet(vec3 ro, vec3 rd, out Hit a, out Hit b) {
-  float k = u_target.w / RING;
-  vec2 o2 = vec2(ro.x, ro.z - RING), d2 = rd.xz;
-  float qa = 0.5 * k * dot(d2, d2);
-  float qb = d2.y + k * dot(o2, d2);
-  float qc = o2.y + 0.5 * k * dot(o2, o2);
+  vec2 o2 = ro.xz, d2 = rd.xz;
+  float qa = dot(d2, d2);
+  float qb = 2.0 * dot(o2, d2);
+  float qc = dot(o2, o2) - RING * RING;
   float t0 = -1.0, t1 = -1.0;
-  if (qa < 1e-12) {
-    if (abs(qb) > 1e-9) t0 = -qc / qb;
-  } else {
-    float disc = qb * qb - 4.0 * qa * qc;
-    if (disc >= 0.0) {
-      float q = -0.5 * (qb + (qb >= 0.0 ? 1.0 : -1.0) * sqrt(disc));
-      float r0 = q / qa;
-      float r1 = abs(q) > 1e-9 ? qc / q : -1.0;
-      t0 = min(r0, r1);
-      t1 = max(r0, r1);
-    }
+  float disc = qb * qb - 4.0 * qa * qc;
+  if (qa > 1e-12 && disc >= 0.0) {
+    float q = -0.5 * (qb + (qb >= 0.0 ? 1.0 : -1.0) * sqrt(disc));
+    float r0 = q / qa;
+    float r1 = abs(q) > 1e-9 ? qc / q : -1.0;
+    t0 = min(r0, r1);
+    t1 = max(r0, r1);
   }
-  a = landing(ro, rd, t0, k);
-  b = landing(ro, rd, t1, k);
+  a = landing(ro, rd, t0);
+  b = landing(ro, rd, t1);
   if (a.t < 0.0) {
     a = b;
     b = none();
@@ -170,15 +175,14 @@ void meet(vec3 ro, vec3 rd, out Hit a, out Hit b) {
 
 // Beyond the strip: the night, a few faint stars round the ring.
 vec3 space(vec3 rd) {
-  if (u_target.w <= 0.0) return vec3(0.0);
   vec2 a = vec2(atan(rd.x, rd.z), asin(clamp(rd.y, -1.0, 1.0))) * 160.0;
   vec2 cell = floor(a);
   vec2 f = fract(a) - 0.5;
   float star = step(0.985, hash12(cell)) * exp(-30.0 * dot(f, f)) * (0.3 + 0.7 * hash12(cell + 7.0));
-  return u_glow * 0.35 * star * u_target.w;
+  return u_glow * 0.35 * star;
 }
 
-// What a ray sees of the strip: its painted side hides what lies beyond,
+// What a ray sees of the ring: its painted side hides what lies beyond,
 // its back shows dim and lets the rest through. `foot` is the ray's
 // footprint, px, at its start, `spread` how fast it grows per px.
 vec3 strip(vec3 ro, vec3 rd, float foot, float spread) {
@@ -218,20 +222,9 @@ vec3 tremble(vec3 n) {
   return normalize(n + a * w);
 }
 
-// A band of light on the glass at latitude offset d, rad; w is one px.
-float band(float d, float w) {
-  return (1.0 - smoothstep(0.0, 1.4 * w, abs(d))) + 0.25 * exp(-pow(d / (6.0 * w), 2.0));
-}
-float bands(vec3 n, float w) {
-  vec3 axis = vec3(0.0, -cos(TILT), -sin(TILT));
-  float lat = asin(clamp(dot(n, axis), -1.0, 1.0));
-  return u_bands.x * band(lat - LATITUDE.x, w) + u_bands.y * band(lat - LATITUDE.y, w)
-       + u_bands.z * band(lat - LATITUDE.z, w) + u_bands.w * band(lat - LATITUDE.w, w);
-}
-
 // The ball where the ray meets it at t: the strip reflected in its face
-// and refracted through it upside down, the bands on its near and far
-// side, a rim and one highlight. `pix` is the tan of one screen px.
+// and refracted through it upside down, a rim, its own shine and one
+// highlight. `pix` is the tan of one screen px.
 vec3 glass(vec3 ro, vec3 rd, float t, float pix) {
   vec3 centre = u_ball.xyz;
   float r = u_ball.w;
@@ -251,8 +244,6 @@ vec3 glass(vec3 ro, vec3 rd, float t, float pix) {
   // A ball lens: the rays through one px fan out by its focal length.
   vec3 refracted = 0.94 * strip(p2, out2, 0.0, foot / (1.5 * r));
   vec3 c = mix(refracted, reflected, fresnel);
-  float w = foot / (r * max(cosi, 0.2));
-  c += u_glow * (0.9 * bands(n0, w) + 0.35 * bands(n2, 1.5 * w));
   c += u_glow * pow(1.0 - cosi, 3.0) * (RIM + RIM_HUM * u_state.y);
   c += u_glow * u_time.z * SHINE_IN_BALL * (0.4 + 0.6 * cosi * cosi);
   vec3 light = normalize(vec3(-0.5, -0.8, -0.35));

@@ -34,6 +34,9 @@ pub const PARTS: usize = 4;
 /// When each «Не…» starts stilling its part, and how long the part takes.
 pub const STILL_FROM: [f32; PARTS] = [2.5, 8.5, 14.5, 20.5];
 pub const STILL_TAKES: [f32; PARTS] = [2.5, 3.0, 3.0, 4.5];
+/// The rain stills in two steps: the first «Не…» leaves a light rain this
+/// strong, the second ends it along with the cross swell.
+pub const RAIN_LIGHT: f32 = 0.35;
 /// «Просто будь»: the lake is a mirror from here until the wind returns.
 pub const MIRROR: f32 = 25.0;
 /// The wind comes back and stirs each part again, so the loop closes: the
@@ -113,7 +116,7 @@ pub const ENGRAVE_GAMMA: f32 = 0.75;
 pub const STILL: f32 = 40.0;
 
 /// The geometry and timing above as the shader's `u_geo` array.
-pub const GEOMETRY: [f32; 28] = [
+pub const GEOMETRY: [f32; 32] = [
     SHORE,
     FOCAL,
     SIZE[0] as f32,
@@ -142,6 +145,10 @@ pub const GEOMETRY: [f32; 28] = [
     STILL_FROM[RAIN] + STILL_TAKES[RAIN],
     RETURN[RAIN][0],
     RETURN[RAIN][1],
+    STILL_FROM[CROSS],
+    STILL_FROM[CROSS] + STILL_TAKES[CROSS],
+    RAIN_LIGHT,
+    0.0,
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -159,7 +166,11 @@ pub struct Frame {
 
 /// How stirred one part of the water is at loop time `t`.
 pub fn stir(part: usize, t: f32) -> f32 {
-    let still = smooth(STILL_FROM[part], STILL_FROM[part] + STILL_TAKES[part], t);
+    let mut still = smooth(STILL_FROM[part], STILL_FROM[part] + STILL_TAKES[part], t);
+    if part == RAIN {
+        let end = smooth(STILL_FROM[CROSS], STILL_FROM[CROSS] + STILL_TAKES[CROSS], t);
+        still = (1.0 - RAIN_LIGHT) * still + RAIN_LIGHT * end;
+    }
     let back = smooth(RETURN[part][0], RETURN[part][1], t);
     (1.0 - still + back).clamp(0.0, 1.0)
 }
@@ -326,7 +337,9 @@ mod tests {
             let from = STILL_FROM[part];
             let done = from + STILL_TAKES[part];
             assert_eq!(stir(part, from - 0.01), 1.0, "{part}");
-            assert_eq!(stir(part, done), 0.0, "{part}");
+            // The first «Не» only eases the rain to a light rain.
+            let left = if part == RAIN { RAIN_LIGHT } else { 0.0 };
+            assert!(close(stir(part, done), left, 1e-6), "{part}");
             // The parts after it are still stirred while it settles.
             for later in part + 1..PARTS {
                 assert_eq!(stir(later, done), 1.0, "{part} {later}");
@@ -335,8 +348,12 @@ mod tests {
                 assert!(done <= STILL_FROM[part + 1]);
             }
         }
+        // The light rain keeps on until the second «Не» ends it.
+        let rain_ends = STILL_FROM[CROSS] + STILL_TAKES[CROSS];
+        assert!(close(stir(RAIN, STILL_FROM[CROSS]), RAIN_LIGHT, 1e-6));
+        assert_eq!(stir(RAIN, rain_ends), 0.0);
         // The rings of the last drops have died down before the mirror.
-        const { assert!(STILL_FROM[RAIN] + STILL_TAKES[RAIN] + 2.0 * RAIN_PERIOD <= MIRROR) };
+        const { assert!(STILL_FROM[CROSS] + STILL_TAKES[CROSS] + 2.0 * RAIN_PERIOD <= MIRROR) };
         assert_eq!(STILL_FROM[SWELL] + STILL_TAKES[SWELL], MIRROR);
     }
 

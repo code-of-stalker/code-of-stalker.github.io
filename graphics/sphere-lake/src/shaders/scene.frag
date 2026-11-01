@@ -20,7 +20,7 @@ uniform float u_part[12];
 uniform vec3 u_glow;     // the light the ring and the drops add
 uniform vec3 u_deep;     // the engraving's deepest ink
 uniform vec3 u_mid;      // its middle ink
-uniform vec4 u_geo[7];   // GEOMETRY in lib.rs
+uniform vec4 u_geo[8];   // GEOMETRY in lib.rs
 in vec2 v_uv;
 out vec4 o;
 
@@ -68,6 +68,8 @@ const float SLANT = 0.26;
 #define SOUND_WAVES u_geo[5].w
 #define RAIN_STILL u_geo[6].xy
 #define RAIN_BACK u_geo[6].zw
+#define RAIN_END u_geo[7].xy
+#define RAIN_LIGHT u_geo[7].z
 
 float hash12(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -84,7 +86,8 @@ float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 // How stirred the drops are at loop time t (lib.rs stir).
 float rain(float t) {
   t = mod(t, LOOP);
-  return clamp(1.0 - smoothstep(RAIN_STILL.x, RAIN_STILL.y, t) + smoothstep(RAIN_BACK.x, RAIN_BACK.y, t), 0.0, 1.0);
+  float still = (1.0 - RAIN_LIGHT) * smoothstep(RAIN_STILL.x, RAIN_STILL.y, t) + RAIN_LIGHT * smoothstep(RAIN_END.x, RAIN_END.y, t);
+  return clamp(1.0 - still + smoothstep(RAIN_BACK.x, RAIN_BACK.y, t), 0.0, 1.0);
 }
 
 // A line of light `width` px across at distance x, blurred by `blur` px:
@@ -170,7 +173,9 @@ vec3 painted(vec2 q, float lod) {
 // Rain in the air, three depths, slanting with the wind. Each depth falls a
 // whole number of tiles a loop; a streak is faint on the night and catches
 // the ring's light near it.
-float rainfall(vec2 p, float px) {
+// Light rain is sparser as well as fainter: each streak fades out in turn.
+float rainfall(vec2 p, float px, float amount) {
+  float dense = 0.65 * mix(0.35, 1.0, amount);
   vec2 down = vec2(sin(SLANT), cos(SLANT));
   float a = dot(p, vec2(down.y, -down.x));
   float sum = 0.0;
@@ -183,13 +188,14 @@ float rainfall(vec2 p, float px) {
     vec3 h = hash32(vec2(col, 3.0));
     float along = dot(p, down) - (44.0 + 4.0 * fl) * tile * u_time.x / LOOP + h.z * tile;
     vec3 g = hash32(vec2(col, mod(floor(along / cell.y), 8.0) + 11.0));
-    if (g.z > 0.65) continue;
+    float keep = 1.0 - smoothstep(dense - 0.08, dense, g.z);
+    if (keep <= 0.0) continue;
     float y = fract(along / cell.y) * cell.y - g.y * (cell.y - streak);
     float x = (fract(a / cell.x) - 0.25 - 0.5 * h.x) * cell.x;
     float wide = 0.6 + 0.45 * fl;
     float w = max(wide, px);
     float seg = smoothstep(0.0, 0.3 * streak, y) * (1.0 - smoothstep(0.6 * streak, streak, y));
-    sum += (0.5 + 0.35 * fl) * wide / w * exp(-x * x / (w * w)) * seg;
+    sum += keep * (0.5 + 0.35 * fl) * wide / w * exp(-x * x / (w * w)) * seg;
   }
   return sum;
 }
@@ -279,7 +285,10 @@ void main() {
             float landed = (period + r.z) * RAIN_PERIOD;
             float age = t - landed;
             if (age < 0.0 || age > DROP_LIFE) continue;
-            float strength = rain(landed);
+            // Light rain: fewer drops, each a little fainter.
+            float amount = rain(landed);
+            if (hash12(r.xy * 13.7 + 0.5) > mix(0.35, 1.0, amount)) continue;
+            float strength = sqrt(amount);
             vec2 rel = at - (cell + r.xy) * RAIN_CELL;
             float rho = length(rel);
             float x = rho - DROP_SPEED * age;
@@ -374,7 +383,7 @@ void main() {
   }
 
   // The rain falls in front of it all.
-  if (u_stir.x > 0.0) c += u_glow * u_stir.x * rainfall(p, px) * (0.1 + 0.8 * u_time.z * nearRing(p, 130.0));
+  if (u_stir.x > 0.0) c += u_glow * sqrt(u_stir.x) * rainfall(p, px, u_stir.x) * (0.1 + 0.8 * u_time.z * nearRing(p, 130.0));
 
   if (u_out.z > 0.5) c = engrave(c);
   // Dither against banding in the glows.

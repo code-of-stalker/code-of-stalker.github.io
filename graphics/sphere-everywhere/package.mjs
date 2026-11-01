@@ -14,4 +14,4 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 await copyFile(path.join(scene, 'assets/strip.webp'), path.join(output, 'assets/strip.webp'));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_sphere_everywhere_bg.wasm')))) throw new Error('Invalid sphere-everywhere WASM');
-console.log('Packaged Rust «Везде»: 60-second seamless loop, the glass ball projects each place onto the ring round it.');
+console.log('Packaged Rust «Везде»: 60-second seamless loop, the glass ball projects the places onto the ring one by one, then all together.');

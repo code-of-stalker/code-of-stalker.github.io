@@ -6,12 +6,14 @@
 //! where it throws them, its beams seen in the air. The camera looks down
 //! over the ring at the ball and the beam to the place it throws. At first
 //! it throws only the room; the ring turns each next blank stretch round to
-//! the beam, and there the ball rings: it trembles and the place spreads
-//! over the screen behind a wave of light and stays (the body's response,
-//! remembered). With every place thrown the camera rises to see them all
-//! round the one sphere, a light runs round the ring, and the seam where
-//! the strip's ends meet heals. Then the camera comes back down to the
-//! room and the ball stops throwing the other places.
+//! the beam, and there the ball rings: it trembles, the place spreads over
+//! the screen behind a wave of light and the one before goes out, so one
+//! place shows at a time; the lamp keeps each (the body's response,
+//! remembered) and burns brighter. With every place rung the camera rises
+//! over the ring, and as a light sets off round it the ball throws every
+//! place together; the seam where the strip's ends meet heals. Then the
+//! camera comes back down to the room and the ball stops throwing the
+//! other places.
 //! Every value here is a pure function of loop time; `browser.rs` only
 //! uploads it and the shader traces it.
 use std::f32::consts::{PI, TAU};
@@ -64,6 +66,9 @@ const GHOST: f32 = 0.05;
 pub const TURNS: [[f32; 2]; PLACES - 1] = [[6.0, 11.0], [14.5, 19.5], [23.0, 28.0]];
 /// When the ball rings at each place, s.
 pub const RINGS: [f32; PLACES] = [1.5, 11.5, 20.0, 28.5];
+/// The ball throws one place at a time: the one before goes out this long
+/// after the next one rings, s.
+pub const PASS: [f32; 2] = [0.3, 1.5];
 /// The wave of light each ring sends over its place: the row it starts
 /// from, px/s, s, px.
 pub const WAVE_ROW: f32 = 592.0;
@@ -77,8 +82,10 @@ pub const RISE: [f32; 2] = [30.0, 37.0];
 pub const REMEMBER: [f32; 2] = [30.0, 31.0];
 pub const HUSH: [f32; 2] = [38.0, 39.5];
 pub const HOME: [f32; 2] = [31.5, 58.0];
-/// «Перепроверяй себя»: a light runs round the ring once.
+/// «Перепроверяй себя»: a light runs round the ring once, and as it sets
+/// off the ball throws every place together.
 pub const SCAN: [f32; 2] = [39.0, 45.0];
+pub const ALL: [f32; 2] = [39.0, 40.2];
 /// «Целостность и Неделимость»: the seam heals with a flash.
 pub const HEAL: [f32; 2] = [46.0, 49.0];
 /// «Снова в комнате»: the camera comes down, the other places dim, the
@@ -241,14 +248,37 @@ pub fn risen(t: f32) -> f32 {
         - ease(DESCEND[0], DESCEND[1], t)
 }
 
-/// The ball always throws the room; every other place it throws from its
-/// ring on, and stops throwing at the end.
-pub fn lit(place: usize, t: f32) -> f32 {
+/// How much the ball keeps of each place, and its lamp burns with it: the
+/// room from the start, every other place from its ring on, all let go at
+/// the end.
+pub fn kept(place: usize, t: f32) -> f32 {
     if place == ROOM {
         return 1.0;
     }
     let ring = RINGS[place];
     smooth(ring, ring + 0.4, t) * (1.0 - smooth(FORGET[0], FORGET[1], t))
+}
+
+/// How much the ball throws of each place: one at a time, each from its
+/// ring until the next one rings (the field until all come on); then every
+/// place together as the light runs round, and at the end the room alone.
+pub fn lit(place: usize, t: f32) -> f32 {
+    let together = smooth(ALL[0], ALL[1], t);
+    let on = if place == ROOM {
+        1.0
+    } else {
+        smooth(RINGS[place], RINGS[place] + 0.4, t)
+    };
+    let off = match RINGS.get(place + 1) {
+        Some(next) => smooth(next + PASS[0], next + PASS[1], t),
+        None => 0.0,
+    };
+    let thrown = (on * (1.0 - off)).max(together);
+    if place == ROOM {
+        thrown
+    } else {
+        thrown * (1.0 - smooth(FORGET[0], FORGET[1], t))
+    }
 }
 
 /// The running light: its strip column and strength.
@@ -309,7 +339,7 @@ pub fn compose(t: f32) -> Frame {
         lit,
         hum: hum(time),
         scan: scan(time, along),
-        shine: lit.iter().sum::<f32>() / PLACES as f32,
+        shine: (0..PLACES).map(|place| kept(place, time)).sum::<f32>() / PLACES as f32,
         seam: seam(time),
         flash: flash(time),
         phase,
@@ -476,23 +506,31 @@ mod tests {
     }
 
     #[test]
-    fn each_place_lights_as_it_rings_and_dims_at_the_end() {
-        for t in times() {
-            assert_eq!(compose(t).lit[ROOM], 1.0);
-        }
+    fn places_come_on_one_at_a_time_then_all_together() {
+        assert_eq!(compose(0.0).lit, [1.0, 0.0, 0.0, 0.0]);
         for (place, &ring) in RINGS.iter().enumerate().skip(1) {
-            assert_eq!(compose(0.0).lit[place], 0.0);
             assert_eq!(compose(ring).lit[place], 0.0, "{place}");
             assert_eq!(compose(ring + 0.4).lit[place], 1.0, "{place}");
-            assert_eq!(compose(FORGET[0]).lit[place], 1.0, "{place}");
-            assert_eq!(compose(FORGET[1]).lit[place], 0.0, "{place}");
+            assert_eq!(compose(ring + PASS[0]).lit[place - 1], 1.0, "{place}");
+            assert_eq!(compose(ring + PASS[1]).lit[place - 1], 0.0, "{place}");
         }
-        // «Позволь телу запомнить»: every place lit, the camera over the
-        // whole ring, the ball shining and humming.
+        // One place at a time, two only while one hands over to the next.
+        for t in times().filter(|t| *t < ALL[0]) {
+            let on = compose(t).lit.iter().filter(|l| **l > 0.0).count();
+            let handing = RINGS.iter().any(|r| t > *r && t < r + PASS[1]);
+            assert!(on == 1 || (on == 2 && handing), "{t}");
+        }
+        for t in times().filter(|t| *t >= ALL[1] && *t <= FORGET[0]) {
+            assert_eq!(compose(t).lit, [1.0; PLACES], "{t}");
+        }
+        for t in times().filter(|t| *t >= FORGET[1]) {
+            assert_eq!(compose(t).lit, [1.0, 0.0, 0.0, 0.0], "{t}");
+        }
+        // «Позволь телу запомнить»: the camera over the whole ring, the
+        // ball shining with every place it keeps, and humming.
         for i in 0..=20 {
             let t = RISE[1] + (HUSH[0] - RISE[1]) * i as f32 / 20.0;
             let f = compose(t);
-            assert!(f.lit.iter().all(|l| *l == 1.0), "{t}");
             assert_eq!(risen(t), 1.0);
             assert_eq!(f.shine, 1.0);
             assert_eq!(f.hum, 1.0);

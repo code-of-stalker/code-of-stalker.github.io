@@ -109,8 +109,8 @@ float response(vec2 q) {
 }
 
 // How much the ball throws of the place at q: its level, spread over it
-// by the wave its ring sends, the room always thrown; neighbours blend at
-// the borders.
+// by the wave its ring sends (the room has none); neighbours blend at the
+// borders.
 float placeLit(vec2 q) {
   float ages[4] = float[4](u_rang.x, u_rang.y, u_rang.z, u_rang.w);
   float places[4] = float[4](PLACE.x, PLACE.y, PLACE.z, PLACE.w);

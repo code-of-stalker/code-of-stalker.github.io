@@ -37,7 +37,7 @@ profile, card bottom-right, focus pulls). Do not make a sixth one like them.
 Next: nothing queued; wait for Art.
 
 ## Step 5 «Внешнее кольцо» (branch `claude/step-5-sphere-fcddf0`)
-Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
+Branch head: the handoff after 4648261 (page 07 in Тишина). Shipped to `main` 2026-10-31: hero, home card, forward scroll and page 01 (Art: «как сделаешь
 первую анимацию запуш»), then page 01's head sway and page 02 «Якорь» (Art: «Пушим»), then page 03 «Скан комнаты» (Art: «Пушим»), then page 04 «Ты не точка», page 05 «Используй свой голос» and page 06 «Итог» on 2026-11-01 (Art: «Пушим» each). 7 reading pages (text in `stepFiveContent.ts`), access via
 step 4 page 14 or settings «ОТКРЫТЬ ПЯТЫЙ ШАГ». Art's illustration packs in `graphics/sphere-*/`,
 briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFiveScene.web.tsx`
@@ -110,8 +110,20 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
   темы»); light themes engrave the night painting (light pack unused), the storm water prints
   lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
-- Left: 07 «Позволь телу запомнить» (`sphere-anywhere`, direction A: the camera travels the
-  strip, room, street, crowd, field, the sphere goes along; light assets already exist).
+- 07 «Позволь телу запомнить» «Везде» (`graphics/sphere-everywhere`, on the branch, commit
+  4648261, NOT shipped): Art's 6:1 strip (room, street, crowd, field) uploaded as two halves;
+  one ray-traced pass. The camera walks the strip with a clear glass ball; at each place the
+  ball rings (2/12.5/23.5/34.5 s), a wave of light runs over the place, a band of memory stays
+  on the glass; all bands at «Позволь телу запомнить» (36.5 s). The strip curls into a ring
+  round the ball (40.5 s), the camera rises out, the ball swells and shines on every place, a
+  light runs round the ring (47–51 s), the ring turns the room to the front, the strip unrolls
+  back into the room (52.5–56 s); 60 s loop, reduced motion shows 46.7 s. Wired to page
+  `sphere-anywhere`; the exported app mounts it at phone (295 px) and wide (544 px) sizes, gpu
+  error 0. Prototype `output/prototypes/sphere-everywhere/index.html`, sheet `frames.jpg`.
+  Тишина only; waits for Art's notes or «Ок, делай темы», then the other 6 themes (light pack
+  `assets-light/strip.webp` exists, unused so far), then «Пушим».
+  QA tip: in the hidden pane, open a Step 5 page via the step menu («Выбрать шаг» → the page's
+  title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
 ## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)

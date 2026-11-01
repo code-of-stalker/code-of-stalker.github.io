@@ -378,6 +378,13 @@ void main() {
     vec3 water = fresnel * mirror + (1.0 - fresnel) * BODY * body + u_glow * (0.8 * pin + 0.6 * crest);
     water = water * (1.0 - 0.45 * storm() * trough)
           + u_glow * (0.45 * foam + 0.15 * storm() * ridge) * (0.35 + 1.4 * lane);
+    // Engraved on a light page, the stormy water's light would ink into
+    // heavy blots: while the storm lasts it prints lighter, its brightest
+    // patches most, and the mirror prints in full.
+    if (u_out.z > 0.5) {
+      float hot = max(water.r, max(water.g, water.b));
+      water *= (1.0 - 0.45 * storm()) / (1.0 + 2.5 * storm() * hot);
+    }
     // The waterline: one pixel's blend from the painted shore into the lake.
     c = mix(sky(p, lod, 0.0), water, smoothstep(SHORE - px, SHORE + px, p.y));
   }

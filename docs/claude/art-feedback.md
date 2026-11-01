@@ -58,3 +58,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
+- A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)

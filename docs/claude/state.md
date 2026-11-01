@@ -140,6 +140,8 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   glass, one at a time, then more. One chapter per page via Rust `chapter(code)`: 0 hero,
   1 page 01 (first person → over the shoulder → side). Bridge `DynamicRings.web.tsx`; beats in
   the crate's `README.txt`. Art approved Матрица, then all 7 themes («Ок, дальше», «Оставить»).
+  Page 01's first-person look turns the head left, then right (about 45°), shipped the same
+  day (Art: «Так, пушим»).
 - Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
   the same world; a stage-finale screen after page 10 needs Art's wording first.
 

@@ -1,7 +1,7 @@
 import { validateTextRuns, type DiaryTextRun } from '../diary/text-format';
 export type ProductLevel = 'basic' | 'intensive' | 'guidance';
 export type ProductSettings = {
-  theme: 'system' | 'dark' | 'light' | 'neutral' | 'violet' | 'matrix' | 'mirage' | 'dawn';
+  theme: 'system' | 'dark' | 'neutral' | 'violet' | 'matrix';
   startAt: 'home' | 'architecture' | 'diary';
   microphoneCheck: boolean;
   microphoneDeviceId?: string;
@@ -147,10 +147,13 @@ export function validateObservationDraft(draft: ObservationDraft, limitSeconds =
     throw new Error('Браузер вернул неподдерживаемый формат звука. Запись не сохранена; попробуй записать ответ ещё раз.');
   }
 }
+// The light themes Дюна, Мираж and Рассвет were taken off the site (kept on the
+// `archive/light-themes` branch). A saved one opens in the default theme.
+const retiredThemes = ['light', 'mirage', 'dawn'];
 export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
   const settings = value?.settings, progress = value?.progress;
   if (value?.version !== 1 || !settings || !progress ||
-      !['system', 'dark', 'light', 'neutral', 'violet', 'matrix', 'mirage', 'dawn'].includes(settings.theme) ||
+      ![...retiredThemes, 'system', 'dark', 'neutral', 'violet', 'matrix'].includes(settings.theme) ||
       !['home', 'architecture', 'diary'].includes(settings.startAt) ||
       typeof settings.microphoneCheck !== 'boolean' || typeof settings.reducedMotion !== 'boolean' ||
       (settings.microphoneDeviceId !== undefined && (typeof settings.microphoneDeviceId !== 'string' || settings.microphoneDeviceId.length > 1024)) ||
@@ -209,7 +212,7 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
   }
   const audioIds = new Set([...value.observations, ...(value.diaryEntries ?? []).filter(entry => entry.kind === 'audio')].map(entry => entry.id));
   if (value.listenLater !== undefined && (!Array.isArray(value.listenLater) || new Set(value.listenLater).size !== value.listenLater.length || value.listenLater.some(id => !audioIds.has(id)))) throw new Error('Не удалось прочитать подборку голосовых записей.');
-  return value;
+  return retiredThemes.includes(settings.theme) ? { ...value, settings: { ...settings, theme: defaultSettings.theme } } : value;
 }
 export function validateDiaryCategory(category: DiaryCategory) {
   if (category !== 'observation' && category !== 'dynamics') throw new Error('Неизвестный раздел дневника.');

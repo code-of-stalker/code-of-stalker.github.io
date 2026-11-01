@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-01. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -169,9 +169,10 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   the same world; a stage-finale screen after page 10 needs Art's wording first.
 
 ## Shipped features (all on main)
-- Themes: 7, Матрица default (since 2026-10-31; Тишина before), settings list dark then light. Art's palettes: Мираж sand F1DFB8 / cobalt 2E5BD5 / lilac 9B6FAB /
-  navy 263B6B; Рассвет peach F3D8C7 / wine 9C3857 / copper B77A43 / plum 603346; Матрица 00FF41
-  on black; Искра F5DD07 on black.
+- Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light
+  ones (Дюна, Мираж, Рассвет) were taken off on Art's word, kept on `archive/light-themes`
+  (5b67880); a saved light choice opens in Матрица. Their palettes and the Rust light branches
+  are still in the code, unreachable. Матрица 00FF41 on black; Искра F5DD07 on black.
 - Adaptive layout (`productLayout` in `layout.ts`): phone < 600 keeps the 480 column; 600+ uses
   a 720 column; two home columns at width ≥ 900 in landscape. Sheets stay 480. Native is portrait only.
 - Performance: engine WASM 55 → 8.8 MB via external assets fetched per scene; service worker

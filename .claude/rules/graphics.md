@@ -28,6 +28,8 @@ paths:
   `webScene: '<id>'` on the page in `stepFourContent.ts`. The native app keeps its old art.
 
 ## Palette and themes
+- Since 2026-11-01 the site uses only the dark codes 0, 2, 3, 4; light codes 1, 5, 6 are
+  retired (`archive/light-themes`). New scenes cover the dark codes; old light branches stay.
 - Palette codes (`graphicsPalette`, `Palette::from_code`): 0 Искра `dark`, 1 Дюна `light`,
   2 Тишина `neutral`, 3 Астрал `violet`, 4 Матрица `matrix`, 5 Мираж `mirage`, 6 Рассвет `dawn`.
   Light test: `Palette::is_light`, `isLightTheme` (`src/features/product/theme.ts`).

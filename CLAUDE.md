@@ -20,19 +20,21 @@ Owner and only user: Art (GitHub `code-of-stalker`).
 2. All graphics and animation are Rust (see AGENTS.md). JS/TS only bridges.
 3. Rust: look up crate APIs in Context7 first (wgpu, wasm-bindgen, web-sys, js-sys…)
    for the versions pinned in `Cargo.toml`, never from memory.
-4. Themes: Дюна `light`, Мираж `mirage`, Рассвет `dawn` are light; Матрица `matrix`
-   (default), Тишина `neutral`, Искра `dark`, Астрал `violet` are dark. Mark this
-   in code only, never in the UI. Settings list them in that order: dark first, then light.
-5. Light themes: a scene's background is exactly the page color. No paler frame,
-   no white, no haze; light is inked in the theme's lamp color. Check: 0 pixels
-   lighter than the page.
+4. Themes on the site: 4, all dark: Матрица `matrix` (default), Тишина `neutral`,
+   Искра `dark`, Астрал `violet`, listed in that order. The light themes Дюна `light`,
+   Мираж `mirage`, Рассвет `dawn` were taken off the site on 2026-11-01 (Art: they look
+   raw); they live on the `archive/light-themes` branch. New scenes need no light
+   variant. Never bring the light themes back without Art's word.
+5. If Art revives the light themes: a scene's background is exactly the page color,
+   no paler frame, no white, no haze; light is inked in the theme's lamp color;
+   0 pixels lighter than the page.
 6. Tablet/PC (width ≥ 600): every illustration and scene spans exactly the width
    of the plate below it, height = width × phone ratio. Phone (< 600) is unchanged.
 7. A new animation gets its own central image, manner and camera. Do not reuse the
    look of the previous scene. Offer Art 2–3 truly different directions first.
 8. Show animations as a live prototype: one self-contained HTML file Art opens from
    disk. No video renders. Sharing a prototype needs no OK; `main` does.
-9. Show Тишина first. Adapt and check the other 6 themes only after Art's OK.
+9. Show Тишина first. Adapt and check the other 3 dark themes only after Art's OK.
 10. When Art says to ship several things together, ship them in one push.
 
 ## Commands (repo root; Windows PowerShell on Art's PC «Blade»)

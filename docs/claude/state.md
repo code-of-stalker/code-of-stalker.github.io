@@ -98,15 +98,19 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   Рассвет 0 px lighter than the page over 108 frames each.
   The exported app mounts it at phone (295 px wide) and wide (544 px, the plate's width) sizes,
   no console or GPU error.
-- 06 «Итог» (`graphics/sphere-lake`, commit 2e37f09, not on `main`): Art's night lake; the
+- 06 «Итог» (`graphics/sphere-lake`, head 1f8a9c5, not on `main`): Art's night lake; the
   water below the shore line is computed (wave trains, rain rings, glossy reflection, glints).
-  Each «Не…» (2.5/8.5/14.5/20.5 s) stills one cause of motion, the lake is a mirror at 25 s and
+  Starts as an almost-storm (slanting rain, clouds, big waves with foam, rocking camera).
+  Each «Не…» (2.5/8.5/14.5/20.5 s) stills one cause of motion; the rain eases at the first and
+  ends at the second. The lake is a mirror at 25 s and
   the ring closes into a whole circle with its reflection, the camera lowers to the shore line
   (31–39 s), the circle sounds at 42 s, the wind returns 52–60 s; 60 s loop, reduced motion
-  shows 40 s. Wired to page `sphere-summary`; the exported app mounts it at phone and wide
-  sizes. Prototype `output/prototypes/sphere-lake/index.html`, sheet `kadry-tishina.png`.
-  Waits for Art's OK on Тишина; then check the 6 other themes (light pack
-  `assets-light/lake.webp` is not used yet).
+  shows 40 s. Wired to page `sphere-summary`; the exported app mounts it at phone (295 px) and
+  wide (544 px) sizes, gpu error 0. Prototype `output/prototypes/sphere-lake/index.html`,
+  sheets `kadry-tishina.png`, `temy.jpg` (all 7 themes). Art approved Тишина («Ок, делай
+  темы»); light themes engrave the night painting (light pack unused), the storm water prints
+  lighter there; Дюна, Мираж, Рассвет 0 px lighter than the page over 120 frames each.
+  Waits for Art's «Пушим».
 - Left: 07 «Позволь телу запомнить» (`sphere-anywhere`, direction A: the camera travels the
   strip, room, street, crowd, field, the sphere goes along; light assets already exist).
 - Step 5's last page (07) scrolls on into Step 6 page 01.

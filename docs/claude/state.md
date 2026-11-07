@@ -1,20 +1,20 @@
 # Project state
 
-Updated 2026-11-07. Five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
 
-## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, not on `main`)
+## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, on `main` 2026-11-07)
 Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly
 drawn person, chose the labyrinth: first-person walk, rise over the plan, light runs the path,
 a figure of light forms in the court and breaks the walls; 50 s loop, still at 43 s. Crate
 `graphics/hero-labyrinth` (beats in its `README.txt`), bridge `HeroLabyrinth.web.tsx`,
 `webScene` set in `StepTwoTaskPage.tsx`. Art approved Тишина («Ок, подключай»); wired and
 checked in the export at phone, tablet and PC in all 4 dark themes. Матрица and Искра dim the
-figure's body and ink its lines paler (one pure hue). Next: ship only on Art's word (`/ship-to-main`).
+figure's body and ink its lines paler (one pure hue). Shipped to `main` 2026-11-07 (Art: «Пушим»).
 
 ## Step 4 «Практика заземления и прямого узнавания»: page → scene
 Text and page ids live in `src/features/product/stepFourContent.ts`. Two reading blocks

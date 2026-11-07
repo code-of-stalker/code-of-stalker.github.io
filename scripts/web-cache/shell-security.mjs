@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 
+import { intensiveConnectOrigins } from '../intensive-server.mjs';
+
 // Runs before the deferred router bundle. expo-router parses the query with
 // decode-uri-component 0.2, which needs minutes for a few kilobytes of
 // malformed percent escapes, so such an address is trimmed first. A copy
@@ -19,7 +21,7 @@ export async function diaryEditorScript() {
   return JSON.parse(literal[1]);
 }
 
-export function contentSecurityPolicy(inlineScripts) {
+export function contentSecurityPolicy(inlineScripts, connectOrigins = []) {
   return [
     "default-src 'self'",
     // Graphics runtimes load through Function('url', 'return import(url)'), so
@@ -30,8 +32,10 @@ export function contentSecurityPolicy(inlineScripts) {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "media-src 'self' blob:",
-    // Diary text, recordings and keys never leave this origin.
-    "connect-src 'self' blob:",
+    // Diary text, recordings and keys never leave this origin. The only other
+    // host is the Intensive chat's server once config.ts names it; it receives
+    // ciphertext only.
+    ["connect-src 'self' blob:", ...connectOrigins].join(' '),
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
@@ -45,7 +49,7 @@ export async function secureShell(html) {
   html = html.replace(/<meta\b[^>]*\bid="watcher-csp"[^>]*>\s*/g, '')
     .replace(/<script id="watcher-shell-guard">[\s\S]*?<\/script>\s*/g, '');
   if (!/<head\b[^>]*>/i.test(html)) throw new Error('Export has no HTML head');
-  const policy = contentSecurityPolicy([shellGuard, await diaryEditorScript()]);
+  const policy = contentSecurityPolicy([shellGuard, await diaryEditorScript()], await intensiveConnectOrigins());
   const tags = `<meta id="watcher-csp" http-equiv="Content-Security-Policy" content="${policy}">\n<script id="watcher-shell-guard">${shellGuard}</script>`;
   return html.replace(/(<head\b[^>]*>)\s*/i, `$1\n${tags}\n`);
 }

@@ -1001,12 +1001,13 @@ mod tests {
             let (bead, root) = (after.facts[e], after.branches[3 * e]);
             assert!((0..3).all(|k| (bead[k] - root[k]).abs() < 1e-5), "{e}");
         }
-        // The figure stops for the thought and walks on after it folds.
+        // The figure walks on through the thought.
         let thought = story.touches[0];
-        assert!(story.compose(thought - 1.0).amount < 1e-3);
-        assert!(story.compose(thought + 3.0).amount > 0.99);
+        for t in [thought - 3.0, thought, thought + 1.0] {
+            assert!(story.compose(t).amount > 0.99, "{t}");
+        }
         // The thought lifts it off the floor, its feet dark, and melts it
-        // from the feet up; it is down and whole again as it walks on.
+        // from the feet up; it is down and whole again after it.
         let (aloft, down) = (story.compose(thought - 0.2), story.compose(thought + 1.2));
         assert!(aloft.body.low.y - down.body.low.y > 0.15);
         assert!(aloft.feet.iter().all(|f| f[3] < 0.05));

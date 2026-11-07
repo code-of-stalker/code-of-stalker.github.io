@@ -197,7 +197,10 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   sent to Art. Art then asked (2026-11-08) for a point in the belly, the thought lifting the
   figure off the floor while it melts from the feet up, and each event visibly dragging the
   body its way: done (five events, belly spark at 26.3; `INNER_PULL`, `inner_way`, melt in
-  `body.vert`), sheet `kadry-04-v2.jpg` sent; waits for his word. Not wired into the app yet (`dynamic-second-ring` →
+  `body.vert`), sheet `kadry-04-v2.jpg` sent. Art: the hand and knee were over too fast, and
+  he must not stop on the thought: now he walks through it all (96 steady steps, no prints while
+  aloft), the impulse flares at 33.5 (4 s to the touch), the knee at 43.6 with a small tree
+  (3 s); sheet `kadry-04-v3.jpg` sent; waits for his word. Not wired into the app yet (`dynamic-second-ring` →
   chapter 4 in `stepSevenContent.ts`, `DynamicRings.web.tsx`, `types.ts`); other 3 themes
   after his OK; `main` needs a new OK.
 - Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after

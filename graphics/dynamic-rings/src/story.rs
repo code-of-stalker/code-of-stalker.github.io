@@ -315,13 +315,9 @@ const CASTER_CONES: [(usize, f32); CASTERS / 2] = [
     (16, 0.028),
 ];
 
-/// Page 04: 12 breaths, 80 steps walked over 96 steps' time: it stops for
-/// the thought, its last step landing on `INNER_HALT`, and walks on
-/// `INNER_PAUSE` s later.
+/// Page 04: 12 breaths, 96 steps; it walks on through everything.
 pub const INNER_LOOP: f32 = 52.8;
-const INNER_STEPS: i32 = 80;
-const INNER_HALT: i32 = 18;
-const INNER_PAUSE: f32 = 16.0 * CADENCE;
+const INNER_STEPS: i32 = 96;
 /// What flares in it: when, how big its branches grow (of the thought's),
 /// how much of the crown's light it takes, and the scanner's way when it
 /// reaches it (true going up).
@@ -329,8 +325,8 @@ const INNER_EVENTS: [(f32, f32, f32, bool); EVENTS] = [
     (9.6, 1.0, 0.85, true),
     (22.3, 0.6, 0.45, true),
     (26.3, 0.0, 0.0, false),
-    (36.6, 0.3, 0.2, false),
-    (46.3, 0.0, 0.0, false),
+    (33.5, 0.3, 0.2, false),
+    (43.6, 0.25, 0.15, false),
 ];
 /// How far (m) each drags the skin round its root its way at the most,
 /// and how far round the root the drag reaches (m); the figure above its
@@ -879,52 +875,9 @@ fn bound(body: &Body) -> [f32; 4] {
     [m.x, m.y, m.z, r]
 }
 
-/// Page 04's walk: steady, then two short steps bring the feet together
-/// after `INNER_HALT`, and a short step sets off again `INNER_PAUSE` s on.
-fn inner_walk() -> Walk {
-    let swing = 0.76 * CADENCE;
-    let aside = |side: usize, x: f32| if side == 0 { x } else { -x };
-    let stop = (INNER_HALT as f32 + 0.5) * STRIDE;
-    let mut steps = vec![];
-    for k in -12..INNER_STEPS + 16 {
-        let side = k.rem_euclid(2) as usize;
-        let z = k as f32 * STRIDE;
-        let land = k as f32 * CADENCE + if k > INNER_HALT { INNER_PAUSE } else { 0.0 };
-        let lift = land - if k == INNER_HALT + 1 { 0.5 } else { swing };
-        steps.push(Step {
-            side,
-            lift,
-            land,
-            x: aside(side, LIFE_WIDTH),
-            z,
-        });
-        if k == INNER_HALT {
-            let mut at = land;
-            for (side, after) in [(1 - side, 0.6), (side, 0.65)] {
-                at += after;
-                steps.push(Step {
-                    side,
-                    lift: at - 0.5,
-                    land: at,
-                    x: aside(side, LIFE_STANCE),
-                    z: stop,
-                });
-            }
-        }
-    }
-    let behind = |k: i32| {
-        [
-            aside(k.rem_euclid(2) as usize, LIFE_WIDTH),
-            (k - 2) as f32 * STRIDE,
-        ]
-    };
-    Walk::new([behind(-12), behind(-11)], steps, BEAT)
-}
-
 /// Where what flares at event `e` grows from on `body`, and which way its
 /// branches reach: above the head, before the chest, in the belly (that
-/// one only sparks), from the right hand's fingertips, at the left knee
-/// (a spark too).
+/// one only sparks), from the right hand's fingertips, at the left knee.
 fn inner_root(e: usize, body: &Body) -> (V3, V3) {
     let (face, chest) = (body.face, body.chest_axes);
     let cone = |i: usize| {
@@ -990,7 +943,7 @@ impl Story {
                 };
                 (0.0, Walk::new(stance, vec![never], BEAT))
             }
-            Chapter::Inner => (INNER_STEPS as f32 * STRIDE, inner_walk()),
+            Chapter::Inner => steady(INNER_STEPS),
         };
         let (other, voices) = match chapter {
             Chapter::Life => (Some(bouts(&OTHER_BOUTS)), voice_list()),
@@ -1565,7 +1518,7 @@ impl Story {
         }
         // The thought melts it from its feet up, slowly, and it forms
         // again as the scanner reaches the thought; aloft, its feet leave
-        // no light on the floor.
+        // no light and no prints on the floor.
         let (flare, touch) = (INNER_EVENTS[0].0, self.touches[0]);
         let front = min_jerk(stage(t, [flare + 0.8, touch]));
         let holds = 1.0 - min_jerk(stage(t, [touch + 0.05, touch + 1.2]));
@@ -1576,6 +1529,11 @@ impl Story {
         let aloft = smooth(0.0, 0.4, self.held(0, t));
         for foot in &mut f.feet {
             foot[3] *= 1.0 - aloft;
+        }
+        for print in &mut f.prints {
+            if self.held(0, t - print[3]) > 0.2 {
+                print[3] = 99.0;
+            }
         }
         f
     }

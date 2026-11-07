@@ -5,9 +5,9 @@
 // ground (7), the figures among the stars (8), the wires (9), the things
 // the walk passes (10), the spires over the horizon (11), the seats (12),
 // the voices in a talk (13), the desks and their laptops (14), and on page
-// 04 the branches of what flares in the figure (15). Each instance is
-// one straight piece of a curve, drawn as a band a few blurred widths
-// across (line.frag).
+// 04 the branches of what flares in the figure (15), and on page 05 what
+// the figure holds (16). Each instance is one straight piece of a curve,
+// drawn as a band a few blurred widths across (line.frag).
 out vec3 v_color;
 out float v_across;
 out float v_sigma;
@@ -28,6 +28,17 @@ vec3 keepIn(vec3 q) {
   q = SPH.xyz + o * min(1.0, 0.97 * SPH.w / max(length(o), 1e-4));
   q.y = max(q.y, 0.02);
   return q;
+}
+
+// A point `u` (0..1) of the way round a rectangle of half sizes `h`.
+vec2 aroundRect(float u, vec2 h) {
+  float d = fract(u) * 4.0 * (h.x + h.y);
+  if (d < 2.0 * h.x) return vec2(d - h.x, -h.y);
+  d -= 2.0 * h.x;
+  if (d < 2.0 * h.y) return vec2(h.x, d - h.y);
+  d -= 2.0 * h.y;
+  if (d < 2.0 * h.x) return vec2(h.x - d, h.y);
+  return vec2(-h.x, h.y - (d - 2.0 * h.x));
 }
 
 void main() {
@@ -130,6 +141,8 @@ void main() {
         a = bend(mid + onRing(s0, r));
         b = bend(mid + onRing(s1, r));
         light = RIPPLE_LIGHT * (1.0 - p) * (1.0 - p) * smoothstep(0.0, 0.05, p);
+        // Page 05: each step lights its support.
+        light *= 1.0 + 2.0 * INNER.w;
       }
     } else if (e.w < PRINT_FADE) {
       // A sole: narrower at the heel than across the ball.
@@ -573,6 +586,123 @@ void main() {
         width = mix(1.3, 0.7, deep);
         warm = 1.0;
       }
+    }
+  } else if (kind == 16) {
+    // Page 05: what the figure holds. A cup (its rim, its foot, its sides
+    // and its water, level however the cup tips), a phone (its two faces
+    // and its screen) or a box (its edges and the tape over its top). It
+    // builds in the hand from the bottom up, its growing edge bright, and
+    // melts back the same way.
+    vec4 p0 = PROP(0);
+    vec3 c = p0.xyz;
+    int shape = int(p0.w + 0.5);
+    vec3 up = PROP(1).xyz;
+    vec3 fwd = PROP(2).xyz;
+    vec3 side = normalize(cross(up, fwd));
+    float made = PROP(2).w;
+    vec4 extra = PROP(3);
+    // Its own side, up and forward.
+    vec3 la = vec3(0.0);
+    vec3 lb = vec3(0.0);
+    float strength = 0.0;
+    float tall = 1.0;
+    if (shape == 0) {
+      tall = CUP_HALF;
+      float mean = 0.5 * (CUP_TOP + CUP_FOOT);
+      float flare = (CUP_TOP - CUP_FOOT) / (2.0 * CUP_HALF);
+      if (i < 56) {
+        bool rim = i < 32;
+        int n = rim ? 32 : 24;
+        int j = rim ? i : i - 32;
+        float r = rim ? CUP_TOP : CUP_FOOT;
+        float y = rim ? CUP_HALF : -CUP_HALF;
+        float s0 = TAU * float(j) / float(n);
+        float s1 = TAU * float(j + 1) / float(n);
+        la = vec3(r * cos(s0), y, r * sin(s0));
+        lb = vec3(r * cos(s1), y, r * sin(s1));
+        strength = 1.0;
+      } else if (i < 64) {
+        int j = i - 56;
+        int k = j / 2;
+        float s = TAU * float(k) / 4.0 + 0.25 * PI;
+        float u0 = 0.5 * float(j - 2 * k);
+        float u1 = u0 + 0.5;
+        vec3 round_ = vec3(cos(s), 0.0, sin(s));
+        la = round_ * mix(CUP_FOOT, CUP_TOP, u0) + vec3(0.0, mix(-CUP_HALF, CUP_HALF, u0), 0.0);
+        lb = round_ * mix(CUP_FOOT, CUP_TOP, u1) + vec3(0.0, mix(-CUP_HALF, CUP_HALF, u1), 0.0);
+        strength = 0.6;
+      } else if (i < 88 && extra.x > 0.0) {
+        // The water: where the level plane meets the wall.
+        float level = c.y + up.y * mix(-CUP_HALF, CUP_HALF, extra.x);
+        float s0 = TAU * float(i - 64) / 24.0;
+        float s1 = TAU * float(i - 63) / 24.0;
+        float k0 = side.y * cos(s0) + fwd.y * sin(s0);
+        float k1 = side.y * cos(s1) + fwd.y * sin(s1);
+        float y0 = clamp((level - c.y - mean * k0) / max(up.y + flare * k0, 0.05), -CUP_HALF, CUP_HALF);
+        float y1 = clamp((level - c.y - mean * k1) / max(up.y + flare * k1, 0.05), -CUP_HALF, CUP_HALF);
+        la = vec3(cos(s0), 0.0, sin(s0)) * (mean + flare * y0) + vec3(0.0, y0, 0.0);
+        lb = vec3(cos(s1), 0.0, sin(s1)) * (mean + flare * y1) + vec3(0.0, y1, 0.0);
+        strength = 0.55;
+      }
+    } else if (shape == 1) {
+      tall = PHONE_Y;
+      vec2 h = vec2(PHONE_X, PHONE_Y);
+      if (i < 64) {
+        int j = i < 32 ? i : i - 32;
+        float z = i < 32 ? PHONE_Z : -PHONE_Z;
+        vec2 q0 = aroundRect(float(j) / 32.0, h);
+        vec2 q1 = aroundRect(float(j + 1) / 32.0, h);
+        la = vec3(q0.x, q0.y, z);
+        lb = vec3(q1.x, q1.y, z);
+        strength = i < 32 ? 1.0 : 0.5;
+      } else if (i < 80) {
+        vec2 q0 = aroundRect(float(i - 64) / 16.0, vec2(0.028, 0.06));
+        vec2 q1 = aroundRect(float(i - 63) / 16.0, vec2(0.028, 0.06));
+        la = vec3(q0.x, q0.y, 1.01 * PHONE_Z);
+        lb = vec3(q1.x, q1.y, 1.01 * PHONE_Z);
+        strength = 0.5 + 1.5 * extra.y;
+      }
+    } else {
+      tall = BOX_HALF;
+      if (i < 72) {
+        int e = i / 6;
+        int piece = i - e * 6;
+        int axis = e / 4;
+        int bits = e - axis * 4;
+        float u = float(bits & 1) * 2.0 - 1.0;
+        float v = float(bits >> 1) * 2.0 - 1.0;
+        vec3 one = axis == 0 ? vec3(1.0, 0.0, 0.0) : (axis == 1 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
+        vec3 two = axis == 0 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        vec3 three = axis == 2 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+        vec3 q = two * u + three * v;
+        la = BOX_HALF * mix(q - one, q + one, float(piece) / 6.0);
+        lb = BOX_HALF * mix(q - one, q + one, float(piece + 1) / 6.0);
+        strength = 1.0;
+      } else if (i < 84) {
+        // Tape over the top, across and along.
+        int j = i - 72;
+        int line_ = j / 6;
+        float u0 = float(j - 6 * line_) / 6.0 * 2.0 - 1.0;
+        float u1 = u0 + 2.0 / 6.0;
+        vec3 run = line_ == 0 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0);
+        vec3 top = vec3(0.0, 1.002 * BOX_HALF, 0.0);
+        la = top + run * (u0 * BOX_HALF);
+        lb = top + run * (u1 * BOX_HALF);
+        strength = 0.45;
+      }
+    }
+    if (strength > 0.0) {
+      a = c + side * la.x + up * la.y + fwd * la.z;
+      b = c + side * lb.x + up * lb.y + fwd * lb.z;
+      vec3 m = 0.5 * (a + b);
+      float yy = (0.5 * (la.y + lb.y) + tall) / (2.0 * tall);
+      float built = smoothstep(made + 0.03, made - 0.05, yy);
+      float moving = smoothstep(0.0, 0.06, made) * (1.0 - smoothstep(0.94, 1.0, made));
+      float rim = (yy - made) / 0.05;
+      float growing = moving * exp(-rim * rim);
+      light = PROP_LIGHT * PROP(1).w * (strength * built + 1.6 * growing) * (1.0 + 2.5 * scanned(m));
+      if (hidden(m)) light = 0.0;
+      width = 0.85;
     }
   } else {
     // A figure of stars: each joined to the next.

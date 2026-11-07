@@ -2,12 +2,13 @@
 //! it do through each page's loop. Everything is a pure function of loop
 //! time.
 use crate::body::{build, Axes, Body, Pose, Rest, Step, Walk, PRIMITIVES, SEAT_BACK, TOE_OUT};
-use crate::math::{hermite, min_jerk, mix, monotone, pulse, smooth, v3, window, V3, Y};
+use crate::math::{hermite, min_jerk, mix, monotone, pulse, rotate, smooth, v3, window, V3, Y};
 use crate::{
-    Frame, Ring, Tentacle, BEAT, CASTERS, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT,
-    CROWN_TOP, DESK_AHEAD, EVENTS, GHOSTS, GHOST_STEP, GLYPHS, LAPTOP_TOP, LID_HEIGHT, LID_HINGE,
-    LID_OPEN, PLANET_RADIUS, PRINTS, SCANNER, SCANNER_FLOOR, SEATS, SPHERE_HEIGHT, SPHERE_RADIUS,
-    SPHERE_SHARE, SPIN_PERIOD, SWEEP, TENTACLES, THINGS, VOICES, WRITHE,
+    Frame, Ring, Tentacle, BEAT, BOX_HALF, CASTERS, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE,
+    CROWN_TILT, CROWN_TOP, CUP, DESK_AHEAD, EVENTS, GHOSTS, GHOST_STEP, GLYPHS, LAPTOP_TOP,
+    LID_HEIGHT, LID_HINGE, LID_OPEN, PLANET_RADIUS, PRINTS, SCANNER, SCANNER_FLOOR, SEATS,
+    SPHERE_HEIGHT, SPHERE_RADIUS, SPHERE_SHARE, SPIN_PERIOD, SWEEP, TENTACLES, THINGS, VOICES,
+    WRITHE,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -52,6 +53,15 @@ pub enum Chapter {
     /// stops). The scanner reaches it, the branches fold into one bead, the
     /// crown burns again and the bead rides the scanner on.
     Inner,
+    /// Page 05: one day in a row. Seated, the sphere's own ring joins the
+    /// other two and turns with the body: it rises, walks, drinks, speaks
+    /// aloud and hears its voice come back off the glass, takes a call (its
+    /// own voice back to the free ear, the other's from far off to the
+    /// phone), hurries with a box, stops and breathes, walks on with each
+    /// step lit beneath it and sits again. The ring turns faster the busier
+    /// the day, slows to the breath; the crown and the scanner never slip.
+    /// The camera goes once round it.
+    Action,
 }
 
 impl Chapter {
@@ -61,6 +71,7 @@ impl Chapter {
             2 => Chapter::Life,
             3 => Chapter::Night,
             4 => Chapter::Inner,
+            5 => Chapter::Action,
             _ => Chapter::Hero,
         }
     }
@@ -71,6 +82,7 @@ impl Chapter {
             Chapter::Life => LIFE_LOOP,
             Chapter::Night => NIGHT_LOOP,
             Chapter::Inner => INNER_LOOP,
+            Chapter::Action => ACTION_LOOP,
         }
     }
     /// Reduced motion holds one moment with every ring.
@@ -81,6 +93,8 @@ impl Chapter {
             Chapter::Life => 22.0,
             Chapter::Night => 22.0,
             Chapter::Inner => 48.5,
+            // On the call: every ring, the phone, a voice coming in.
+            Chapter::Action => 36.6,
         }
     }
     /// When the glass passes each thing the walk meets (s).
@@ -88,7 +102,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_THINGS,
             Chapter::Arrive => &ARRIVE_THINGS,
-            Chapter::Life | Chapter::Night | Chapter::Inner => &[],
+            Chapter::Life | Chapter::Night | Chapter::Inner | Chapter::Action => &[],
         }
     }
     /// When each wire breaks on the glass (s); they take turns, wire `i` is
@@ -97,7 +111,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_WIRES,
             Chapter::Arrive => &ARRIVE_WIRES,
-            Chapter::Life | Chapter::Night | Chapter::Inner => &[],
+            Chapter::Life | Chapter::Night | Chapter::Inner | Chapter::Action => &[],
         }
     }
 }
@@ -372,6 +386,139 @@ const TENTACLE_AHEAD: [f32; 2] = [-0.5, 2.5];
 /// The cover's camera stands this way round from the glass (radians).
 const COVER_AZIMUTH: f32 = -150.0 * PI / 180.0;
 
+/// Page 05: 16 breaths, one day. Seated, it rises over `ACTION_UP`, walks,
+/// stops to drink, walks on speaking and on the phone, stops for a box,
+/// hurries with it, stops and breathes, walks on and sits down over
+/// `ACTION_DOWN` at the next seat.
+pub const ACTION_LOOP: f32 = 70.4;
+pub const ACTION_UP: [f32; 2] = [6.0, 9.8];
+pub const ACTION_DOWN: [f32; 2] = [64.6, 68.8];
+/// Its bouts: the first heel strike, how many strides (even) and the time
+/// a step takes; with the box it hurries.
+const ACTION_BOUTS: [(f32, usize, f32); 4] = [
+    (11.0, 10, CADENCE),
+    (24.0, 30, CADENCE),
+    (43.3, 16, 0.46),
+    (57.6, 8, CADENCE),
+];
+/// The seat it rises from melts over `ACTION_LEAVE`; the next builds over
+/// `ACTION_BUILD`, once the feet are clear of it.
+const ACTION_LEAVE: [f32; 2] = [11.5, 17.0];
+const ACTION_BUILD: [f32; 2] = [62.9, 64.5];
+/// The sphere's ring lights (and goes out) over `ACTION_JOIN`; the glass
+/// fills behind it over `ACTION_FILL`. The crown and the scanner are held
+/// at `ACTION_RINGS`, the glass at `ACTION_GLASS` (before it fills, filled).
+pub const ACTION_JOIN: [f32; 4] = [1.2, 2.2, 68.6, 70.2];
+const ACTION_FILL: [f32; 4] = [1.2, 2.4, 68.4, 70.0];
+const ACTION_RINGS: [f32; 2] = [0.75, 0.8];
+const ACTION_GLASS: [f32; 2] = [0.35, 0.45];
+/// The day's tempo for the sphere's ring, of its full speed: from rest it
+/// eases to each level over its times (it rises, walks, drinks, walks on
+/// speaking, takes the call, hurries with the box, stops to breathe,
+/// walks on, sits). On top of it the ring turns with each breath, by this
+/// share from each time on.
+const ACTION_TEMPO: [([f32; 2], f32); 9] = [
+    ([6.0, 9.8], 0.8),
+    ([10.5, 11.8], 1.5),
+    ([16.0, 17.5], 0.7),
+    ([23.4, 24.8], 2.0),
+    ([30.5, 32.0], 2.6),
+    ([42.4, 43.8], 3.6),
+    ([50.0, 52.0], 0.0),
+    ([57.0, 58.2], 1.5),
+    ([63.5, 67.0], 0.0),
+];
+const ACTION_BREATH: [([f32; 2], f32); 4] = [
+    ([6.0, 9.8], 0.0),
+    ([50.0, 52.0], 0.8),
+    ([57.0, 58.2], 0.0),
+    ([63.5, 67.0], 0.4),
+];
+const ACTION_BREATH_FROM: f32 = 0.4;
+/// The ring's turn is summed this many times a second.
+const SPIN_RATE: f32 = 240.0;
+/// Past this speed its trail grows no longer.
+const SPIN_FORM: f32 = 2.0;
+/// The cup: the right hand reaches for it over the first two of `CUP_HELD`
+/// and lets it go over the last two; it lifts it from before the chest to
+/// the lips over `CUP_LIFT` (down again over the last two), tipping it
+/// further at each of `SIPS` with its head tipped back. The cup builds in
+/// the hand and melts over `CUP_BUILT`; its water goes down at each sip.
+const CUP_HELD: [f32; 4] = [17.4, 18.4, 22.4, 23.4];
+const CUP_LIFT: [f32; 4] = [18.4, 19.3, 21.8, 22.6];
+pub const SIPS: [[f32; 2]; 2] = [[19.4, 20.4], [20.8, 21.6]];
+const CUP_BUILT: [f32; 4] = [17.4, 18.0, 22.6, 23.3];
+const CUP_TIP: [f32; 2] = [0.3, 0.9];
+const SIP_NOD: f32 = 0.25;
+const WATER: [f32; 3] = [0.75, 0.25, 0.2];
+/// The phone: to the right ear and down again over `PHONE_HELD`; it
+/// builds and melts over `PHONE_BUILT`, its screen lit over `SCREEN`.
+const PHONE_HELD: [f32; 4] = [30.2, 31.0, 39.8, 40.6];
+const PHONE_BUILT: [f32; 4] = [30.4, 31.0, 40.2, 40.8];
+const SCREEN: [f32; 4] = [31.0, 31.6, 39.2, 39.8];
+/// The box: both hands to it and down again over `BOX_HELD`; it builds
+/// and dissolves over `BOX_BUILT`, carried this far before the chest.
+const BOX_HELD: [f32; 4] = [41.0, 41.9, 51.6, 52.6];
+pub const BOX_BUILT: [f32; 4] = [41.4, 42.2, 51.4, 52.2];
+const BOX_AHEAD: f32 = 0.27;
+/// What is held sits this far off the middle of the palm.
+const CUP_GAP: f32 = 0.046;
+const PHONE_GAP: f32 = 0.018;
+/// On the call the wrist is this far down the phone and out from the cheek.
+const PHONE_WRIST: [f32; 2] = [0.075, 0.035];
+/// The sphere's ring starts this far round (radians), so that it lights
+/// as a ring across the glass, not round its edge.
+const SPIN_FROM: f32 = 1.7;
+/// Its words: who (0 it aloud, 1 it into the phone, 2 the one it calls)
+/// from when to when.
+pub const PHRASES: [(usize, f32, f32); 6] = [
+    (0, 25.0, 27.4),
+    (0, 28.0, 29.8),
+    (2, 31.6, 33.6),
+    (1, 34.0, 35.8),
+    (2, 36.2, 37.6),
+    (1, 38.0, 39.2),
+];
+/// Its own voice goes out from the mouth this way (forward and this much
+/// up) to the glass, and back from it to an ear. The other's comes this way
+/// from this far off, this fast.
+const VOICE_UP: f32 = 0.35;
+const CALLER: V3 = v3(-0.55, 0.5, -0.65);
+const CALLER_FAR: f32 = 4.2;
+const CALLER_SPEED: f32 = 2.6;
+/// Stopped, it breathes out rings from the nose, and breathes them in,
+/// one every `BREATH_EVERY` s over `BREATH_RINGS`, each this long.
+pub const BREATH_RINGS: [f32; 2] = [51.5, 57.0];
+const BREATH_EVERY: f32 = 0.35;
+const BREATH_LIFE: f32 = 1.2;
+/// After each sip a ring goes down the throat to the belly, this long.
+const SWALLOWS: [f32; 2] = [20.35, 21.55];
+const SWALLOW_LIFE: f32 = 1.4;
+/// Walking on, every step lights the ground it stands on, over `SUPPORT`,
+/// this much more.
+pub const SUPPORT: [f32; 4] = [57.0, 57.6, 62.4, 63.4];
+const SUPPORT_GAIN: f32 = 1.5;
+/// Page 05's camera, through its keys: when, then round the figure (degrees
+/// from straight ahead, + to its left), how far, how high, the point it
+/// looks at over the ground under it (x, y, z), its lens. Once round: from
+/// behind its left as it sits, behind it as it walks, at its right as it
+/// drinks, before its right as it speaks and calls, before its left with
+/// the box, at its left as it breathes and walks on, and behind its left
+/// again as it sits.
+const ACTION_KEYS: [[f32; 8]; 11] = [
+    [0.0, 120.0, 4.4, 1.5, 0.0, 0.85, 0.1, 0.85],
+    [9.8, 140.0, 4.6, 1.5, 0.0, 0.95, 0.2, 0.85],
+    [16.5, 200.0, 4.3, 1.5, 0.0, 1.0, 0.2, 0.85],
+    [20.0, 255.0, 3.9, 1.45, 0.0, 1.15, 0.1, 0.92],
+    [27.0, 290.0, 4.2, 1.5, 0.0, 1.0, 0.3, 0.88],
+    [35.0, 320.0, 4.0, 1.5, 0.0, 1.05, 0.3, 0.9],
+    [46.0, 385.0, 4.6, 1.6, 0.0, 0.95, 0.4, 0.85],
+    [54.5, 420.0, 4.2, 1.5, 0.0, 1.0, 0.1, 0.9],
+    [60.5, 450.0, 4.6, 1.9, 0.0, 0.9, 0.3, 0.85],
+    [66.0, 465.0, 4.4, 1.6, 0.0, 0.85, 0.1, 0.85],
+    [ACTION_LOOP, 480.0, 4.4, 1.5, 0.0, 0.85, 0.1, 0.85],
+];
+
 pub struct Story {
     pub chapter: Chapter,
     pub loop_seconds: f32,
@@ -386,6 +533,11 @@ pub struct Story {
     voices: Vec<(f32, usize)>,
     /// Page 04: when the scanner reaches each thing that flared.
     pub touches: [f32; EVENTS],
+    /// Page 05: how far the sphere's ring has turned, `SPIN_RATE` times a
+    /// second, and what its speed is scaled by so that it turns whole
+    /// turns a loop.
+    turns: Vec<f32>,
+    pace: f32,
 }
 
 /// A camera: where it is, what it looks at, its zoom, focus and aperture.
@@ -634,14 +786,20 @@ fn section(body: &Body, y: f32) -> Option<(V3, f32)> {
 /// strike of each and how many strides (even), from half a stride on; two
 /// short steps bring the feet together after each.
 fn bouts(list: &[(f32, usize)]) -> Walk {
-    let swing = 0.76 * CADENCE;
+    let paced: Vec<(f32, usize, f32)> = list.iter().map(|&(f, s)| (f, s, CADENCE)).collect();
+    paced_bouts(&paced)
+}
+
+/// The same with each bout's own time a step takes.
+fn paced_bouts(list: &[(f32, usize, f32)]) -> Walk {
     let aside = |side: usize, x: f32| if side == 0 { x } else { -x };
     let mut steps = vec![];
     let mut z = 0.0;
-    for &(first, strides) in list {
+    for &(first, strides, cadence) in list {
+        let swing = 0.76 * cadence;
         for j in 0..strides {
             let side = j % 2;
-            let land = first + j as f32 * CADENCE;
+            let land = first + j as f32 * cadence;
             steps.push(Step {
                 side,
                 lift: land - if j == 0 { 0.5 } else { swing },
@@ -651,7 +809,7 @@ fn bouts(list: &[(f32, usize)]) -> Walk {
             });
         }
         z += strides as f32 * STRIDE;
-        let mut land = first + (strides - 1) as f32 * CADENCE;
+        let mut land = first + (strides - 1) as f32 * cadence;
         for (side, after) in [(0, 0.6), (1, 0.65)] {
             land += after;
             steps.push(Step {
@@ -671,6 +829,143 @@ fn bouts(list: &[(f32, usize)]) -> Walk {
 fn life_walk() -> Walk {
     let rest = |[from, to]: [f32; 2], up| Rest { from, to, up };
     bouts(&LIFE_BOUTS).with_rests(vec![rest(LIFE_UP, true), rest(LIFE_DOWN, false)])
+}
+
+/// Page 05's walk: off the seat, on through the day, onto the next.
+fn action_walk() -> Walk {
+    let rest = |[from, to]: [f32; 2], up| Rest { from, to, up };
+    paced_bouts(&ACTION_BOUTS).with_rests(vec![rest(ACTION_UP, true), rest(ACTION_DOWN, false)])
+}
+
+/// Page 05: when each of its rings of sound leaves, and what it is (0 its
+/// voice aloud, 1 its voice into the phone, 2 the other's from the phone,
+/// 3 a breath out, 4 a breath in, 5 a swallow).
+fn action_voice_list() -> Vec<(f32, usize)> {
+    let mut list = vec![];
+    for (k, &(who, from, to)) in PHRASES.iter().enumerate() {
+        let (mut t, mut n) = (from + 0.1, 0u32);
+        while t < to - 0.15 {
+            let seed = 4099 * (k as u32 + 1) + 37 * n;
+            if rand(seed) > 0.1 {
+                list.push((t, who));
+            }
+            t += VOICE_EVERY * mix(0.85, 1.3, rand(seed + 1));
+            n += 1;
+        }
+    }
+    let [from, to] = BREATH_RINGS;
+    let mut t = from;
+    while t < to {
+        let phase = t.rem_euclid(BEAT) / BEAT;
+        if (0.03..0.42).contains(&phase) {
+            list.push((t, 3));
+        } else if (0.53..0.92).contains(&phase) {
+            list.push((t, 4));
+        }
+        t += BREATH_EVERY;
+    }
+    list.extend(SWALLOWS.map(|t| (t, 5)));
+    list.sort_by(|a, b| a.0.total_cmp(&b.0));
+    list
+}
+
+/// How much it is saying words of `who`'s (see `PHRASES`) at `t`, 0..1.
+fn phrase(who: usize, t: f32) -> f32 {
+    PHRASES
+        .iter()
+        .filter(|s| s.0 == who)
+        .map(|&(_, from, to)| {
+            smooth(from - 0.3, from + 0.3, t) * (1.0 - smooth(to - 0.3, to + 0.3, t))
+        })
+        .fold(0.0, f32::max)
+}
+
+/// The tempo of page 05's day and its breath share at `t`.
+fn tempo(t: f32) -> (f32, f32) {
+    let ease = |from: f32, keys: &[([f32; 2], f32)]| {
+        keys.iter()
+            .fold(from, |level, &([a, b], to)| mix(level, to, smooth(a, b, t)))
+    };
+    (
+        ease(0.0, &ACTION_TEMPO),
+        ease(ACTION_BREATH_FROM, &ACTION_BREATH),
+    )
+}
+
+/// The sphere's ring's speed on page 05 before it is scaled to whole turns.
+fn day_speed(t: f32) -> f32 {
+    let (level, share) = tempo(t);
+    let s = (TAU * t / BEAT).sin();
+    level + share * 2.0 * s * s
+}
+
+/// How much it is out at a sip (0 not … 1 most tipped).
+fn sip(t: f32, k: usize) -> f32 {
+    (PI * stage(t, SIPS[k])).sin().powi(2)
+}
+
+/// The cup's water, of the cup.
+fn water(t: f32) -> f32 {
+    let [full, first, second] = WATER;
+    let s = |[a, b]: [f32; 2]| smooth(a + 0.2, b - 0.1, t);
+    full - first * s(SIPS[0]) - second * s(SIPS[1])
+}
+
+/// Up and down over a span: 0 … 1 over the first two, back to 0 over the
+/// last two.
+fn held(t: f32, [a, b, c, d]: [f32; 4]) -> f32 {
+    min_jerk(stage(t, [a, b])) * (1.0 - min_jerk(stage(t, [c, d])))
+}
+
+/// The hand `i` (0 left, 1 right) of `body`: its wrist, its tip, and the
+/// way its palm faces.
+fn grip(body: &Body, i: usize) -> (V3, V3, V3) {
+    let c = 3 * (17 + i);
+    let at = |j: usize| {
+        let [x, y, z, _] = body.cones[c + j];
+        v3(x, y, z)
+    };
+    (at(0), at(1), at(2))
+}
+
+/// Where `body`'s ear is, `side` 1 its left, -1 its right, just off its head.
+fn ear(body: &Body, side: f32) -> V3 {
+    let hd = body.face;
+    let jaw = body.mouth - hd.forward * 0.06 + hd.up * 0.015;
+    jaw + hd.up * 0.045 - hd.forward * 0.015 + hd.left * (0.078 * side)
+}
+
+/// Where the phone sits at `body`'s right ear: its middle, its long axis
+/// (up the cheek, its foot toward the mouth) and the way its screen faces
+/// (into the head).
+fn at_ear(body: &Body) -> (V3, V3, V3) {
+    let hd = body.face;
+    let along = (hd.up * 0.85 - hd.forward * 0.5).normalize();
+    (
+        ear(body, -1.0) - along * 0.02 - hd.left * 0.012,
+        along,
+        hd.left,
+    )
+}
+
+/// Its horizontal left: which way a cup tips about.
+fn level(v: V3) -> V3 {
+    v3(v.x, 0.0, v.z).normalize()
+}
+
+/// The cup's axis at `t`: tipped toward the face as it lifts and sips.
+fn cup_up(t: f32, face: Axes) -> V3 {
+    let [lifted, tipped] = CUP_TIP;
+    let lift = held(t, CUP_LIFT);
+    let tip = lifted * lift + tipped * (sip(t, 0) + sip(t, 1));
+    rotate(Y, level(face.left), -tip)
+}
+
+/// Where the box is carried before `body`, and which way it faces.
+fn carried(body: &Body) -> (V3, V3) {
+    let ch = body.chest_axes;
+    let ahead = level(ch.forward);
+    (body.pelvis.lerp(body.chest, 0.7) + ahead * BOX_AHEAD, ahead)
 }
 
 /// When each voice ring leaves a mouth, and whose: about every
@@ -944,6 +1239,10 @@ impl Story {
                 (0.0, Walk::new(stance, vec![never], BEAT))
             }
             Chapter::Inner => steady(INNER_STEPS),
+            Chapter::Action => {
+                let strides: usize = ACTION_BOUTS.iter().map(|b| b.1).sum();
+                (strides as f32 * STRIDE, action_walk())
+            }
         };
         let (other, voices) = match chapter {
             Chapter::Life => (Some(bouts(&OTHER_BOUTS)), voice_list()),
@@ -954,7 +1253,13 @@ impl Story {
                     vec![],
                 )
             }
+            Chapter::Action => (None, action_voice_list()),
             _ => (None, vec![]),
+        };
+        let (turns, pace) = if chapter == Chapter::Action {
+            spin_table(loop_seconds)
+        } else {
+            (vec![], 1.0)
         };
         let mut story = Story {
             chapter,
@@ -969,6 +1274,8 @@ impl Story {
             other,
             voices,
             touches: [0.0; EVENTS],
+            turns,
+            pace,
         };
         if chapter == Chapter::Inner {
             // What flares drags the figure, and so where the scanner meets
@@ -1029,6 +1336,7 @@ impl Story {
             Chapter::Life => self.life(time),
             Chapter::Night => self.night(time),
             Chapter::Inner => self.inner(time),
+            Chapter::Action => self.action(time),
         }
     }
 
@@ -1068,6 +1376,10 @@ impl Story {
             Chapter::Inner => {
                 let flash = 0.3 * pulse(at.rem_euclid(SWEEP));
                 (sweep(t), self.inner_crown(at), flash, 1.0)
+            }
+            Chapter::Action => {
+                let flash = 0.4 * pulse(at.rem_euclid(SWEEP));
+                (sweep(t), ACTION_RINGS[0], flash, 1.0)
             }
             Chapter::Life => {
                 let answer = pulse(at - LIFE_GATHER - 0.35);
@@ -1557,6 +1869,302 @@ impl Story {
         }
     }
 
+    /// How far page 05's sphere's ring has turned at `t` (radians).
+    fn turned(&self, t: f32) -> f32 {
+        let n = self.turns.len().saturating_sub(1);
+        if n == 0 {
+            return 0.0;
+        }
+        let x = (t / self.loop_seconds).clamp(0.0, 1.0) * n as f32;
+        let i = (x.floor() as usize).min(n - 1);
+        mix(self.turns[i], self.turns[i + 1], x - i as f32)
+    }
+
+    /// Its speed at `t`, of full speed.
+    fn speed(&self, t: f32) -> f32 {
+        day_speed(t) * self.pace
+    }
+
+    fn action(&self, t: f32) -> Frame {
+        let turned = self.turned(t);
+        let [a, b, c, d] = ACTION_JOIN;
+        let [fa, fb, fc, fd] = ACTION_FILL;
+        let [_, inner] = ACTION_RINGS;
+        let [latent, filled] = ACTION_GLASS;
+        let (voices, faces, spoken, heard) = self.action_voices(t);
+        let cues = Cues {
+            inner,
+            latent,
+            form: 1.0,
+            flash: (0.5 * pulse(t.rem_euclid(SWEEP))).max(spoken),
+            spin: [
+                window(t, a, b, c, d),
+                SPIN_FROM + turned,
+                self.speed(t).min(SPIN_FORM),
+                1.4 * pulse(t - a),
+            ],
+            filled: filled * window(t, fa, fb, fc, fd),
+            fill: (turned - self.turned(a)).max(0.0),
+            spokes: 0.0,
+            world: 0.0,
+            wave: (Y, -1.0, 0.0),
+        };
+        let mut f = self.frame(t, self.action_shot(t), cues);
+        // Its own voice lights the crown as it comes back off the glass,
+        // the other's as it comes in through it.
+        f.rings[0].flash = f.rings[0].flash.max(heard);
+        f.voices = std::array::from_fn(|k| {
+            let v = voices[k];
+            if !faces[k] {
+                return v;
+            }
+            let n = (f.eye - v3(v[0], v[1], v[2])).normalize();
+            [v[0], v[1], v[2], v[3], n.x, n.y, n.z, v[7]]
+        });
+        f.props = self.props(t, &f.body);
+        let [s0, s1, s2, s3] = SUPPORT;
+        f.support = window(t, s0, s1, s2, s3);
+        for foot in &mut f.feet {
+            foot[3] *= 1.0 + SUPPORT_GAIN * f.support;
+        }
+        f
+    }
+
+    /// Page 05's camera, through its keys round the figure.
+    fn action_shot(&self, t: f32) -> Shot {
+        let v: [f32; 7] = std::array::from_fn(|k| {
+            let keys = ACTION_KEYS.map(|key| (key[0], key[k + 1]));
+            monotone(&keys, t)
+        });
+        let [azimuth, range, high, ax, ay, az, lens] = v;
+        let ground = self.ground(t);
+        let a = azimuth.to_radians();
+        let eye = ground + v3(range * a.sin(), high, range * a.cos()) + self.drift(t);
+        Shot {
+            eye,
+            target: ground + v3(ax, ay, az),
+            lens,
+            focus: (eye - self.sphere(t)).length(),
+            aperture: 0.007,
+        }
+    }
+
+    /// Page 05's hands: the right one lifts a cup to drink, holds a phone to
+    /// the ear; both carry a box; the left one beats with its words aloud.
+    fn act(&self, t: f32, pose: &mut Pose) {
+        pose.nod += 0.04 * (phrase(0, t) + phrase(1, t)) * self.cycle(t, 0.9).sin()
+            - SIP_NOD * (sip(t, 0) + sip(t, 1));
+        let body = build(pose);
+        let at = |p: V3, w: f32| [p.x, p.y, p.z, w];
+        // The left hand speaks with its words aloud.
+        let words = phrase(0, t);
+        if words > 0.0 {
+            let ch = body.chest_axes;
+            let beat = 0.02 * self.cycle(t, 0.45).sin() + 0.012 * self.cycle(t, 1.3).sin();
+            let to = body.chest + ch.forward * 0.3 - ch.up * (0.12 - beat) + ch.left * 0.14;
+            pose.hands[0] = at(to, words);
+        }
+        // Both carry the box.
+        let boxed = held(t, BOX_HELD);
+        if boxed > 0.0 {
+            let (middle, ahead) = carried(&body);
+            let left = Y.cross(ahead);
+            for (i, s) in [(0, 1.0), (1, -1.0)] {
+                let wrist = middle + left * (s * (BOX_HALF + 0.025)) - ahead * 0.1 - Y * 0.02;
+                pose.hands[i] = at(wrist, boxed);
+            }
+            pose.wrists = [0.0; 2];
+            return;
+        }
+        // The right hand holds the cup to the lips, or the phone to the ear:
+        // where it should be, and how far off the palm it sits.
+        let cup = held(t, CUP_HELD);
+        let phone = held(t, PHONE_HELD);
+        if cup > 0.0 {
+            let (face, ch) = (body.face, body.chest_axes);
+            let up = cup_up(t, face);
+            let lips = body.mouth + face.forward * (CUP[0] + 0.006) - up * CUP[2];
+            let low = body.chest + ch.forward * 0.26 - ch.up * 0.1 - ch.left * 0.07;
+            let want = low.lerp(lips, held(t, CUP_LIFT));
+            // Reach for it, see where the hand holds it, and reach again
+            // for the wrist that puts it there.
+            pose.hands[1] = at(want, cup);
+            let (wrist, tip, palm) = grip(&build(pose), 1);
+            let offset = (wrist + tip) * 0.5 + palm * CUP_GAP - wrist;
+            pose.hands[1] = at(want - offset, cup);
+        } else if phone > 0.0 {
+            // The wrist under the phone, just off the cheek.
+            let (centre, along, inward) = at_ear(&body);
+            let [below, off] = PHONE_WRIST;
+            pose.hands[1] = at(centre - along * below - inward * off, phone);
+        }
+    }
+
+    /// What it holds at `t` on page 05 (`Frame::props`), placed in `body`'s
+    /// hands.
+    fn props(&self, t: f32, body: &Body) -> [[f32; 4]; 4] {
+        let (wrist, tip, palm) = grip(body, 1);
+        let mid = (wrist + tip) * 0.5;
+        let put = |centre: V3, shape: f32, up: V3, forward: V3, built: f32, extra: [f32; 4]| {
+            [
+                [centre.x, centre.y, centre.z, shape],
+                [up.x, up.y, up.z, 1.0],
+                [forward.x, forward.y, forward.z, built],
+                extra,
+            ]
+        };
+        let cup = held(t, CUP_BUILT);
+        if cup > 0.0 {
+            let up = cup_up(t, body.face);
+            let f = body.face.forward;
+            let forward = (f - up * up.dot(f)).normalize();
+            return put(
+                mid + palm * CUP_GAP,
+                0.0,
+                up,
+                forward,
+                cup,
+                [water(t), 0.0, 0.0, 0.0],
+            );
+        }
+        let phone = held(t, PHONE_BUILT);
+        if phone > 0.0 {
+            // In the hand, and at the ear once the hand has brought it there.
+            let (ear_at, along, inward) = at_ear(body);
+            let s = held(t, PHONE_HELD);
+            let centre = (mid + palm * PHONE_GAP).lerp(ear_at, s);
+            let up = (tip - wrist).normalize().lerp(along, s).normalize();
+            let f = palm.lerp(inward, s);
+            let forward = (f - up * up.dot(f)).normalize();
+            let [s0, s1, s2, s3] = SCREEN;
+            let screen = window(t, s0, s1, s2, s3);
+            return put(centre, 1.0, up, forward, phone, [0.0, screen, 0.0, 0.0]);
+        }
+        let boxed = held(t, BOX_BUILT);
+        if boxed > 0.0 {
+            let (middle, ahead) = carried(body);
+            return put(middle, 2.0, Y, ahead, boxed, [0.0; 4]);
+        }
+        [[0.0; 4]; 4]
+    }
+
+    /// Page 05's rings of sound at `t`, which of them face the eye (a
+    /// swallow rings the throat), how much its own words light the scanner,
+    /// and how much what it hears lights the crown.
+    fn action_voices(&self, t: f32) -> ([[f32; 8]; VOICES], [bool; VOICES], f32, f32) {
+        let mut out = [[0.0; 8]; VOICES];
+        let mut faces = [true; VOICES];
+        let (mut spoken, mut heard) = (0.0f32, 0.0f32);
+        let now = self.figure(t).1;
+        let here = self.sphere(t);
+        let r = SPHERE_RADIUS;
+        let mut slot = 0;
+        for (k, &(at, kind)) in self.voices.iter().enumerate() {
+            let age = t - at;
+            if !(0.0..2.5).contains(&age) || slot == VOICES {
+                continue;
+            }
+            // Where it is (from the sphere's middle), its radius, its light;
+            // a swallow its own way round.
+            let ring: Option<(V3, f32, f32)> = match kind {
+                0 | 1 => {
+                    let then = self.figure(at).1;
+                    let o = self.sphere(at);
+                    let from = then.mouth - o;
+                    let way = (then.face.forward + Y * VOICE_UP).normalize();
+                    let b = from.dot(way);
+                    let out_by = -b + (b * b - from.dot(from) + r * r).max(0.0).sqrt();
+                    let hit = from + way * out_by;
+                    let out_for = out_by / VOICE_SPEED;
+                    // Aloud it comes back to either ear in turn; on the
+                    // phone to the free one.
+                    let side = if kind == 1 || k % 2 == 0 { 1.0 } else { -1.0 };
+                    let back = at + out_for;
+                    let ear_then = ear(&self.figure(back).1, side) - self.sphere(back);
+                    let back_for = (ear_then - hit).length() / VOICE_SPEED;
+                    let life = out_for + back_for;
+                    (age < life).then(|| {
+                        spoken = spoken.max(0.3 * pulse(age));
+                        heard = heard.max(0.35 * pulse(age - out_for));
+                        let p = age / life;
+                        let light = smooth(0.0, 0.08, age)
+                            * mix(1.0, 0.55, p)
+                            * (1.0 - smooth(0.88, 1.0, p));
+                        if age < out_for {
+                            let s = age / out_for;
+                            let grown = 1.0 - (1.0 - s) * (1.0 - s);
+                            (
+                                from + way * (VOICE_SPEED * age),
+                                mix(0.08, 0.22, grown),
+                                light,
+                            )
+                        } else {
+                            let u = (age - out_for) / back_for;
+                            let to = ear(&now, side) - here;
+                            (hit.lerp(to, u), mix(0.22, 0.05, u), light)
+                        }
+                    })
+                }
+                2 => {
+                    let o = self.sphere(at);
+                    let ear_then = ear(&self.figure(at).1, -1.0) - o;
+                    let far = ear_then + CALLER.normalize() * CALLER_FAR;
+                    let life = CALLER_FAR / CALLER_SPEED;
+                    (age < life).then(|| {
+                        // It comes in through the glass.
+                        let d = ear_then - far;
+                        let (a2, b2) = (d.dot(d), far.dot(d));
+                        let c2 = far.dot(far) - r * r;
+                        let q = (-b2 - (b2 * b2 - a2 * c2).max(0.0).sqrt()) / a2;
+                        heard = heard.max(0.35 * pulse(age - q * life));
+                        let p = age / life;
+                        let to = ear(&now, -1.0) - here;
+                        let light =
+                            smooth(0.0, 0.2, age) * mix(0.45, 1.0, p) * (1.0 - smooth(0.9, 1.0, p));
+                        (far.lerp(to, p), mix(0.5, 0.05, p), light)
+                    })
+                }
+                3 | 4 => (age < BREATH_LIFE).then(|| {
+                    let from = now.mouth - here;
+                    let way = (now.face.forward - Y * 0.5).normalize();
+                    let p = age / BREATH_LIFE;
+                    if kind == 3 {
+                        let light = 0.9 * (1.0 - p) * (1.0 - p) * smooth(0.0, 0.1, age);
+                        (from + way * (0.5 * age), mix(0.03, 0.16, p), light)
+                    } else {
+                        let light = 0.9 * smooth(0.0, 0.35, p) * (1.0 - smooth(0.8, 1.0, p));
+                        let off = 0.5 * (BREATH_LIFE - age);
+                        (from + way * off, mix(0.16, 0.03, p), light)
+                    }
+                }),
+                _ => (age < SWALLOW_LIFE).then(|| {
+                    let [x, y, z, _] = now.cones[3 * 3];
+                    let (neck, chest) = (v3(x, y, z), now.chest);
+                    let belly = now.pelvis.lerp(chest, 0.35);
+                    let p = age / SWALLOW_LIFE;
+                    let (at, radius) = if p < 0.35 {
+                        let s = p / 0.35;
+                        (neck.lerp(chest, s), mix(0.07, 0.17, s))
+                    } else {
+                        let s = (p - 0.35) / 0.65;
+                        (chest.lerp(belly, s), mix(0.17, 0.15, s))
+                    };
+                    let light = 0.75 * (PI * p).sin() * smooth(0.0, 0.1, age);
+                    (at - here, radius, light)
+                }),
+            };
+            let Some((at, radius, light)) = ring else {
+                continue;
+            };
+            let c = here + at;
+            let n = if kind == 5 { now.chest_axes.up } else { Y };
+            out[slot] = [c.x, c.y, c.z, radius, n.x, n.y, n.z, light];
+            faces[slot] = kind != 5;
+            slot += 1;
+        }
+        (out, faces, spoken, heard)
+    }
+
     /// The figure at `t`: the walk's pose; on page 02 it also types at the
     /// desks, turns to the one it meets, nods and speaks with a hand; on
     /// page 03 its head goes after the lantern's light.
@@ -1568,6 +2176,9 @@ impl Story {
             if speaking(0, t) > 0.0 {
                 pose.hands[0] = self.gesture(0, t, &build(&pose));
             }
+        }
+        if self.chapter == Chapter::Action {
+            self.act(t, &mut pose);
         }
         if let (Chapter::Night, Some(walk)) = (self.chapter, &self.other) {
             let track = self.walk.track(t);
@@ -1730,6 +2341,15 @@ impl Story {
                 let back = -SEAT_BACK - SEAT_SET;
                 let [left, gone] = LIFE_LEAVE;
                 let [start, built] = LIFE_BUILD;
+                [
+                    [0.0, back, 1.0, 1.0 - smooth(left, gone, t)],
+                    [0.0, self.distance + back, 1.0, smooth(start, built, t)],
+                ]
+            }
+            Chapter::Action => {
+                let back = -SEAT_BACK - SEAT_SET;
+                let [left, gone] = ACTION_LEAVE;
+                let [start, built] = ACTION_BUILD;
                 [
                     [0.0, back, 1.0, 1.0 - smooth(left, gone, t)],
                     [0.0, self.distance + back, 1.0, smooth(start, built, t)],
@@ -1916,6 +2536,30 @@ impl Story {
             facts: [[0.0; 4]; EVENTS],
             pulls: [[0.0; 4]; EVENTS],
             melt: [0.0; 2],
+            props: [[0.0; 4]; 4],
+            support: 0.0,
         }
     }
+}
+
+/// Page 05's sphere's ring: how far it has turned, `SPIN_RATE` times a
+/// second over the loop, and the scale on its speed that makes those whole
+/// turns.
+fn spin_table(loop_seconds: f32) -> (Vec<f32>, f32) {
+    let n = (loop_seconds * SPIN_RATE).round() as usize;
+    let dt = loop_seconds / n as f32;
+    let rate = TAU / SPIN_PERIOD;
+    let mut turns = Vec::with_capacity(n + 1);
+    let mut sum = 0.0f64;
+    turns.push(0.0f64);
+    for k in 0..n {
+        sum += f64::from(day_speed((k as f32 + 0.5) * dt) * rate * dt);
+        turns.push(sum);
+    }
+    let whole = (sum / std::f64::consts::TAU).round().max(1.0) * std::f64::consts::TAU;
+    let pace = whole / sum;
+    (
+        turns.iter().map(|x| (x * pace) as f32).collect(),
+        pace as f32,
+    )
 }

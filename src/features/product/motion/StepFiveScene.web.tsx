@@ -1,5 +1,6 @@
 import { ArtLoading } from '../skeleton/ArtLoading';
 import { DynamicRings } from './DynamicRings.web';
+import { InnerSlice } from './InnerSlice.web';
 import type { ReadingPage } from './readingPages';
 import { ScenePlaceholder } from './ScenePlaceholder';
 import { SphereAnchor } from './SphereAnchor.web';
@@ -25,6 +26,7 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'sphere-voice' ? SphereVoice
     : page.webScene === 'sphere-lake' ? SphereLake
     : page.webScene === 'sphere-everywhere' ? SphereEverywhere
+    : page.webScene === 'inner-slice' ? InnerSlice
     : page.webScene === 'dynamic-rings' ? DynamicRings : undefined;
   if (!Scene) return placeholder;
   // These pages have no engine art; the kind only names the load for the skeleton.

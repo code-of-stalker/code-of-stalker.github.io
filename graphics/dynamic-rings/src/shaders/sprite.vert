@@ -98,7 +98,8 @@ void main() {
       vec4 f = u_d[SLOT_FEET + i];
       p = bend(f.xyz);
       light = 0.4 * f.w * WORLD.z;
-      sigma0 = 0.05;
+      // Page 05: walking on, the support is lit wider.
+      sigma0 = 0.05 * (1.0 + 0.6 * INNER.w);
     } else if (i >= 4) {
       // Page 03's lantern: its flame and the glow round it, which flares
       // as the crown's plane sweeps through it.

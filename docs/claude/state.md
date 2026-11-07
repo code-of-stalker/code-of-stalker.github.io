@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -227,7 +227,15 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 pixel-identical.
   Checked in the 4 dark themes (sheet `output/prototypes/step-seven/kadry-04-temy.jpg`) and in
   a production export. Ring 3 joins on page 05.
-- Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
+- Shipped to `main` 2026-11-08 (Art: «Пушим»): page 05 «Третье кольцо — ДЕЙСТВИЕ» (chapter 5,
+  `dynamic-action`), direction А «Темп дня». One day in a row (sit, rise, walk, drink, speak aloud, a
+  phone call, carry a box, stop and breathe, walk on with lit support, sit). Ring 3 joins at
+  the start and spins with the body's tempo, fastest with the box, slowing to the breath;
+  rings 1 and 2 stay steady. Held things (cup, phone, box) build in the hand (line kind 16).
+  On the call his own voice returns from the glass, the caller's comes from far. Art approved
+  Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
+  `output/shots/page05-themes.jpg`) and in a production export (ready, gpu-error 0).
+- Next: pages 06–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

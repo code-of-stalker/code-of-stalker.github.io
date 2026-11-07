@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -144,7 +144,7 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
-## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+## Step 6 «Внутреннее кольцо» (scenes on branch `claude/step-6-scenes`)
 Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
 сайт вместе с заглушками»). 10 reading pages, author's text unchanged
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
@@ -165,7 +165,18 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: page scenes 01–10 continue on `claude/step-6-scenes`.
+- Page 01 «Внутрь» (inner-second-level), shipped to `main` 2026-11-07 (Art: «Пушим»),
+  direction Б «Эхо»: crate `graphics/inner-echo`,
+  bridge `InnerEcho.web.tsx`, `webScene: 'inner-echo'`. «Срез» (`inner-slice`) was rejected
+  2026-11-07 and removed. A man sits upright on a chair; the outer ring is a turning orbit of
+  perception, the inner one a warm level ring calmly scanning him feet ↔ crown (16.5 s). Four
+  «Без…» beats with captions: on «Без проваливания» only the head with a thought knot stays; on
+  «Без ухода в образы себя» the head beams out four different images of himself. 66 s loop;
+  five rounds of Art's notes, history and beats in the crate README. Тишина approved
+  2026-11-07 («Ок, делай темы»); Искра, Астрал, Матрица needed no color change (sheets
+  `output/prototypes/inner-echo/kadry-tishina-5.jpg`, `kadry-temy-5.jpg`).
+- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 02–08 on `claude/step-6-scenes`,
+  2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.

@@ -69,6 +69,17 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A twinkle that chops the figure's lines into dashes reads as «белые шумы по человеку»: sparkle only point stars of the background, never the figure or the cube. (Hero.)
 - A ripple must come from where its cause is: «волна должна исходить не от рандомной точки пола а от ног». (Hero.)
 - An «inner» scene must show the inside being scanned: «нехватает сканирования внутреннего»; a plane of light now passes through the figure head to feet and lights its inner lines. (Hero.)
+- Page 01 «Срез» rejected 2026-11-07: «странно всё выглядит и тексту мало соответствует». A body in
+  height lines, cut by a plane, with abstract disturbances (funnel, crosshair, trefoil) read as odd
+  and not as the text (orbit of perception, going inward, inner ring against the outer one).
+- A seated person sits normally on a chair with a straight back, never cross-legged or in lotus
+  («он должен нормально сидеть на стуле с прямой спиной»). Applies to every Step 6 figure.
+- Page 01 «Внутрь» (Б «Эхо», rounds 2–5): presence is spherical and the outer ring keeps
+  turning («Сферичное!»); no filled spheres; exactly two rings, outer and inner, nothing
+  extra; the inner ring scans the whole person, calmly, with no jerky jumps between body
+  parts; on «Без проваливания» the body vanishes and the head stays, never a second person;
+  «образы себя» are different images of himself, not a mirrored copy; the «Без…» beats get
+  the most time. Passed and shipped 2026-11-07.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

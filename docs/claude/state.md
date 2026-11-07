@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-02. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -148,13 +148,16 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Page 01 «Внутрь» first (Art: «занимайся тогда шагом номер 6», 2026-11-01). Three directions
-  shown as still frames in Тишина (`output/prototypes/inner-through/varianty.jpg`, made by
-  `varianty.html`, concept only): А «Сквозь кольцо» glass body, cold orbit of points, the camera
-  flies inside to a warm ring, the orbit seen through the glass (recommended); Б «Срез» seated
-  figure from above in height lines, radar sweep on the floor, a slice rises to the chest and
-  shows the warm ring; В «Одна линия» one line draws the person, closes the orbit, spirals in to
-  the heart. Waiting for his choice. Hero, 06, 09, 10 need his pictures (briefs in the doc).
+- Page 01 «Внутрь» (inner-second-level): Art chose Б «Срез» («Лучше Б», 2026-11-07) over А
+  «Сквозь кольцо» and В «Одна линия». Crate `graphics/inner-slice` (60 s loop, 4 тёмные темы;
+  beats in its README), bridge `InnerSlice.web.tsx`, `webScene: 'inner-slice'` — committed on
+  `claude/step-6-scenes` (2a58699), not on `main`. Seated figure in cold height lines, outer
+  ring with sweep and signals on the floor; a slice stops at the chest, each «Без…» clears one
+  disturbance of the warm inner ring, it opens with its own ticks/sweep/signals, both rings flash
+  at «здесь и сейчас». Тишина prototype `output/prototypes/inner-slice/index.html` (frames
+  `kadry-tishina.jpg`) shown to Art 2026-11-07; waiting for his notes. After his OK on Тишина:
+  check Матрица, Искра, Астрал; ship only on his word.
+- Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.

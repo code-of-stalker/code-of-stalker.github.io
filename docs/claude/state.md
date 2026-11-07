@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Intensive chat shipped 2026-11-07; its redesign, blocking, the /admin page, voice messages and edit/delete wait on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Intensive chat shipped 2026-11-07; its redesign, blocking, the /admin page, voice messages, edit/delete and name + surname wait on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -192,7 +192,7 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
 - Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
   «готовится» modal. Dev builds never use it: they use a local Supabase named in `.env.local`
-  (`EXPO_PUBLIC_INTENSIVE_URL/KEY`), else the in-memory demo (Яна, Мира, Олег, Алекс, Ника).
+  (`EXPO_PUBLIC_INTENSIVE_URL/KEY`), else the in-memory demo (Яна Орлова, Мира Соколова, Олег Ветров, Алекс Морозов, Ника Зорина…).
 - Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
   (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
   there by Claude. Next, Art: setup steps 5–7 (GitHub 2FA, Яна's account + SQL main admin,
@@ -238,8 +238,17 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   Checked live in Тишина on the local server (PC + phone sizes): admin overview, card, bulk move,
   phone list/card; chat send, edit, delete, voice record/play/delete. Headless Chrome needs
   `--use-fake-device-for-media-stream` for voice tests.
+- Admin + names (5f59508, local) after Art's marked screenshot: no avatars on /admin (table,
+  overview, person card; `avatars={false}`, the ЛЮДИ tab and chats keep them), «ОБНОВЛЕНО» left
+  of the search, plain square check boxes, panes facing each other keep square corners (list
+  `cut="bottomLeft"`, side `cut="topRight"`; phone keeps both cuts), ПОСЛЕДНЕЕ column fits a date.
+  Names = first name + surname (Art: «Имя и фамилия»): `NameStep` has two fields; a one-word
+  account gets «ДОБАВЬ ФАМИЛИЮ» after TOTP (`session.rename`, existing `profiles_rename` RLS, no
+  new SQL). Real accounts with one-word names will see that step once. The lock button top
+  right = «Закрыть админку» (drops the session; next entry asks PIN + code again).
+  Screenshots `output/admin/admin-wide-v3.png`, `admin-phone-v3.png`, `name-surname-step.png`.
 - Waits for Art: re-run `supabase/intensive-schema.sql` on the real server (adds blocking, voice,
-  edit/delete), an OK on the look, then «Пушим» for 967fa54..df3c87e (+ this handoff) together.
+  edit/delete), an OK on the look, then «Пушим» for 967fa54..5f59508 (+ handoffs) together.
   Other dark themes after his OK. Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 

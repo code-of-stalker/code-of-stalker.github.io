@@ -78,3 +78,6 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - The first admin page was «идея нравится исполнение кривоватое»: empty columns, small rows and a cramped layout. Admin tools need real UI/UX care: big rows, no wasted columns, master-detail (list + side card), clear filters and bulk actions.
 - The admin page speaks formally: «в админке более уважительный тон, не на "ты"». Walker screens keep «ты».
 - Chat details he asked for: no cut top corner on follow-up bubbles (both sides), no member icons over the chat, no «переписка зашифрована» footer; show «изменено» on edited messages.
+- Admin page: no avatars at all (letters in frames read as noise in a table); plain square check boxes, not the diary's cut icon frame; refresh line left of the search.
+- Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
+- People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).

@@ -156,15 +156,17 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   sphere); parallax by a depth map, the chest ring drawn in depth; every 18 s a scan plane goes
   head → feet, heart flares, ring runners, ripple from both feet. Beats in its `README.txt`.
   Wired: `InnerHero.web.tsx`, `StepSixHero*`, `StepSixStill.tsx`, home card from step 6 on.
-  Art's fixes done (noise on the figure, ripple from the feet, the inner scan); waits for his
-  OK on Тишина, then the other 3 dark themes, then «пушим». Page scenes are another branch
+  Art's fixes done (noise on the figure, ripple from the feet, the inner scan); Тишина
+  approved 2026-11-07 («Ок, дальше»). Матрица, Искра, Астрал shown as frames, no color change
+  needed; waits for Art's OK on them, then «пушим». Page scenes are another branch
   (`claude/step-6-scenes`): both touch `types.ts`/`Art.web.tsx`, conflicts are one-line unions.
 - Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
   02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: Art's OK on the hero in Тишина; page scenes continue on `claude/step-6-scenes`.
+- Next: Art's OK on the hero in the other 3 themes, then ship; page scenes continue on
+  `claude/step-6-scenes`.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.

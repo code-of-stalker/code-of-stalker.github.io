@@ -80,4 +80,6 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Chat details he asked for: no cut top corner on follow-up bubbles (both sides), no member icons over the chat, no «переписка зашифрована» footer; show «изменено» on edited messages.
 - Admin page: no avatars at all (letters in frames read as noise in a table); plain square check boxes, not the diary's cut icon frame; refresh line left of the search.
 - Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
+- A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
+- Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).

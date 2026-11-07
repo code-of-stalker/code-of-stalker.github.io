@@ -244,11 +244,14 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   `cut="bottomLeft"`, side `cut="topRight"`; phone keeps both cuts), ПОСЛЕДНЕЕ column fits a date.
   Names = first name + surname (Art: «Имя и фамилия»): `NameStep` has two fields; a one-word
   account gets «ДОБАВЬ ФАМИЛИЮ» after TOTP (`session.rename`, existing `profiles_rename` RLS, no
-  new SQL). Real accounts with one-word names will see that step once. The lock button top
-  right = «Закрыть админку» (drops the session; next entry asks PIN + code again).
-  Screenshots `output/admin/admin-wide-v3.png`, `admin-phone-v3.png`, `name-surname-step.png`.
+  new SQL). Real accounts with one-word names will see that step once.
+- Then (local) after Art: «замочек чтобы закрыть? странное решение», «чекбоксы огромные», search
+  icon pressed to the edge, search as wide as the plate below. Header button is now a sign-out
+  door `logout` («Выйти из админки»: drops the session, back to the entry); check boxes 14 px;
+  `GlassField` right icon at 14 px inset (all Intensive searches); PC search width = side pane.
+  Screenshots `output/admin/admin-wide-v4.png`, `admin-phone-v4.png`, `name-surname-step.png`.
 - Waits for Art: re-run `supabase/intensive-schema.sql` on the real server (adds blocking, voice,
-  edit/delete), an OK on the look, then «Пушим» for 967fa54..5f59508 (+ handoffs) together.
+  edit/delete), an OK on the look, then «Пушим» for 967fa54..HEAD of the branch together.
   Other dark themes after his OK. Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 

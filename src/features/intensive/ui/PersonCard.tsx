@@ -35,8 +35,8 @@ export const canBlock = (entry: DirectoryEntry) => !entry.mainAdmin;
 type Confirm = StaffRole | 'block' | null;
 
 /** Everything the main admin can change about one person; reused by the app tab and the admin page. */
-export function PersonCard({ session, person, directory, onChanged, onOpenChat, onBack }: {
-  session: IntensiveSession; person: DirectoryEntry; directory: DirectoryEntry[];
+export function PersonCard({ session, person, directory, avatars = true, onChanged, onOpenChat, onBack }: {
+  session: IntensiveSession; person: DirectoryEntry; directory: DirectoryEntry[]; avatars?: boolean;
   onChanged: () => void; onOpenChat: (chatId: string) => void; onBack?: () => void;
 }) {
   const styles = useThemeStyles(createStyles);
@@ -61,7 +61,7 @@ export function PersonCard({ session, person, directory, onChanged, onOpenChat, 
     void act(() => session.setRole(person.userId, role, true));
   };
   const pick = (entry: DirectoryEntry, chosen: boolean, last: boolean, onPick: () => void) => <ListItem key={entry.userId}
-    avatar={<Avatar name={entry.name} size={36} accent />} title={entry.name} detail={entry.mainAdmin ? 'ГЛАВНЫЙ АДМИН' : undefined}
+    avatar={avatars ? <Avatar name={entry.name} size={36} accent /> : undefined} title={entry.name} detail={entry.mainAdmin ? 'ГЛАВНЫЙ АДМИН' : undefined}
     selected={chosen} chevron={false} right={chosen ? <Glyph name="check" size={18} /> : undefined}
     onPress={busy || chosen ? undefined : onPick} last={last} />;
   const lines = [
@@ -77,7 +77,7 @@ export function PersonCard({ session, person, directory, onChanged, onOpenChat, 
 
   return <View style={styles.stack}>
     {onBack ? <ProductButton label="← КО ВСЕМ" kind="ghost" onPress={() => { setConfirm(null); onBack(); }} style={styles.backLink} /> : null}
-    <ProfileHead name={person.name} accent={isStaff(person)} lines={lines} />
+    <ProfileHead name={person.name} accent={isStaff(person)} avatar={avatars} lines={lines} />
     {person.chatId ? <ListGroup>
       <ListItem glyph="chat" title="Открыть переписку" tone="accent" onPress={busy ? undefined : () => onOpenChat(person.chatId!)} last />
     </ListGroup> : null}

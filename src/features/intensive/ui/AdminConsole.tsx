@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-native';
 
@@ -18,7 +17,7 @@ import type { DirectoryEntry } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import type { GlyphName } from './chrome';
-import { Avatar, GlassField, Glyph, ListGroup, ListItem, useContour } from './chrome';
+import { GlassField, Glyph, ListGroup, ListItem } from './chrome';
 import { formatTime, Note, problemText, Tabs } from './parts';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
@@ -33,7 +32,16 @@ type Pointer = PressableStateCallbackType & { hovered?: boolean };
 const REFRESH_MS = 30_000;
 const QUEUE_SIZE = 5;
 // The prompt plate's contour from the diary, with an opaque fill so the panes read over the backdrop.
-const TABLE_CONTOUR = 'M275.947 .125L287.875 12.0527V63.875H12.0527L.125 51.9473V.125Z';
+/**
+ * The diary's table contour cuts the top right and bottom left corners. Side by side the two
+ * panes read as one frame, so the corners that face each other stay square.
+ */
+type Cut = 'both' | 'bottomLeft' | 'topRight';
+const TABLE_CONTOURS: Record<Cut, string> = {
+  both: 'M275.947 .125L287.875 12.0527V63.875H12.0527L.125 51.9473V.125Z',
+  bottomLeft: 'M287.875 .125V63.875H12.0527L.125 51.9473V.125Z',
+  topRight: 'M275.947 .125L287.875 12.0527V63.875H.125V.125Z',
+};
 
 const filterSets: Record<Tab, Filter[]> = {
   walkers: [
@@ -68,37 +76,33 @@ function walkerState(entry: DirectoryEntry, now: number): { label: string; tone:
   return { label: entry.lastMessageAt ? 'НА СВЯЗИ' : 'НЕТ СООБЩЕНИЙ', tone: 'muted', notable: false };
 }
 
-function useTableFrame() {
+function useTableFrame(cut: Cut) {
   const colors = useThemeColors();
   return useMemo(() => {
-    const tag = colors.accent.replace('#', '');
+    const tag = colors.accent.replace('#', ''), contour = TABLE_CONTOURS[cut];
     return { uri: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg width="288" height="64" viewBox="0 0 288 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="${TABLE_CONTOUR}" fill="${colors.background}" fill-opacity="0.9"/>
-<path d="${TABLE_CONTOUR}" fill="url(#intensive-table-${tag})" fill-opacity="0.08" stroke="${colors.accent}" stroke-width="0.25"/>
+<path d="${contour}" fill="${colors.background}" fill-opacity="0.9"/>
+<path d="${contour}" fill="url(#intensive-table-${tag})" fill-opacity="0.08" stroke="${colors.accent}" stroke-width="0.25"/>
 <defs><linearGradient id="intensive-table-${tag}" x1="0" y1="32" x2="288" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`) };
-  }, [colors]);
+  }, [colors, cut]);
 }
 
 /** A framed pane: the diary contour fitted to its content, corners kept whole. */
-function Framed({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const frame = useTableFrame();
+function Framed({ children, style, cut = 'both' }: { children: ReactNode; style?: StyleProp<ViewStyle>; cut?: Cut }) {
+  const frame = useTableFrame(cut);
   return <View style={[{ position: 'relative' }, style]}>
     <PanelArtwork source={frame} />
     {children}
   </View>;
 }
 
-/**
- * The diary's icon contour as a small check box. Fitted to 22 px its fixed corner cuts would
- * swallow the sides, so the whole 44 px icon is scaled down evenly, as a glyph is.
- */
+/** A plain square check box, filled with the accent tint when picked. */
 function CheckBox({ checked, label, onPress, mixed = false }: { checked: boolean; label: string; onPress: () => void; mixed?: boolean }) {
-  const colors = useThemeColors();
-  const source = useContour(44, 42, checked || mixed ? 'pressed' : 'accent');
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  const on = checked || mixed;
   return <Pressable accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: mixed ? 'mixed' : checked }} onPress={onPress} hitSlop={10}
-    style={({ pressed }) => [{ width: 24, height: 23, alignItems: 'center', justifyContent: 'center' }, pressed && { opacity: .7 }]}>
-    <Image pointerEvents="none" source={source} style={StyleSheet.absoluteFill} contentFit="contain" />
-    {checked ? <Glyph name="check" size={14} /> : mixed ? <View style={{ width: 8, height: 1, backgroundColor: colors.accent }} /> : null}
+    style={(state: Pointer) => [styles.check, on && styles.checkOn, state.hovered && { borderColor: colors.accent }, state.pressed && { opacity: .7 }]}>
+    {checked ? <Glyph name="check" size={14} /> : mixed ? <View style={styles.checkMixed} /> : null}
   </Pressable>;
 }
 
@@ -236,7 +240,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     load();
   }
 
-  const card = person ? <PersonCard key={person.userId} session={session} person={person} directory={directory} onChanged={load} onOpenChat={onOpenChat}
+  const card = person ? <PersonCard key={person.userId} session={session} person={person} directory={directory} avatars={false} onChanged={load} onOpenChat={onOpenChat}
     onBack={wide ? undefined : () => setSelected(null)} /> : null;
   if (card && !wide) return card;
 
@@ -252,7 +256,6 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)} {...hover(entry.userId)}
         style={({ pressed }) => [styles.rowBody, pressed && { opacity: .7 }]}>
         <View style={[styles.nameCell, { flex: wide ? 1.8 : 1 }]}>
-          <Avatar name={entry.name} size={wide ? 36 : 40} />
           <View style={styles.nameCopy}>
             <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
             {wide ? <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{`КОД ${shortCode(entry.userId)}`}</ProductText>
@@ -262,8 +265,8 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
         </View>
         {wide ? <>
           <Cell flex={1.4} title tone={guide ? 'text' : 'accent'} detail={guide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}>{guide?.name ?? 'Не назначен'}</Cell>
-          <StateCell flex={2} label={state.label} tone={state.tone} glyph={state.glyph} />
-          <Cell flex={.8} tone="muted" align="right">{time || '—'}</Cell>
+          <StateCell flex={1.7} label={state.label} tone={state.tone} glyph={state.glyph} />
+          <Cell flex={1.1} tone="muted" align="right">{time || '—'}</Cell>
         </> : time && !entry.waitingSince ? <ProductText maxFontSize={11} style={styles.time}>{time}</ProductText> : null}
         <Glyph name="right" size={16} color={colors.faint} />
       </Pressable>
@@ -279,7 +282,6 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)} {...hover(entry.userId)}
         style={({ pressed }) => [styles.rowBody, styles.teamBody, pressed && { opacity: .7 }]}>
         <View style={[styles.nameCell, { flex: wide ? 1.8 : 1 }]}>
-          <Avatar name={entry.name} size={wide ? 36 : 40} accent />
           <View style={styles.nameCopy}>
             <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
             {entry.blocked ? <StateCell label="ДОСТУП ЗАКРЫТ" tone="error" glyph="lock" />
@@ -302,8 +304,8 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       <HeadCell flex={1.8}>{tab === 'walkers' ? 'ИДУЩИЙ' : 'ЧЕЛОВЕК'}</HeadCell>
       {tab === 'walkers' ? <>
         <HeadCell flex={1.4}>ПРОВОДНИК</HeadCell>
-        <HeadCell flex={2}>СОСТОЯНИЕ</HeadCell>
-        <HeadCell flex={.8} align="right">ПОСЛЕДНЕЕ</HeadCell>
+        <HeadCell flex={1.7}>СОСТОЯНИЕ</HeadCell>
+        <HeadCell flex={1.1} align="right">ПОСЛЕДНЕЕ</HeadCell>
       </> : <>
         <HeadCell flex={2}>ПРАВА</HeadCell>
         <HeadCell flex={.8} align="right">ИДУЩИХ</HeadCell>
@@ -356,7 +358,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
           : <ListGroup caption="К КАКОМУ ПРОВОДНИКУ" footer="Переписка остаётся у идущего: новый проводник увидит всю историю, прежний теряет доступ.">
             {guides.length ? guides.map((guide, index) => {
               const own = guideLoad(guide.userId);
-              return <ListItem key={guide.userId} avatar={<Avatar name={guide.name} size={36} accent />} title={guide.name}
+              return <ListItem key={guide.userId} title={guide.name}
                 detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
                 onPress={() => { void moveTo(guide); }} last={index === guides.length - 1} />;
             }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из команды" last />}
@@ -384,21 +386,21 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     <ListGroup caption={`ЖДУТ ОТВЕТА · ${queue.length}`}>
       {queue.length ? queue.slice(0, QUEUE_SIZE).map((entry, index) => {
         const guide = entry.guideId ? byId.get(entry.guideId) : undefined;
-        return <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={36} />} title={entry.name}
+        return <ListItem key={entry.userId} title={entry.name}
           detail={`${waitedFor(entry.waitingSince!, loadedAt)} · ${guide ? `ПРОВОДНИК ${guide.name}` : 'БЕЗ ПРОВОДНИКА'}`}
           right={<Glyph name="clock" size={16} />} onPress={() => setSelected(entry.userId)} last={index === Math.min(queue.length, QUEUE_SIZE) - 1 && queue.length <= QUEUE_SIZE} />;
       }) : <ListItem glyph="check" title="Всем ответили" detail="СООБЩЕНИЙ БЕЗ ОТВЕТА НЕТ" last />}
       {queue.length > QUEUE_SIZE ? <ListItem glyph="clock" tone="accent" title={`Показать всех: ${queue.length}`} onPress={() => changeView('walkers', 'waiting')} last /> : null}
     </ListGroup>
     {fresh.length ? <ListGroup caption={`НОВЫЕ БЕЗ ПРОВОДНИКА · ${fresh.length}`} footer="Откройте человека и назначьте ему проводника.">
-      {fresh.slice(0, QUEUE_SIZE).map((entry, index) => <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={36} />} title={entry.name}
+      {fresh.slice(0, QUEUE_SIZE).map((entry, index) => <ListItem key={entry.userId} title={entry.name}
         detail={`КОД ${shortCode(entry.userId)} · С ${formatTime(entry.createdAt)}`} onPress={() => setSelected(entry.userId)}
         last={index === Math.min(fresh.length, QUEUE_SIZE) - 1} />)}
     </ListGroup> : null}
     <ListGroup caption="ПРОВОДНИКИ">
       {guides.length ? guides.map((guide, index) => {
         const own = guideLoad(guide.userId);
-        return <ListItem key={guide.userId} avatar={<Avatar name={guide.name} size={36} accent />} title={guide.name}
+        return <ListItem key={guide.userId} title={guide.name}
           detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
           onPress={() => setSelected(guide.userId)} last={index === guides.length - 1} />;
       }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из людей" last />}
@@ -409,18 +411,18 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   return <View style={styles.workspace}>
     <View style={styles.toolbar}>
       <View style={styles.tabsWide}>{tabs}</View>
+      <View style={styles.refreshWide}>{refresh}</View>
       <View style={styles.searchWide}>{search}</View>
-      {refresh}
     </View>
     {tab === 'walkers' && pickedRows.length ? bulk : chips}
     <View style={styles.split}>
-      <Framed style={styles.pane}>
+      <Framed cut="bottomLeft" style={styles.pane}>
         {head}
         <ScrollView style={styles.paneScroll} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {tableRows}
         </ScrollView>
       </Framed>
-      <Framed style={[styles.pane, styles.side, { width: roomy ? 400 : 340 }]}>
+      <Framed cut="topRight" style={[styles.pane, styles.side, { width: roomy ? 400 : 340 }]}>
         <View style={styles.paneHead}>
           <ProductText variant="label" numberOfLines={1} maxFontSize={12} style={styles.paneCaption}>
             {person ? isStaff(person) ? 'В КОМАНДЕ' : 'ИДУЩИЙ' : 'ОБЗОР'}
@@ -445,7 +447,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   workspace: { flex: 1, minHeight: 0, gap: 16 },
   toolbar: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   tabsWide: { flexShrink: 0, minWidth: 320 },
-  searchWide: { flex: 1, maxWidth: 380, marginLeft: 'auto' },
+  refreshWide: { marginLeft: 'auto' },
+  searchWide: { flex: 1, maxWidth: 380 },
   // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
   chipScroll: { paddingRight: 4 },
@@ -475,6 +478,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingLeft: 4 },
   rowLine: { borderBottomWidth: .25, borderBottomColor: colors.border },
   rowMark: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 2, backgroundColor: colors.accent },
+  check: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.muted },
+  checkOn: { borderColor: colors.accent, backgroundColor: colors.subtle },
+  checkMixed: { width: 10, height: 1.5, backgroundColor: colors.accent },
   checkCell: { width: 40, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
   rowBody: { flex: 1, minWidth: 0, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingLeft: 4, paddingRight: 8 },
   teamBody: { paddingLeft: 12 },

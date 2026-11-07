@@ -14,7 +14,7 @@ import type { Bytes } from '../crypto';
 import type { DemoPersona } from '../demoBackend';
 import { intensiveFactory } from '../config';
 import { confirmationPositions, newPhrase, parseSecret, phraseKey } from '../phrase';
-import { hasDevice, IntensiveSession, shortCode, wipeDevice } from '../session';
+import { hasDevice, IntensiveSession, isFullName, shortCode, wipeDevice } from '../session';
 import { AccountView } from './AccountView';
 import { AdminConsole } from './AdminConsole';
 import { AdminPanel } from './AdminPanel';
@@ -33,7 +33,7 @@ type Step =
   | { kind: 'phrase'; words: string[]; entropy: Bytes }
   | { kind: 'confirm'; words: string[]; entropy: Bytes; positions: number[] }
   | { kind: 'restore'; notice?: string }
-  | { kind: 'name' }
+  | { kind: 'name'; adding?: boolean }
   | { kind: 'pin'; first?: string; change?: boolean }
   | { kind: 'unlock'; forgot?: boolean }
   | { kind: 'totp-enroll'; required: boolean; enrollment: TotpEnrollment | null; back: 'home' | 'account' }
@@ -127,6 +127,8 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     if (!s.sealed && !skipSeal.current) return go({ kind: 'pin' });
     if (status.needsTotp && !status.hasTotp) return enroll(s, true, 'home');
     if (s.needsTotpStep) return go({ kind: 'totp-verify' });
+    // After the TOTP step: staff may change their profile only in a verified session.
+    if (!isFullName(status.name)) return go({ kind: 'name', adding: true });
     go({ kind: 'home' });
   }, [adminPage, deny, enroll, go]);
 
@@ -195,10 +197,15 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
         });
       }} />;
       break;
-    case 'name':
-      subtitle = 'НОВЫЙ АККАУНТ';
-      body = <NameStep busy={busy} error={error} onSubmit={name => { void run(async () => { await session!.createProfile(name); enter(session!); }); }} />;
+    case 'name': {
+      const adding = !!step.adding;
+      subtitle = adding ? adminPage ? 'АДМИНКА' : 'АККАУНТ' : 'НОВЫЙ АККАУНТ';
+      body = <NameStep adding={adding} initial={adding ? session?.status?.name ?? '' : ''} busy={busy} error={error} onSubmit={name => { void run(async () => {
+        if (adding) await session!.rename(name); else await session!.createProfile(name);
+        enter(session!);
+      }); }} />;
       break;
+    }
     case 'pin': {
       // Restoring by the words lands here too, so the subtitle names the device, not a new account.
       subtitle = step.change ? 'НОВЫЙ PIN' : 'ЭТО УСТРОЙСТВО';

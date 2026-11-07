@@ -116,13 +116,13 @@ class DemoServer {
   }
 
   private async seed() {
-    const yana = await this.addPerson('Яна', 'ГЛАВНЫЙ АДМИН, ПРОВОДНИК', ['guide', 'admin'], true, 9000);
-    const mira = await this.addPerson('Мира', 'ПРОВОДНИК', ['guide'], false, 8000);
-    const oleg = await this.addPerson('Олег', 'АДМИН ПРОВОДНИКА', ['admin'], false, 7000);
-    const alex = await this.addPerson('Алекс', 'ИДУЩИЙ С ПРОВОДНИКОМ', [], false, 3000);
-    const dina = await this.addPerson('Дина', 'ИДУЩАЯ С ПРОВОДНИКОМ', [], false, 2500);
-    await this.addPerson('Ника', 'ИДУЩИЙ, ЖДЁТ НАЗНАЧЕНИЯ', [], false, 40);
-    const timur = await this.addPerson('Тимур', 'ИДУЩИЙ, ДОСТУП ЗАКРЫТ', [], false, 5000);
+    const yana = await this.addPerson('Яна Орлова', 'ГЛАВНЫЙ АДМИН, ПРОВОДНИК', ['guide', 'admin'], true, 9000);
+    const mira = await this.addPerson('Мира Соколова', 'ПРОВОДНИК', ['guide'], false, 8000);
+    const oleg = await this.addPerson('Олег Ветров', 'АДМИН ПРОВОДНИКА', ['admin'], false, 7000);
+    const alex = await this.addPerson('Алекс Морозов', 'ИДУЩИЙ С ПРОВОДНИКОМ', [], false, 3000);
+    const dina = await this.addPerson('Дина Лебедева', 'ИДУЩАЯ С ПРОВОДНИКОМ', [], false, 2500);
+    await this.addPerson('Ника Зорина', 'ИДУЩИЙ, ЖДЁТ НАЗНАЧЕНИЯ', [], false, 40);
+    const timur = await this.addPerson('Тимур Каримов', 'ИДУЩИЙ, ДОСТУП ЗАКРЫТ', [], false, 5000);
     void yana;
     this.guideAdmins.set(mira, oleg);
     this.blocked.add(timur);
@@ -205,6 +205,12 @@ function connect(store: AuthStore): Backend {
       const { user } = me();
       if (user.id !== id || user.name) throw denied();
       Object.assign(user, { name, publicKey, identity: wrapped });
+    },
+    async renameProfile(id, name) {
+      await wait();
+      const { user, aal } = me();
+      if (user.id !== id || !user.name || !s.allowed(user.id, aal)) throw denied();
+      user.name = name;
     },
     async identity() {
       await wait(60);

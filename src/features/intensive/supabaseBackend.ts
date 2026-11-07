@@ -77,6 +77,12 @@ function connect(config: Config, store: AuthStore): Backend {
       const key = await client.from('identity_keys').insert({ user_id: id, iv: wrapped.iv, wrapped_private_key: wrapped.data });
       if (key.error) fail(key.error);
     },
+    async renameProfile(id, name) {
+      const { data, error } = await client.from('profiles').update({ name }).eq('id', id).select('id');
+      if (error) fail(error);
+      // Row security turns a forbidden update into one that changes nothing.
+      if (!data?.length) throw new BackendError('denied', 'The name was not changed');
+    },
     async identity() {
       const { data, error } = await client.from('identity_keys').select('iv, wrapped_private_key').maybeSingle();
       if (error) fail(error);

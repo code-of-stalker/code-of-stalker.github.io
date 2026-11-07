@@ -84,6 +84,8 @@ export interface Backend {
   close(): void;
   status(): Promise<Status>;
   createProfile(id: string, name: string, publicKey: string, wrapped: { iv: string; data: string }): Promise<void>;
+  /** Only the account's own name; staff need the TOTP step first. */
+  renameProfile(id: string, name: string): Promise<void>;
   identity(): Promise<{ iv: string; data: string } | null>;
   registerDevice(deviceId: string, verifier: string): Promise<string>;
   forgetDevice(deviceId: string): Promise<void>;

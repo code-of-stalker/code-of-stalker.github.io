@@ -189,10 +189,10 @@ export function Hero({ glyph, title, lines = [], tight = false }: { glyph: Glyph
 }
 
 /** A profile head as in Telegram settings: a large avatar, the name and quiet lines below. */
-export function ProfileHead({ name, lines, accent = false }: { name: string; lines: string[]; accent?: boolean }) {
+export function ProfileHead({ name, lines, accent = false, avatar = true }: { name: string; lines: string[]; accent?: boolean; avatar?: boolean }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.profile}>
-    <Avatar name={name} size={76} accent={accent} />
+    {avatar ? <Avatar name={name} size={76} accent={accent} /> : null}
     <ProductText variant="title" selectable numberOfLines={2} style={styles.profileName}>{name}</ProductText>
     {lines.map(line => <ProductText key={line} selectable maxFontSize={12} style={styles.profileLine}>{line}</ProductText>)}
   </View>;

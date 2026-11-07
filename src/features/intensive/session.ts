@@ -53,6 +53,17 @@ type ChatCipher = { current: number; ciphers: Map<number, CryptoKey>; raw: Bytes
 
 export const shortCode = (id: string) => id.replace(/-/g, '').slice(0, 8).toUpperCase().replace(/(.{4})/, '$1-');
 
+/** A name is a first name and a surname, «Алекс Морозов»; the server keeps at most this many characters. */
+export const NAME_LIMIT = 40;
+export const cleanName = (name: string) => name.trim().replace(/\s+/g, ' ');
+export const joinName = (first: string, last: string) => cleanName(`${first} ${last}`);
+/** Accounts made before surnames were asked may still have one word. */
+export const isFullName = (name: string | null | undefined) => {
+  const clean = cleanName(name ?? '');
+  return clean.length <= NAME_LIMIT && clean.split(' ').length >= 2;
+};
+export const firstName = (name: string) => cleanName(name).split(' ')[0];
+
 export class IntensiveSession {
   readonly backend: Backend;
   readonly factory: BackendFactory;
@@ -97,8 +108,14 @@ export class IntensiveSession {
 
   async createProfile(name: string) {
     const identity = await c.createIdentity(this.entropy);
-    await this.backend.createProfile(this.id, name.trim(), identity.publicKey, identity.wrapped);
+    await this.backend.createProfile(this.id, cleanName(name), identity.publicKey, identity.wrapped);
     this.identityKey = identity.privateKey;
+    await this.refresh();
+  }
+
+  /** Changes this account's own name. */
+  async rename(name: string) {
+    await this.backend.renameProfile(this.id, cleanName(name));
     await this.refresh();
   }
 

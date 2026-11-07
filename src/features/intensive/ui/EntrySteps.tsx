@@ -9,6 +9,7 @@ import { fonts } from '../../product/theme';
 import { ProductButton, ProductText } from '../../product/ui';
 import type { TotpEnrollment } from '../backend';
 import type { DemoPersona } from '../demoBackend';
+import { cleanName, firstName, joinName, NAME_LIMIT } from '../session';
 import { Avatar, GlassField, Hero, ListGroup, ListItem, Plate } from './chrome';
 import { Note, useFormal } from './parts';
 
@@ -79,15 +80,30 @@ export function ConfirmWords({ words, positions, busy, error, onConfirmed, onBac
   </View>;
 }
 
-export function NameStep({ busy, error, onSubmit }: { busy: boolean; error: string; onSubmit: (name: string) => void }) {
+/**
+ * First name and surname. `adding` asks an account made before surnames were asked
+ * for the missing surname, with its first name already filled in.
+ */
+export function NameStep({ busy, error, onSubmit, adding = false, initial = '' }: {
+  busy: boolean; error: string; onSubmit: (name: string) => void; adding?: boolean; initial?: string;
+}) {
   const styles = useThemeStyles(createStyles);
-  const [name, setName] = useState('');
-  const valid = name.trim().length >= 1 && name.trim().length <= 40;
+  const formal = useFormal();
+  const [first, setFirst] = useState(initial), [last, setLast] = useState('');
+  const name = joinName(first, last), long = name.length > NAME_LIMIT;
+  const valid = !!cleanName(first) && !!cleanName(last) && !long;
+  const submit = () => { if (valid && !busy) onSubmit(name); };
+  const who = formal ? 'Их увидят только участники ваших переписок и главный админ.' : 'Их увидят только участники твоей переписки и главный админ.';
   return <View style={styles.stack}>
-    <Hero glyph="person" title="КАК ТЕБЯ НАЗЫВАТЬ" lines={['Имя увидят только участники твоей переписки и главный админ. Можно не настоящее.']} tight />
-    <GlassField label="ИМЯ" value={name} maxLength={40} autoFocus placeholder="Например, Алекс" onChangeText={setName} onSubmitEditing={() => valid && onSubmit(name)} />
+    <Hero glyph="person" title={adding ? formal ? 'ДОБАВЬТЕ ФАМИЛИЮ' : 'ДОБАВЬ ФАМИЛИЮ' : 'ИМЯ И ФАМИЛИЯ'}
+      lines={[adding ? `Теперь в Интенсиве у всех имя и фамилия. ${who}` : who]} tight />
+    <GlassField label="ИМЯ" value={first} maxLength={NAME_LIMIT} autoFocus={!initial} autoCapitalize="words" autoComplete="given-name"
+      placeholder="Например, Алекс" returnKeyType="next" onChangeText={setFirst} onSubmitEditing={submit} />
+    <GlassField label="ФАМИЛИЯ" value={last} maxLength={NAME_LIMIT} autoFocus={!!initial} autoCapitalize="words" autoComplete="family-name"
+      placeholder="Например, Морозов" returnKeyType="done" onChangeText={setLast} onSubmitEditing={submit} />
+    {long ? <Note tone="error">{`Имя и фамилия вместе: не длиннее ${NAME_LIMIT} знаков.`}</Note> : null}
     {error ? <Note tone="error">{error}</Note> : null}
-    <ProductButton label={busy ? 'СОХРАНЯЮ…' : 'ДАЛЬШЕ'} onPress={() => onSubmit(name)} disabled={busy || !valid} />
+    <ProductButton label={busy ? 'СОХРАНЯЮ…' : 'ДАЛЬШЕ'} onPress={submit} disabled={busy || !valid} />
   </View>;
 }
 
@@ -166,7 +182,7 @@ export function TotpVerify({ busy, error, onVerify }: { busy: boolean; error: st
 export function Waiting({ name, code, busy, onRefresh }: { name: string; code: string; busy: boolean; onRefresh: () => void }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.stack}>
-    <Hero glyph="clock" title={`${name}, ПРОВОДНИК СКОРО БУДЕТ`} lines={['Яна назначит тебе проводника. Когда это случится, здесь откроется ваша переписка.']} />
+    <Hero glyph="clock" title={`${firstName(name)}, ПРОВОДНИК СКОРО БУДЕТ`} lines={['Яна назначит тебе проводника. Когда это случится, здесь откроется ваша переписка.']} />
     <Plate glyph="person" label="ТВОЙ КОД" title={code} selectable titleStyle={styles.ownCode}>Назови его Яне, чтобы она нашла тебя быстрее.</Plate>
     <ProductButton label={busy ? 'ПРОВЕРЯЮ…' : 'ПРОВЕРИТЬ СНОВА'} kind="outline" onPress={onRefresh} disabled={busy} />
   </View>;

@@ -74,3 +74,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
 - Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
 - Walkers may be in Russia; check that every service the app uses works there.
+- The first chat UI read as «сыроватый прототип»: he wants messenger quality (Telegram as the model) built from the diary's own components (glass, framed contours, bottom sheet, Disket/Tektur roles), not new ad-hoc parts.

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Intensive chat shipped 2026-11-07; its redesign waits on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -203,8 +203,19 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   (walker, stranger, staff at aal1, removed admin, anon), removed admin cannot send, 5 wrong
   PINs wipe the device, restore by words reopens the history. Fixed on the branch (not on
   `main` yet): a guide/admin assigned while the chat was open showed as «бывший участник»
-  (ChatView now reloads members), PIN step after restore said «новый аккаунт». Only Тишина
-  checked; the other dark themes after Art's OK.
+  (ChatView now reloads members), PIN step after restore said «новый аккаунт».
+- Redesign 2026-11-07 (4d1074a, local, not pushed) after Art: «выглядит как сыроватый
+  прототип… телеграмма… бери компоненты из дневника». Shared chrome in `ui/chrome.tsx`
+  (diary glass, `fitPanelPath` contours, Hero, ProfileHead, ListGroup/ListItem, ConfirmSheet on
+  `BottomSheet`). Telegram-style chat list and chat (grouping, ticks, day rows, «новые
+  сообщения», jump-down, retry/remove, drafts), PIN pad on contour keys, entry steps, account
+  and people screens rebuilt. Seen ids in localStorage (`chatMemory.ts`), drafts/previews in
+  memory only. Checked live in Тишина (3 PC origins + phone): welcome, 12 words, PIN, chats,
+  unread mark and divider, chat as guide and walker, failed send, account, team, person card.
+  Screenshots in `output/intensive-redesign/`. Other dark themes after Art's OK.
+- Waits for Art: an OK on the redesign look, then «Пушим» to ship it together with 967fa54
+  (the two fixes above). Small idea left: the list preview names a main admin by place
+  («ГЛАВНЫЙ АДМИН: …») when she is not a chat role; the chat itself shows her name.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

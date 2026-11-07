@@ -55,8 +55,14 @@ parallel headless runs time out and leave skeleton placeholders on screen.
   (physical = CSS × dpr, plus `(screen.height − innerHeight) × dpr` for Chrome's toolbar), type
   with `Input.insertText`. Screenshots: `cmd /c "adb exec-out screencap -p > file.png"`
   (a PowerShell `>` corrupts binary output).
-- Fast Refresh of `IntensiveFlow.tsx` runs its unmount cleanup and locks the open session:
-  reload the tab after editing it, or crypto calls fail with «Не удалось открыть переписку».
+- Fast Refresh of any file under `src/features/intensive/` re-runs `IntensiveFlow`'s unmount
+  cleanup and locks the open session in every open tab and on the phone: reload them after an
+  edit, or sends fail with «Не удалось открыть переписку». Production has no Fast Refresh.
+- Hidden browser pane: route transitions stop mid-way (the screen sits ~16–21 px to the right)
+  and one tab may capture a zoomed frame. For a clean shot set `style.transform = 'none'` on the
+  full-width div whose inline transform is `translate3d(<n>px…)`; compare with another tab.
+- Theme on a fresh origin: `/settings`, click the radio by JS (`[role=radio]` «ТИШИНА»), wait
+  1–2 s before leaving, or the choice is lost.
 - RLS spot checks: `begin; set local role authenticated; select set_config('request.jwt.claims',
   '{"sub":"<uuid>","role":"authenticated","aal":"aal1"}', true); select count(*) from public.messages; rollback;`
 

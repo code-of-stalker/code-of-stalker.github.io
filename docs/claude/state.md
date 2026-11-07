@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname wait on the branch. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -205,7 +205,9 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
-Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»).
+Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything
+below (redesign … sign-out door) shipped to `main` together on 2026-11-08 (Art: «Пушим»), after
+Art re-ran `supabase/intensive-schema.sql` on the real server.
 - Three places per chat: идущий, его проводник, админ этого проводника; Яна is the main
   admin (also a guide), set only by SQL in `public.main_admins`. One chat per walker; the
   history stays with the walker when the guide changes.
@@ -228,10 +230,9 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   three PC origins, Алекс on Art's phone (Chrome over USB). Passed: sign-up, roles, guide/admin
   assignment, TOTP gate, live delivery both ways, ciphertext only in the DB, RLS per role
   (walker, stranger, staff at aal1, removed admin, anon), removed admin cannot send, 5 wrong
-  PINs wipe the device, restore by words reopens the history. Fixed on the branch (not on
-  `main` yet): a guide/admin assigned while the chat was open showed as «бывший участник»
+  PINs wipe the device, restore by words reopens the history. Fixed since: a guide/admin assigned while the chat was open showed as «бывший участник»
   (ChatView now reloads members), PIN step after restore said «новый аккаунт».
-- Redesign 2026-11-07 (4d1074a, local, not pushed) after Art: «выглядит как сыроватый
+- Redesign 2026-11-07 (4d1074a) after Art: «выглядит как сыроватый
   прототип… телеграмма… бери компоненты из дневника». Shared chrome in `ui/chrome.tsx`
   (diary glass, `fitPanelPath` contours, Hero, ProfileHead, ListGroup/ListItem, ConfirmSheet on
   `BottomSheet`). Telegram-style chat list and chat (grouping, ticks, day rows, «новые
@@ -240,11 +241,11 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   memory only. Checked live in Тишина (3 PC origins + phone): welcome, 12 words, PIN, chats,
   unread mark and divider, chat as guide and walker, failed send, account, team, person card.
   Screenshots in `output/intensive-redesign/`. Other dark themes after Art's OK.
-- Blocking + waiting (9deb99f, local): `profiles.blocked`, RPC `admin_block` (main admin only,
+- Blocking + waiting (9deb99f): `profiles.blocked`, RPC `admin_block` (main admin only,
   never a main admin), restrictive RLS `not_blocked` on chats/messages/keys. A blocked account
   sees «ДОСТУП ЗАКРЫТ» with its code on entry; an already open session only gets «Нет доступа»
   on send until it re-enters. Directory carries `waitingSince` (last walker message unanswered).
-- Admin page `/admin` (98db1db, reworked in df3c87e, local) after Art: «отдельную админку для
+- Admin page `/admin` (98db1db, reworked in df3c87e) after Art: «отдельную админку для
   Яны… назначать админов и управлять всем». His picks: page on this site, block people, see who
   waits, table + bulk move; no «назначать главных админов»; in-app ЛЮДИ tab stays. Route
   `src/app/(product)/admin.tsx` (no menu link), `IntensiveFlow mode="console"`,
@@ -257,7 +258,7 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   ОТВЕТА top 5, new walkers without a guide, guide load); checkboxes → bulk bar → move sheet.
   Phone: one column, the card replaces the list. All admin texts use «Вы» (`FormalTone` in
   `ui/parts.tsx`; walker screens keep «ты»). Screenshots `output/admin/1…9-*.png`.
-- Chat edits (df3c87e, local) after Art: voice messages (diary hold gesture, `ui/useChatVoice.ts`,
+- Chat edits (df3c87e) after Art: voice messages (diary hold gesture, `ui/useChatVoice.ts`,
   audio sealed apart in `message_media`, 3 min max), edit/delete own messages from a long-press
   menu, «ИЗМЕНЕНО» mark, follow-up bubbles without the cut corner on both sides, no member
   avatars over the chat, no «переписка зашифрована» footer. Shared files touched:
@@ -265,21 +266,20 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   Checked live in Тишина on the local server (PC + phone sizes): admin overview, card, bulk move,
   phone list/card; chat send, edit, delete, voice record/play/delete. Headless Chrome needs
   `--use-fake-device-for-media-stream` for voice tests.
-- Admin + names (5f59508, local) after Art's marked screenshot: no avatars on /admin (table,
+- Admin + names (5f59508) after Art's marked screenshot: no avatars on /admin (table,
   overview, person card; `avatars={false}`, the ЛЮДИ tab and chats keep them), «ОБНОВЛЕНО» left
   of the search, plain square check boxes, panes facing each other keep square corners (list
   `cut="bottomLeft"`, side `cut="topRight"`; phone keeps both cuts), ПОСЛЕДНЕЕ column fits a date.
   Names = first name + surname (Art: «Имя и фамилия»): `NameStep` has two fields; a one-word
   account gets «ДОБАВЬ ФАМИЛИЮ» after TOTP (`session.rename`, existing `profiles_rename` RLS, no
   new SQL). Real accounts with one-word names will see that step once.
-- Then (local) after Art: «замочек чтобы закрыть? странное решение», «чекбоксы огромные», search
+- Then (21afc53) after Art: «замочек чтобы закрыть? странное решение», «чекбоксы огромные», search
   icon pressed to the edge, search as wide as the plate below. Header button is now a sign-out
   door `logout` («Выйти из админки»: drops the session, back to the entry); check boxes 14 px;
   `GlassField` right icon at 14 px inset (all Intensive searches); PC search width = side pane.
   Screenshots `output/admin/admin-wide-v4.png`, `admin-phone-v4.png`, `name-surname-step.png`.
-- Waits for Art: re-run `supabase/intensive-schema.sql` on the real server (adds blocking, voice,
-  edit/delete), an OK on the look, then «Пушим» for 967fa54..HEAD of the branch together.
-  Other dark themes after his OK. Small idea left: the list preview names a main admin by place
+- Next, Art: check the live site (/intensive and /admin); the other dark themes after his OK.
+  Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)

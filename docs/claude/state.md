@@ -183,9 +183,11 @@ Built 2026-11-07 after Art's «Да, делаем»; commit 4f611d5. Push only o
   Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
 - Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
   «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
-- Waiting for Art: `docs/intensive/setup-ru.md` steps 1–4, then send Project URL + publishable
-  key; then he checks end to end (ideally a walker in Russia). Only Тишина checked so far
-  (phone + PC); the other dark themes after his OK.
+- Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
+  (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
+  there by Claude. Waiting for Art's word to ship to `main`; then setup steps 5–7 (GitHub 2FA,
+  Яна's account + SQL main admin, end to end, ideally a walker in Russia). Only Тишина checked
+  so far (phone + PC); the other dark themes after his OK.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

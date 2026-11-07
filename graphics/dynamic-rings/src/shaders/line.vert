@@ -3,7 +3,8 @@
 // and its trail (3), where the glass meets the ground (4), the ripples of
 // the heel strikes (5), the footprints (6), the lock's wave along the
 // ground (7), the figures among the stars (8), the wires (9), the things
-// the walk passes (10), the spires over the horizon (11), the seats (12).
+// the walk passes (10), the spires over the horizon (11), the seats (12),
+// the voices in a talk (13), the desks and their laptops (14).
 // Each instance is
 // one straight piece of a curve, drawn as a band a few blurred widths
 // across (line.frag).
@@ -354,6 +355,141 @@ void main() {
     light *= SPIRE_LIGHT * WORLD.w * edge;
     if (hidden(0.5 * (a + b))) light = 0.0;
     width = 0.8;
+  } else if (kind == 13) {
+    // A voice: a ring of light from the speaker's mouth toward the one who
+    // listens, square to its way, widening and fading as it goes, broken
+    // into arcs that turn as it grows; it flares where it meets the glass.
+    int k = i / VOICE_SEGMENTS;
+    int j = i - k * VOICE_SEGMENTS;
+    vec4 c = u_d[SLOT_VOICE + 2 * k];
+    vec4 n = u_d[SLOT_VOICE + 2 * k + 1];
+    if (n.w > 0.0) {
+      float s0 = TAU * float(j) / float(VOICE_SEGMENTS);
+      float s1 = TAU * float(j + 1) / float(VOICE_SEGMENTS);
+      a = onTilted(c.xyz, n.xyz, c.w, s0);
+      b = onTilted(c.xyz, n.xyz, c.w, s1);
+      float arcs = fract(0.5 * (s0 + s1) / TAU * 5.0 + 9.0 * c.w);
+      float dash = smoothstep(0.0, 0.12, arcs) * smoothstep(0.85, 0.6, arcs);
+      vec3 m = 0.5 * (a + b);
+      float glass = (length(m - SPH.xyz) - SPH.w) / 0.06;
+      light = VOICE_LIGHT * n.w * mix(0.25, 1.0, dash) * (1.0 + 1.6 * exp(-glass * glass));
+      if (hidden(m)) light = 0.0;
+      width = 0.8;
+    }
+  } else if (kind == 14) {
+    // A desk of light with a laptop on it: the edges of its top and its
+    // underside, four legs, the laptop's base and its lid on the hinge; on
+    // the screen the rows of glyphs it types, the newest bright, a cursor
+    // blinking after it; under its hands the keys flicker. A desk comes up
+    // from the ground piece by piece, each flaring as it comes, and goes
+    // the same way back.
+    int c = i / DESK_LINES;
+    int j = i - c * DESK_LINES;
+    vec4 d = u_d[SLOT_DESK + 2 * c];
+    vec4 e = u_d[SLOT_DESK + 2 * c + 1];
+    uint seed = uint(i) * 13u + 401u;
+    vec3 o = vec3(d.x, 0.0, d.y);
+    float angle = d.w * LID_OPEN;
+    vec3 lidUp = vec3(0.0, sin(angle), -cos(angle));
+    vec3 screen = vec3(0.0, -cos(angle), -sin(angle));
+    vec3 hinge = o + vec3(0.0, LAPTOP_TOP + 0.006, LID_HINGE);
+    vec3 X = vec3(1.0, 0.0, 0.0);
+    vec3 Z = vec3(0.0, 0.0, 1.0);
+    vec3 qa = o;
+    vec3 qb = o;
+    float strength = 0.0;
+    int edges = 20 * DESK_PIECES;
+    if (j < edges) {
+      int edge = j / DESK_PIECES;
+      int piece = j - edge * DESK_PIECES;
+      float t0 = float(piece) / float(DESK_PIECES);
+      float t1 = float(piece + 1) / float(DESK_PIECES);
+      int group = edge / 4;
+      int side_ = edge - group * 4;
+      vec2 corner[4] = vec2[4](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0));
+      vec2 ca = corner[side_];
+      vec2 cb = corner[(side_ + 1) % 4];
+      vec3 centre = o;
+      vec3 U = X;
+      vec3 V = Z;
+      if (group == 0 || group == 1) {
+        centre = o + vec3(0.0, DESK_TOP - float(group) * DESK_SLAB, 0.0);
+        U = X * DESK_HALF_X;
+        V = Z * DESK_HALF_Z;
+        strength = group == 0 ? 0.6 : 0.3;
+      } else if (group == 3) {
+        centre = o + vec3(0.0, LAPTOP_TOP, 0.5 * (LAPTOP_FRONT + LID_HINGE));
+        U = X * LAPTOP_HALF;
+        V = Z * (0.5 * (LID_HINGE - LAPTOP_FRONT));
+        strength = 0.8;
+      } else if (group == 4) {
+        centre = hinge + lidUp * (0.5 * LID_HEIGHT);
+        U = X * LAPTOP_HALF;
+        V = lidUp * (0.5 * LID_HEIGHT);
+        strength = 0.9;
+      }
+      if (group == 2) {
+        vec3 foot = o + vec3(ca.x * DESK_LEGS_X, 0.0, ca.y * DESK_LEGS_Z);
+        vec3 top = foot + vec3(0.0, DESK_TOP - DESK_SLAB, 0.0);
+        qa = mix(foot, top, t0);
+        qb = mix(foot, top, t1);
+        strength = 0.4;
+      } else {
+        vec3 pa = centre + U * ca.x + V * ca.y;
+        vec3 pb = centre + U * cb.x + V * cb.y;
+        qa = mix(pa, pb, t0);
+        qb = mix(pa, pb, t1);
+      }
+      width = 0.8;
+    } else if (j < edges + GLYPHS) {
+      // A glyph on the screen: a dash in its row, as long as a word's piece.
+      int g = j - edges;
+      int row = g / GLYPH_COLUMNS;
+      int col = g - row * GLYPH_COLUMNS;
+      float cell = 1.6 * LAPTOP_HALF / float(GLYPH_COLUMNS);
+      float x = -0.8 * LAPTOP_HALF + cell * float(col);
+      float v = mix(0.86, 0.18, (float(row) + 0.5) / float(GLYPH_ROWS)) * LID_HEIGHT;
+      float long_ = cell * mix(0.35, 0.85, rand(seed + 1u));
+      vec3 at = hinge + lidUp * v + screen * 0.004;
+      qa = at + X * x;
+      qb = at + X * (x + long_);
+      float typed = mod(e.y, float(GLYPHS));
+      float shown = floor(typed);
+      float written = step(float(g) + 0.5, shown);
+      float newest = float(g) == shown - 1.0 ? exp(-4.0 * fract(typed)) : 0.0;
+      float blink = step(0.0, sin(loopPhase() * pace(77u, 0.9)));
+      float cursor = float(g) == shown ? 0.7 * blink : 0.0;
+      if (cursor > 0.0) qb = qa + X * (0.3 * cell);
+      strength = (written * (0.8 + 2.2 * newest) + cursor) * smoothstep(0.35, 0.7, d.w);
+      width = 0.9;
+    } else {
+      // A key: a dash on the base before the screen, lit as it is pressed.
+      int k = j - edges - GLYPHS;
+      int row = k / KEY_COLUMNS;
+      int col = k - row * KEY_COLUMNS;
+      float cell = 1.6 * LAPTOP_HALF / float(KEY_COLUMNS);
+      float x = -0.8 * LAPTOP_HALF + cell * (float(col) + 0.2);
+      float z = mix(-0.03, -0.13, float(row) / float(KEY_ROWS - 1));
+      vec3 at = o + vec3(x, LAPTOP_TOP + 0.002, z);
+      qa = at;
+      qb = at + X * (0.6 * cell);
+      float press = 0.5 + 0.5 * sin(loopPhase() * pace(seed + 2u, 0.35) + TAU * rand(seed + 3u));
+      strength = 0.22 + 1.8 * pow(press, 14.0) * e.x;
+      width = 0.7;
+    }
+    a = bend(qa);
+    b = bend(qb);
+    vec3 m = 0.5 * (qa + qb);
+    // It comes up from the ground, each piece flaring as it comes.
+    float r = 0.12 + 0.55 * clamp(m.y / 0.98, 0.0, 1.0) + 0.25 * rand(seed);
+    float there = smoothstep(r - 0.04, r + 0.04, d.z);
+    float moving = smoothstep(0.0, 0.04, d.z) * (1.0 - smoothstep(0.96, 1.0, d.z));
+    float edge_ = (d.z - r) / 0.05;
+    float flare = 2.0 * moving * exp(-edge_ * edge_);
+    float inside = smoothstep(0.04, -0.1, length(m - SPH.xyz) - SPH.w);
+    light = DESK_LIGHT * (strength * there + flare * float(strength > 0.0))
+          * mix(0.45, 1.0, inside) * (1.0 + 2.5 * scanned(m));
+    if (hidden(m)) light = 0.0;
   } else {
     // A figure of stars: each joined to the next.
     int per = CONSTELLATION_STARS - 1;

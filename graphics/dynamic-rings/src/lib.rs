@@ -149,6 +149,39 @@ pub const SEAT_TOP: f32 = 0.43;
 pub const SEAT_HALF: [f32; 2] = [0.22, 0.2];
 pub const SEAT_LEVELS: u32 = 7;
 pub const SEAT_PIECES: u32 = 8;
+/// Before each seat a desk of light (page 02): its middle this far ahead
+/// of the feet, half as wide and deep as this, its top this high and this
+/// thick, its legs this far in from its middle (m). Its edges come and go
+/// in this many pieces.
+pub const DESK_AHEAD: f32 = 0.15;
+pub const DESK_HALF: [f32; 2] = [0.5, 0.3];
+pub const DESK_TOP: f32 = 0.74;
+pub const DESK_SLAB: f32 = 0.03;
+pub const DESK_LEGS: [f32; 2] = [0.45, 0.25];
+pub const DESK_PIECES: u32 = 6;
+/// On it a laptop: its base half this wide, its top this high, from this
+/// far before the desk's middle to its lid's hinge this far behind; the lid
+/// this tall, open this far (radians).
+pub const LAPTOP_HALF: f32 = 0.16;
+pub const LAPTOP_TOP: f32 = 0.752;
+pub const LAPTOP_FRONT: f32 = -0.2;
+pub const LID_HINGE: f32 = 0.03;
+pub const LID_HEIGHT: f32 = 0.21;
+pub const LID_OPEN: f32 = 105.0 * std::f32::consts::PI / 180.0;
+/// The screen holds this many glyphs a line and lines; the keys this many
+/// a row and rows.
+pub const GLYPH_COLUMNS: u32 = 7;
+pub const GLYPH_ROWS: u32 = 6;
+pub const GLYPHS: u32 = GLYPH_COLUMNS * GLYPH_ROWS;
+pub const KEY_COLUMNS: u32 = 8;
+pub const KEY_ROWS: u32 = 3;
+/// A desk's lines: the top's two faces, the legs, the base and the lid, then
+/// the glyphs and the keys.
+pub const DESK_LINES: u32 = 20 * DESK_PIECES + GLYPHS + KEY_COLUMNS * KEY_ROWS;
+/// Voices (page 02): rings running from a speaker's mouth to the one who
+/// listens, each in this many pieces.
+pub const VOICES: usize = 8;
+pub const VOICE_SEGMENTS: u32 = 48;
 /// Spires stand along the horizon, their stays running to the ground.
 pub const SPIRES: u32 = 22;
 pub const SPIRE_PIECES: u32 = 40;
@@ -192,6 +225,10 @@ pub const SPOKE_LIGHT: f32 = 0.6;
 pub const SCAN_LIGHT: f32 = 2.2;
 pub const THING_LIGHT: f32 = 0.9;
 pub const SEAT_LIGHT: f32 = 0.8;
+pub const DESK_LIGHT: f32 = 0.75;
+pub const VOICE_LIGHT: f32 = 1.15;
+/// The one met on page 02, of the figure's light.
+pub const OTHER_LIGHT: f32 = 0.6;
 pub const TENTACLE_LIGHT: f32 = 1.4;
 pub const DEBRIS_LIGHT: f32 = 1.2;
 pub const SPIRE_LIGHT: f32 = 1.4;
@@ -301,6 +338,15 @@ pub struct Frame {
     pub tentacles: [Tentacle; TENTACLES],
     /// Each seat: x, z, light, how far built (0 none … 1 whole).
     pub seats: [[f32; 4]; SEATS],
+    /// Each seat's desk: x, z of its middle, how much of it is there (0
+    /// none … 1 whole), how far its lid is open, how busy the keys are, and
+    /// how many glyphs its page holds.
+    pub desks: [[f32; 6]; SEATS],
+    /// The one the figure meets, on the planet, and how lit (0 not there).
+    pub other: Body,
+    pub other_light: f32,
+    /// Each voice ring: centre, radius, the way it runs, light.
+    pub voices: [[f32; 8]; VOICES],
     /// The newest landings: x, z, yaw, seconds since.
     pub prints: [[f32; 4]; PRINTS],
     /// Where each foot meets the ground and how much it presses.
@@ -330,7 +376,9 @@ pub const SLOT_TENTACLE: usize = SLOT_FEET + 2;
 pub const SLOT_META: usize = SLOT_TENTACLE + 5 * TENTACLES;
 pub const SLOT_THING: usize = SLOT_META + 1;
 pub const SLOT_SEAT: usize = SLOT_THING + THINGS as usize / 2;
-pub const SLOTS: usize = SLOT_SEAT + SEATS;
+pub const SLOT_VOICE: usize = SLOT_SEAT + SEATS;
+pub const SLOT_DESK: usize = SLOT_VOICE + 2 * VOICES;
+pub const SLOTS: usize = SLOT_DESK + 2 * SEATS;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -381,6 +429,14 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     }
     for (k, seat) in f.seats.iter().enumerate() {
         d[SLOT_SEAT + k] = *seat;
+    }
+    for (k, v) in f.voices.iter().enumerate() {
+        d[SLOT_VOICE + 2 * k] = [v[0], v[1], v[2], v[3]];
+        d[SLOT_VOICE + 2 * k + 1] = [v[4], v[5], v[6], v[7]];
+    }
+    for (k, desk) in f.desks.iter().enumerate() {
+        d[SLOT_DESK + 2 * k] = [desk[0], desk[1], desk[2], desk[3]];
+        d[SLOT_DESK + 2 * k + 1] = [desk[4], desk[5], 0.0, 0.0];
     }
     d
 }
@@ -497,7 +553,10 @@ mod tests {
     use super::*;
     use crate::body::SEAT_BACK;
     use crate::math::v3;
-    use crate::story::{crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, LIFE_LOOP};
+    use crate::story::{
+        crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, LIFE_DOWN, LIFE_LOOP, LIFE_UP, TALK,
+        VOICE_LIFE,
+    };
 
     fn chapters() -> [Story; 3] {
         [
@@ -797,11 +856,28 @@ mod tests {
     #[test]
     fn the_still_frames_hold_every_ring() {
         for story in chapters() {
-            let f = story.compose(story.chapter.still());
-            for r in &f.rings {
-                assert!(r.light > 0.99, "{:?}", story.chapter);
+            // Every ring and the glass as bright as the chapter holds them.
+            let mut most = [0.0f32; 4];
+            let mut t = 0.0;
+            while t < story.loop_seconds {
+                let f = story.compose(t);
+                for (m, r) in most.iter_mut().zip(&f.rings) {
+                    *m = m.max(r.light);
+                }
+                most[3] = most[3].max(f.filled);
+                t += 0.1;
             }
-            assert!(f.filled > 0.99 && f.amount > 0.99, "{:?}", story.chapter);
+            let f = story.compose(story.chapter.still());
+            for (r, m) in f.rings.iter().zip(most) {
+                assert!(r.light > m - 0.01, "{:?}", story.chapter);
+            }
+            assert!(f.filled > most[3] - 0.01, "{:?}", story.chapter);
+            // Page 02 stills on the talk; the others on the walk.
+            if story.chapter == Chapter::Life {
+                assert!(f.other_light > 0.99 && f.voices.iter().any(|v| v[7] > 0.1));
+            } else {
+                assert!(f.amount > 0.99, "{:?}", story.chapter);
+            }
         }
     }
 
@@ -878,23 +954,27 @@ mod tests {
     }
 
     #[test]
-    fn on_page_two_it_sits_rises_walks_and_sits_again() {
+    fn on_page_two_it_types_meets_someone_and_types_again() {
         let story = Story::new(Chapter::Life);
         let walk = story.walk();
+        let (left, right) = (PRIMITIVES - 2, PRIMITIVES - 1);
+        let hand = |f: &Frame, c: usize| {
+            let [ax, ay, az, _] = f.body.cones[3 * c];
+            let [bx, by, bz, _] = f.body.cones[3 * c + 1];
+            (v3(ax, ay, az), v3(bx, by, bz))
+        };
+        let mut nearest = f32::MAX;
         let mut t = 0.0;
         while t < LIFE_LOOP {
             let f = story.compose(t);
-            // Every ring is held throughout, and nothing of the world comes.
+            // Every ring is held, softly, throughout; nothing of the world comes.
             for r in &f.rings {
-                assert!(r.light > 0.99 && r.form > 0.99, "{t}");
+                assert!(r.light > 0.55 && r.light < 0.75 && r.form > 0.99, "{t}");
             }
+            assert!(f.filled < 0.45 && f.latent < 0.55);
             assert!(f.tentacles.iter().all(|w| w.light == 0.0) && f.things == 0.0);
-            // The camera stands before the figure.
-            let rel = f.eye - f.sphere;
-            assert!(rel.z > 2.2 && f.forward.z < -0.6, "{t}: {rel:?}");
-            let seated = walk.risen(t) < 1e-3;
-            if seated {
-                // On a seat that is there, under the pelvis.
+            if walk.risen(t) < 1e-3 {
+                // On a seat that is there, under the pelvis, before a desk.
                 let seat = f.seats.iter().find(|s| s[3] > 0.99).expect("a seat");
                 assert!((seat[1] - f.body.pelvis.z).abs() < 0.1, "{t}");
                 assert!(f.body.high.y < 1.45, "{t}");
@@ -910,22 +990,97 @@ mod tests {
             for s in &f.seats {
                 assert!((0.0..=1.0).contains(&s[3]), "{t}");
             }
+            for d in &f.desks {
+                assert!(d[2..5].iter().all(|v| (0.0..=1.0).contains(v)), "{t}");
+            }
+            // The one it meets keeps outside the glass.
+            if f.other_light > 0.0 {
+                for c in 0..2 * PRIMITIVES {
+                    let [x, y, z, r] = f.other.cones[3 * (c / 2) + c % 2];
+                    nearest = nearest.min((v3(x, y, z) - f.sphere).length() - r);
+                }
+            }
+            // A voice is only heard in the talk, and goes from one to the other.
+            let lit: Vec<_> = f.voices.iter().filter(|v| v[7] > 0.0).collect();
+            let talking = TALK
+                .iter()
+                .any(|&(_, a, b)| (a..b + VOICE_LIFE).contains(&t));
+            assert!(talking || lit.is_empty(), "{t}");
+            for v in lit {
+                assert!(v[3] > 0.0 && v[3] < 0.45 && v[7] <= 1.0, "{t}");
+                let between = (v3(v[0], v[1], v[2]) - f.body.mouth).length()
+                    + (v3(v[0], v[1], v[2]) - f.other.mouth).length();
+                let apart = (f.body.mouth - f.other.mouth).length();
+                assert!(between < apart + 0.05, "{t}: {between} {apart}");
+            }
             t += 0.1;
         }
-        for t in [0.5, 3.0, 41.0, LIFE_LOOP - 0.1] {
+        assert!(nearest > SPHERE_RADIUS + 0.05, "{nearest}");
+        // It types at the desks, the lid open, its hands bent down to the keys.
+        for t in [0.5, 2.0, 3.5, 53.5, 57.0, LIFE_LOOP - 0.1] {
             assert_eq!(walk.risen(t), 0.0, "{t}");
-            assert!(story.compose(t).amount < 1e-3, "{t}");
+            let f = story.compose(t);
+            assert!(f.amount < 1e-3, "{t}");
+            let desk = f.desks.iter().find(|d| d[2] > 0.99).expect("a desk");
+            assert!(desk[3] > 0.99 && desk[4] > 0.99, "{t}");
+            for c in [left, right] {
+                let (wrist, tip) = hand(&f, c);
+                assert!(tip.y < wrist.y - 0.02, "{t}: {wrist:?} {tip:?}");
+                assert!((wrist.y - 0.79).abs() < 0.04, "{t}: {wrist:?}");
+                assert!((wrist.z - desk[1] + 0.21).abs() < 0.06, "{t}: {wrist:?}");
+            }
         }
-        // Between, it stands and walks, and no seat is there.
-        let walking = story.compose(22.0);
+        // It closes the lid, and the desk goes as it starts to rise; it opens
+        // the next after it sits.
+        let closed = story.compose(5.5);
+        assert!(closed.desks[0][3] < 0.01 && walk.risen(5.5) == 0.0);
+        assert!(story.compose(LIFE_UP[0] + 0.6).desks[0][2] < 1e-3);
+        assert!(story.compose(LIFE_DOWN[1]).desks[1][2] < 1e-3);
+        // Text runs on from one desk to the next and round the loop.
+        let page = |t: f32| {
+            story
+                .compose(t)
+                .desks
+                .iter()
+                .map(|d| d[5])
+                .fold(0.0, f32::max)
+        };
+        assert!(page(4.0) < page(54.0) && page(54.0) < page(LIFE_LOOP - 0.01));
+        assert!(close(
+            page(LIFE_LOOP - 1e-4) - page(0.0),
+            GLYPHS as f32,
+            1e-2
+        ));
+        // Between, it walks, and neither seat nor desk is there.
+        let walking = story.compose(35.0);
         assert!(walking.amount > 0.99 && walking.body.high.y > 1.6);
         assert!(walking.seats.iter().all(|s| s[3] < 1e-3));
+        assert!(walking.desks.iter().all(|d| d[2] < 1e-3));
+        // It stands and talks with the other, turned to each other.
+        for t in [20.0, 22.5, 25.0, 27.0] {
+            let f = story.compose(t);
+            assert!(f.amount < 1e-3 && f.other_light > 0.99, "{t}");
+            for (me, you) in [(&f.body, &f.other), (&f.other, &f.body)] {
+                let to = (you.head - me.head).normalize();
+                let facing = me.face.forward.dot(v3(to.x, 0.0, to.z).normalize());
+                assert!(facing > 0.85, "{t}: {facing}");
+            }
+            let apart = (f.body.head - f.other.head).length();
+            assert!((1.8..2.8).contains(&apart), "{t}: {apart}");
+        }
+        // It is seen only on the way, and gone at the desks.
+        for t in [0.5, 45.0, 55.0] {
+            assert_eq!(story.compose(t).other_light, 0.0, "{t}");
+        }
         // It sits on the seat that has built where it stopped.
         let end = story.compose(LIFE_LOOP - 0.1);
         let seat = end.seats[1];
         assert!(seat[3] > 0.99 && close(seat[1], story.distance - SEAT_BACK - 0.02, 1e-4));
-        // The camera rises to lead the walk.
-        assert!(walking.eye.y > 1.8 && story.compose(1.0).eye.y < 1.1);
+        // The camera looks over its shoulder at the screen, and goes before
+        // it to lead the walk.
+        let start = story.compose(1.0);
+        assert!(start.eye.z < start.sphere.z - 1.0 && start.eye.x > 1.5);
+        assert!(walking.eye.y > 1.8 && walking.eye.z > walking.sphere.z + 2.2);
     }
 
     #[test]

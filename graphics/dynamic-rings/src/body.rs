@@ -36,6 +36,10 @@ const BOB: f32 = 0.012;
 const AHEAD: f32 = 0.06;
 const SWAY: f32 = 0.42;
 const SHIFT: f32 = 0.5;
+/// Turning to look aside, the pelvis and the chest take these shares of
+/// the head's turn.
+const PELVIS_TURN: f32 = 0.35;
+const CHEST_TURN: f32 = 0.75;
 /// It turns with the legs and rolls down on the swinging side; radians.
 const TURN: f32 = 0.075;
 const DIP: f32 = 0.05;
@@ -181,40 +185,51 @@ pub struct Walk {
 }
 
 impl Walk {
-    /// `steps` in time order, left foot 0, right foot 1; the first lifts the
-    /// foot that does not carry the weight, the last brings a foot to rest.
+    /// `steps` in time order, left foot 0, right foot 1. They come in bouts
+    /// with a pause of at least `PAUSE` s between: the first step of each
+    /// lifts the foot that does not carry the weight, the last brings a foot
+    /// to rest.
     pub fn new(start: [[f32; 2]; 2], steps: Vec<Step>, sway: f32) -> Walk {
         let mut feet = [Vec::new(), Vec::new()];
         for s in &steps {
             feet[s.side].push(*s);
         }
-        let first = steps[0];
-        let last = steps[steps.len() - 1];
         let mean = |w: [[f32; 2]; 2], i: usize| 0.5 * (w[0][i] + w[1][i]);
         let mut place = start;
-        let mut pelvis_z = vec![(first.lift - 0.15, mean(start, 1) + AHEAD)];
-        let mut pelvis_x = vec![
-            (first.lift - 0.6, mean(start, 0)),
-            (first.lift - 0.02, SHIFT * start[1 - first.side][0]),
-        ];
-        for (i, s) in steps.iter().enumerate() {
-            place[s.side] = [s.x, s.z];
-            if i + 1 == steps.len() {
-                pelvis_z.push((s.land + 0.3, mean(place, 1) + AHEAD));
-                pelvis_x.push((s.land + 0.45, mean(place, 0)));
-            } else {
-                pelvis_z.push((s.land, mean(place, 1) + AHEAD));
-                pelvis_x.push((s.land + 0.25, SWAY * s.x));
+        let (mut pelvis_z, mut pelvis_x, mut amount) = (vec![], vec![], vec![]);
+        let mut from = 0;
+        while from < steps.len() {
+            let mut to = from + 1;
+            while to < steps.len() && steps[to].lift - steps[to - 1].land < PAUSE {
+                to += 1;
             }
-        }
-        let before_last = steps[steps.len().saturating_sub(2)];
-        Walk {
-            amount: vec![
+            let bout = &steps[from..to];
+            let first = bout[0];
+            let last = bout[bout.len() - 1];
+            pelvis_z.push((first.lift - 0.15, mean(place, 1) + AHEAD));
+            pelvis_x.push((first.lift - 0.6, mean(place, 0)));
+            pelvis_x.push((first.lift - 0.02, SHIFT * place[1 - first.side][0]));
+            for (i, s) in bout.iter().enumerate() {
+                place[s.side] = [s.x, s.z];
+                if i + 1 == bout.len() {
+                    pelvis_z.push((s.land + 0.3, mean(place, 1) + AHEAD));
+                    pelvis_x.push((s.land + 0.45, mean(place, 0)));
+                } else {
+                    pelvis_z.push((s.land, mean(place, 1) + AHEAD));
+                    pelvis_x.push((s.land + 0.25, SWAY * s.x));
+                }
+            }
+            let before_last = bout[bout.len().saturating_sub(2)];
+            amount.extend([
                 (first.lift - 0.5, 0.0),
                 (first.land, 1.0),
                 (before_last.land, 1.0),
                 (last.land + 0.3, 0.0),
-            ],
+            ]);
+            from = to;
+        }
+        Walk {
+            amount,
             steps,
             feet,
             start,
@@ -389,12 +404,18 @@ impl Walk {
             amount,
             risen,
             breath,
+            turn: 0.0,
+            nod: 0.0,
+            hands: [[0.0; 4]; 2],
+            wrists: [0.0; 2],
         }
     }
 }
 
 /// A foot spends this share of a step's period in the air.
 const SWING_SHARE: f32 = 0.76;
+/// A pause this long (s) between two steps ends a bout of walking.
+pub const PAUSE: f32 = 1.5;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pose {
@@ -410,6 +431,15 @@ pub struct Pose {
     /// 0 seated … 1 standing.
     pub risen: f32,
     pub breath: f32,
+    /// How far the upper body turns to the left (radians at the head; the
+    /// chest and the pelvis take less of it) and the head nods forward.
+    pub turn: f32,
+    pub nod: f32,
+    /// Each hand reaching for a point: its wrist's target and how much it
+    /// reaches (0 the arm hangs as the walk swings it … 1 there), and how
+    /// far the hand bends down at the wrist (radians).
+    pub hands: [[f32; 4]; 2],
+    pub wrists: [f32; 2],
 }
 
 /// A body part's own left, up and forward.
@@ -457,6 +487,9 @@ pub struct Body {
     pub chest: V3,
     pub chest_axes: Axes,
     pub head: V3,
+    /// Where its voice leaves the head, and which way the head faces.
+    pub mouth: V3,
+    pub face: Axes,
     /// The box around every cone.
     pub low: V3,
     pub high: V3,
@@ -479,19 +512,19 @@ pub fn build(pose: &Pose) -> Body {
     };
     let b = pose.breath;
     let p = pose.pelvis;
-    let pelvic = axes(pose.yaw, pose.lean, pose.roll);
+    let pelvic = axes(pose.yaw + PELVIS_TURN * pose.turn, pose.lean, pose.roll);
     let waist = p + pelvic.up * 0.15;
     let ch = axes(
-        -0.55 * pose.yaw,
+        -0.55 * pose.yaw + CHEST_TURN * pose.turn,
         pose.lean + 0.02 * pose.amount - 0.012 * b,
         -0.5 * pose.roll,
     );
     let chest = waist + ch.up * 0.2;
     let neck = chest + ch.up * 0.16;
     let head_base = neck + (ch.up + Y * 2.0).normalize() * 0.1;
-    let hd = axes(0.2 * pose.yaw, 0.0, 0.0);
-    let jaw = head_base + Y * 0.025 + hd.forward * 0.025;
-    let crown = head_base + Y * 0.105 - hd.forward * 0.005;
+    let hd = axes(0.2 * pose.yaw + pose.turn, pose.nod, 0.0);
+    let jaw = head_base + hd.up * 0.025 + hd.forward * 0.025;
+    let crown = head_base + hd.up * 0.105 - hd.forward * 0.005;
     cone(
         p - pelvic.up * 0.02,
         0.13,
@@ -542,12 +575,30 @@ pub fn build(pose: &Pose) -> Body {
         let shoulder = shoulder_line + ch.left * (SHOULDER * s);
         let hang = rotate(-ch.up, ch.forward, ABDUCT * s);
         let upper = rotate(hang, ch.left, -pose.arms[i]);
-        let elbow = shoulder + upper * UPPER_ARM;
         let across = upper.cross(ch.forward).normalize();
         let bend = 0.22 + 0.3 * pose.arms[i].max(0.0) / 0.28 + 0.03 * b + pose.bend[i];
         let lower = rotate(rotate(upper, across, bend), ch.forward, -ADDUCT * s);
+        let [tx, ty, tz, reach] = pose.hands[i];
+        let (upper, lower, across) = if reach > 0.0 {
+            // The wrist reaches for its target, the elbow out and down.
+            let d = v3(tx, ty, tz) - shoulder;
+            let dir = d.normalize();
+            let len = d.length().clamp(0.1, (UPPER_ARM + FOREARM) * 0.998);
+            let a = (len * len + UPPER_ARM * UPPER_ARM - FOREARM * FOREARM) / (2.0 * len);
+            let h = (UPPER_ARM * UPPER_ARM - a * a).max(0.0).sqrt();
+            let pole = ch.left * (0.7 * s) - ch.up - ch.forward * 0.3;
+            let out = (pole - dir * pole.dot(dir)).normalize();
+            let elbow = dir * a + out * h;
+            let up = (upper * (1.0 - reach) + elbow.normalize() * reach).normalize();
+            let wrist = dir * len - elbow;
+            let low = (lower * (1.0 - reach) + wrist.normalize() * reach).normalize();
+            (up, low, up.cross(ch.forward).normalize())
+        } else {
+            (upper, lower, across)
+        };
+        let elbow = shoulder + upper * UPPER_ARM;
         let wrist = elbow + lower * FOREARM;
-        let hand = rotate(lower, across, 0.1);
+        let hand = rotate(lower, across, 0.1 - pose.wrists[i]);
         let palm = (ch.left - hand * ch.left.dot(hand)).normalize();
         (shoulder, elbow, wrist, wrist + hand * HAND, palm)
     });
@@ -567,6 +618,8 @@ pub fn build(pose: &Pose) -> Body {
         chest,
         chest_axes: ch,
         head: crown,
+        mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
+        face: hd,
         low,
         high,
     }

@@ -112,7 +112,7 @@ alter table public.messages drop constraint if exists messages_content_check,
 create index if not exists messages_chat_id_idx on public.messages (chat_id, id);
 
 -- The sealed audio of a voice message, apart from the row, so chat loads and live
--- events stay light. About 1 MB of audio at most (3 minutes of voice).
+-- events stay light. About 1 MB of audio at most (5 minutes of voice).
 create table if not exists public.message_media (
   message_id bigint primary key references public.messages (id) on delete cascade,
   chat_id uuid not null references public.chats (id) on delete cascade,

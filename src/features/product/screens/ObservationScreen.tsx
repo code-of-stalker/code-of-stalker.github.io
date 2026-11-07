@@ -34,6 +34,7 @@ import { PanelBorder } from '../PanelBorder';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 
 import { questionsForStep, hintForStep } from '../content';
+import { typeset } from '../typeset';
 function clock(milliseconds: number) {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -245,7 +246,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ContentSwap value={question} reducedMotion={settings.reducedMotion} style={styles.questionButton} render={index =>
           <Pressable accessibilityRole="button" accessibilityLabel={`Подсказка: ${questions[index]}`}
             onPress={() => { if (!isRecording && !busy) { player.pause(); openSheet('hint'); } }}>
-            <UnderlinedText style={styles.question}>{questions[index]}</UnderlinedText>
+            <UnderlinedText style={styles.question}>{typeset(questions[index])}</UnderlinedText>
           </Pressable>} />
       </Reveal>
       </View>

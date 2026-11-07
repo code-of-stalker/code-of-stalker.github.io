@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
 import { useThemeColors } from '../ProductTheme';
 import { fonts } from '../theme';
+import { typeset } from '../typeset';
 import { ProductText } from '../ui';
 import { Art } from './Art';
 import { ContentSwap } from './ContentSwap';
@@ -60,12 +61,12 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             onViewportChange={selected ? reading.onViewportChange : undefined}
             contentStyle={[reading.contentStyle, { paddingHorizontal: reading.contentInset + pageInset, paddingBottom: Math.max(Number(reading.contentStyle.paddingBottom), 28) }]}>
             <ProductText testID="reading-page-count" variant="label" style={[styles.count, phone && { marginBottom: 16 }, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
-            {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{page.title}</ProductText>}
+            {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{typeset(page.title)}</ProductText>}
             <View testID="reading-page-copy" style={[styles.copy, phone && { gap: 20 }]}>
               {page.paragraphs.map(text => <Paragraph key={text} text={text} style={page.bold?.includes(text) ? [textStyle, { fontFamily: fonts.bodyBold }] : textStyle} />)}
-              {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{text}</ProductText>)}
-              {page.after?.map(text => <ProductText key={text} style={textStyle}>{text}</ProductText>)}
-              {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{page.statement}</ProductText>}
+              {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{typeset(text)}</ProductText>)}
+              {page.after?.map(text => <ProductText key={text} style={textStyle}>{typeset(text)}</ProductText>)}
+              {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{typeset(page.statement)}</ProductText>}
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
             </View>
@@ -84,9 +85,10 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
       }} />
   </View>;
 }
-/** Lines starting with a dash are list items: wrapped lines hang under the text, not the dash. */
-function Paragraph({ text, style }: { text: string; style: StyleProp<TextStyle> }) {
-  const lines = text.split('\n');
+/** Lines starting with a dash are list items: wrapped lines hang under the text, not the dash.
+ * `source` stays untouched so `page.bold` matching works; only the rendered copy is typeset. */
+function Paragraph({ text: source, style }: { text: string; style: StyleProp<TextStyle> }) {
+  const text = typeset(source), lines = text.split('\n');
   if (!lines.some(line => line.startsWith('— '))) return <ProductText style={style}>{text}</ProductText>;
   return <View style={styles.list}>
     {lines.map(line => line.startsWith('— ')

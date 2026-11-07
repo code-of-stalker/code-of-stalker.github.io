@@ -108,6 +108,11 @@ void main() {
     // The planet's edge catches the light.
     float graze = 1.0 - abs(dot(normalize(q), d));
     light += ATMOSPHERE_LIGHT * 0.6 * pow(graze, 10.0) * WORLD.w;
+    // Page 03's lantern lights the ground round it, its grid most; the
+    // figures' shadows run out from it over the planet.
+    if (LAMP.w > 0.0) {
+      light += LAMP_GROUND * (0.25 + 2.2 * grid + 3.0 * cross_) * lampMeets(p) * lampOn(p, 0.0);
+    }
   }
 
   // The air: thicker low, so the far ground and the horizon glow.
@@ -165,6 +170,29 @@ void main() {
       float filled = 0.4 * SHELLS.y * min(SHELLS.z / PI, 1.0);
       light += GLASS_FOG * chord * (0.12 * SHELLS.x + filled);
     }
+    // The lantern lights the glass and its grid where it sees the flame,
+    // the figure's shadow falls on its far wall, and the flame glints on
+    // it, outside and in.
+    if (LAMP.w > 0.0) {
+      float lf = lampOn(mf, 0.0);
+      float lb = lampOn(mb, 0.0);
+      float gridF = seenFront * lines(gf, fwf, lensBlur(zf));
+      float gridB = seenBack * lines(gb, fwb, lensBlur(zb));
+      light += LAMP_GLASS * (SHELL_LIGHT * (lenFront * lf + mix(0.55, 1.0, inside) * lenBack * lb)
+                           + SHELL_GRID * (lf * gridF + mix(0.4, 5.0, inside) * lb * gridB));
+      vec3 hf = normalize(normalize(LAMP.xyz - front - SPH.xyz) - d);
+      vec3 hb = normalize(normalize(LAMP.xyz - back - SPH.xyz) - d);
+      float glintF = pow(max(dot(normalize(front), hf), 0.0), 600.0);
+      float glintB = pow(max(-dot(normalize(back), hb), 0.0), 600.0);
+      light += LAMP_GLINT * (seenFront * lf * glintF + 0.5 * seenBack * lb * glintB);
+    }
+  }
+  // The air round the lantern glows.
+  if (LAMP.w > 0.0) {
+    vec3 c = LAMP.xyz - EYE.xyz;
+    float tc = dot(c, d);
+    float k = sqrt(LAMP_MIST * LAMP_MIST + max(dot(c, c) - tc * tc, 0.0));
+    light += LAMP_AIR * LAMP.w * LAMP_MIST * LAMP_MIST / k * (atan((end - tc) / k) + atan(tc / k));
   }
   o = vec4(u_glow * light, 1.0);
 }

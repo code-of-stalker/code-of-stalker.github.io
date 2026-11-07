@@ -65,10 +65,29 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Places that just light up on the ring were not enough: «сфера как бы проецировала эти изображения». The ball became a projector (lamp, beams in the air, a blank ring screen). A lamp drowns against a bright painting in the dark recolor: keep the thrown place to the side so the lamp stands against the dark. (Page 07.)
 - A sequence of places reads better one at a time: each switches on as the next one switches off, and all of them come on together only at the closing run round the ring. (Page 07.)
 
+## Step 6 «Внутреннее кольцо»
+- A twinkle that chops the figure's lines into dashes reads as «белые шумы по человеку»: sparkle only point stars of the background, never the figure or the cube. (Hero.)
+- A ripple must come from where its cause is: «волна должна исходить не от рандомной точки пола а от ног». (Hero.)
+- An «inner» scene must show the inside being scanned: «нехватает сканирования внутреннего»; a plane of light now passes through the figure head to feet and lights its inner lines. (Hero.)
+- Page 01 «Срез» rejected 2026-11-07: «странно всё выглядит и тексту мало соответствует». A body in
+  height lines, cut by a plane, with abstract disturbances (funnel, crosshair, trefoil) read as odd
+  and not as the text (orbit of perception, going inward, inner ring against the outer one).
+- A seated person sits normally on a chair with a straight back, never cross-legged or in lotus
+  («он должен нормально сидеть на стуле с прямой спиной»). Applies to every Step 6 figure.
+- Page 01 «Внутрь» (Б «Эхо», rounds 2–5): presence is spherical and the outer ring keeps
+  turning («Сферичное!»); no filled spheres; exactly two rings, outer and inner, nothing
+  extra; the inner ring scans the whole person, calmly, with no jerky jumps between body
+  parts; on «Без проваливания» the body vanishes and the head stays, never a second person;
+  «образы себя» are different images of himself, not a mirrored copy; the «Без…» beats get
+  the most time. Passed and shipped 2026-11-07.
+
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
 - A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)
+- A loop of simple actions (sit, rise, walk, sit) lacked plot: «не хватает сюжета». Work at a laptop, a talk with a second person and work again passed, and the rings and glass glowed softer so the action led. (Page 02.)
+- A scene must plainly belong to its page text: «как оно к тексту относится вообще?». A top view where all the rings cover the figure confused him. A low side camera with only the ring the text names (ring 1) lit passed. (Page 03.)
+- For page 04 he chose a scene with a plot (Б: get pulled in, the scanner brings you back) over the recommended calm one (А: beads of facts). Drama over a quiet catalogue. (Page 04.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
@@ -83,3 +102,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).
+
+## App icon (2026-11-07)
+- The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).
+- A stick figure of thin capsules with a black outline was rejected; the runner is a bold pictogram like the exit sign (broad shoulders, thick limbs, straight cuts), solid, no dark outline.

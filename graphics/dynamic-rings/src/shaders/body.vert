@@ -3,7 +3,9 @@
 // number; it is set on that cone, then onto the blended surface of all of
 // them, so the points ride the limbs as the figure moves. Its light
 // gathers at the outline, dims on the far side, and answers the scanner
-// running up and down it, the breath's beat and the lock's wave.
+// running up and down it, the breath's beat and the lock's wave. The one
+// it meets on page 02 (u_kind.z 1) takes every second point and its own
+// light (u_kind.w), and nothing of the rings.
 uniform vec4 u_b[CONES * 3];
 out vec3 v_color;
 
@@ -52,7 +54,8 @@ float body(vec3 p) {
 }
 
 void main() {
-  int i = gl_VertexID;
+  bool other = u_kind.z > 0.5;
+  int i = other ? 2 * gl_VertexID : gl_VertexID;
   int c = 0;
   for (int j = 0; j < CONES - 1; j++) {
     if (i >= CONE_END[j]) c = j + 1;
@@ -95,8 +98,8 @@ void main() {
   vec3 n = normalize(k.xyy * d1 + k.yyx * d2 + k.yxy * d3 + k.xxx * d4);
   p -= n * dist;
   vec3 v = toView(p);
-  float light = LOCK2.y * BODY_LIGHT;
-  if (dist < -0.02 || v.z < 0.3 || light <= 0.0) {
+  float light = (other ? u_kind.w : LOCK2.y) * BODY_LIGHT;
+  if (dist < -0.02 || v.z < 0.3 || light <= 0.0 || (other && hidden(p))) {
     gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
     gl_PointSize = 0.0;
     return;
@@ -105,10 +108,13 @@ void main() {
   float facing = dot(n, toEye);
   float rim = 1.0 - abs(facing);
   light *= mix(0.4, 1.0, rim * rim) * (facing > 0.0 ? 1.0 : 0.5);
+  float base = light;
   float w = loopPhase();
-  light *= mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
+  float grain = mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
+  light *= grain;
   // Fine bands of the hologram drifting up the body.
-  light *= 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
+  float bands = 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
+  light *= bands;
   // On each full in-breath a beat runs down from the scanner, at the top
   // of the head, through the body.
   float since = LOCK2.w;
@@ -119,7 +125,7 @@ void main() {
   float rate = -sin(TAU * since / SWEEP);
   float level = p.y - RC(1).y;
   float behind = -level * sign(rate);
-  float scanning = RN(1).w * smoothstep(0.5, 1.0, RX(1).z);
+  float scanning = other ? 0.0 : RN(1).w * smoothstep(0.5, 1.0, RX(1).z);
   float passed = behind > 0.0 ? sqrt(abs(rate)) * exp(-behind / SLICE_GLOW) : 0.0;
   float cut = scanning * exp(-level * level / (SLICE * SLICE));
   lift += SLICE_LIGHT * cut;
@@ -129,12 +135,23 @@ void main() {
   float along = dot(q, RN(0).xyz);
   float r = length(q - RN(0).xyz * along) - RC(0).w;
   lift += 1.4 * RN(0).w * exp(-(along * along + r * r) / (0.12 * 0.12));
-  light *= 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  // On page 03 the crown's plane lights the passer-by it sweeps through.
+  float caught = other && LAMP.w > 0.0 ? scanned(p) : 0.0;
+  light *= other ? 1.0 + SLICE_LIGHT * caught : 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  // Page 03's lantern lights the skin that faces it, where no limb is
+  // between.
+  if (LAMP.w > 0.0) {
+    vec3 toLamp = LAMP.xyz - p;
+    float facingLamp = max(dot(n, normalize(toLamp)), 0.0);
+    if (facingLamp > 0.0) {
+      light += base * grain * bands * LAMP_BODY * facingLamp * lampOn(p + n * 0.02, 0.06);
+    }
+  }
   // Its own size in metres, but never finer than a pixel's worth.
   float s0 = max(max(BODY_DOT / v.z * VIEW.y * 0.5 * VIEW.w, BODY_SIZE * VIEW.w), 0.65);
   // In the scanner's cut the points swell into a line, as wide close up
   // as far off.
-  s0 += 1.3 * BODY_SIZE * VIEW.w * cut;
+  s0 += 1.3 * BODY_SIZE * VIEW.w * (cut + caught);
   float blur = lensBlur(v.z);
   float sigma = min(sqrt(s0 * s0 + blur * blur), u_kind.y / 6.0);
   gl_Position = pxToClip(toPx(v));

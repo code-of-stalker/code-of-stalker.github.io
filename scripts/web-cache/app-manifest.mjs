@@ -16,10 +16,10 @@ async function copyBrandAsset(root, filename, label) {
 
 export async function prepareAppManifest(root, html) {
   const [favicon, appleIcon, icon192, icon512, preview] = await Promise.all([
-    copyBrandAsset(root, 'architecture-eye-32.png', 'architecture-eye-32'),
-    copyBrandAsset(root, 'architecture-eye-180.png', 'architecture-eye-180'),
-    copyBrandAsset(root, 'architecture-eye-192.png', 'architecture-eye-192'),
-    copyBrandAsset(root, 'architecture-eye-512.png', 'architecture-eye-512'),
+    copyBrandAsset(root, 'exit-door-32.png', 'exit-door-32'),
+    copyBrandAsset(root, 'exit-door-180.png', 'exit-door-180'),
+    copyBrandAsset(root, 'exit-door-192.png', 'exit-door-192'),
+    copyBrandAsset(root, 'exit-door-512.png', 'exit-door-512'),
     copyBrandAsset(root, 'step-2-preview.jpg', 'step-2-preview'),
   ]);
   const manifest = {
@@ -31,7 +31,7 @@ export async function prepareAppManifest(root, html) {
       { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
     ],
   };
-  await fs.copyFile(new URL('../../assets/branding/architecture-eye-1024.png', import.meta.url), path.join(root, 'watcher-app-icon.png'));
+  await fs.copyFile(new URL('../../assets/branding/exit-door-1024.png', import.meta.url), path.join(root, 'watcher-app-icon.png'));
   await fs.writeFile(path.join(root, 'watcher.webmanifest'), JSON.stringify(manifest, null, 2) + '\n');
   const tags = [
     `<title>${name}</title>`,

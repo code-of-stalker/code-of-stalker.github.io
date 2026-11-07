@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Intensive chat shipped 2026-11-07; its redesign, blocking, the /admin page, voice messages, edit/delete and name + surname wait on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname wait on the branch. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -144,20 +144,39 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
-## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+## Step 6 «Внутреннее кольцо» (scenes on branch `claude/step-6-scenes`)
 Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
 сайт вместе с заглушками»). 10 reading pages, author's text unchanged
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
 Menu groups: Второй уровень [01], Обозревание Внутреннего Кольца [02–08], Итог [09, 10].
 Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ ШАГ»; bookmark
-`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`: the hero is a
-`ScenePlaceholder` too (no painting yet), signature on page 10.
+`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`, signature on page 10.
+- Hero «Внутренняя сфера» (branch `claude/step-6-hero-deb7a4`), shipped to `main` 2026-11-07
+  (Art: «Пушим»):
+  Rust crate `graphics/inner-hero` from Art's painting (figure on a glass cube in a glass
+  sphere); parallax by a depth map, the chest ring drawn in depth; every 18 s a scan plane goes
+  head → feet, heart flares, ring runners, ripple from both feet. Beats in its `README.txt`.
+  Wired: `InnerHero.web.tsx`, `StepSixHero*`, `StepSixStill.tsx`, home card from step 6 on.
+  Art's fixes done (noise on the figure, ripple from the feet, the inner scan); Тишина
+  approved 2026-11-07 («Ок, дальше»); Матрица, Искра, Астрал needed no color change. Page scenes are another branch
+  (`claude/step-6-scenes`): both touch `types.ts`/`Art.web.tsx`, conflicts are one-line unions.
 - Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
   02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
+- Page 01 «Внутрь» (inner-second-level), shipped to `main` 2026-11-07 (Art: «Пушим»),
+  direction Б «Эхо»: crate `graphics/inner-echo`,
+  bridge `InnerEcho.web.tsx`, `webScene: 'inner-echo'`. «Срез» (`inner-slice`) was rejected
+  2026-11-07 and removed. A man sits upright on a chair; the outer ring is a turning orbit of
+  perception, the inner one a warm level ring calmly scanning him feet ↔ crown (16.5 s). Four
+  «Без…» beats with captions: on «Без проваливания» only the head with a thought knot stays; on
+  «Без ухода в образы себя» the head beams out four different images of himself. 66 s loop;
+  five rounds of Art's notes, history and beats in the crate README. Тишина approved
+  2026-11-07 («Ок, делай темы»); Искра, Астрал, Матрица needed no color change (sheets
+  `output/prototypes/inner-echo/kadry-tishina-5.jpg`, `kadry-temy-5.jpg`).
+- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 02–08 on `claude/step-6-scenes`,
+  2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.
@@ -174,8 +193,16 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   the crate's `README.txt`. Art approved Матрица, then all 7 themes («Ок, дальше», «Оставить»).
   Page 01's first-person look turns the head left, then right (about 45°), shipped the same
   day (Art: «Так, пушим»).
-- Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
-  the same world; a stage-finale screen after page 10 needs Art's wording first.
+- Shipped to `main` 2026-11-07 (Art: «Б и предыдущие работы залей в мэин уже»): page 02
+  «Жизнь в сфере» (chapter 2, `dynamic-life`), page 03 «Ночь и фонарь» (chapter 3,
+  `dynamic-night`). Both checked in the 4 dark themes and in a production export (ready,
+  gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on page 04, ring 3 on page 05.
+- In work: page 04 «Второе кольцо», Art chose Б «Не проваливаться» (2026-11-07): something
+  arises inside and branches, the crown dims, the person is pulled in; the warm scanner (ring 2,
+  like the Step 6 hero's inner warmth) touches it and it folds into one point, the crown
+  relights. Chapter 4, Матрица first.
+- Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
+  page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»).
@@ -256,6 +283,13 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
+- App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,
+  выкладывай»): an exit-sign runner as a solid black pictogram goes into a lit doorway; the
+  code rain is all around outside; the back foot still outside gets a light rim. Files
+  `assets/branding/exit-door-*` (web: favicon 32, apple-touch 180, manifest 192/512, 1024),
+  `assets/icon.png`, `assets/favicon.png` (48), Android adaptive: rain = background layer,
+  door + runner = foreground in the safe zone, monochrome = the doorway with the runner cut out.
+  16 px drops the rain. Generator lives outside the repo (resvg + MS Gothic glyphs).
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light
   ones (Дюна, Мираж, Рассвет) were taken off on Art's word, kept on `archive/light-themes`
   (5b67880); a saved light choice opens in Матрица. Their palettes and the Rust light branches
@@ -290,6 +324,12 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   on screens with DPR < 2 `PanelArtwork.web.tsx` draws sub-pixel outlines as 1 device px at the
   hairline's intensity, so diagonals are antialiased, not stairs. Headless Chrome hides both bugs:
   reproduce in a real Chrome window (`--app=` URL, DPR 1.25), not with device emulation.
+- Text wrapping (2026-11-07, `fix/text-wrap`): authored texts are typeset at render by
+  `typeset()` in `src/features/product/typeset.ts` (reading pages, titles, Step 2 tasks,
+  questions, hint, Step 1 intro, cooldown). Mid-sentence `\n` becomes a space; breaks stay
+  after `.!?…:;`, before `—`/`«`/numbers, around blank lines and between two lines ≤ 36 chars
+  (short couplets). Non-breaking space before « — » and after 1–2-letter words. Write new
+  texts with breaks only where a line must stand alone; the content files stay as authored.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

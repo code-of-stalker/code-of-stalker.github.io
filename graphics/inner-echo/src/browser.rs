@@ -2,7 +2,8 @@
 //! the body (a small 3D texture) and the words under the scene (an atlas
 //! image, the scene's one loaded input). Every motion value comes from
 //! `compose`; one full-screen pass traces each pixel's ray through the room,
-//! the chair, the person and both spheres and adds the light straight onto
+//! the chair, the person, the sphere's rim and orbit and the scanning inner
+//! ring and adds the light straight onto
 //! the page in the theme's own cold, warm and pale (`look`). The scene is
 //! two-toned, so it does not go through the monochrome theme recolor.
 use crate::body::{occupancy, CELLS, CELL_FROM};
@@ -10,8 +11,8 @@ use crate::generated::{ATLAS, LABEL_BAND, LABEL_BASE, LABEL_CAP, LABEL_INK};
 use crate::{
     compose, look, Look, BACK, CAPTION, DOOR, DOUBLE_Z, ECHO_LEVELS, EYES, FADE_FROM, FRAME_ASPECT,
     HEAD, HEART, INNER_BASE, INNER_FLOW, INNER_RUNNERS, INSIDE, KNOT, KNOT_POINTS, LAMP, LEFT,
-    LEVELS, LOOP_SECONDS, ORBIT, ORBIT_FLOW, ORBIT_RUNNERS, PERSON, PROJECT_TO, REACH,
-    SHELL_SPACING, SPACING, SPARK_POINTS, STILL, TABLE, THOUGHT, WINDOW,
+    LEVELS, LOOP_SECONDS, ORBIT, ORBIT_FLOW, ORBIT_RUNNERS, PERSON, PROJECT_TO, REACH, SPACING,
+    SPARK_POINTS, STILL, TABLE, THOUGHT, WINDOW,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -73,7 +74,6 @@ fn defines() -> String {
         // Which way each orbit's runners go, for their tails.
         ("ORBIT_DIR", f(ORBIT_FLOW.signum())),
         ("INNER_DIR", f(INNER_FLOW.signum())),
-        ("SHELL_SPACING", v2(SHELL_SPACING)),
         // Where the sphere of presence meets the floor.
         (
             "FLOOR_RING",
@@ -444,13 +444,13 @@ impl InnerEcho {
         gl.uniform4f(p.at("u_echo"), e0[0], e1[0], e2[0], f.together[0]);
         gl.uniform4f(p.at("u_echo_l"), e0[1], e1[1], e2[1], f.together[1]);
         let [ox, oy, oz] = f.orbit;
-        let [ix, iy, iz] = f.ring_orbit;
+        let [sy, sz, sx, sd] = f.scan;
         let [s0, s1, s2, s3, s4, s5] = f.flares;
         let [row0, row1, words] = f.caption;
-        gl.uniform4f(p.at("u_room"), f.room, f.shell, f.skin, f.presence);
-        gl.uniform4f(p.at("u_inner"), f.inner, f.ring, f.ring_radius, f.outside);
+        gl.uniform4f(p.at("u_room"), f.room, f.shell, f.skin, 0.0);
+        gl.uniform4f(p.at("u_inner"), f.inner, f.ring, f.ring_flow, f.outside);
         gl.uniform4f(p.at("u_orbit"), ox, oy, oz, f.orbit_flow);
-        gl.uniform4f(p.at("u_ring"), ix, iy, iz, f.ring_flow);
+        gl.uniform4f(p.at("u_ring"), sy, sz, sx, sd);
         gl.uniform4f(p.at("u_noise"), f.fall, f.grid, f.tremble, f.twin);
         gl.uniform4f(p.at("u_misc"), f.draw_up, f.knot_turn, f.projection, 0.0);
         gl.uniform4f(p.at("u_text"), row0, row1, words, 0.0);

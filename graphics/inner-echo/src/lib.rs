@@ -3,21 +3,22 @@
 //! perception touches it: waves run out from the chest as spheres and draw
 //! it in cold points (floor, the back wall with its window, the left wall
 //! with its door, a table, a floor lamp). The third one stays: a sphere of
-//! presence round the person, a shell of points with an orbit, a ring of
-//! points that runs round the sphere while its plane turns, so in time it
-//! passes over all of it. Then the space inside the sphere fills: presence
-//! is spherical, all round at once, never a beam (Art). «ты переходишь
-//! внутрь»: one wave runs back in from the walls to the chest, and where it
-//! passes, the inside of the body comes up in warm points; three echoes
-//! inside raise it and leave the inner sphere round the heart with its own
-//! orbit. Each «Без…» shows, once, what it is without, with its words under
-//! the scene: falling into a thought (everything outside the person goes
-//! dark and the warm points draw up into a knot in the head), analysis (they
-//! lock into a grid), trying to understand or fix (they tremble), going off
-//! into images of oneself (the body goes dark but for the head, which
-//! projects a double of it in front). Then the inner sphere opens against
-//! the outer one, sparks of sensation wake in the body one by one, and at
-//! «здесь и сейчас» one wave goes through both spheres. Every value here is
+//! presence round the person, only its rim and its orbit, a line of light
+//! with runners whose plane keeps turning, so in time it passes over all of
+//! the sphere; presence is spherical, all round at once, never a beam, and
+//! the sphere holds no fill (Art). «ты переходишь внутрь»: one wave runs
+//! back in from the walls to the chest, and where it passes, the inside of
+//! the body comes up in warm points; three echoes inside raise it and leave
+//! the inner ring, no sphere: a warm ring round the body that scans all of
+//! it, from the feet to the crown and back (Art). Each «Без…» shows, slowly,
+//! what it is without, with its words under the scene: falling into a
+//! thought (everything outside the person goes dark and the warm points draw
+//! up into a knot in the head), analysis (they lock into a grid), trying to
+//! understand or fix (they tremble), going off into images of oneself (the
+//! body goes dark but for the head, which projects a double of it in
+//! front). Then both rings run together, seen from above, sparks of
+//! sensation wake in the body one by one, and at «здесь и сейчас» one wave
+//! goes through the body and the sphere. Every value here is
 //! a pure function of loop time; `browser.rs` only uploads it and one
 //! ray-marched pass draws it. Unit: the person sits about 1.4 high; the
 //! floor is y = 0, the person faces +z.
@@ -52,16 +53,32 @@ pub const ORBIT_TURNS: f32 = 3.0;
 pub const ORBIT_TILT: [f32; 2] = [22.0, 12.0];
 pub const ORBIT_SWINGS: f32 = 2.0;
 pub const ORBIT_FLOW: f32 = 6.0;
-/// The inner sphere round the heart: its radius closed and open, its orbit's
-/// runners, and its orbit, quicker and the other way round.
-pub const INNER_SPHERE: [f32; 2] = [0.22, 0.46];
-pub const INNER_RUNNERS: f32 = 4.0;
-pub const INNER_TURNS: f32 = -5.0;
-pub const INNER_TILT: [f32; 2] = [35.0, 20.0];
-pub const INNER_SWINGS: f32 = 3.0;
+/// The inner ring: level, round the body, it scans all of it, from the feet
+/// up to the crown and back down once every `SCAN_SECONDS`; its runners go
+/// round it `INNER_FLOW` whole times a loop, the other way from the outer
+/// ones.
+pub const SCAN_SECONDS: f32 = 6.0;
+pub const INNER_RUNNERS: f32 = 3.0;
 pub const INNER_FLOW: f32 = -10.0;
-/// Points on the two shells, this far apart: outer, inner.
-pub const SHELL_SPACING: [f32; 2] = [0.08, 0.034];
+/// At each height the ring wraps the body: (height, centre z, half width
+/// across, half depth front to back), from the feet to the crown; between
+/// keys it eases from one to the next.
+pub const SCAN: [[f32; 4]; 13] = [
+    [0.03, 0.54, 0.21, 0.2],
+    [0.25, 0.46, 0.2, 0.11],
+    [0.42, 0.45, 0.21, 0.12],
+    [0.5, 0.2, 0.25, 0.4],
+    [0.56, 0.17, 0.27, 0.4],
+    // Round the hands on the thighs.
+    [0.62, 0.15, 0.3, 0.38],
+    [0.68, 0.07, 0.3, 0.3],
+    [0.85, -0.04, 0.31, 0.17],
+    [1.0, -0.04, 0.3, 0.17],
+    [1.1, -0.05, 0.28, 0.13],
+    [1.2, -0.035, 0.1, 0.1],
+    [1.31, -0.02, 0.14, 0.15],
+    [1.42, -0.02, 0.07, 0.07],
+];
 /// How far perception reaches: past the room's far corner; it fades from
 /// `FADE_FROM` out to here.
 pub const REACH: f32 = 4.4;
@@ -86,33 +103,29 @@ pub const INSIDE: f32 = 0.026;
 /// «взгляд, слух, восприятие раскрываются как орбита»: three waves out from
 /// the chest, each this long from `WAVE_FROM` to `REACH`; each leaves the
 /// room this much brighter. The third leaves the sphere and its orbit.
-pub const WAVES: [f32; 3] = [0.4, 2.2, 4.0];
-pub const WAVE_SECONDS: f32 = 2.8;
+pub const WAVES: [f32; 3] = [0.4, 1.6, 2.8];
+pub const WAVE_SECONDS: f32 = 2.4;
 pub const WAVE_FROM: f32 = 0.15;
 pub const LEVELS: [f32; 3] = [0.45, 0.3, 0.25];
-/// «и ты ощущаешь Пространство вокруг тела без вовлечения»: the space inside
-/// the sphere fills, all round at once, and breathes `BREATHS` whole times a
-/// loop.
-pub const PRESENCE: [f32; 2] = [5.6, 7.6];
-pub const BREATHS: f32 = 10.0;
 /// «ты переходишь внутрь»: one wave back in from `REACH` to the chest; the
 /// inside of the body comes up where it has passed, this bright.
-pub const INWARD: [f32; 2] = [10.0, 14.2];
+pub const INWARD: [f32; 2] = [6.5, 9.5];
 pub const INNER_BASE: f32 = 0.4;
 /// «внутреннее замечается так же ясно, как внешнее»: three echoes out from
 /// the chest to the feet, like the three waves in the room; each leaves the
-/// inside this much brighter, the third leaves the inner sphere.
-pub const ECHOES: [f32; 3] = [15.0, 16.4, 17.8];
-pub const ECHO_SECONDS: f32 = 1.4;
+/// inside this much brighter, the third leaves the inner ring.
+pub const ECHOES: [f32; 3] = [10.0, 11.0, 12.0];
+pub const ECHO_SECONDS: f32 = 1.0;
 pub const ECHO_REACH: f32 = 1.2;
 pub const ECHO_LEVELS: [f32; 3] = [0.25, 0.2, 0.15];
 /// «Без проваливания», «Без анализа», «Без попытки понять или исправить»,
-/// «Без ухода в образы себя»: each starts here, pulls, holds and lets go
-/// before the next.
-pub const WITHOUT: [f32; 4] = [20.0, 23.1, 26.2, 29.3];
-pub const PULL: [f32; 4] = [0.9, 0.7, 0.7, 1.2];
-pub const HOLD: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
-pub const RELEASE: [f32; 4] = [1.2, 1.1, 1.1, 1.4];
+/// «Без ухода в образы себя»: the heart of the page, half the loop (Art:
+/// more time on them, less on the rest). Each starts here, pulls, holds and
+/// lets go before the next.
+pub const WITHOUT: [f32; 4] = [14.0, 21.0, 28.0, 35.0];
+pub const PULL: [f32; 4] = [1.4, 1.2, 1.2, 1.8];
+pub const HOLD: [f32; 4] = [3.8, 4.0, 4.0, 3.4];
+pub const RELEASE: [f32; 4] = [1.4, 1.4, 1.4, 1.4];
 /// Falling into a thought: everything outside the person goes dark; the
 /// inside draws up toward the thought in the head, `DRAW_UP` of the way
 /// smaller, and goes dark below the head (rest height, from .. to); the
@@ -152,14 +165,14 @@ pub const CAPTIONS: [[f32; 2]; 4] = [[0.0, -1.0], [1.0, -1.0], [2.0, 3.0], [4.0,
 /// lines' baselines (capitals).
 pub const CAPTION: [f32; 3] = [0.03, 0.06, 1.8];
 /// «Это — Наблюдение внутреннего кольца, которое раскрывается на фоне
-/// внешнего кольца и его сканирования»: the inner sphere opens.
-pub const INNER_OPEN: [f32; 2] = [33.2, 35.2];
+/// внешнего кольца и его сканирования»: the camera rises over both rings.
+pub const BOTH: f32 = 42.0;
 /// «точности, бдительности и честности … живое Ощущение»: sparks of
 /// sensation wake one by one, the first at `SPARK_WAKE`, each next
 /// `SPARK_GAP` later: a shoulder, a hand, a knee, the other forearm, the
 /// other shoulder, the back.
-pub const SPARK_WAKE: f32 = 43.0;
-pub const SPARK_GAP: f32 = 0.45;
+pub const SPARK_WAKE: f32 = 47.0;
+pub const SPARK_GAP: f32 = 0.4;
 pub const SPARK_POINTS: [[f32; 3]; 6] = [
     [0.2, 1.06, -0.05],
     [0.166, 0.625, 0.335],
@@ -170,14 +183,14 @@ pub const SPARK_POINTS: [[f32; 3]; 6] = [
 ];
 /// «здесь и сейчас»: one wave from the chest through the body and the room
 /// together, this long.
-pub const TOGETHER: f32 = 50.0;
+pub const TOGETHER: f32 = 51.0;
 pub const TOGETHER_SECONDS: f32 = 2.8;
 /// The inside goes dark, then the room, back to the person alone.
 pub const INNER_OUT: [f32; 2] = [54.6, 58.2];
 pub const ROOM_OUT: [f32; 2] = [55.2, 59.4];
-/// Reduced motion: the room and the inside both clear, the inner sphere
-/// open against the outer one.
-pub const STILL: f32 = 39.0;
+/// Reduced motion: the room and the inside both clear, both rings seen from
+/// above.
+pub const STILL: f32 = 45.5;
 
 /// The skin's own cold light: the perceiver is there from the first frame;
 /// it steps back while the inside is lit.
@@ -187,21 +200,23 @@ pub const SKIN_INSIDE: f32 = 0.35;
 /// The camera, keyed through the loop: round the person (degrees from +z
 /// toward +x), over the floor (degrees), how far, the point it looks at, and
 /// the height of the frame (degrees). Wide for the room, close for the
-/// inside, close on the head as it falls into a thought, from the side for
-/// the double in front, high over both spheres, close again, back.
-pub const CAMERA: [(f32, [f32; 7]); 12] = [
+/// inside, close on the head as it falls into a thought, slowly round the
+/// person through the grid and the trembling, from behind the shoulder for
+/// the double in front, high over both rings, close again, back.
+pub const CAMERA: [(f32, [f32; 7]); 13] = [
     (0.0, [34.0, 18.0, 4.9, -0.3, 0.8, -0.6, 52.0]),
-    (7.5, [26.0, 19.0, 4.75, -0.3, 0.8, -0.55, 52.0]),
-    (12.0, [34.0, 15.0, 3.6, -0.15, 0.7, -0.25, 48.0]),
-    (15.5, [42.0, 12.0, 2.9, -0.06, 0.64, 0.0, 46.0]),
-    (21.2, [30.0, 10.0, 3.0, -0.02, 0.47, 0.02, 44.0]),
-    (25.5, [46.0, 13.0, 3.1, -0.1, 0.5, 0.06, 46.0]),
-    (30.6, [155.0, 15.0, 3.0, 0.0, 0.48, 0.9, 58.0]),
-    (36.0, [42.0, 38.0, 4.1, -0.05, 0.62, -0.15, 54.0]),
-    (41.0, [22.0, 44.0, 4.2, -0.05, 0.58, -0.2, 54.0]),
-    (46.5, [50.0, 15.0, 2.8, -0.04, 0.64, 0.0, 46.0]),
-    (51.0, [40.0, 22.0, 3.8, -0.12, 0.7, -0.2, 50.0]),
-    (55.5, [34.0, 20.0, 4.5, -0.25, 0.8, -0.5, 52.0]),
+    (4.5, [26.0, 19.0, 4.75, -0.3, 0.8, -0.55, 52.0]),
+    (8.0, [34.0, 15.0, 3.6, -0.15, 0.7, -0.25, 48.0]),
+    (11.5, [42.0, 12.0, 2.9, -0.06, 0.6, 0.0, 46.0]),
+    (16.0, [30.0, 10.0, 3.0, -0.02, 0.47, 0.02, 44.0]),
+    (23.5, [46.0, 13.0, 3.1, -0.1, 0.5, 0.06, 46.0]),
+    (30.0, [36.0, 12.0, 3.0, -0.08, 0.5, 0.06, 46.0]),
+    (37.0, [150.0, 27.0, 3.4, 0.0, 0.38, 1.0, 58.0]),
+    (40.0, [152.0, 27.0, 3.4, 0.0, 0.38, 1.0, 58.0]),
+    (45.5, [60.0, 40.0, 4.2, -0.05, 0.6, -0.2, 54.0]),
+    (50.0, [48.0, 16.0, 2.9, -0.04, 0.64, 0.0, 46.0]),
+    (53.0, [40.0, 22.0, 3.8, -0.12, 0.7, -0.2, 50.0]),
+    (56.5, [34.0, 20.0, 4.5, -0.25, 0.8, -0.5, 52.0]),
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -225,21 +240,20 @@ pub struct Frame {
     pub echoes: [[f32; 2]; 3],
     /// «здесь и сейчас»: the wave through both, radius and light.
     pub together: [f32; 2],
-    /// The room's light (0..1), the outer sphere's shell and orbit, the
-    /// skin's, the presence filling the sphere.
+    /// The room's light (0..1), the outer sphere's rim and orbit, the
+    /// skin's.
     pub room: f32,
     pub shell: f32,
     pub skin: f32,
-    pub presence: f32,
     /// The outer orbit: its pole and how far its points have run.
     pub orbit: [f32; 3],
     pub orbit_flow: f32,
-    /// The inside: its light, the inner sphere's, the inner sphere's radius,
-    /// its orbit's pole and how far its points have run.
+    /// The inside: its light, the inner ring's, where the ring is (height,
+    /// centre z, half width, half depth: see `SCAN`) and how far its
+    /// runners have run.
     pub inner: f32,
     pub ring: f32,
-    pub ring_radius: f32,
-    pub ring_orbit: [f32; 3],
+    pub scan: [f32; 4],
     pub ring_flow: f32,
     /// The four pulls (0..1 each): falling into a thought, the grid,
     /// trembling, images of oneself.
@@ -404,9 +418,38 @@ pub fn orbit(t: f32) -> ([f32; 3], f32) {
     orbit_at(ORBIT_TURNS, ORBIT_TILT, ORBIT_SWINGS, 0.0, ORBIT_FLOW, t)
 }
 
-/// The inner orbit at `t`.
-pub fn ring_orbit(t: f32) -> ([f32; 3], f32) {
-    orbit_at(INNER_TURNS, INNER_TILT, INNER_SWINGS, 1.0, INNER_FLOW, t)
+/// The inner ring wrapping the body at height `y`: (height, centre z, half
+/// width, half depth), eased between the `SCAN` keys.
+pub fn wrap(y: f32) -> [f32; 4] {
+    let y = y.clamp(SCAN[0][0], SCAN[SCAN.len() - 1][0]);
+    let i = (0..SCAN.len() - 1)
+        .find(|&i| y <= SCAN[i + 1][0])
+        .unwrap_or(SCAN.len() - 2);
+    let (a, b) = (SCAN[i], SCAN[i + 1]);
+    let s = smooth(a[0], b[0], y);
+    [
+        y,
+        a[1] + (b[1] - a[1]) * s,
+        a[2] + (b[2] - a[2]) * s,
+        a[3] + (b[3] - a[3]) * s,
+    ]
+}
+
+/// The inner ring at `t`: it comes up at the chest as the third echo
+/// passes, rising, and scans from the feet to the crown and back once every
+/// `SCAN_SECONDS`.
+pub fn scan(t: f32) -> [f32; 4] {
+    let (low, high) = (SCAN[0][0], SCAN[SCAN.len() - 1][0]);
+    let chest = (1.0 - 2.0 * (HEART[1] - low) / (high - low)).acos();
+    let phase = TAU * (t - ring_lit()) / SCAN_SECONDS + chest;
+    wrap(low + (high - low) * 0.5 * (1.0 - phase.cos()))
+}
+
+/// Point `a` (radians) of the inner ring `scan` whose runners have run
+/// `flow`. The shader builds the same ellipse.
+pub fn ring_point(scan: [f32; 4], flow: f32, a: f32) -> [f32; 3] {
+    let (s, c) = (a + flow).sin_cos();
+    [scan[2] * c, scan[0], scan[1] + scan[3] * s]
 }
 
 /// Point `a` (radians) of an orbit with pole `pole` whose points have run
@@ -429,13 +472,13 @@ pub fn flare(k: usize, t: f32) -> f32 {
     smooth(wake, wake + 0.8, t) * out * beat
 }
 
-/// When the sphere and the inner sphere light: as the third wave out, and
-/// the third echo, reach them.
+/// When the sphere lights: as the third wave out reaches it; the inner ring,
+/// as the third echo is halfway out.
 pub fn orbit_lit() -> f32 {
     crossing(WAVES[2], WAVE_SECONDS, WAVE_FROM, REACH, ORBIT)
 }
 pub fn ring_lit() -> f32 {
-    crossing(ECHOES[2], ECHO_SECONDS, 0.0, ECHO_REACH, INNER_SPHERE[0])
+    ECHOES[2] + 0.5 * ECHO_SECONDS
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -460,7 +503,7 @@ pub fn compose(t: f32) -> Frame {
     let up = cross(right, forward);
 
     let together = spread(TOGETHER, TOGETHER_SECONDS, 0.0, REACH, time);
-    // Both spheres flash once as the «здесь и сейчас» wave passes them.
+    // Both rings flash once as the «здесь и сейчас» wave passes them.
     let flash = |radius: f32| {
         let at = crossing(TOGETHER, TOGETHER_SECONDS, 0.0, REACH, radius);
         smooth(at - 0.25, at + 0.15, time) * (-(time - at - 0.15).max(0.0) / 0.7).exp()
@@ -469,21 +512,12 @@ pub fn compose(t: f32) -> Frame {
     let ring_at = ring_lit();
     let room_out = 1.0 - smooth(ROOM_OUT[0], ROOM_OUT[1], time);
     let inner_out = 1.0 - smooth(INNER_OUT[0], INNER_OUT[1], time);
-    let open = window(
-        time,
-        INNER_OPEN[0],
-        INNER_OPEN[1],
-        INNER_OUT[0],
-        INNER_OUT[1],
-    );
-    let ring_radius = INNER_SPHERE[0] + (INNER_SPHERE[1] - INNER_SPHERE[0]) * open;
     let fall = pull(0, time);
     let image = pull(3, time);
     let outside = 1.0 - fall;
     let projection = smooth(0.0, 0.6, image);
-    let breath = 1.0 + 0.12 * (TAU * BREATHS * time / LOOP_SECONDS).sin();
     let (orbit, orbit_flow) = orbit(time);
-    let (ring_orbit, ring_flow) = ring_orbit(time);
+    let scan = scan(time);
 
     Frame {
         time,
@@ -507,23 +541,14 @@ pub fn compose(t: f32) -> Frame {
                     INNER_OUT[0],
                     INNER_OUT[1],
                 ),
-        presence: window(
-            time,
-            PRESENCE[0],
-            PRESENCE[1],
-            ROOM_OUT[0],
-            ROOM_OUT[1] - 1.0,
-        ) * outside
-            * breath,
         orbit,
         orbit_flow,
         inner: window(time, INWARD[0], INWARD[0] + 0.5, INNER_OUT[0], INNER_OUT[1]),
-        ring: (smooth(ring_at, ring_at + 0.5, time) * inner_out + 0.8 * flash(ring_radius))
+        ring: (smooth(ring_at, ring_at + 0.5, time) * inner_out + 0.8 * flash(0.4))
             * (1.0 - 0.85 * fall)
             * (1.0 - 0.7 * projection),
-        ring_radius,
-        ring_orbit,
-        ring_flow,
+        scan,
+        ring_flow: TAU * INNER_FLOW * time / LOOP_SECONDS,
         fall,
         grid: pull(1, time),
         tremble: pull(2, time),
@@ -652,10 +677,10 @@ mod tests {
             assert!(close(before.eye[i], after.eye[i], 1e-3), "{i}");
             assert!(close(before.forward[i], after.forward[i], 1e-3), "{i}");
             assert!(close(before.orbit[i], after.orbit[i], 1e-3), "{i}");
-            assert!(
-                close(before.ring_orbit[i], after.ring_orbit[i], 1e-3),
-                "{i}"
-            );
+        }
+        // The scan runs fast (up to ~0.75 a second), so 2 ms move it a little.
+        for i in 0..4 {
+            assert!(close(before.scan[i], after.scan[i], 4e-3), "{i}");
         }
         assert!(close(before.lens, after.lens, 1e-4));
         for turn in [
@@ -665,14 +690,11 @@ mod tests {
         ] {
             assert!(close(turn.cos(), 1.0, 1e-4) && close(turn.sin(), 0.0, 5e-3));
         }
-        // Across the seam only the person is there: no room, no spheres, no
+        // Across the seam only the person is there: no room, no rings, no
         // inside, no fronts, no words, the skin at rest.
         for f in [before, after] {
             assert!(f.room < 1e-3 && f.inner < 1e-3, "{f:?}");
-            assert!(
-                f.shell < 1e-3 && f.ring < 1e-3 && f.presence < 1e-3,
-                "{f:?}"
-            );
+            assert!(f.shell < 1e-3 && f.ring < 1e-3, "{f:?}");
             assert!(f.waves.iter().all(|w| w[1] == 0.0));
             assert!(f.echoes.iter().all(|w| w[1] == 0.0));
             assert!(f.inward[1] == 0.0 && f.together[1] == 0.0);
@@ -682,32 +704,25 @@ mod tests {
     }
 
     #[test]
-    fn both_orbits_run_round_their_spheres_and_their_planes_keep_turning() {
+    fn the_outer_orbit_runs_round_its_sphere_and_its_plane_keeps_turning() {
         for turns in [
             ORBIT_TURNS,
             ORBIT_SWINGS,
             ORBIT_FLOW,
-            INNER_TURNS,
-            INNER_SWINGS,
             INNER_FLOW,
             KNOT_TURNS,
-            BREATHS,
+            LOOP_SECONDS / SCAN_SECONDS,
         ] {
             assert_eq!(turns.fract(), 0.0);
         }
         // Art: «Внешнее кольцо стоит на месте почему? это орбита сферы». The
-        // plane of each orbit is never still: its pole moves at least this
+        // plane of the orbit is never still: its pole moves at least this
         // much every five seconds, and over the loop it leans every way.
         every(0.25, |t| {
             let (a, _) = orbit(t);
             let (b, _) = orbit(t + 5.0);
             assert!(angle(a, b) > 15.0, "{t}: {}", angle(a, b));
-            let (c, _) = ring_orbit(t);
-            let (d, _) = ring_orbit(t + 5.0);
-            assert!(angle(c, d) > 25.0, "{t}: {}", angle(c, d));
-            for p in [a, c] {
-                assert!(close(dot(p, p), 1.0, 1e-5));
-            }
+            assert!(close(dot(a, a), 1.0, 1e-5));
         });
         // The outer orbit stays above the floor and in the room.
         every(0.25, |t| {
@@ -727,6 +742,41 @@ mod tests {
                 );
             }
         });
+    }
+
+    #[test]
+    fn the_inner_ring_scans_the_whole_person_and_never_cuts_through_it() {
+        // Art: «внутреннее кольцо тоже без сферы. оно должно сканировать
+        // человека полностью».
+        const { assert!(SCAN[0][0] < 0.05 && SCAN[SCAN.len() - 1][0] > 1.4) };
+        let (mut low, mut high) = (9f32, -9f32);
+        every(0.02, |t| {
+            if (ring_lit()..ring_lit() + SCAN_SECONDS).contains(&t) {
+                low = low.min(scan(t)[0]);
+                high = high.max(scan(t)[0]);
+            }
+        });
+        assert!(low < SCAN[0][0] + 1e-3 && high > SCAN[SCAN.len() - 1][0] - 1e-3);
+        // It comes up at the chest, where the echoes start.
+        assert!(close(scan(ring_lit())[0], HEART[1], 1e-3));
+        // At every height it goes round the body, outside the skin and
+        // close to it.
+        let mut y = SCAN[0][0];
+        while y <= SCAN[SCAN.len() - 1][0] {
+            let ring = wrap(y);
+            let mut nearest = f32::MAX;
+            for k in 0..SAMPLES {
+                let a = k as f32 / SAMPLES as f32 * TAU;
+                let d = body::figure(ring_point(ring, 0.0, a));
+                assert!(d > 0.004, "{y}: {k} at {d}");
+                nearest = nearest.min(d);
+            }
+            assert!(nearest < 0.16, "{y}: {nearest}");
+            y += 0.01;
+        }
+        for i in 1..SCAN.len() {
+            assert!(SCAN[i][0] > SCAN[i - 1][0], "{i}");
+        }
     }
 
     #[test]
@@ -750,13 +800,11 @@ mod tests {
     }
 
     #[test]
-    fn the_sphere_comes_with_the_third_wave_and_presence_fills_it_after() {
+    fn the_sphere_comes_with_the_third_wave() {
         let at = orbit_lit();
         assert!(close(wave(2, at)[0], ORBIT, 1e-3));
         assert!(compose(at - 0.05).shell < 1e-3);
         assert!(compose(at + 0.7).shell > 0.99);
-        assert!(PRESENCE[0] > at);
-        assert!(compose(PRESENCE[1]).presence > 0.85);
         // The sphere sits in the room: inside both walls, the person and the
         // chair inside it.
         const { assert!(HEART[2] - ORBIT > BACK + 0.5 && HEART[0] - ORBIT > LEFT + 0.5) };
@@ -792,19 +840,21 @@ mod tests {
                     (f.orbit[i] - previous.orbit[i]).abs() < 0.01,
                     "orbit at {t}"
                 );
+            }
+            // The ring eases from the shins out round the thighs within a
+            // few frames, never in one.
+            for i in 0..4 {
                 assert!(
-                    (f.ring_orbit[i] - previous.ring_orbit[i]).abs() < 0.02,
-                    "ring at {t}"
+                    (f.scan[i] - previous.scan[i]).abs() < 0.08,
+                    "scan {i} at {t}"
                 );
             }
             assert!((f.lens - previous.lens).abs() < 0.003, "lens at {t}");
-            assert!((f.ring_radius - previous.ring_radius).abs() < 0.005, "{t}");
             let lights = |f: &Frame| {
                 [
                     f.room,
                     f.shell,
                     f.skin,
-                    f.presence,
                     f.inner,
                     f.ring,
                     f.fall,
@@ -877,7 +927,7 @@ mod tests {
             }
         }
         let at = ring_lit();
-        assert!(at > ECHOES[2] && at < ECHOES[2] + 0.4);
+        assert!(at > ECHOES[2] && at < ECHOES[2] + ECHO_SECONDS);
         assert!(compose(at - 0.02).ring < 1e-3 && compose(at + 0.6).ring > 0.99);
         const { assert!(ECHOES[2] + ECHO_SECONDS < WITHOUT[0]) };
     }
@@ -903,14 +953,20 @@ mod tests {
             assert_eq!([first, second], CAPTIONS[i]);
             assert!(light > 0.99, "{i}");
             let done = without_end(i);
-            let next = WITHOUT.get(i + 1).copied().unwrap_or(INNER_OPEN[0]);
+            let next = WITHOUT.get(i + 1).copied().unwrap_or(BOTH);
             assert!(done + 0.2 <= next, "{i}: {done} > {next}");
             assert!(at(done + 0.01).iter().all(|&d| d == 0.0));
             assert_eq!(compose(done + 0.01).caption[2], 0.0, "{i}");
         }
-        // Before the pulls the inside is fully lit; the inner sphere is on.
+        // Before the pulls the inside is fully lit; the inner ring is on.
         let f = compose(WITHOUT[0]);
         assert!(f.inner > 0.99 && f.ring > 0.99);
+        // Art: «больше времени на части "без..." меньше на остальные». The
+        // four take nearly half the loop, each holds its words a while.
+        assert!(without_end(3) - WITHOUT[0] > 0.45 * LOOP_SECONDS);
+        for (i, &from) in WITHOUT.iter().enumerate() {
+            assert!(without_end(i) - from > 6.0, "{i}");
+        }
         // No words anywhere else in the loop.
         every(0.05, |t| {
             if t < WITHOUT[0] - 0.2 || t > without_end(3) {
@@ -939,7 +995,7 @@ mod tests {
         // Art: «потерять наблюдение за внешним кольцом погрузившись внутрь
         // мысли … выключить всё внешнее кроме персонажа».
         let f = compose(WITHOUT[0] + PULL[0] + 0.5 * HOLD[0]);
-        assert!(f.outside < 1e-3 && f.room < 1e-3 && f.shell < 1e-3 && f.presence < 1e-3);
+        assert!(f.outside < 1e-3 && f.room < 1e-3 && f.shell < 1e-3);
         assert!(f.ring < 0.2 && f.inner > 0.99);
         assert!(close(f.skin, SKIN_INSIDE, 1e-3));
         assert!(close(f.draw_up, 1.0 - DRAW_UP, 1e-3));
@@ -985,23 +1041,22 @@ mod tests {
     }
 
     #[test]
-    fn both_spheres_are_clear_together_and_the_wave_goes_through_both() {
+    fn both_rings_are_clear_together_and_the_wave_goes_through_both() {
         let f = compose(STILL);
-        assert!(f.presence > 0.85 && f.inner > 0.99 && f.room > 0.99);
+        assert!(f.inner > 0.99 && f.room > 0.99);
         assert!(f.shell > 0.99 && f.ring > 0.99);
-        assert!(close(f.ring_radius, INNER_SPHERE[1], 1e-4));
         assert_eq!([f.fall, f.grid, f.tremble, f.image], [0.0; 4]);
         assert_eq!(f.caption[2], 0.0);
-        // One wave from the chest passes the inner sphere, then the outer.
-        let inner = crossing(TOGETHER, TOGETHER_SECONDS, 0.0, REACH, INNER_SPHERE[1]);
+        // One wave from the chest passes the inner ring, then the outer.
+        let inner = crossing(TOGETHER, TOGETHER_SECONDS, 0.0, REACH, 0.4);
         let outer = crossing(TOGETHER, TOGETHER_SECONDS, 0.0, REACH, ORBIT);
         assert!(inner < outer && outer - TOGETHER < 0.7);
         assert!(compose(outer + 0.1).shell > 1.6);
         assert!(compose(inner + 0.1).ring > 1.6);
         const { assert!(INNER_OUT[0] > TOGETHER + TOGETHER_SECONDS) };
         const { assert!(ROOM_OUT[0] > INNER_OUT[0]) };
-        // The inner sphere opens after the last «Без» has let go.
-        const { assert!(INNER_OPEN[0] >= WITHOUT[3] + PULL[3] + HOLD[3] + RELEASE[3]) };
+        // Both come together after the last «Без» has let go.
+        const { assert!(BOTH >= WITHOUT[3] + PULL[3] + HOLD[3] + RELEASE[3]) };
     }
 
     #[test]
@@ -1041,7 +1096,15 @@ mod tests {
                 y0 = y0.min(y);
                 y1 = y1.max(y);
             }
-            println!("{t:5.1} x {x0:6.2}..{x1:6.2} y {y0:6.2}..{y1:6.2}");
+            let [lo, hi] = PERSON;
+            let gap: [f32; 3] =
+                std::array::from_fn(|i| (lo[i] - f.eye[i]).max(f.eye[i] - hi[i]).max(0.0));
+            let gap = gap.iter().map(|g| g * g).sum::<f32>().sqrt();
+            let [ex, ey, ez] = f.eye;
+            println!(
+                "{t:5.1} x {x0:6.2}..{x1:6.2} y {y0:6.2}..{y1:6.2} eye {ex:5.2} {ey:5.2} {ez:5.2} gap {gap:4.2} az {:6.1}",
+                camera(0, t)
+            );
             t += 0.5;
         }
     }
@@ -1080,10 +1143,10 @@ mod tests {
     }
 
     #[test]
-    fn the_inner_sphere_shows_against_the_outer_one_from_above() {
-        // P3: high enough to see into the sphere, the whole outer orbit in
-        // frame.
-        for t in [37.0, 39.0, 41.0] {
+    fn both_rings_show_from_above_and_the_scan_stays_in_frame() {
+        // High enough to see the inner ring inside the outer orbit, the whole
+        // outer orbit in frame.
+        for t in [STILL - 1.0, STILL, STILL + 1.0] {
             let f = compose(t);
             let elevation = (-f.forward[1]).asin().to_degrees();
             assert!(elevation > 35.0, "{t}: {elevation}");
@@ -1094,30 +1157,18 @@ mod tests {
                 assert!(x.abs() < 0.95 && y.abs() < 0.95, "{t}: {k} at {x} {y}");
             }
         }
-        // Close up the inner sphere is at least a tenth of the frame wide.
-        for t in [WITHOUT[1], 47.0] {
+        // Wherever the inner ring shows, all of it is in frame.
+        every(0.1, |t| {
             let f = compose(t);
-            let r = f.ring_radius;
-            let [a, _] = project(
-                &f,
-                [
-                    HEART[0] - r * f.right[0],
-                    HEART[1],
-                    HEART[2] - r * f.right[2],
-                ],
-            )
-            .unwrap();
-            let [b, _] = project(
-                &f,
-                [
-                    HEART[0] + r * f.right[0],
-                    HEART[1],
-                    HEART[2] + r * f.right[2],
-                ],
-            )
-            .unwrap();
-            assert!((b - a).abs() > 0.2, "{t}: {}", (b - a).abs());
-        }
+            if f.ring > 0.05 {
+                for k in 0..SAMPLES {
+                    let a = k as f32 / SAMPLES as f32 * TAU;
+                    let p = ring_point(f.scan, f.ring_flow, a);
+                    let [x, y] = project(&f, p).expect("in front");
+                    assert!(x.abs() < 0.95 && y.abs() < 0.95, "{t}: {k} at {x} {y}");
+                }
+            }
+        });
     }
 
     #[test]
@@ -1132,9 +1183,9 @@ mod tests {
                 assert!(flare(i + 1, wake + SPARK_GAP * 0.99) < 1e-6);
             }
         }
-        // They wake after the inner sphere has opened, and all are up before
-        // the «здесь и сейчас» wave.
-        const { assert!(SPARK_WAKE > INNER_OPEN[1]) };
+        // They wake after both rings are clear together, and all are up
+        // before the «здесь и сейчас» wave.
+        const { assert!(SPARK_WAKE > BOTH) };
         const { assert!(SPARK_WAKE + 5.0 * SPARK_GAP + 0.8 < TOGETHER) };
     }
 

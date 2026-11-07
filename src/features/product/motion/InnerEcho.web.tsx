@@ -26,8 +26,8 @@ export type InnerEchoProps = ArtProps & {
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
  * frames; Rust owns the seated person, the room drawn in points by the waves
- * of perception, the sphere of presence with its turning orbit, the warm inner
- * sphere with its own orbit and sparks, the double, the «Без…» captions and
+ * of perception, the empty sphere of presence with its turning orbit, the warm
+ * inner ring scanning the body, the sparks, the double, the «Без…» captions and
  * the colors of the four dark themes. */
 export function InnerEcho(props: InnerEchoProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
@@ -142,7 +142,7 @@ export function InnerEcho(props: InnerEchoProps) {
     };
   }, [controller]);
   return <View testID="inner-echo" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Человек ровно сидит на стуле в тёмной комнате. Волны от него рисуют комнату холодными точками, вокруг раскрывается прозрачная сфера присутствия, по её орбите бегут огоньки. Потом внутри тела раскрывается вторая, тёплая сфера со своей орбитой, и внутреннее видно так же ясно, как комната. На каждое «Без…» внизу появляется подпись: при проваливании гаснет всё вокруг, кроме человека и узла мысли в голове; точки встают в сетку и отпускаются; дрожат и успокаиваются; при уходе в образы себя тело гаснет, а голова проецирует перед ним двойника. Искры ощущений вспыхивают внутри, на «здесь и сейчас» одна волна проходит сквозь обе сферы."
+    {failed ? props.fallback : <div role="img" aria-label="Человек ровно сидит на стуле в тёмной комнате. Волны от него рисуют комнату холодными точками, вокруг остаётся пустая сфера присутствия: только контур и поворачивающаяся орбита с огоньками. Потом тело наполняется тёплыми точками, и тёплое кольцо обнимает его и сканирует целиком, от стоп до макушки, так что внутреннее видно так же ясно, как комната. На каждое «Без…» внизу появляется подпись: при проваливании гаснет всё вокруг, кроме человека и узла мысли в голове; точки встают в сетку и отпускаются; дрожат и успокаиваются; при уходе в образы себя тело гаснет, а голова проецирует перед ним двойника. Искры ощущений вспыхивают внутри, на «здесь и сейчас» одна волна проходит сквозь оба кольца."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
       <canvas ref={outputRef} data-graphics="rust-inner-echo" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

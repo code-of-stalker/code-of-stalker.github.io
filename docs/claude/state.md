@@ -157,9 +157,11 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   turns everything outside off but the person (a thought-knot in the head); «Без ухода в образы
   себя» dims the body but the head, which projects a double in front, facing the person (camera
   behind the shoulder); a caption under each «Без…» (atlas `assets/labels.webp`, the scene's
-  only image). Beats in the crate README. Тишина prototype
-  `output/prototypes/inner-echo/index.html`, sheet `kadry-tishina-2.jpg`; shown to Art,
-  waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
+  only image). Round 3 (2026-11-07): the sphere has no fill (rim, turning orbit, floor
+  circle only); the inner ring has no sphere: a warm level ring hugging the body, scanning it
+  feet ↔ crown every 6 s and lighting the band; the four «Без…» take 7 s each (14–41.6 s).
+  Beats in the crate README. Тишина prototype `output/prototypes/inner-echo/index.html`,
+  sheet `kadry-tishina-3.jpg`; shown to Art, waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

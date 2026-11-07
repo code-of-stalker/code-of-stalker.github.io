@@ -3,12 +3,14 @@
 // the floor and the two walls (exact planes), the table, the vase and the
 // lamp, the chair and the seated person (distance fields marched inside
 // their boxes), and the surface it meets lights a point of a lattice laid on
-// it. Round the person stands the sphere of presence: a shell of points, its
-// rim, the glow of the space it holds, and its orbit, a ring of points whose
-// plane keeps turning. The inside of the body is a second, warm lattice
-// walked cell by cell through the person's box; which cells hold a point
-// comes baked from Rust (u_body). Round the heart the inner sphere, with its
-// own orbit. The words under the scene come from a baked atlas (u_atlas).
+// it. Round the person stands the sphere of presence, left unfilled: only its
+// rim, its orbit (a line of light with runners, its plane turning) and the
+// circle where it meets the floor. The inside of the body is a second, warm
+// lattice walked cell by cell through the person's box; which cells hold a
+// point comes baked from Rust (u_body). The inner ring has no sphere: a level
+// ring hugging the body that scans it from the feet to the crown and back,
+// lighting the band it passes. The words under the scene come from a baked
+// atlas (u_atlas).
 // Light is added onto the page in the theme's cold, warm and pale. Rust puts
 // the version line and lib.rs's constants (#define) in front of it.
 precision highp float;
@@ -30,10 +32,10 @@ uniform vec4 u_wave;   // the three waves out: radii; the wave back in: radius
 uniform vec4 u_front;  // and their fronts' light
 uniform vec4 u_echo;   // the three echoes inside: radii; the wave through both
 uniform vec4 u_echo_l; // and their fronts' light
-uniform vec4 u_room;   // room, outer sphere, skin, presence
-uniform vec4 u_inner;  // inside, inner sphere, its radius, what is left outside
+uniform vec4 u_room;   // room, outer sphere, skin, -
+uniform vec4 u_inner;  // inside, inner ring, how far its runners have run, what is left outside
 uniform vec4 u_orbit;  // the outer orbit: pole, how far its points have run
-uniform vec4 u_ring;   // the inner orbit: pole, how far its points have run
+uniform vec4 u_ring;   // the inner ring: height, centre z, half width x, half depth z
 uniform vec4 u_noise;  // falling in, grid, trembling, the double
 uniform vec4 u_misc;   // the inside's size round the thought, knot turn, projection, -
 uniform vec4 u_text;   // the words: first row, second row (-1 none), light, -
@@ -259,69 +261,15 @@ float lineAt(vec3 ro, vec3 rd, vec3 A, vec3 B, float tmax, float upto) {
   return (exp(-k) + 0.1 * exp(-k / 16.0)) * mix(1.0, 0.45, s) * smoothstep(0.0, 0.06, upto - s);
 }
 
-// ---------- spheres
-// The points of a sphere's shell nearest to direction n (unit, from its
-// centre c): latitude bands `s` apart along the surface, each with as many
-// points as fit round it, turned by a hash per band; the brightest glow.
-float shellDots(vec3 ro, vec3 rd, vec3 c, float R, vec3 n, float s, float tmax, uint k) {
-  float bands = max(3.0, floor(PI * R / s));
-  float dl = PI / bands;
-  float lat = asin(clamp(n.y, -1.0, 1.0)) + 0.5 * PI;
-  float lon = atan(n.z, n.x);
-  float i0 = floor(lat / dl);
-  float best = 0.0;
-  for (int di = -1; di <= 1; di++) {
-    float i = i0 + float(di);
-    if (i < 0.0 || i >= bands) continue;
-    float la = (i + 0.5) * dl - 0.5 * PI;
-    float around = max(1.0, floor(TAU * R * cos(la) / s));
-    float turn = hash2(vec2(i, 3.0), k);
-    float j0 = floor(lon / TAU * around - turn);
-    for (int dj = -1; dj <= 1; dj++) {
-      float lo = (j0 + float(dj) + 0.5 + turn) / around * TAU;
-      vec3 P = c + R * vec3(cos(la) * cos(lo), sin(la), cos(la) * sin(lo));
-      best = max(best, glowAt(ro, rd, P, 0.0, tmax));
-    }
-  }
-  return best;
-}
-// A sphere's shell seen along the ray: its rim, where the ray grazes it, and
-// the points where the ray crosses it (the far side fainter), brighter
-// along the great circle of its orbit (pole), which turns over all of it.
-float shell(vec3 ro, vec3 rd, vec3 c, float R, float s, float tmax, vec3 pole, uint k) {
+// ---------- the sphere and the rings
+// A sphere's rim seen along the ray: a thin line where the ray grazes it.
+// Nothing inside it: the sphere is not filled.
+float rimOf(vec3 ro, vec3 rd, vec3 c, float R, float tmax) {
   vec3 w = c - ro;
   float tc = dot(w, rd);
-  float h2 = max(dot(w, w) - tc * tc, 0.0);
-  float h = sqrt(h2);
+  float h = sqrt(max(dot(w, w) - tc * tc, 0.0));
   float wide = pixel * max(tc, 0.0) * 1.6 + 0.004;
-  float light = tc > 0.0 && tc < tmax ? 0.45 * exp(-sq((h - R) / wide)) : 0.0;
-  if (h < R) {
-    float chord = sqrt(R * R - h2);
-    for (int side = 0; side < 2; side++) {
-      float t = side == 0 ? tc - chord : tc + chord;
-      if (t <= 0.0 || t > tmax) continue;
-      vec3 n = (ro + rd * t - c) / R;
-      float band = exp(-sq(dot(n, pole) / 0.16));
-      light += shellDots(ro, rd, c, R, n, s, tmax, k) * (side == 0 ? 1.0 : 0.5) * (0.2 + 0.3 * band);
-    }
-  }
-  return light;
-}
-// How much of a sphere's space the ray passes through up to tmax, a little
-// denser toward its shell: about 1 straight through the centre, 0 outside.
-float volumeOf(vec3 ro, vec3 rd, vec3 c, float R, float tmax) {
-  vec3 w = c - ro;
-  float tc = dot(w, rd);
-  float h2 = dot(w, w) - tc * tc;
-  float R2 = R * R;
-  if (h2 >= R2) return 0.0;
-  float chord = sqrt(R2 - h2);
-  float s0 = max(-chord, -tc);
-  float s1 = min(chord, tmax - tc);
-  if (s1 <= s0) return 0.0;
-  float span = s1 - s0;
-  float cube = (s1 * s1 * s1 - s0 * s0 * s0) / 3.0;
-  return (0.35 * span + 0.65 * (h2 * span + cube) / R2) / R;
+  return tc > 0.0 && tc < tmax ? 0.4 * exp(-sq((h - R) / wide)) : 0.0;
 }
 // A thin even line of light from A to B seen along the ray.
 float segAt(vec3 ro, vec3 rd, vec3 A, vec3 B, float tmax, float width) {
@@ -365,6 +313,35 @@ float orbitLight(vec3 ro, vec3 rd, vec4 orbit, vec3 c, float R, float count, flo
     }
   }
   return 0.55 * line + run;
+}
+// The inner ring: a level ellipse at height ring.x round (0, ring.x, ring.y)
+// with half axes ring.z (x) and ring.w (z), a thin line (its far half
+// fainter) and INNER_RUNNERS runners `flow` along it. lib.rs's `ring_point`
+// builds the same ellipse.
+vec3 ringAt(vec4 ring, float a) {
+  return vec3(ring.z * cos(a), ring.x, ring.y + ring.w * sin(a));
+}
+float ringLight(vec3 ro, vec3 rd, vec4 ring, float flow, float tmax) {
+  vec3 c = vec3(0.0, ring.x, ring.y);
+  vec3 eye = normalize(ro - c);
+  float line = 0.0;
+  vec3 prev = ringAt(ring, 0.0);
+  for (int i = 1; i <= 48; i++) {
+    vec3 P = ringAt(ring, float(i) / 48.0 * TAU);
+    float near = mix(0.45, 1.0, smoothstep(-0.25, 0.25, dot(normalize(P + prev - 2.0 * c), eye)));
+    line = max(line, near * segAt(ro, rd, prev, P, tmax, 1.2));
+    prev = P;
+  }
+  float run = 0.0;
+  for (int i = 0; i < int(INNER_RUNNERS); i++) {
+    float a0 = float(i) / INNER_RUNNERS * TAU + flow;
+    for (int j = 0; j < 8; j++) {
+      float a = a0 - INNER_DIR * float(j) * 0.16;
+      float g = glowAt(ro, rd, ringAt(ring, a), j == 0 ? 0.007 : 0.0, tmax);
+      run += (j == 0 ? 1.3 : 0.75 * pow(0.74, float(j))) * g;
+    }
+  }
+  return 0.6 * line + run;
 }
 
 // ---------- light
@@ -450,11 +427,13 @@ vec3 surface(vec3 p, vec3 n, vec3 rd, float t, int id) {
   float base = id == 5 ? u_room.z : id == 4 ? 1.0 : id == 3 ? 0.75 : 0.4;
   if (id == 5) base *= mix(1.0 - 0.85 * u_misc.z, 1.0 + 0.4 * u_misc.z, smoothstep(HEAD.x, HEAD.y, p.y)) * (1.0 + 0.9 * u_noise.x);
   vec3 tint = id == 5 ? mix(u_cold, u_pale, 0.55) : id == 4 ? mix(u_cold, u_pale, 0.25) : u_cold;
-  // Where the sphere meets the floor, a circle; inside it the presence.
+  // Where the sphere meets the floor, a circle.
   float circle = id == 0 ? u_room.y * exp(-sq((length(p.xz - HEART.xz) - FLOOR_RING) / 0.035)) : 0.0;
-  float felt = id < 5 ? u_room.w * 0.35 * smoothstep(ORBIT, ORBIT - 0.25, r) : 0.0;
+  // The skin lights in the band the inner ring passes, warm.
+  float scanned = id == 5 ? u_inner.y * exp(-sq((p.y - u_ring.x) / 0.03)) : 0.0;
+  tint = mix(tint, mix(u_warm, u_pale, 0.4), min(1.0, scanned));
   float front = fronts(r) * u_inner.w;
-  float light = seen * base * (0.55 + 0.45 * seed) + felt + 1.2 * circle + front;
+  float light = seen * base * (0.55 + 0.45 * seed) + 0.7 * scanned + 1.2 * circle + front;
   vec3 c = tint * dt * graze * fall * reach * light;
   if (edge < 1.0) c += u_cold * 0.35 * exp(-sq(edge / (pw * 1.3))) * fall * reach * (seen + front);
   return c;
@@ -502,7 +481,9 @@ vec3 point(vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, float k, vec3 s
   for (int i = 0; i < 6; i++) {
     if (flare[i] > 0.0) spark += flare[i] * exp(-sq(length(c - SPARK_AT[i]) / 0.05));
   }
-  float b = (level * (0.5 + 0.5 * h) + front + 1.6 * spark) * (0.75 + 0.25 * depth);
+  // The inner ring's band: the points it passes light up as it scans.
+  float scanned = twin ? 0.0 : u_inner.y * exp(-sq((c.y - u_ring.x) / 0.035));
+  float b = (level * (0.5 + 0.5 * h) + front + 1.6 * spark + scanned) * (0.75 + 0.25 * depth);
   b *= u_inner.x * show;
   float head = smoothstep(HEAD.x, HEAD.y, c.y);
   vec3 tint = mix(u_warm, u_pale, 0.25 * h);
@@ -641,12 +622,9 @@ void main() {
     light = surface(p, n, rd, tHit, id);
   }
 
-  // The sphere of presence: the space it holds, its shell, its orbit.
-  if (u_room.w > 0.001) {
-    light += u_cold * u_room.w * 0.075 * volumeOf(ro, rd, HEART, ORBIT, tStop);
-  }
+  // The sphere of presence: its rim and its orbit, nothing inside.
   if (u_room.y > 0.001) {
-    light += u_cold * u_room.y * shell(ro, rd, HEART, ORBIT, SHELL_SPACING.x, tHit, u_orbit.xyz, 0u);
+    light += u_cold * u_room.y * rimOf(ro, rd, HEART, ORBIT, tHit);
     light += mix(u_cold, u_pale, 0.4) * 0.9 * u_room.y * orbitLight(ro, rd, u_orbit, HEART, ORBIT, ORBIT_RUNNERS, ORBIT_DIR, 0.012, tHit);
   }
 
@@ -661,12 +639,9 @@ void main() {
       light += inside(mro, mrd, tStop, 1.0, vec3(0.0), true);
     }
   }
-  // The inner sphere round the heart and its orbit.
+  // The inner ring scanning the body.
   if (u_inner.y > 0.001) {
-    float R = u_inner.z;
-    light += u_warm * u_inner.y * (shell(ro, rd, HEART, R, SHELL_SPACING.y, tStop, u_ring.xyz, 5u)
-                                   + 0.06 * volumeOf(ro, rd, HEART, R, tStop));
-    light += mix(u_warm, u_pale, 0.35) * 0.9 * u_inner.y * orbitLight(ro, rd, u_ring, HEART, R, INNER_RUNNERS, INNER_DIR, 0.007, tStop);
+    light += mix(u_warm, u_pale, 0.35) * 0.9 * u_inner.y * ringLight(ro, rd, u_ring, u_inner.z, tStop);
   }
   for (int k = 0; k < 6; k++) {
     if (flare[k] > 0.001) light += mix(u_warm, u_pale, 0.5) * flare[k] * 1.6 * glowAt(ro, rd, SPARK_AT[k], 0.011, tStop);

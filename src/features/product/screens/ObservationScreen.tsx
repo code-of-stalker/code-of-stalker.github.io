@@ -346,7 +346,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   savedActions: { alignItems: 'center' },
   dateButton: { padding: 12, marginTop: 2, flexDirection: 'row', gap: 8, alignItems: 'center' },
   date: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, color: colors.muted },
-  addButton: { width: '80%', marginTop: 8, minHeight: 36 },
+  addButton: { width: '80%', maxWidth: 340, marginTop: 8, minHeight: 36 },
   marquee: { marginTop: 18, marginBottom: 8, fontSize: 8, lineHeight: 12, letterSpacing: 3.5 },
   signature: { marginTop: 14 },
   localNote: { fontSize: 6, lineHeight: 10, marginTop: 8, textAlign: 'center', color: colors.muted, letterSpacing: 0.5 },

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -150,14 +150,22 @@ Shipped to `main` 2026-11-01 with placeholders only (Art: «собери кон�
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
 Menu groups: Второй уровень [01], Обозревание Внутреннего Кольца [02–08], Итог [09, 10].
 Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ ШАГ»; bookmark
-`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`: the hero is a
-`ScenePlaceholder` too (no painting yet), signature on page 10.
+`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`, signature on page 10.
+- Hero «Внутренняя сфера» (branch `claude/step-6-hero-deb7a4`), shipped to `main` 2026-11-07
+  (Art: «Пушим»):
+  Rust crate `graphics/inner-hero` from Art's painting (figure on a glass cube in a glass
+  sphere); parallax by a depth map, the chest ring drawn in depth; every 18 s a scan plane goes
+  head → feet, heart flares, ring runners, ripple from both feet. Beats in its `README.txt`.
+  Wired: `InnerHero.web.tsx`, `StepSixHero*`, `StepSixStill.tsx`, home card from step 6 on.
+  Art's fixes done (noise on the figure, ripple from the feet, the inner scan); Тишина
+  approved 2026-11-07 («Ок, дальше»); Матрица, Искра, Астрал needed no color change. Page scenes are another branch
+  (`claude/step-6-scenes`): both touch `types.ts`/`Art.web.tsx`, conflicts are one-line unions.
 - Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
   02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
+- Next: page scenes 01–10 continue on `claude/step-6-scenes`.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.

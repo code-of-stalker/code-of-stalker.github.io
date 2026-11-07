@@ -65,6 +65,11 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Places that just light up on the ring were not enough: «сфера как бы проецировала эти изображения». The ball became a projector (lamp, beams in the air, a blank ring screen). A lamp drowns against a bright painting in the dark recolor: keep the thrown place to the side so the lamp stands against the dark. (Page 07.)
 - A sequence of places reads better one at a time: each switches on as the next one switches off, and all of them come on together only at the closing run round the ring. (Page 07.)
 
+## Step 6 «Внутреннее кольцо»
+- A twinkle that chops the figure's lines into dashes reads as «белые шумы по человеку»: sparkle only point stars of the background, never the figure or the cube. (Hero.)
+- A ripple must come from where its cause is: «волна должна исходить не от рандомной точки пола а от ног». (Hero.)
+- An «inner» scene must show the inside being scanned: «нехватает сканирования внутреннего»; a plane of light now passes through the figure head to feet and lights its inner lines. (Hero.)
+
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)

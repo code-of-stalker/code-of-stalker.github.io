@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import type { PracticeIntroScreenProps } from './PracticeIntroScreen';
 import { ProductScreen } from '../ui';
 import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
-import { stepSixHero, stepSixPages } from '../stepSixContent';
+import { stepSixPages } from '../stepSixContent';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { useReadingDestination } from '../navigation/readingDestination';
 import { useStepSixBookmark } from '../state/useStepSixBookmark';
@@ -13,14 +13,14 @@ import { ReadingExpansion } from '../motion/ReadingExpansion';
 import { StepPanel } from '../motion/StepPanel';
 import { StepDropdown } from '../motion/StepDropdown';
 import { StepSignature } from '../motion/StepSignature';
-import { ScenePlaceholder } from '../motion/ScenePlaceholder';
+import { StepSixHero } from '../motion/StepSixHero';
 import { ScrollCue } from '../motion/ScrollCue';
 import { scrollCueFooterInset } from '../motion/ScrollCue.types';
 import { Reveal } from '../motion/Reveal';
 import { EconomyReadingPages, type ReadingPagePosition } from '../motion/EconomyReadingPages';
 
-/** One reading block of ten pages and no questions, laid out like step five. Every scene, the
- * hero included, is a placeholder until it is built. The author's signature closes the last
+/** One reading block of ten pages and no questions, laid out like step five. The hero plays the
+ * Rust scene «Внутренняя сфера»; the page scenes are placeholders until they are built. The author's signature closes the last
  * page; scrolling back from the first page returns to step five and on from the last page
  * enters step seven. */
 export function StepSixScreen({ onSelectStep, onPreviousStep, onNextStep, onClose, availableAt, testUnlockAll, reducedMotion = false }: PracticeIntroScreenProps) {
@@ -64,8 +64,8 @@ export function StepSixScreen({ onSelectStep, onPreviousStep, onNextStep, onClos
               position.current = { page: page.index, offset: value.offset }; record(position.current);
             }
           }}
-          hero={() => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
-            <ScenePlaceholder scene={stepSixHero} width={hero.width} height={hero.height} />
+          hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
+            <StepSixHero width={hero.width} height={hero.height} active={active && focused} reducedMotion={reducedMotion} />
           </Reveal>}>
           {layout => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 6. ВНУТРЕННЕЕ КОЛЬЦО" background="clear" expanded={open} onSelect={() => setOpen(value => !value)}

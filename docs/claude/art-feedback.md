@@ -49,6 +49,11 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Torn/ragged transitions look crude («разрывы выглядят топорно»); soft melts (ripple, blur, fade) passed.
 - On light themes a light figure must not turn into a solid ink shadow: inked edge, lamp-tinted body.
 
+## Step 2 last page «Лабиринт»
+- The old closing scene was too plain and its person «криво»: he wants «дороже, глубже и интереснее» and a properly drawn human figure.
+- He chose a labyrinth told by the camera: first person inside, then a pull back over the plan; the figure of light at the end breaks the labyrinth.
+- A light figure in a one-hue theme (Матрица, Искра) clips into a blot: dim the body, ink the drawing paler.
+
 ## Step 5 «Внешнее кольцо»
 - Painted panoramas want depth and a living head: parallax from a depth map, a small sway, leaning toward where something happens. A static raster element (the bird painted in the sky) «выглядит тупо»: keep the camera away from it. (Page 01.)
 - «Якорь» first take lacked detail, depth and breathing; a crooked outline read badly. Wanted: a background (Matrix-like rain is fine), breathing, an even outline. (Page 02.)
@@ -60,9 +65,23 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Places that just light up on the ring were not enough: «сфера как бы проецировала эти изображения». The ball became a projector (lamp, beams in the air, a blank ring screen). A lamp drowns against a bright painting in the dark recolor: keep the thrown place to the side so the lamp stands against the dark. (Page 07.)
 - A sequence of places reads better one at a time: each switches on as the next one switches off, and all of them come on together only at the closing run round the ring. (Page 07.)
 
+## Step 6 «Внутреннее кольцо»
+- A twinkle that chops the figure's lines into dashes reads as «белые шумы по человеку»: sparkle only point stars of the background, never the figure or the cube. (Hero.)
+- A ripple must come from where its cause is: «волна должна исходить не от рандомной точки пола а от ног». (Hero.)
+- An «inner» scene must show the inside being scanned: «нехватает сканирования внутреннего»; a plane of light now passes through the figure head to feet and lights its inner lines. (Hero.)
+
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
 - A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)
 - A loop of simple actions (sit, rise, walk, sit) lacked plot: «не хватает сюжета». Work at a laptop, a talk with a second person and work again passed, and the rings and glass glowed softer so the action led. (Page 02.)
 - A scene must plainly belong to its page text: «как оно к тексту относится вообще?». A top view where all the rings cover the figure confused him. A low side camera with only the ring the text names (ring 1) lit passed. (Page 03.)
+
+## Accounts and security (Intensive chat, 2026-11-07)
+- Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
+- Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
+- Walkers may be in Russia; check that every service the app uses works there.
+
+## App icon (2026-11-07)
+- The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).
+- A stick figure of thin capsules with a black outline was rejected; the runner is a bold pictogram like the exit sign (broad shoulders, thick limbs, straight cuts), solid, no dark outline.

@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import material from '../../../../assets/product/motion/laboratory-glass.json';
 import { stepDescriptions } from '../content';
+import { typeset } from '../typeset';
 import { ObservationActionButton, ObservationIcon } from '../ObservationControls';
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
@@ -56,7 +57,7 @@ export function PracticeCooldown({ title, time, deadline, now, heroHeight, heroW
         Platform.OS === 'web' && { filter: `saturate(${colors === neutralColors || colors === violetColors ? 100 : 180}%) blur(${material.backgroundBlur}px)` } as ViewStyle]}>
         <Art kind="gallery" width={heroWidth} height={heroHeight} style={{ alignSelf: 'center' }} active={active && !expanded} reducedMotion={reducedMotion} />
         <View style={[styles.unavailableCopy, { padding: inset, marginTop: gutter }]}>
-          <ProductText style={styles.previewText}>{stepDescriptions[2]}</ProductText>
+          <ProductText style={styles.previewText}>{typeset(stepDescriptions[2])}</ProductText>
         </View>
       </BlurTargetView>
       {Platform.OS === 'web' ? <View testID="cooldown-backdrop-blur" style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.background}3b` }]} /> :

@@ -1,11 +1,20 @@
 # Project state
 
-Updated 2026-11-02. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
+
+## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, on `main` 2026-11-07)
+Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly
+drawn person, chose the labyrinth: first-person walk, rise over the plan, light runs the path,
+a figure of light forms in the court and breaks the walls; 50 s loop, still at 43 s. Crate
+`graphics/hero-labyrinth` (beats in its `README.txt`), bridge `HeroLabyrinth.web.tsx`,
+`webScene` set in `StepTwoTaskPage.tsx`. Art approved Тишина («Ок, подключай»); wired and
+checked in the export at phone, tablet and PC in all 4 dark themes. Матрица and Искра dim the
+figure's body and ink its lines paler (one pure hue). Shipped to `main` 2026-11-07 (Art: «Пушим»).
 
 ## Step 4 «Практика заземления и прямого узнавания»: page → scene
 Text and page ids live in `src/features/product/stepFourContent.ts`. Two reading blocks
@@ -141,14 +150,22 @@ Shipped to `main` 2026-11-01 with placeholders only (Art: «собери кон�
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
 Menu groups: Второй уровень [01], Обозревание Внутреннего Кольца [02–08], Итог [09, 10].
 Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ ШАГ»; bookmark
-`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`: the hero is a
-`ScenePlaceholder` too (no painting yet), signature on page 10.
+`stepSixReading`, flag `sixthStepUnlocked`. Screen `StepSixScreen.tsx`, signature on page 10.
+- Hero «Внутренняя сфера» (branch `claude/step-6-hero-deb7a4`), shipped to `main` 2026-11-07
+  (Art: «Пушим»):
+  Rust crate `graphics/inner-hero` from Art's painting (figure on a glass cube in a glass
+  sphere); parallax by a depth map, the chest ring drawn in depth; every 18 s a scan plane goes
+  head → feet, heart flares, ring runners, ripple from both feet. Beats in its `README.txt`.
+  Wired: `InnerHero.web.tsx`, `StepSixHero*`, `StepSixStill.tsx`, home card from step 6 on.
+  Art's fixes done (noise on the figure, ripple from the feet, the inner scan); Тишина
+  approved 2026-11-07 («Ок, дальше»); Матрица, Искра, Астрал needed no color change. Page scenes are another branch
+  (`claude/step-6-scenes`): both touch `types.ts`/`Art.web.tsx`, conflicts are one-line unions.
 - Concept and briefs: `docs/step-six-illustrations-ru.md`. Hero «Внутренняя сфера», 01 «Внутрь»,
   02 «Каркас», 03 «Сосуд», 04 «Радар», 05 «Есть мысль», 06 «Облака», 07 «Гироскоп»,
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: Art picks the first scene; offer 2–3 directions for it (rule 7), Тишина first.
+- Next: page scenes 01–10 continue on `claude/step-6-scenes`.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.
@@ -177,7 +194,35 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
 - Next: pages 04–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 
+## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
+Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»).
+- Three places per chat: идущий, его проводник, админ этого проводника; Яна is the main
+  admin (also a guide), set only by SQL in `public.main_admins`. One chat per walker; the
+  history stays with the walker when the guide changes.
+- Supabase free plan (`supabase/intensive-schema.sql`: RLS, checked server functions,
+  PGlite tests). Wallet-style account: 12 words → sign-in + identity key, no email;
+  6-digit PIN per entry, 5 wrong PINs wipe the device. Authenticator codes required for
+  guides/admins/Яна (database-enforced), optional for walkers. Messages are E2EE in the browser.
+- Code `src/features/intensive/`, route `src/app/(product)/intensive.tsx`. Shared files:
+  `levels.tsx` (opens /intensive), `package.json`/lock, `scripts/web-cache/shell-security.mjs`
+  (connect-src adds the server read from config.ts via `scripts/intensive-server.mjs`).
+  Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
+- Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
+  «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
+- Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
+  (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
+  there by Claude. Next, Art: setup steps 5–7 (GitHub 2FA, Яна's account + SQL main admin,
+  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on). Only
+  Тишина checked so far (phone + PC); the other dark themes after his OK.
+
 ## Shipped features (all on main)
+- App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,
+  выкладывай»): an exit-sign runner as a solid black pictogram goes into a lit doorway; the
+  code rain is all around outside; the back foot still outside gets a light rim. Files
+  `assets/branding/exit-door-*` (web: favicon 32, apple-touch 180, manifest 192/512, 1024),
+  `assets/icon.png`, `assets/favicon.png` (48), Android adaptive: rain = background layer,
+  door + runner = foreground in the safe zone, monochrome = the doorway with the runner cut out.
+  16 px drops the rain. Generator lives outside the repo (resvg + MS Gothic glyphs).
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light
   ones (Дюна, Мираж, Рассвет) were taken off on Art's word, kept on `archive/light-themes`
   (5b67880); a saved light choice opens in Матрица. Their palettes and the Rust light branches
@@ -203,6 +248,21 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).
+- UI fixes (2026-11-07, `fix/ui-seven`): reading screens of Steps 3–7 have no doubled gutter on
+  tablet/PC (`ProductScreen` `layout="reading"` pads 0 at every size), so their panel matches
+  Steps 1–2; Step 1 page 2 caption larger and before the art; Step 2 pages 1–2 art no wider
+  than the plate; crowd task text wraps naturally; «Дополнить ответ» max 340 px.
+  Panel edges (2026-11-07, `fix/panel-edges`): the step panel's bottom line sits 1px inside
+  (`stepPanelBodyPath`), because Chrome snaps the outline half a device pixel down and clipped it;
+  on screens with DPR < 2 `PanelArtwork.web.tsx` draws sub-pixel outlines as 1 device px at the
+  hairline's intensity, so diagonals are antialiased, not stairs. Headless Chrome hides both bugs:
+  reproduce in a real Chrome window (`--app=` URL, DPR 1.25), not with device emulation.
+- Text wrapping (2026-11-07, `fix/text-wrap`): authored texts are typeset at render by
+  `typeset()` in `src/features/product/typeset.ts` (reading pages, titles, Step 2 tasks,
+  questions, hint, Step 1 intro, cooldown). Mid-sentence `\n` becomes a space; breaks stay
+  after `.!?…:;`, before `—`/`«`/numbers, around blank lines and between two lines ≤ 36 chars
+  (short couplets). Non-breaking space before « — » and after 1–2-letter words. Write new
+  texts with breaks only where a line must stand alone; the content files stay as authored.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

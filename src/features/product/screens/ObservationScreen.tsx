@@ -34,6 +34,7 @@ import { PanelBorder } from '../PanelBorder';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 
 import { questionsForStep, hintForStep } from '../content';
+import { typeset } from '../typeset';
 function clock(milliseconds: number) {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -245,7 +246,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ContentSwap value={question} reducedMotion={settings.reducedMotion} style={styles.questionButton} render={index =>
           <Pressable accessibilityRole="button" accessibilityLabel={`Подсказка: ${questions[index]}`}
             onPress={() => { if (!isRecording && !busy) { player.pause(); openSheet('hint'); } }}>
-            <UnderlinedText style={styles.question}>{questions[index]}</UnderlinedText>
+            <UnderlinedText style={styles.question}>{typeset(questions[index])}</UnderlinedText>
           </Pressable>} />
       </Reveal>
       </View>
@@ -346,7 +347,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   savedActions: { alignItems: 'center' },
   dateButton: { padding: 12, marginTop: 2, flexDirection: 'row', gap: 8, alignItems: 'center' },
   date: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, color: colors.muted },
-  addButton: { width: '80%', marginTop: 8, minHeight: 36 },
+  addButton: { width: '80%', maxWidth: 340, marginTop: 8, minHeight: 36 },
   marquee: { marginTop: 18, marginBottom: 8, fontSize: 8, lineHeight: 12, letterSpacing: 3.5 },
   signature: { marginTop: 14 },
   localNote: { fontSize: 6, lineHeight: 10, marginTop: 8, textAlign: 'center', color: colors.muted, letterSpacing: 0.5 },

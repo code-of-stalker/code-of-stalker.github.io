@@ -1,11 +1,20 @@
 # Project state
 
-Updated 2026-11-07. Intensive chat built locally 2026-11-07 (not shipped). Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
+
+## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, on `main` 2026-11-07)
+Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly
+drawn person, chose the labyrinth: first-person walk, rise over the plan, light runs the path,
+a figure of light forms in the court and breaks the walls; 50 s loop, still at 43 s. Crate
+`graphics/hero-labyrinth` (beats in its `README.txt`), bridge `HeroLabyrinth.web.tsx`,
+`webScene` set in `StepTwoTaskPage.tsx`. Art approved Тишина («Ок, подключай»); wired and
+checked in the export at phone, tablet and PC in all 4 dark themes. Матрица and Искра dim the
+figure's body and ink its lines paler (one pure hue). Shipped to `main` 2026-11-07 (Art: «Пушим»).
 
 ## Step 4 «Практика заземления и прямого узнавания»: page → scene
 Text and page ids live in `src/features/product/stepFourContent.ts`. Two reading blocks
@@ -168,8 +177,8 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
 - Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
   the same world; a stage-finale screen after page 10 needs Art's wording first.
 
-## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`, local, NOT pushed)
-Built 2026-11-07 after Art's «Да, делаем»; commit 4f611d5. Push only on Art's word.
+## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
+Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»).
 - Three places per chat: идущий, его проводник, админ этого проводника; Яна is the main
   admin (also a guide), set only by SQL in `public.main_admins`. One chat per walker; the
   history stays with the walker when the guide changes.
@@ -185,9 +194,9 @@ Built 2026-11-07 after Art's «Да, делаем»; commit 4f611d5. Push only o
   «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
 - Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
   (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
-  there by Claude. Waiting for Art's word to ship to `main`; then setup steps 5–7 (GitHub 2FA,
-  Яна's account + SQL main admin, end to end, ideally a walker in Russia). Only Тишина checked
-  so far (phone + PC); the other dark themes after his OK.
+  there by Claude. Next, Art: setup steps 5–7 (GitHub 2FA, Яна's account + SQL main admin,
+  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on). Only
+  Тишина checked so far (phone + PC); the other dark themes after his OK.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light
@@ -215,6 +224,15 @@ Built 2026-11-07 after Art's «Да, делаем»; commit 4f611d5. Push only o
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).
+- UI fixes (2026-11-07, `fix/ui-seven`): reading screens of Steps 3–7 have no doubled gutter on
+  tablet/PC (`ProductScreen` `layout="reading"` pads 0 at every size), so their panel matches
+  Steps 1–2; Step 1 page 2 caption larger and before the art; Step 2 pages 1–2 art no wider
+  than the plate; crowd task text wraps naturally; «Дополнить ответ» max 340 px.
+  Panel edges (2026-11-07, `fix/panel-edges`): the step panel's bottom line sits 1px inside
+  (`stepPanelBodyPath`), because Chrome snaps the outline half a device pixel down and clipped it;
+  on screens with DPR < 2 `PanelArtwork.web.tsx` draws sub-pixel outlines as 1 device px at the
+  hairline's intensity, so diagonals are antialiased, not stairs. Headless Chrome hides both bugs:
+  reproduce in a real Chrome window (`--app=` URL, DPR 1.25), not with device emulation.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

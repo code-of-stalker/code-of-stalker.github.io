@@ -17,8 +17,9 @@ export function holdsPlace(props: ArtProps) {
   return props.kind !== 'rain' && props.kind !== 'glass' && props.kind !== 'home-shade' && !props.voiceCompact;
 }
 
-/** The live scenes and the cloud film keep a centered 3 : 2 frame. */
-const framed = (props: ArtProps) => props.presentation !== 'card' && (!!props.webScene || props.kind === 'grounding-here');
+/** The live scenes and the cloud film keep a centered 3 : 2 frame; the
+ * labyrinth fills its box like the other Step 2 art. */
+const framed = (props: ArtProps) => props.presentation !== 'card' && ((!!props.webScene && props.webScene !== 'hero-labyrinth') || props.kind === 'grounding-here');
 
 /** An illustration's place, held by a skeleton until its first frame is on
  * screen. The scene keeps its own layout inside the same box; the skeleton

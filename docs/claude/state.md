@@ -165,8 +165,17 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   the crate's `README.txt`. Art approved Матрица, then all 7 themes («Ок, дальше», «Оставить»).
   Page 01's first-person look turns the head left, then right (about 45°), shipped the same
   day (Art: «Так, пушим»).
-- Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
-  the same world; a stage-finale screen after page 10 needs Art's wording first.
+- On the branch, approved and wired but NOT pushed (they wait together for Art's push command):
+  page 02 «Жизнь в сфере» (chapter 2, `dynamic-life`, 489edfb), page 03 «Ночь и фонарь»
+  (chapter 3, `dynamic-night`, d02a6b2 + 997af6f). Both are checked in the 4 dark themes and
+  in a production export (ready, gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on
+  page 04, ring 3 on page 05.
+- Waiting for Art: his pick for page 04 «Второе кольцо» from
+  `output/prototypes/step-seven/varianty-04.jpg` (А «Бусины фактов», recommended; Б «Не
+  проваливаться»; В «Прилив дыхания»). In all three, ring 2 is warm, like the inner warmth of
+  the Step 6 hero.
+- Next: pages 04–10, each a new chapter of the same world; a stage-finale screen after
+  page 10 needs Art's wording first.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

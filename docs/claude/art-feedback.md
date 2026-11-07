@@ -64,3 +64,5 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
 - A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)
+- A loop of simple actions (sit, rise, walk, sit) lacked plot: «не хватает сюжета». Work at a laptop, a talk with a second person and work again passed, and the rings and glass glowed softer so the action led. (Page 02.)
+- A scene must plainly belong to its page text: «как оно к тексту относится вообще?». A top view where all the rings cover the figure confused him. A low side camera with only the ring the text names (ring 1) lit passed. (Page 03.)

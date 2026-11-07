@@ -148,15 +148,18 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Page 01 «Внутрь» (inner-second-level): Art chose Б «Срез» («Лучше Б», 2026-11-07) over А
-  «Сквозь кольцо» and В «Одна линия». Crate `graphics/inner-slice` (60 s loop, 4 тёмные темы;
-  beats in its README), bridge `InnerSlice.web.tsx`, `webScene: 'inner-slice'` — committed on
-  `claude/step-6-scenes` (2a58699), not on `main`. Seated figure in cold height lines, outer
-  ring with sweep and signals on the floor; a slice stops at the chest, each «Без…» clears one
-  disturbance of the warm inner ring, it opens with its own ticks/sweep/signals, both rings flash
-  at «здесь и сейчас». Тишина prototype `output/prototypes/inner-slice/index.html` (frames
-  `kadry-tishina.jpg`) shown to Art 2026-11-07; waiting for his notes. After his OK on Тишина:
-  check Матрица, Искра, Астрал; ship only on his word.
+- Page 01 «Внутрь» (inner-second-level): Б «Срез» (crate `graphics/inner-slice`, bridge
+  `InnerSlice.web.tsx`, `webScene: 'inner-slice'`, commit 2a58699 on this branch, not on `main`)
+  was REJECTED 2026-11-07 («странно всё выглядит и тексту мало соответствует»; the figure must
+  sit on a chair with a straight back, not in lotus). Before any ship, drop or replace that
+  wiring so the page keeps its placeholder. Three new directions with a person upright on a
+  chair, stills in Тишина `output/prototypes/inner-chair/varianty.jpg` (sketch `varianty.html`,
+  JS/GLSL concept only): А «Изнутри» (glass person, cold orbit, camera goes into the chest and
+  sees the outer ring through the body), Б «Эхо» (perception waves draw the room in points, the
+  body's inside appears in warm points), В «Выдержка» (still camera, long-exposure light: three
+  orbits of sight/hearing/perception, a warm ring in the chest, both spheres together;
+  recommended). Waiting for Art's choice; then a new crate, Тишина prototype, other dark themes
+  only after his OK, ship only on his word.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

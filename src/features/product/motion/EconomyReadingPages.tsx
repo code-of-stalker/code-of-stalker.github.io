@@ -49,7 +49,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
     <ContentSwap value={index} fill reducedMotion={reducedMotion} duration={520} exitDuration={220} onComplete={finish}
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
-        const wider = kind === 'reflections' || kind === 'single-hero' ? 1.25 : kind === 'identity-imprints' ? 1.15 : 1;
+        const wider = kind === 'identity-imprints' ? 1.15 : 1;
         const artWidth = Math.max(1, width - 16) * wider, artHeight = step >= 4 ? artWidth * 2 / 3 : kind ? (step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
           <ScrollGate fill enabled={playing && enabled && !moving} allowAdvance={value < pages.length - 1 || canAdvance} guardEntryGesture
@@ -69,6 +69,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
             </View>
+            {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {(kind || page.placeholder) && <View testID={`reading-page-art-${kind ?? page.id}`} pointerEvents="none" style={[styles.art,
               (kind === 'reflections' || kind === 'single-hero') && styles.heroArt,
               kind === 'dream-inward' && styles.stageArt,
@@ -77,7 +78,6 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
                 : page.webScene ? <StepFiveScene page={page} width={artWidth} height={artHeight} active={playing} reducedMotion={reducedMotion} />
                   : page.placeholder && <ScenePlaceholder scene={page.placeholder} width={artWidth} height={artHeight} />}
             </View>}
-            {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {value === pages.length - 1 && endContent}
           </ScrollGate>
         </View>;

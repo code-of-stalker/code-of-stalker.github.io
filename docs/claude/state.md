@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-02. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -194,6 +194,15 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
 - Steps 1–3 read page by page like Step 4, one illustration per page (`EconomyReadingPages`,
   pages in `motion/readingPages.ts`); the scrolling article is gone. The step menu groups
   pages by theme (`stepSections.ts`). Shipped 2026-10-31 (`fix/step-sections`).
+- UI fixes (2026-11-07, `fix/ui-seven`): reading screens of Steps 3–7 have no doubled gutter on
+  tablet/PC (`ProductScreen` `layout="reading"` pads 0 at every size), so their panel matches
+  Steps 1–2; Step 1 page 2 caption larger and before the art; Step 2 pages 1–2 art no wider
+  than the plate; crowd task text wraps naturally; «Дополнить ответ» max 340 px.
+  Panel edges (2026-11-07, `fix/panel-edges`): the step panel's bottom line sits 1px inside
+  (`stepPanelBodyPath`), because Chrome snaps the outline half a device pixel down and clipped it;
+  on screens with DPR < 2 `PanelArtwork.web.tsx` draws sub-pixel outlines as 1 device px at the
+  hairline's intensity, so diagonals are antialiased, not stairs. Headless Chrome hides both bugs:
+  reproduce in a real Chrome window (`--app=` URL, DPR 1.25), not with device emulation.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

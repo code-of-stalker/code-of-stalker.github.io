@@ -136,7 +136,7 @@ export function ProductScreen({ children, scroll = true, style, contentStyle, ba
   const { gutter } = useProductSpacing(), sizes = useProductLayout();
   const maxWidth = layout === 'wide' ? sizes.wide : sizes.column;
   // Practice screens already own their page and control gutters.
-  const padding = layout === 'reading' && sizes.kind === 'phone' ? 0 : gutter;
+  const padding = layout === 'reading' ? 0 : gutter;
   const [scrolled,setScrolled]=useState(false),pastTop=useRef(false);
   return <SafeAreaView testID="product-screen" edges={['top', 'left', 'right', 'bottom']} style={[styles.screen, style]}>
     {background && <View pointerEvents="none" style={StyleSheet.absoluteFill}><View style={styles.background}>{background}</View></View>}

@@ -103,9 +103,11 @@ export function homeGlassShape(viewport: number, width: number, height: number):
   return { width, height, path: fitPanelPath(source.path, source.width, source.height, width, height), background: 'clear' };
 }
 
+// The bottom edge sits 1px inside: Chrome may snap the outline layer half a
+// device pixel down, and a hairline on the last row is then clipped away.
 export function stepPanelBodyPath(width: number, height: number, top = 33.75) {
   const anchor = width - 136;
-  return `M.25 ${top}H${anchor}L${anchor+12} ${top+12}H${anchor+48}L${anchor+60} ${top}H${width-29}L${width-.25} ${top+32}V${height-.25}H.25Z`;
+  return `M.25 ${top}H${anchor}L${anchor+12} ${top+12}H${anchor+48}L${anchor+60} ${top}H${width-29}L${width-.25} ${top+32}V${height-1}H.25Z`;
 }
 
 export function stepPanelPaths(width: number, height: number, headerHeight = 25, gap = 8) {

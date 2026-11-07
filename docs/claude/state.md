@@ -294,8 +294,13 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   door `logout` («Выйти из админки»: drops the session, back to the entry); check boxes 14 px;
   `GlassField` right icon at 14 px inset (all Intensive searches); PC search width = side pane.
   Screenshots `output/admin/admin-wide-v4.png`, `admin-phone-v4.png`, `name-surname-step.png`.
-- Next, Art: check the live site (/intensive and /admin); the other dark themes after his OK.
-  Small idea left: the list preview names a main admin by place
+- Art checked the live site 2026-11-08 as main admin (his own account, SQL main admin, a test
+  walker on his phone): «вроде всё работает». Then (159dd96, shipped 2026-11-08 as a small fix):
+  bubbles of one run cut only the outer corners (`BubbleSpot` alone/head/middle/tail in
+  `ui/chrome.tsx`). Voice cap 3 min: one sealed row (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB)
+  and the 500 MB free plan; up to ~5 min fits without SQL, longer needs a schema change.
+- Next: the other dark themes after Art's OK. Walker screens still name Яна («Яна назначит…»)
+  while Art is the main admin; asked him whether to say «главный админ». Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)

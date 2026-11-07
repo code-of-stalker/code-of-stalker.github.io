@@ -9,7 +9,7 @@ import { supabaseBackend } from './supabaseBackend';
  * scripts/intensive-server.mjs reads this line for the site's security policy
  * and the daily keep-awake job, and refuses anything but a public key.
  */
-export const intensiveServer = { url: '', publishableKey: '' };
+export const intensiveServer = { url: 'https://tcbqlkjtofanmdffjqyt.supabase.co', publishableKey: 'sb_publishable_iFKiSXLQ3nmWLrLyGQoTFw_Tq38Lxht' };
 
 export const intensiveConfigured = () => !!(intensiveServer.url && intensiveServer.publishableKey);
 /** The level opens its own screen once the server exists, and always in development. */

@@ -25,7 +25,7 @@ import type { ChatSummary, Member, Place } from '../backend';
 import { draftFor, keepDraft, keepPreview, markSeen, previewFor, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
-import { Avatar, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
+import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -424,18 +424,24 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   // Read by place() from layout callbacks, which run after this commit.
   useLayoutEffect(() => { expectDivider.current = dividerShown; }, [dividerShown]);
   const feed: ReactNode[] = [];
+  // A message opens a new run after another writer, a day row, the «new» divider or a pause.
+  const opensRun = (message: DecodedMessage, previous?: DecodedMessage) => !previous || dayKey(previous.createdAt) !== dayKey(message.createdAt)
+    || message.id === unreadFrom || previous.senderId !== message.senderId || Date.parse(message.createdAt) - Date.parse(previous.createdAt) > GROUP_MS;
+  const lastShown = shown[shown.length - 1];
+  // Pending messages are this writer's own and go out now.
+  const pendingOpens = !lastShown || lastShown.senderId !== session.id || (!!pending.length && dayKey(lastShown.createdAt) !== dayKey(pending[0].createdAt));
   shown.forEach((message, index) => {
-    const previous = shown[index - 1];
+    const previous = shown[index - 1], next = shown[index + 1];
     const own = message.senderId === session.id;
-    const sent = Date.parse(message.createdAt);
     const newDay = !previous || dayKey(previous.createdAt) !== dayKey(message.createdAt);
     const divider = message.id === unreadFrom;
     if (newDay) feed.push(<DayRow key={`day-${message.id}`} label={dayLabel(message.createdAt)} />);
     if (divider) feed.push(<View key="unread" onLayout={event => { dividerY.current = event.nativeEvent.layout.y; place(); }}><DayRow accent label="НОВЫЕ СООБЩЕНИЯ" /></View>);
-    const first = newDay || divider || previous.senderId !== message.senderId || sent - Date.parse(previous.createdAt) > GROUP_MS;
+    const first = opensRun(message, previous);
+    const last = next ? opensRun(next, message) : !pending.length || pendingOpens;
     const author = names.get(message.senderId);
     const actions = actionsFor(message);
-    feed.push(<Bubble key={message.id} own={own} first={first} frame={own ? first ? frames.own : frames.ownRest : first ? frames.other : frames.otherRest}
+    feed.push(<Bubble key={message.id} own={own} first={first} frame={(own ? frames.own : frames.other)[bubbleSpot(first, last)]}
       author={!own && first ? `${author?.name ?? 'Бывший участник'} · ${shortPlace[message.senderRole]}` : undefined}
       time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id || (!!menu?.open && menu.message.id === message.id)}
       onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'}>
@@ -445,10 +451,9 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     </Bubble>);
   });
   pending.forEach((item, index) => {
-    const previous = index ? null : shown[shown.length - 1];
-    const first = index === 0 && (!previous || previous.senderId !== session.id);
-    if (index === 0 && previous && dayKey(previous.createdAt) !== dayKey(item.createdAt)) feed.push(<DayRow key="day-pending" label="СЕГОДНЯ" />);
-    feed.push(<Bubble key={item.key} own first={first} frame={first ? frames.own : frames.ownRest} time={time(item.createdAt)} holdsControls={item.kind === 'voice'}
+    const first = index === 0 && pendingOpens;
+    if (index === 0 && lastShown && dayKey(lastShown.createdAt) !== dayKey(item.createdAt)) feed.push(<DayRow key="day-pending" label="СЕГОДНЯ" />);
+    feed.push(<Bubble key={item.key} own first={first} frame={frames.own[bubbleSpot(first, index === pending.length - 1)]} time={time(item.createdAt)} holdsControls={item.kind === 'voice'}
       status={item.failed ? 'failed' : 'sending'} onRetry={() => { void deliver(item); }} onDrop={() => drop(item)}>
       {item.kind === 'voice' ? <VoiceBody voice={item.voice} active={false} /> : <MessageText text={item.text} />}
     </Bubble>);

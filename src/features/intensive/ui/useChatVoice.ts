@@ -4,8 +4,8 @@ import { useObservationRecorder } from '../../product/hooks/useObservationRecord
 import type { VoiceDraft } from '../session';
 import { useFormal } from './parts';
 
-export const VOICE_LIMIT_SECONDS = 3 * 60;
-/** Speech stays clear at this rate, and three minutes fit one request. */
+export const VOICE_LIMIT_SECONDS = 5 * 60;
+/** Speech stays clear at this rate, and five minutes (about 0.9 MB) fit one request. */
 const VOICE_BITS = 24_000;
 const MAX_AUDIO_BYTES = 1_100_000;
 

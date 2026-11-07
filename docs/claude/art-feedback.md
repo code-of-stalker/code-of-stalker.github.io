@@ -49,6 +49,11 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Torn/ragged transitions look crude («разрывы выглядят топорно»); soft melts (ripple, blur, fade) passed.
 - On light themes a light figure must not turn into a solid ink shadow: inked edge, lamp-tinted body.
 
+## Step 2 last page «Лабиринт»
+- The old closing scene was too plain and its person «криво»: he wants «дороже, глубже и интереснее» and a properly drawn human figure.
+- He chose a labyrinth told by the camera: first person inside, then a pull back over the plan; the figure of light at the end breaks the labyrinth.
+- A light figure in a one-hue theme (Матрица, Искра) clips into a blot: dim the body, ink the drawing paler.
+
 ## Step 5 «Внешнее кольцо»
 - Painted panoramas want depth and a living head: parallax from a depth map, a small sway, leaning toward where something happens. A static raster element (the bird painted in the sky) «выглядит тупо»: keep the camera away from it. (Page 01.)
 - «Якорь» first take lacked detail, depth and breathing; a crooked outline read badly. Wanted: a background (Matrix-like rain is fine), breathing, an even outline. (Page 02.)

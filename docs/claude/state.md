@@ -7,6 +7,15 @@ Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
 
+## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, not on `main`)
+Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly
+drawn person, chose the labyrinth: first-person walk, rise over the plan, light runs the path,
+a figure of light forms in the court and breaks the walls; 50 s loop, still at 43 s. Crate
+`graphics/hero-labyrinth` (beats in its `README.txt`), bridge `HeroLabyrinth.web.tsx`,
+`webScene` set in `StepTwoTaskPage.tsx`. Art approved Тишина («Ок, подключай»); wired and
+checked in the export at phone, tablet and PC in all 4 dark themes. Матрица and Искра dim the
+figure's body and ink its lines paler (one pure hue). Next: ship only on Art's word (`/ship-to-main`).
+
 ## Step 4 «Практика заземления и прямого узнавания»: page → scene
 Text and page ids live in `src/features/product/stepFourContent.ts`. Two reading blocks
 (6 + 8 pages) with four answerable questions between them; each block counts from 01.

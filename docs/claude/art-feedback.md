@@ -92,6 +92,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Give each event time before the scanner closes it («почти ничего не успевает произойти»): 3–4 s from flare to touch passed. Being pulled in must not stop the walk («на мысли человек не должен останавливаться»). (Page 04.)
 - In messages, name the rings by number (первое, второе, третье кольцо). Working names confuse him: «почему ты начал вместо кольца делать корону?». (Page 05.)
 - Page 05 «Темп дня» passed in Матрица on the first showing (direction А: a day of actions, ring 3 spinning with the body's tempo). (Page 05.)
+- After page 05 the sphere world tired him («эта уже надоела»): pages 06–10 get a new scene, «что-то новое, интереснее», with a layered camera (first person → over the shoulder → pulled wide, «расхлопнуто») and «больше красивых деталей которые добавят глубины и стиля». (2026-11-08.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

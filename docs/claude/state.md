@@ -235,8 +235,11 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   On the call his own voice returns from the glass, the caller's comes from far. Art approved
   Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
   `output/shots/page05-themes.jpg`) and in a production export (ready, gpu-error 0).
-- Next: pages 06–10, each a new chapter of the same world; a stage-finale screen after
-  page 10 needs Art's wording first.
+- Next: pages 06–10 get a NEW scene (new crate, not `dynamic-rings`: Art is tired of the
+  sphere world), one chapter per page, layered camera (first person → over the shoulder →
+  wide), rich detail for depth. Three directions drafted 2026-11-08 in the shared notes
+  `step-7-pages-06-10-directions.md`; Art picks one in the morning. A stage-finale screen
+  after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

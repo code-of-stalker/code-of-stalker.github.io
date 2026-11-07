@@ -33,6 +33,8 @@ export const glyphs = {
   words: 'M4 5h16M4 10h16M4 15h10M4 20h7',
   shield: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z',
   exit: 'M14 4h6v16h-6M10 8l-4 4 4 4M6 12h10',
+  // Sign out: the arrow leaves through the door on the left, away from the back arrow.
+  logout: 'M10 4H4v16h6M14 8l4 4-4 4M18 12H8',
   person: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8',
   chat: 'M4 5h16v11H9l-5 4Z',
   erase: 'M9 5h11v14H9l-6-7ZM12.5 9.5l5 5M17.5 9.5l-5 5',
@@ -131,7 +133,7 @@ export function GlassField({ label, style, wrapStyle, right, ...props }: TextInp
     <View style={[styles.field, wrapStyle]}>
       <DiaryGlass shape="input" /><PanelArtwork source={frames.input} />
       <TextInput placeholderTextColor={colors.faint} selectionColor={colors.accent} autoCorrect={false} spellCheck={false} {...props}
-        style={[styles.input, props.multiline && styles.multiline, right ? { paddingRight: 44 } : null, style]} />
+        style={[styles.input, props.multiline && styles.multiline, right ? { paddingRight: 46 } : null, style]} />
       {right ? <View style={styles.fieldRight}>{right}</View> : null}
     </View>
   </View>;
@@ -259,7 +261,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
     ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as object : {}),
   },
   multiline: { minHeight: 112, textAlignVertical: 'top' },
-  fieldRight: { position: 'absolute', right: 4, top: 0, bottom: 0, zIndex: 2, justifyContent: 'center' },
+  // The icon keeps the same inset from the edge as the text on the left.
+  fieldRight: { position: 'absolute', right: 14, top: 0, bottom: 0, zIndex: 2, justifyContent: 'center' },
   plate: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
   plateCopy: { flex: 1, minWidth: 0, gap: 6 },
   plateTitle: { fontSize: 14, lineHeight: 20 },

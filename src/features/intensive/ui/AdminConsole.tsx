@@ -102,7 +102,7 @@ function CheckBox({ checked, label, onPress, mixed = false }: { checked: boolean
   const on = checked || mixed;
   return <Pressable accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: mixed ? 'mixed' : checked }} onPress={onPress} hitSlop={10}
     style={(state: Pointer) => [styles.check, on && styles.checkOn, state.hovered && { borderColor: colors.accent }, state.pressed && { opacity: .7 }]}>
-    {checked ? <Glyph name="check" size={14} /> : mixed ? <View style={styles.checkMixed} /> : null}
+    {checked ? <Glyph name="check" size={11} /> : mixed ? <View style={styles.checkMixed} /> : null}
   </Pressable>;
 }
 
@@ -159,6 +159,8 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   const { settings } = useProduct();
   const wide = useProductLayout().columns === 2;
   const roomy = useWindowDimensions().width >= 1200;
+  // The search above the side pane takes the pane's width, so their edges line up.
+  const sideWidth = roomy ? 400 : 340;
   const [directory, setDirectory] = useState<DirectoryEntry[] | null>(null);
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
   const [error, setError] = useState('');
@@ -412,7 +414,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     <View style={styles.toolbar}>
       <View style={styles.tabsWide}>{tabs}</View>
       <View style={styles.refreshWide}>{refresh}</View>
-      <View style={styles.searchWide}>{search}</View>
+      <View style={[styles.searchWide, { width: sideWidth }]}>{search}</View>
     </View>
     {tab === 'walkers' && pickedRows.length ? bulk : chips}
     <View style={styles.split}>
@@ -422,7 +424,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
           {tableRows}
         </ScrollView>
       </Framed>
-      <Framed cut="topRight" style={[styles.pane, styles.side, { width: roomy ? 400 : 340 }]}>
+      <Framed cut="topRight" style={[styles.pane, styles.side, { width: sideWidth }]}>
         <View style={styles.paneHead}>
           <ProductText variant="label" numberOfLines={1} maxFontSize={12} style={styles.paneCaption}>
             {person ? isStaff(person) ? 'В КОМАНДЕ' : 'ИДУЩИЙ' : 'ОБЗОР'}
@@ -448,7 +450,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   toolbar: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   tabsWide: { flexShrink: 0, minWidth: 320 },
   refreshWide: { marginLeft: 'auto' },
-  searchWide: { flex: 1, maxWidth: 380 },
+  searchWide: { flexShrink: 0 },
   // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
   chipScroll: { paddingRight: 4 },
@@ -478,9 +480,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingLeft: 4 },
   rowLine: { borderBottomWidth: .25, borderBottomColor: colors.border },
   rowMark: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 2, backgroundColor: colors.accent },
-  check: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.muted },
+  check: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.muted },
   checkOn: { borderColor: colors.accent, backgroundColor: colors.subtle },
-  checkMixed: { width: 10, height: 1.5, backgroundColor: colors.accent },
+  checkMixed: { width: 7, height: 1.5, backgroundColor: colors.accent },
   checkCell: { width: 40, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
   rowBody: { flex: 1, minWidth: 0, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingLeft: 4, paddingRight: 8 },
   teamBody: { paddingLeft: 12 },

@@ -257,7 +257,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     case 'home': {
       if (adminPage) {
         subtitle = 'АДМИНКА';
-        action = <GlassIconButton label="Закрыть админку" glyph="lock" onPress={() => {
+        action = <GlassIconButton label="Выйти из админки" glyph="logout" onPress={() => {
           sessionRef.current?.lock(); sessionRef.current = null; setSession(null); go(initialStep(factory, mode));
         }} />;
         body = <AdminConsole session={session!} onOpenChat={chatId => { void run(async () => {

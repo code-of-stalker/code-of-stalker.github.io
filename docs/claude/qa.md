@@ -61,6 +61,13 @@ parallel headless runs time out and leave skeleton placeholders on screen.
 - Hidden browser pane: route transitions stop mid-way (the screen sits ~16–21 px to the right)
   and one tab may capture a zoomed frame. For a clean shot set `style.transform = 'none'` on the
   full-width div whose inline transform is `translate3d(<n>px…)`; compare with another tab.
+- Hidden pane input: keyboard does not register. Press keypad keys and buttons by JS
+  `.click()` (RNW Pressable fires on click); set text fields with the native
+  `HTMLInputElement.prototype.value` setter plus an `input` event. Sheets need ~1 s before a shot.
+- `/admin` asks for a fresh TOTP code on every entry (PIN, then code); generate it right before
+  typing. Seed walkers, chats and a blocked one with a Node script that loads
+  `src/features/intensive/*.ts` through `typescript.transpileModule`, refuses any URL but
+  `127.0.0.1:54321`, and drives `IntensiveSession` as Яна (keep the words file out of the repo).
 - Theme on a fresh origin: `/settings`, click the radio by JS (`[role=radio]` «ТИШИНА»), wait
   1–2 s before leaving, or the choice is lost.
 - RLS spot checks: `begin; set local role authenticated; select set_config('request.jwt.claims',

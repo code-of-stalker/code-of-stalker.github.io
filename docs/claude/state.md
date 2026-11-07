@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Intensive chat shipped 2026-11-07; its redesign waits on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Intensive chat shipped 2026-11-07; its redesign, blocking and the /admin page wait on the branch. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -213,9 +213,24 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   memory only. Checked live in Тишина (3 PC origins + phone): welcome, 12 words, PIN, chats,
   unread mark and divider, chat as guide and walker, failed send, account, team, person card.
   Screenshots in `output/intensive-redesign/`. Other dark themes after Art's OK.
-- Waits for Art: an OK on the redesign look, then «Пушим» to ship it together with 967fa54
-  (the two fixes above). Small idea left: the list preview names a main admin by place
-  («ГЛАВНЫЙ АДМИН: …») when she is not a chat role; the chat itself shows her name.
+- Blocking + waiting (9deb99f, local): `profiles.blocked`, RPC `admin_block` (main admin only,
+  never a main admin), restrictive RLS `not_blocked` on chats/messages/keys. A blocked account
+  sees «ДОСТУП ЗАКРЫТ» with its code on entry; an already open session only gets «Нет доступа»
+  on send until it re-enters. Directory carries `waitingSince` (last walker message unanswered).
+- Admin page `/admin` (98db1db, local) after Art: «отдельную админку для Яны… назначать админов
+  и управлять всем». His picks: page on this site, block people, see who waits, table + bulk
+  move; no «назначать главных админов»; in-app ЛЮДИ tab stays. Route `src/app/(product)/admin.tsx`
+  (no menu link), `IntensiveFlow mode="console"`, `ui/AdminConsole.tsx` (table, filters ЖДУТ
+  ОТВЕТА / БЕЗ ПРОВОДНИКА / ДОСТУП ЗАКРЫТ, bulk move sheet, side card), `ui/PersonCard.tsx`
+  shared with the ЛЮДИ tab. Entry: fresh unlock = PIN + TOTP code every time, session only in
+  memory, never reseals the device; no device → 12 words; never creates accounts; locks after
+  5 min hidden; non-main-admins see «ТОЛЬКО ДЛЯ ГЛАВНОГО АДМИНА». Wide at ≥ 900 landscape,
+  АДМИН column and 380 side panel only at ≥ 1200, list below 900. Checked live in Тишина on the
+  local server (PC 1440, laptop 1024, tablet 820, phone 390 by numbers). Screenshots
+  `output/admin-console/`.
+- Waits for Art: re-run `supabase/intensive-schema.sql` on the real server (adds blocking), an
+  OK on the look, then «Пушим» for 967fa54..98db1db together. Small idea left: the list preview
+  names a main admin by place («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

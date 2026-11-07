@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -199,6 +199,13 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   Тишина checked so far (phone + PC); the other dark themes after his OK.
 
 ## Shipped features (all on main)
+- App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,
+  выкладывай»): an exit-sign runner as a solid black pictogram goes into a lit doorway; the
+  code rain is all around outside; the back foot still outside gets a light rim. Files
+  `assets/branding/exit-door-*` (web: favicon 32, apple-touch 180, manifest 192/512, 1024),
+  `assets/icon.png`, `assets/favicon.png` (48), Android adaptive: rain = background layer,
+  door + runner = foreground in the safe zone, monochrome = the doorway with the runner cut out.
+  16 px drops the rain. Generator lives outside the repo (resvg + MS Gothic glyphs).
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light
   ones (Дюна, Мираж, Рассвет) were taken off on Art's word, kept on `archive/light-themes`
   (5b67880); a saved light choice opens in Матрица. Their palettes and the Rust light branches

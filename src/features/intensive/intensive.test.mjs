@@ -127,9 +127,9 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
   assert.deepEqual(await mira.myChats(), []);
   await mira.verifyTotp('123456');
   const miraChats = await mira.myChats();
-  assert.equal(miraChats.length, 1);
-  await mira.chatCipher(miraChats[0].chatId);
-  assert.equal((await mira.messages(miraChats[0].chatId)).find(m => m.id === sent.id).text, 'Сегодня слушал дождь.');
+  assert.deepEqual(miraChats.map(row => row.walkerName).sort(), ['Алекс', 'Дина']);
+  await mira.chatCipher(chat.chatId);
+  assert.equal((await mira.messages(chat.chatId)).find(m => m.id === sent.id).text, 'Сегодня слушал дождь.');
 
   const yana = await as('Яна');
   await assert.rejects(yana.directory(), /totp/);
@@ -147,7 +147,7 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
   const hello = await nikaSession.send(chatId, 'Здравствуйте.');
   const miraNow = await as('Мира');
   await miraNow.verifyTotp('111111');
-  assert.equal((await miraNow.myChats()).length, 2);
+  assert.equal((await miraNow.myChats()).length, 3);
   await miraNow.chatCipher(chatId);
   assert.equal((await miraNow.messages(chatId)).find(m => m.id === hello.id).text, 'Здравствуйте.');
 
@@ -156,4 +156,51 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
   await stranger.createProfile('Чужой');
   assert.deepEqual(await stranger.myChats(), []);
   await assert.rejects(stranger.messages(chatId), /member/);
+});
+
+test('the main admin sees who waits, blocks a walker and opens access again', async () => {
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => p.name === name).entropy);
+  const yana = await as('Яна');
+  await yana.verifyTotp('123456');
+  let directory = await yana.directory();
+  const dina = directory.find(entry => entry.name === 'Дина');
+  assert.equal(dina.waitingSince, null);
+  assert.ok(dina.lastMessageAt);
+  assert.equal(directory.find(entry => entry.name === 'Тимур').blocked, true);
+
+  const walker = await as('Дина');
+  const [chat] = await walker.myChats();
+  await walker.chatCipher(chat.chatId);
+  const first = await walker.send(chat.chatId, 'Сравнила. На закате тени втрое длиннее.');
+  await walker.send(chat.chatId, 'И синее.');
+  directory = await yana.directory();
+  assert.equal(directory.find(entry => entry.name === 'Дина').waitingSince, first.createdAt);
+
+  await yana.setBlocked(dina.userId, true);
+  const blocked = await as('Дина');
+  assert.equal(blocked.status.blocked, true);
+  assert.deepEqual(await blocked.myChats(), []);
+  await assert.rejects(blocked.messages(chat.chatId), /member/);
+  await assert.rejects(yana.setBlocked(yana.id, true), /main admin/);
+
+  await yana.setBlocked(dina.userId, false);
+  const open = await as('Дина');
+  assert.equal(open.status.blocked, false);
+  assert.equal((await open.myChats()).length, 1);
+});
+
+test('a fresh unlock signs in anew and leaves the device session untouched', async () => {
+  storage.clear();
+  const { entropy } = phrase.newPhrase();
+  const session = await IntensiveSession.create(demoBackend, entropy);
+  await session.createProfile('Ева');
+  await session.sealDevice('482915');
+  session.lock();
+  const sealed = storage.get('intensive.device.v1');
+  const opened = await IntensiveSession.unlock(demoBackend, '482915', { fresh: true });
+  assert.equal(opened.status, 'ok');
+  assert.equal(opened.session.status.name, 'Ева');
+  assert.equal(storage.get('intensive.device.v1'), sealed);
+  opened.session.lock();
 });

@@ -191,6 +191,52 @@ describe('chat', () => {
   });
 });
 
+describe('blocking and waiting', () => {
+  const entryOf = async id => (await rows(people.yana, 'aal2', 'select * from public.admin_directory()')).find(r => r.user_id === id);
+  it('the directory shows since when a walker waits for an answer', async () => {
+    assert.equal((await entryOf(people.walker)).waiting_since, null);
+    await sendAs(people.walker, 'aal1', people.chat);
+    await sendAs(people.walker, 'aal1', people.chat);
+    const waiting = await entryOf(people.walker);
+    assert.ok(waiting.waiting_since instanceof Date);
+    assert.ok(waiting.last_message_at > waiting.waiting_since);
+    await sendAs(people.yana, 'aal2', people.chat);
+    const answered = await entryOf(people.walker);
+    assert.equal(answered.waiting_since, null);
+    assert.ok(answered.last_message_at > waiting.last_message_at);
+  });
+  it('a blocked walker reads and writes nothing until the main admin reopens them', async () => {
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, true)', [people.walker]);
+    const [{ my_status: status }] = await rows(people.walker, 'aal1', 'select public.my_status()');
+    assert.equal(status.blocked, true);
+    assert.equal((await entryOf(people.walker)).blocked, true);
+    assert.equal((await rows(people.walker, 'aal1', 'select * from public.messages')).length, 0);
+    assert.equal((await rows(people.walker, 'aal1', 'select * from public.profiles')).length, 0);
+    assert.equal((await rows(people.walker, 'aal1', 'select * from public.chat_keys')).length, 0);
+    assert.deepEqual(await rows(people.walker, 'aal1', 'select * from public.my_chats()'), []);
+    await fails(rows(people.walker, 'aal1', 'select * from public.chat_members($1)', [people.chat]), /not a member/);
+    await fails(sendAs(people.walker, 'aal1', people.chat), /row-level security/);
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, false)', [people.walker]);
+    assert.ok((await rows(people.walker, 'aal1', 'select * from public.messages')).length > 4);
+    assert.equal((await entryOf(people.walker)).blocked, false);
+  });
+  it('a blocked guide loses their chats while blocked', async () => {
+    await rows(people.yana, 'aal2', 'select public.admin_assign_guide($1, $2)', [people.walker, people.guide]);
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, true)', [people.guide]);
+    assert.equal((await rows(people.guide, 'aal2', 'select * from public.messages')).length, 0);
+    assert.deepEqual(await rows(people.guide, 'aal2', 'select * from public.my_chats()'), []);
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, false)', [people.guide]);
+    assert.equal((await rows(people.guide, 'aal2', 'select * from public.my_chats()')).length, 1);
+  });
+  it('only the main admin blocks, with a TOTP session, and never a main admin', async () => {
+    await fails(rows(people.stranger, 'aal2', 'select public.admin_block($1, true)', [people.walker]), /main admin only/);
+    await fails(rows(people.yana, 'aal1', 'select public.admin_block($1, true)', [people.walker]), /totp session required/);
+    await fails(rows(people.yana, 'aal2', 'select public.admin_block($1, true)', [people.yana]), /cannot be blocked/);
+    await fails(rows(people.walker, 'aal1', 'select * from public.blocked_accounts'), /permission denied/);
+    await fails(rows(people.walker, 'aal1', 'insert into public.blocked_accounts (user_id) values ($1)', [people.stranger]), /permission denied/);
+  });
+});
+
 describe('device PIN', () => {
   const verifier = b64(randomBytes(32)), device = randomUUID();
   it('registers a device and returns a pepper once', async () => {

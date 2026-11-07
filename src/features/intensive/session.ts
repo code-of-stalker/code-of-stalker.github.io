@@ -123,7 +123,11 @@ export class IntensiveSession {
     return this.saving;
   }
 
-  static async unlock(factory: BackendFactory, pin: string): Promise<
+  /**
+   * `fresh` signs in anew and keeps that session in memory only: a second tab
+   * (the admin page) must not rotate the refresh token the first tab holds.
+   */
+  static async unlock(factory: BackendFactory, pin: string, { fresh = false } = {}): Promise<
     { status: 'ok'; session: IntensiveSession } | { status: 'wrong'; left: number } | { status: 'wiped' }
   > {
     const stored = readDevice();
@@ -137,15 +141,15 @@ export class IntensiveSession {
     secret.fill(0);
     const contents = JSON.parse(c.decodeText(await c.unseal(key, stored.sealed, `device|${stored.deviceId}`))) as DeviceContents;
     const store = new MemoryStore();
-    for (const [name, value] of Object.entries(contents.store ?? {})) store.items.set(name, value);
+    if (!fresh) for (const [name, value] of Object.entries(contents.store ?? {})) store.items.set(name, value);
     const session = new IntensiveSession(factory, c.fromBase64(contents.entropy), store);
     session.device = { id: stored.deviceId, salt: stored.salt, key };
-    store.onChange = () => { void session.persist(); };
-    if (!await session.backend.resume()) {
+    if (!fresh) store.onChange = () => { void session.persist(); };
+    if (fresh || !await session.backend.resume()) {
       const { email, password } = await c.accountCredentials(session.entropy);
       if (await session.backend.signIn(email, password) === 'not-found') { wipeDevice(); return { status: 'wiped' }; }
     }
-    await session.persist();
+    if (!fresh) await session.persist();
     await session.refresh();
     return { status: 'ok', session };
   }
@@ -264,6 +268,7 @@ export class IntensiveSession {
 
   directory(): Promise<DirectoryEntry[]> { return this.backend.directory(); }
   setRole(userId: string, role: StaffRole, enabled: boolean) { return this.backend.setRole(userId, role, enabled); }
+  setBlocked(userId: string, blocked: boolean) { return this.backend.setBlocked(userId, blocked); }
 
   async assignGuide(walkerId: string, guideId: string | null) {
     const chatId = await this.backend.assignGuide(walkerId, guideId);

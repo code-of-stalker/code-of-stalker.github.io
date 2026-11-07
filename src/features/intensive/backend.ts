@@ -11,6 +11,8 @@ export type Status = {
   aal: 'aal1' | 'aal2';
   hasTotp: boolean;
   needsTotp: boolean;
+  /** Closed by the main admin: the server returns no data until unblocked. */
+  blocked: boolean;
 };
 
 export type ChatSummary = {
@@ -35,6 +37,10 @@ export type MessageRow = {
 export type DirectoryEntry = {
   userId: string; name: string; createdAt: string; roles: StaffRole[]; mainAdmin: boolean;
   chatId: string | null; guideId: string | null; adminId: string | null;
+  blocked: boolean;
+  lastMessageAt: string | null;
+  /** The walker's first message after the team's last answer; null when nobody waits. */
+  waitingSince: string | null;
 };
 
 export type UnlockResult =
@@ -92,6 +98,8 @@ export interface Backend {
   setRole(userId: string, role: StaffRole, enabled: boolean): Promise<void>;
   assignGuide(walkerId: string, guideId: string | null): Promise<string>;
   assignAdmin(guideId: string, adminId: string | null): Promise<void>;
+  /** Main admin only; a main admin cannot be blocked. */
+  setBlocked(userId: string, blocked: boolean): Promise<void>;
 }
 
 export interface BackendFactory {

@@ -14,6 +14,8 @@
 --   without an aal2 (TOTP-verified) session: a restrictive policy on every table.
 -- * The PIN of each device is checked here: five wrong PINs delete the device's
 --   pepper, and the device can no longer open its sealed phrase.
+-- * A blocked account gets no data at all (a second restrictive policy) until the
+--   main admin unblocks it; its history stays.
 -- * The main admin is set by the project owner in this SQL editor only:
 --     insert into public.main_admins (user_id) values ('<account id from the app>');
 
@@ -104,6 +106,12 @@ create table if not exists public.devices (
 );
 create index if not exists devices_user_id_idx on public.devices (user_id);
 
+-- Accounts the main admin closed. Reached only through the functions below.
+create table if not exists public.blocked_accounts (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  blocked_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.identity_keys enable row level security;
 alter table public.main_admins enable row level security;
@@ -113,6 +121,7 @@ alter table public.chats enable row level security;
 alter table public.chat_keys enable row level security;
 alter table public.messages enable row level security;
 alter table public.devices enable row level security;
+alter table public.blocked_accounts enable row level security;
 
 -- ---------------------------------------------------------------- private helpers
 -- The private schema is not exposed through the API, so these are not callable
@@ -121,6 +130,11 @@ alter table public.devices enable row level security;
 create or replace function private.is_main_admin(uid uuid default auth.uid())
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.main_admins m where m.user_id = uid);
+$$;
+
+create or replace function private.is_blocked(uid uuid default auth.uid())
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.blocked_accounts b where b.user_id = uid);
 $$;
 
 create or replace function private.is_staff(uid uuid default auth.uid())
@@ -186,7 +200,7 @@ create or replace function private.require_member(chat uuid)
 returns text language plpgsql stable security definer set search_path = '' as $$
 declare place text := private.chat_role(chat, auth.uid());
 begin
-  if place is null or not private.mfa_ok() then
+  if place is null or not private.mfa_ok() or private.is_blocked(auth.uid()) then
     raise exception 'not a member of this chat' using errcode = '42501';
   end if;
   return place;
@@ -199,10 +213,13 @@ do $$
 declare t text;
 begin
   foreach t in array array['profiles', 'identity_keys', 'main_admins', 'staff_roles',
-    'guide_admins', 'chats', 'chat_keys', 'messages', 'devices'] loop
+    'guide_admins', 'chats', 'chat_keys', 'messages', 'devices', 'blocked_accounts'] loop
     execute format('drop policy if exists mfa_required on public.%I', t);
     execute format('create policy mfa_required on public.%I as restrictive for all to authenticated
       using (private.mfa_ok()) with check (private.mfa_ok())', t);
+    execute format('drop policy if exists not_blocked on public.%I', t);
+    execute format('create policy not_blocked on public.%I as restrictive for all to authenticated
+      using (not private.is_blocked(auth.uid())) with check (not private.is_blocked(auth.uid()))', t);
   end loop;
 end;
 $$;
@@ -290,7 +307,8 @@ create trigger stamp_chat_key before insert on public.chat_keys
 -- ---------------------------------------------------------------- grants
 
 revoke all on public.profiles, public.identity_keys, public.main_admins, public.staff_roles,
-  public.guide_admins, public.chats, public.chat_keys, public.messages, public.devices
+  public.guide_admins, public.chats, public.chat_keys, public.messages, public.devices,
+  public.blocked_accounts
   from anon, authenticated, public;
 grant select, insert (id, name, public_key), update (name) on public.profiles to authenticated;
 grant select, insert (user_id, iv, wrapped_private_key) on public.identity_keys to authenticated;
@@ -311,7 +329,8 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'main_admin', private.is_main_admin(auth.uid()),
     'aal', coalesce(auth.jwt() ->> 'aal', 'aal1'),
     'has_totp', exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status::text = 'verified'),
-    'needs_totp', private.is_staff(auth.uid()));
+    'needs_totp', private.is_staff(auth.uid()),
+    'blocked', private.is_blocked(auth.uid()));
 $$;
 
 -- Seal a device: the client sends a PIN verifier, the server keeps it with a
@@ -373,7 +392,7 @@ returns table (chat_id uuid, walker_id uuid, walker_name text, guide_id uuid, gu
   admin_id uuid, admin_name text, my_role text, last_message_id bigint, last_message_at timestamptz)
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if auth.uid() is null or not private.mfa_ok() then return; end if;
+  if auth.uid() is null or not private.mfa_ok() or private.is_blocked(auth.uid()) then return; end if;
   return query
     select c.id, c.walker_id, w.name, c.guide_id, g.name, ga.admin_id, a.name,
       private.chat_role(c.id, auth.uid()), m.id, m.created_at
@@ -406,10 +425,13 @@ begin
 end;
 $$;
 
--- The main admin's view of every account.
-create or replace function public.admin_directory()
+-- The main admin's view of every account. Message times only, never content:
+-- `waiting_since` is the first walker message after the last answer from the
+-- staff, null when nothing waits. Dropped first, as its columns grew.
+drop function if exists public.admin_directory();
+create function public.admin_directory()
 returns table (user_id uuid, name text, created_at timestamptz, roles text[], main_admin boolean,
-  chat_id uuid, guide_id uuid, admin_id uuid)
+  chat_id uuid, guide_id uuid, admin_id uuid, blocked boolean, last_message_at timestamptz, waiting_since timestamptz)
 language plpgsql stable security definer set search_path = '' as $$
 begin
   perform private.require_main_admin();
@@ -417,10 +439,34 @@ begin
     select p.id, p.name, p.created_at,
       coalesce(array(select r.role from public.staff_roles r where r.user_id = p.id order by r.role), '{}'),
       private.is_main_admin(p.id), c.id, c.guide_id,
-      (select ga.admin_id from public.guide_admins ga where ga.guide_id = p.id)
+      (select ga.admin_id from public.guide_admins ga where ga.guide_id = p.id),
+      private.is_blocked(p.id),
+      (select max(m.created_at) from public.messages m where m.chat_id = c.id),
+      (select min(m.created_at) from public.messages m
+        where m.chat_id = c.id and m.sender_role = 'walker'
+          and m.id > coalesce((select max(s.id) from public.messages s where s.chat_id = c.id and s.sender_role <> 'walker'), 0))
     from public.profiles p
     left join public.chats c on c.walker_id = p.id
     order by p.created_at desc;
+end;
+$$;
+
+-- Close or reopen an account. A main admin cannot be blocked.
+create or replace function public.admin_block(target uuid, blocked boolean)
+returns void language plpgsql volatile security definer set search_path = '' as $$
+begin
+  perform private.require_main_admin();
+  if not exists (select 1 from public.profiles p where p.id = target) then
+    raise exception 'no such account' using errcode = '22023';
+  end if;
+  if private.is_main_admin(target) then
+    raise exception 'a main admin cannot be blocked' using errcode = '22023';
+  end if;
+  if blocked then
+    insert into public.blocked_accounts (user_id) values (target) on conflict do nothing;
+  else
+    delete from public.blocked_accounts b where b.user_id = target;
+  end if;
 end;
 $$;
 
@@ -490,14 +536,16 @@ returns int language sql stable set search_path = '' as $$ select 1; $$;
 revoke all on function public.my_status(), public.register_device(uuid, text),
   public.unlock_device(uuid, text), public.forget_device(uuid), public.my_chats(),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
-  public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid), public.ping()
+  public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
+  public.admin_block(uuid, boolean), public.ping()
   from public, anon, authenticated;
 revoke all on all functions in schema private from public, anon;
 grant execute on all functions in schema private to authenticated;
 grant execute on function public.my_status(), public.register_device(uuid, text),
   public.unlock_device(uuid, text), public.forget_device(uuid), public.my_chats(),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
-  public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid), public.ping()
+  public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
+  public.admin_block(uuid, boolean), public.ping()
   to authenticated;
 grant execute on function public.unlock_device(uuid, text), public.ping() to anon;
 

@@ -66,6 +66,7 @@ function connect(config: Config, store: AuthStore): Backend {
         id: String(raw.id), name: optional(raw.name), hasProfile: !!raw.has_profile,
         roles: (raw.roles as StaffRole[]) ?? [], mainAdmin: !!raw.main_admin,
         aal: raw.aal === 'aal2' ? 'aal2' : 'aal1', hasTotp: !!raw.has_totp, needsTotp: !!raw.needs_totp,
+        blocked: !!raw.blocked,
       } satisfies Status;
     },
     async createProfile(id, name, publicKey, wrapped) {
@@ -171,11 +172,13 @@ function connect(config: Config, store: AuthStore): Backend {
         userId: String(row.user_id), name: String(row.name), createdAt: String(row.created_at),
         roles: (row.roles as StaffRole[]) ?? [], mainAdmin: !!row.main_admin,
         chatId: optional(row.chat_id), guideId: optional(row.guide_id), adminId: optional(row.admin_id),
+        blocked: !!row.blocked, lastMessageAt: optional(row.last_message_at), waitingSince: optional(row.waiting_since),
       }));
     },
     async setRole(userId, role, enabled) { await rpc('admin_set_role', { target: userId, kind: role, enabled }); },
     assignGuide: (walkerId, guideId) => rpc<string>('admin_assign_guide', { walker: walkerId, guide: guideId }),
     async assignAdmin(guideId, adminId) { await rpc('admin_assign_admin', { guide: guideId, admin: adminId }); },
+    async setBlocked(userId, blocked) { await rpc('admin_block', { target: userId, blocked }); },
   };
 }
 

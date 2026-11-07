@@ -16,7 +16,8 @@ function supportedMime() {
 }
 // Own the browser stream: a late permission grant must release every track
 // without starting a recording after cancellation or navigation.
-export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS) {
+/** `bitsPerSecond` lets a caller that uploads the audio ask for a smaller file. */
+export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS, bitsPerSecond = 64_000) {
   const { settings } = useProduct();
   const selectedInput = settings.microphoneDeviceId ?? '';
   const [inputLabel, setInputLabel] = useState('');
@@ -90,7 +91,7 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS)
       if (!alive.current || token !== generation.current) { opened.getTracks().forEach(track => track.stop()); return; }
       stream.current = opened;
       setInputLabel(input.label);
-      const recorder = new MediaRecorder(opened, { mimeType, audioBitsPerSecond: 64_000 }); media.current = recorder;
+      const recorder = new MediaRecorder(opened, { mimeType, audioBitsPerSecond: bitsPerSecond }); media.current = recorder;
       const chunks: Blob[] = [], levels: number[] = [];
       const signal = createMicrophoneSignalMonitor();
       const track = opened.getAudioTracks()[0];
@@ -159,7 +160,7 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS)
       media.current = null; releaseStream();
       if (token === generation.current) publish({ ...initial, phase: 'error', error: microphoneError(problem) });
     } finally { preparing.current = false; }
-  }, [audioSource, limitSeconds, mimeType, publish, releaseStream, releaseUri, stop, supported, selectedInput]);
+  }, [audioSource, bitsPerSecond, limitSeconds, mimeType, publish, releaseStream, releaseUri, stop, supported, selectedInput]);
   const cancel = useCallback(async () => {
     ++generation.current;
     const recorder = media.current;

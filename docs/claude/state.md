@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 page 04 built on the branch, waits for Art. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -144,7 +144,7 @@ briefs in `docs/step-five-illustrations-ru.md`. Page scenes go through `StepFive
   title), not by wheel.
 - Step 5's last page (07) scrolls on into Step 6 page 01.
 
-## Step 6 «Внутреннее кольцо» (branch `claude/step-6-inner-sphere`)
+## Step 6 «Внутреннее кольцо» (scenes on branch `claude/step-6-scenes`)
 Shipped to `main` 2026-11-01 with placeholders only (Art: «собери концепт после чего добавь на
 сайт вместе с заглушками»). 10 reading pages, author's text unchanged
 (`src/features/product/stepSixContent.ts`; emoji dropped, «потенциальностьПрисутствия» split).
@@ -165,7 +165,28 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Next: page scenes 01–10 continue on `claude/step-6-scenes`.
+- Page 01 «Внутрь» (inner-second-level), shipped to `main` 2026-11-07 (Art: «Пушим»),
+  direction Б «Эхо»: crate `graphics/inner-echo`,
+  bridge `InnerEcho.web.tsx`, `webScene: 'inner-echo'`. «Срез» (`inner-slice`) was rejected
+  2026-11-07 and removed. A man sits upright on a chair; the outer ring is a turning orbit of
+  perception, the inner one a warm level ring calmly scanning him feet ↔ crown (16.5 s). Four
+  «Без…» beats with captions: on «Без проваливания» only the head with a thought knot stays; on
+  «Без ухода в образы себя» the head beams out four different images of himself. 66 s loop;
+  five rounds of Art's notes, history and beats in the crate README. Тишина approved
+  2026-11-07 («Ок, делай темы»); Искра, Астрал, Матрица needed no color change (sheets
+  `output/prototypes/inner-echo/kadry-tishina-5.jpg`, `kadry-temy-5.jpg`).
+- Page 02 «Каркас» (inner-outer-orbit), shipped to `main` 2026-11-08 (Art: «Пушим»), direction
+  В «Стройка»: crate `graphics/inner-frame`, bridge `InnerFrame.web.tsx`,
+  `webScene: 'inner-frame'`. A ring truss on six legs as a 3D blueprint (hidden lines dashed,
+  floor grid, plan circle), camera slowly orbiting; built module by module, then it spins; six
+  signals with callouts light the node where they land; «якорь» piles into the floor; «не
+  должен выключаться» everything dims but the truss; «каркас» warm posts and next tiers. 60 s
+  loop, still at 51 s; beats in the crate README. Тишина approved with no notes («Ок, делай
+  темы»); Искра, Астрал, Матрица needed no change (sheets
+  `output/prototypes/inner-frame/kadry-tishina.jpg`, `kadry-temy.jpg`). Export checked at
+  1440×900 and 390×844 in all 4 dark themes: ready, no graphics error.
+- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 03–08 on `claude/step-6-scenes`,
+  2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)
 Shipped to `main` 2026-11-01 (Art: «Пушим»): text, hero, page 01 scene, placeholders 02–10.
@@ -186,29 +207,23 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   «Жизнь в сфере» (chapter 2, `dynamic-life`), page 03 «Ночь и фонарь» (chapter 3,
   `dynamic-night`). Both checked in the 4 dark themes and in a production export (ready,
   gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on page 04, ring 3 on page 05.
-- In work: page 04 «Второе кольцо», Art chose Б «Не проваливаться» (2026-11-07): something
-  arises inside and branches, the crown dims, the person is pulled in; the warm scanner (ring 2,
-  like the Step 6 hero's inner warmth) touches it and it folds into one point, the crown
-  relights. Chapter 4 built on the branch (commit 911ba3e, 2026-11-08): four events, shorter
-  each time (thought above the head, emotion in the chest, impulse at the right fingertips,
-  sensation at the left knee); each leaves a warm bead on the body; far side camera. Warm
-  light rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 stay
-  pixel-identical. Матрица prototype and sheet `output/prototypes/step-seven/kadry-04.jpg`
-  sent to Art. Art then asked (2026-11-08) for a point in the belly, the thought lifting the
-  figure off the floor while it melts from the feet up, and each event visibly dragging the
-  body its way: done (five events, belly spark at 26.3; `INNER_PULL`, `inner_way`, melt in
-  `body.vert`), sheet `kadry-04-v2.jpg` sent. Art: the hand and knee were over too fast, and
-  he must not stop on the thought: now he walks through it all (96 steady steps, no prints while
-  aloft), the impulse flares at 33.5 (4 s to the touch), the knee at 43.6 with a small tree
-  (3 s); sheet `kadry-04-v3.jpg` sent. Art: «Ок, другие темы» (2026-11-08): Тишина, Искра,
-  Астрал checked, the authored warm colors read, no change; sheet `kadry-04-temy.jpg` sent.
-  Wired into the app: page `dynamic-second-ring` → scene `dynamic-inner` → chapter 4.
-  `main` needs a new OK.
+- Shipped to `main` 2026-11-08 (Art: «Пушим»): page 04 «Второе кольцо» (chapter 4,
+  `dynamic-inner`), direction Б «Не проваливаться». The figure walks on (96 steady steps);
+  five warm events flare and branch (thought at the head, emotion in the chest, a spark in the
+  belly, impulse at the right fingertips, sensation at the left knee), each drags the body its
+  way (`INNER_PULL`, `inner_way`), the crown dims and the world darkens; the thought lifts him
+  0.2 m and melts him from the feet up while he keeps walking. The warm scanner reaches each,
+  it folds into a warm bead, the crown relights; five beads fade by the loop's end. Warm light
+  rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 pixel-identical.
+  Checked in the 4 dark themes (sheet `output/prototypes/step-seven/kadry-04-temy.jpg`) and in
+  a production export. Ring 3 joins on page 05.
 - Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
-Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»).
+Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything
+below (redesign … sign-out door) shipped to `main` together on 2026-11-08 (Art: «Пушим»), after
+Art re-ran `supabase/intensive-schema.sql` on the real server.
 - Three places per chat: идущий, его проводник, админ этого проводника; Яна is the main
   admin (also a guide), set only by SQL in `public.main_admins`. One chat per walker; the
   history stays with the walker when the guide changes.
@@ -221,12 +236,67 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   (connect-src adds the server read from config.ts via `scripts/intensive-server.mjs`).
   Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
 - Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
-  «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
+  «готовится» modal. Dev builds never use it: they use a local Supabase named in `.env.local`
+  (`EXPO_PUBLIC_INTENSIVE_URL/KEY`), else the in-memory demo (Яна Орлова, Мира Соколова, Олег Ветров, Алекс Морозов, Ника Зорина…).
 - Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
   (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
   there by Claude. Next, Art: setup steps 5–7 (GitHub 2FA, Яна's account + SQL main admin,
-  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on). Only
-  Тишина checked so far (phone + PC); the other dark themes after his OK.
+  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on).
+- End-to-end test 2026-11-07 on a local Supabase (recipe in `qa.md`): Яна + Мира + Олег on
+  three PC origins, Алекс on Art's phone (Chrome over USB). Passed: sign-up, roles, guide/admin
+  assignment, TOTP gate, live delivery both ways, ciphertext only in the DB, RLS per role
+  (walker, stranger, staff at aal1, removed admin, anon), removed admin cannot send, 5 wrong
+  PINs wipe the device, restore by words reopens the history. Fixed since: a guide/admin assigned while the chat was open showed as «бывший участник»
+  (ChatView now reloads members), PIN step after restore said «новый аккаунт».
+- Redesign 2026-11-07 (4d1074a) after Art: «выглядит как сыроватый
+  прототип… телеграмма… бери компоненты из дневника». Shared chrome in `ui/chrome.tsx`
+  (diary glass, `fitPanelPath` contours, Hero, ProfileHead, ListGroup/ListItem, ConfirmSheet on
+  `BottomSheet`). Telegram-style chat list and chat (grouping, ticks, day rows, «новые
+  сообщения», jump-down, retry/remove, drafts), PIN pad on contour keys, entry steps, account
+  and people screens rebuilt. Seen ids in localStorage (`chatMemory.ts`), drafts/previews in
+  memory only. Checked live in Тишина (3 PC origins + phone): welcome, 12 words, PIN, chats,
+  unread mark and divider, chat as guide and walker, failed send, account, team, person card.
+  Screenshots in `output/intensive-redesign/`. Other dark themes after Art's OK.
+- Blocking + waiting (9deb99f): `profiles.blocked`, RPC `admin_block` (main admin only,
+  never a main admin), restrictive RLS `not_blocked` on chats/messages/keys. A blocked account
+  sees «ДОСТУП ЗАКРЫТ» with its code on entry; an already open session only gets «Нет доступа»
+  on send until it re-enters. Directory carries `waitingSince` (last walker message unanswered).
+- Admin page `/admin` (98db1db, reworked in df3c87e) after Art: «отдельную админку для
+  Яны… назначать админов и управлять всем». His picks: page on this site, block people, see who
+  waits, table + bulk move; no «назначать главных админов»; in-app ЛЮДИ tab stays. Route
+  `src/app/(product)/admin.tsx` (no menu link), `IntensiveFlow mode="console"`,
+  `ui/AdminConsole.tsx`, `ui/PersonCard.tsx` shared with the ЛЮДИ tab. Entry: fresh unlock = PIN
+  + TOTP every time, session only in memory, never reseals the device; no device → 12 words;
+  never creates accounts; locks after 5 min hidden; non-main-admins see «ТОЛЬКО ДЛЯ ГЛАВНОГО
+  АДМИНА». Rework after Art's «исполнение кривоватое»: wide (2 columns) = fixed workspace, toolbar
+  (tabs, search, «ОБНОВЛЕНО hh:mm», 30 s auto refresh), filter chips with counts, master table with
+  64 px rows and a state column, side pane 400 (≥ 1200) / 340 with the card or an overview (ЖДУТ
+  ОТВЕТА top 5, new walkers without a guide, guide load); checkboxes → bulk bar → move sheet.
+  Phone: one column, the card replaces the list. All admin texts use «Вы» (`FormalTone` in
+  `ui/parts.tsx`; walker screens keep «ты»). Screenshots `output/admin/1…9-*.png`.
+- Chat edits (df3c87e) after Art: voice messages (diary hold gesture, `ui/useChatVoice.ts`,
+  audio sealed apart in `message_media`, 3 min max), edit/delete own messages from a long-press
+  menu, «ИЗМЕНЕНО» mark, follow-up bubbles without the cut corner on both sides, no member
+  avatars over the chat, no «переписка зашифрована» footer. Shared files touched:
+  `useObservationRecorder.ts` (optional bit rate), `DiaryRecordButton.tsx` (type export).
+  Checked live in Тишина on the local server (PC + phone sizes): admin overview, card, bulk move,
+  phone list/card; chat send, edit, delete, voice record/play/delete. Headless Chrome needs
+  `--use-fake-device-for-media-stream` for voice tests.
+- Admin + names (5f59508) after Art's marked screenshot: no avatars on /admin (table,
+  overview, person card; `avatars={false}`, the ЛЮДИ tab and chats keep them), «ОБНОВЛЕНО» left
+  of the search, plain square check boxes, panes facing each other keep square corners (list
+  `cut="bottomLeft"`, side `cut="topRight"`; phone keeps both cuts), ПОСЛЕДНЕЕ column fits a date.
+  Names = first name + surname (Art: «Имя и фамилия»): `NameStep` has two fields; a one-word
+  account gets «ДОБАВЬ ФАМИЛИЮ» after TOTP (`session.rename`, existing `profiles_rename` RLS, no
+  new SQL). Real accounts with one-word names will see that step once.
+- Then (21afc53) after Art: «замочек чтобы закрыть? странное решение», «чекбоксы огромные», search
+  icon pressed to the edge, search as wide as the plate below. Header button is now a sign-out
+  door `logout` («Выйти из админки»: drops the session, back to the entry); check boxes 14 px;
+  `GlassField` right icon at 14 px inset (all Intensive searches); PC search width = side pane.
+  Screenshots `output/admin/admin-wide-v4.png`, `admin-phone-v4.png`, `name-surname-step.png`.
+- Next, Art: check the live site (/intensive and /admin); the other dark themes after his OK.
+  Small idea left: the list preview names a main admin by place
+  («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
 - App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,

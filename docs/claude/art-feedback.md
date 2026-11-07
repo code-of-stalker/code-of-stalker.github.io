@@ -69,6 +69,17 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A twinkle that chops the figure's lines into dashes reads as «белые шумы по человеку»: sparkle only point stars of the background, never the figure or the cube. (Hero.)
 - A ripple must come from where its cause is: «волна должна исходить не от рандомной точки пола а от ног». (Hero.)
 - An «inner» scene must show the inside being scanned: «нехватает сканирования внутреннего»; a plane of light now passes through the figure head to feet and lights its inner lines. (Hero.)
+- Page 01 «Срез» rejected 2026-11-07: «странно всё выглядит и тексту мало соответствует». A body in
+  height lines, cut by a plane, with abstract disturbances (funnel, crosshair, trefoil) read as odd
+  and not as the text (orbit of perception, going inward, inner ring against the outer one).
+- A seated person sits normally on a chair with a straight back, never cross-legged or in lotus
+  («он должен нормально сидеть на стуле с прямой спиной»). Applies to every Step 6 figure.
+- Page 01 «Внутрь» (Б «Эхо», rounds 2–5): presence is spherical and the outer ring keeps
+  turning («Сферичное!»); no filled spheres; exactly two rings, outer and inner, nothing
+  extra; the inner ring scans the whole person, calmly, with no jerky jumps between body
+  parts; on «Без проваливания» the body vanishes and the head stays, never a second person;
+  «образы себя» are different images of himself, not a mirrored copy; the «Без…» beats get
+  the most time. Passed and shipped 2026-11-07.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
@@ -82,6 +93,15 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
 - Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
 - Walkers may be in Russia; check that every service the app uses works there.
+- The first chat UI read as «сыроватый прототип»: he wants messenger quality (Telegram as the model) built from the diary's own components (glass, framed contours, bottom sheet, Disket/Tektur roles), not new ad-hoc parts.
+- The first admin page was «идея нравится исполнение кривоватое»: empty columns, small rows and a cramped layout. Admin tools need real UI/UX care: big rows, no wasted columns, master-detail (list + side card), clear filters and bulk actions.
+- The admin page speaks formally: «в админке более уважительный тон, не на "ты"». Walker screens keep «ты».
+- Chat details he asked for: no cut top corner on follow-up bubbles (both sides), no member icons over the chat, no «переписка зашифрована» footer; show «изменено» on edited messages.
+- Admin page: no avatars at all (letters in frames read as noise in a table); plain square check boxes, not the diary's cut icon frame; refresh line left of the search.
+- Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
+- A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
+- Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
+- People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).
 
 ## App icon (2026-11-07)
 - The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).

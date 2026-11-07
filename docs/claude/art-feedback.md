@@ -88,6 +88,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A loop of simple actions (sit, rise, walk, sit) lacked plot: «не хватает сюжета». Work at a laptop, a talk with a second person and work again passed, and the rings and glass glowed softer so the action led. (Page 02.)
 - A scene must plainly belong to its page text: «как оно к тексту относится вообще?». A top view where all the rings cover the figure confused him. A low side camera with only the ring the text names (ring 1) lit passed. (Page 03.)
 - For page 04 he chose a scene with a plot (Б: get pulled in, the scanner brings you back) over the recommended calm one (А: beads of facts). Drama over a quiet catalogue. (Page 04.)
+- Something inside must visibly act on the body: a sprout alone was not enough, «оно реально как будто тянуло человека куда-то». A thought lifts him and melts him from the feet up. (Page 04.)
+- Give each event time before the scanner closes it («почти ничего не успевает произойти»): 3–4 s from flare to touch passed. Being pulled in must not stop the walk («на мысли человек не должен останавливаться»). (Page 04.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
@@ -99,6 +101,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Chat details he asked for: no cut top corner on follow-up bubbles (both sides), no member icons over the chat, no «переписка зашифрована» footer; show «изменено» on edited messages.
 - Admin page: no avatars at all (letters in frames read as noise in a table); plain square check boxes, not the diary's cut icon frame; refresh line left of the search.
 - Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
+- The same in a run of chat bubbles: no cuts where two bubbles of one writer meet, only the outer corners of the run.
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).

@@ -54,12 +54,25 @@ export function Glyph({ name, size = 20, color }: { name: GlyphName; size?: numb
 
 const svgSource = (svg: string) => ({ uri: 'data:image/svg+xml;utf8,' + encodeURIComponent(svg) });
 const ICON_CONTOUR = 'M33.4473 .125L43.875 10.5527V41.875H10.5527L.125 31.4473V.125Z';
-// Own bubbles keep the lower right corner whole, the others the lower left: the corner that points to the writer.
-const OWN_CONTOUR = 'M111.875 .125L119.875 8.125V39.875H8.125L.125 31.875V.125Z';
-const OTHER_CONTOUR = 'M8.125 .125H119.875V31.875L111.875 39.875H.125V8.125Z';
-// The next bubbles of a run keep their top corner whole, so the run reads as one block.
-const OWN_REST_CONTOUR = 'M.125 .125H119.875V39.875H8.125L.125 31.875Z';
-const OTHER_REST_CONTOUR = 'M.125 .125H119.875V31.875L111.875 39.875H.125Z';
+/** A bubble's place in a run of messages from one writer. */
+export type BubbleSpot = 'alone' | 'head' | 'middle' | 'tail';
+// Own bubbles keep the lower right corner whole, the others the lower left: the corner that points
+// to the writer. Inside a run only the outer corners are cut (the top one on the first bubble, the
+// bottom one on the last), so the bubbles read as one block.
+const OWN_CONTOURS: Record<BubbleSpot, string> = {
+  alone: 'M111.875 .125L119.875 8.125V39.875H8.125L.125 31.875V.125Z',
+  head: 'M111.875 .125L119.875 8.125V39.875H.125V.125Z',
+  middle: 'M.125 .125H119.875V39.875H.125Z',
+  tail: 'M.125 .125H119.875V39.875H8.125L.125 31.875Z',
+};
+const OTHER_CONTOURS: Record<BubbleSpot, string> = {
+  alone: 'M8.125 .125H119.875V31.875L111.875 39.875H.125V8.125Z',
+  head: 'M8.125 .125H119.875V39.875H.125V8.125Z',
+  middle: 'M.125 .125H119.875V39.875H.125Z',
+  tail: 'M.125 .125H119.875V31.875L111.875 39.875H.125Z',
+};
+const spots: BubbleSpot[] = ['alone', 'head', 'middle', 'tail'];
+export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ? last ? 'alone' : 'head' : last ? 'tail' : 'middle';
 
 /** Authored frames for this section; PanelArtwork moves their anchors to the layout size. */
 export function useIntensiveFrames() {
@@ -73,8 +86,8 @@ export function useIntensiveFrames() {
     const other = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
     return {
-      own: own(OWN_CONTOUR), ownRest: own(OWN_REST_CONTOUR),
-      other: other(OTHER_CONTOUR), otherRest: other(OTHER_REST_CONTOUR),
+      own: Object.fromEntries(spots.map(spot => [spot, own(OWN_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
+      other: Object.fromEntries(spots.map(spot => [spot, other(OTHER_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       icon: svgSource(`<svg width="44" height="42" viewBox="0 0 44 42" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${ICON_CONTOUR}" stroke="${colors.accent}" stroke-width="0.25"/></svg>`),
       input: diaryArtwork('input', colors, true),

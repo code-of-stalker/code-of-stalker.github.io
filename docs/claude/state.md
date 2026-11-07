@@ -164,9 +164,11 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   sphere rim, no floor circle); on «Без проваливания» the body below the head vanishes and
   the camera closes on the head with the knot; on «Без ухода в образы себя» the head beams
   out four different images of himself in an arc (arms up, striding, hands on hips, curled
-  on the floor; `src/selves.rs`), not a mirrored double. Beats in the crate README. Тишина
-  prototype `output/prototypes/inner-echo/index.html`, sheet `kadry-tishina-4.jpg`; shown to
-  Art, waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
+  on the floor; `src/selves.rs`), not a mirrored double. Round 5 (2026-11-07): «Без
+  проваливания» 10 s and «Без ухода в образы себя» 11 s, loop 66 s; the inner ring is calm
+  (feet ↔ crown every 16.5 s, shape eased over ±10 cm, `SCAN_EASE`, with a per-frame test).
+  Beats in the crate README. Тишина prototype `output/prototypes/inner-echo/index.html`, sheet
+  `kadry-tishina-5.jpg`; shown to Art, waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

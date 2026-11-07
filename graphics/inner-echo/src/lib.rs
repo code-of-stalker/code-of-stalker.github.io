@@ -35,7 +35,7 @@ mod browser;
 #[cfg(target_arch = "wasm32")]
 pub use browser::InnerEcho;
 
-pub const LOOP_SECONDS: f32 = 60.0;
+pub const LOOP_SECONDS: f32 = 66.0;
 /// The frame is 3:2; a canvas of another shape keeps the whole 3:2 frame in
 /// view.
 pub const FRAME_ASPECT: f32 = 1.5;
@@ -53,18 +53,21 @@ pub const ORBIT_RUNNERS: f32 = 6.0;
 /// round it `ORBIT_FLOW` whole times a loop.
 pub const ORBIT_TURNS: f32 = 3.0;
 pub const ORBIT_TILT: [f32; 2] = [22.0, 12.0];
-pub const ORBIT_SWINGS: f32 = 2.0;
+pub const ORBIT_SWINGS: f32 = 3.0;
 pub const ORBIT_FLOW: f32 = 6.0;
 /// The inner ring: level, round the body, it scans all of it, from the feet
-/// up to the crown and back down once every `SCAN_SECONDS`; its runners go
-/// round it `INNER_FLOW` whole times a loop, the other way from the outer
-/// ones.
-pub const SCAN_SECONDS: f32 = 6.0;
+/// up to the crown and back down once every `SCAN_SECONDS` (Art: calmer, it
+/// was too quick), a whole number of times a loop; its runners go round it
+/// `INNER_FLOW` whole times a loop, the other way from the outer ones.
+pub const SCAN_SECONDS: f32 = 16.5;
 pub const INNER_RUNNERS: f32 = 3.0;
 pub const INNER_FLOW: f32 = -10.0;
-/// At each height the ring wraps the body: (height, centre z, half width
-/// across, half depth front to back), from the feet to the crown; between
-/// keys it eases from one to the next.
+/// At each height the body's own wrap: (height, centre z, half width across,
+/// half depth front to back), from the feet to the crown; between keys it
+/// eases from one to the next. The ring itself (`wrap`) keeps clear of all
+/// of the body within `SCAN_EASE` up and down and softens over that height,
+/// so it never snaps from one part of the body to the next (Art: «дергано
+/// переходит от некоторых частей»).
 pub const SCAN: [[f32; 4]; 13] = [
     [0.03, 0.54, 0.21, 0.2],
     [0.25, 0.46, 0.2, 0.11],
@@ -81,6 +84,7 @@ pub const SCAN: [[f32; 4]; 13] = [
     [1.31, -0.02, 0.14, 0.15],
     [1.42, -0.02, 0.07, 0.07],
 ];
+pub const SCAN_EASE: f32 = 0.1;
 /// How far perception reaches: past the room's far corner; it fades from
 /// `FADE_FROM` out to here.
 pub const REACH: f32 = 4.4;
@@ -122,11 +126,12 @@ pub const ECHO_REACH: f32 = 1.2;
 pub const ECHO_LEVELS: [f32; 3] = [0.25, 0.2, 0.15];
 /// «Без проваливания», «Без анализа», «Без попытки понять или исправить»,
 /// «Без ухода в образы себя»: the heart of the page, half the loop (Art:
-/// more time on them, less on the rest). Each starts here, pulls, holds and
-/// lets go before the next.
-pub const WITHOUT: [f32; 4] = [14.0, 21.0, 28.0, 35.0];
+/// more time on them, less on the rest; then more again on the falling in
+/// and the images). Each starts here, pulls, holds and lets go before the
+/// next.
+pub const WITHOUT: [f32; 4] = [14.0, 24.0, 30.5, 37.0];
 pub const PULL: [f32; 4] = [1.4, 1.2, 1.2, 1.8];
-pub const HOLD: [f32; 4] = [3.8, 4.0, 4.0, 3.4];
+pub const HOLD: [f32; 4] = [6.8, 3.5, 3.5, 7.4];
 pub const RELEASE: [f32; 4] = [1.4, 1.4, 1.4, 1.4];
 /// Falling into a thought: everything outside the person goes dark, and the
 /// body too below the head (from .. to, Art: «тело исчезало а оставалась
@@ -141,8 +146,8 @@ pub const KNOT_TURNS: f32 = 8.0;
 /// out of the eyes to four images of himself in front of him (`selves`),
 /// one after another: each starts forming here and is whole this much later.
 pub const EYES: [f32; 3] = [0.0, 1.335, 0.07];
-pub const SELF_FORM: [f32; 4] = [36.0, 36.8, 37.6, 38.4];
-pub const SELF_FORM_SECONDS: f32 = 0.9;
+pub const SELF_FORM: [f32; 4] = [38.0, 39.4, 40.8, 42.2];
+pub const SELF_FORM_SECONDS: f32 = 1.2;
 /// The words under the scene for each «Без…»: their rows in the label atlas,
 /// the second -1 for a single line.
 pub const CAPTIONS: [[f32; 2]; 4] = [[0.0, -1.0], [1.0, -1.0], [2.0, 3.0], [4.0, -1.0]];
@@ -152,12 +157,12 @@ pub const CAPTIONS: [[f32; 2]; 4] = [[0.0, -1.0], [1.0, -1.0], [2.0, 3.0], [4.0,
 pub const CAPTION: [f32; 3] = [0.03, 0.06, 1.8];
 /// «Это — Наблюдение внутреннего кольца, которое раскрывается на фоне
 /// внешнего кольца и его сканирования»: the camera rises over both rings.
-pub const BOTH: f32 = 42.0;
+pub const BOTH: f32 = 48.0;
 /// «точности, бдительности и честности … живое Ощущение»: sparks of
 /// sensation wake one by one, the first at `SPARK_WAKE`, each next
 /// `SPARK_GAP` later: a shoulder, a hand, a knee, the other forearm, the
 /// other shoulder, the back.
-pub const SPARK_WAKE: f32 = 47.0;
+pub const SPARK_WAKE: f32 = 53.0;
 pub const SPARK_GAP: f32 = 0.4;
 pub const SPARK_POINTS: [[f32; 3]; 6] = [
     [0.2, 1.06, -0.05],
@@ -169,14 +174,14 @@ pub const SPARK_POINTS: [[f32; 3]; 6] = [
 ];
 /// «здесь и сейчас»: one wave from the chest through the body and the room
 /// together, this long.
-pub const TOGETHER: f32 = 51.0;
+pub const TOGETHER: f32 = 57.0;
 pub const TOGETHER_SECONDS: f32 = 2.8;
 /// The inside goes dark, then the room, back to the person alone.
-pub const INNER_OUT: [f32; 2] = [54.6, 58.2];
-pub const ROOM_OUT: [f32; 2] = [55.2, 59.4];
+pub const INNER_OUT: [f32; 2] = [60.6, 64.2];
+pub const ROOM_OUT: [f32; 2] = [61.2, 65.4];
 /// Reduced motion: the room and the inside both clear, both rings seen from
 /// above.
-pub const STILL: f32 = 45.5;
+pub const STILL: f32 = 51.5;
 
 /// The skin's own cold light: the perceiver is there from the first frame;
 /// it steps back while the inside is lit.
@@ -191,26 +196,28 @@ pub const SKIN_INSIDE: f32 = 0.35;
 /// shoulder (high, so the lamp stays below and behind) and down behind him
 /// for the images of himself in front, up over the shoulder again and high
 /// over both rings, close again, back.
-pub const CAMERA: [(f32, [f32; 7]); 19] = [
+pub const CAMERA: [(f32, [f32; 7]); 21] = [
     (0.0, [34.0, 18.0, 4.9, -0.3, 0.8, -0.6, 52.0]),
     (4.5, [26.0, 19.0, 4.75, -0.3, 0.8, -0.55, 52.0]),
     (8.0, [34.0, 15.0, 3.6, -0.15, 0.7, -0.25, 48.0]),
     (11.5, [42.0, 12.0, 2.9, -0.06, 0.6, 0.0, 46.0]),
     (14.9, [32.0, 10.0, 3.0, -0.02, 0.5, 0.02, 44.0]),
     (16.8, [26.0, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
-    (17.6, [24.0, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
-    (20.0, [36.0, 11.0, 3.0, -0.06, 0.5, 0.04, 45.0]),
-    (23.5, [46.0, 13.0, 3.1, -0.1, 0.5, 0.06, 46.0]),
-    (30.0, [36.0, 12.0, 3.0, -0.08, 0.5, 0.06, 46.0]),
-    (33.0, [90.0, 22.0, 2.6, 0.0, 0.7, 0.4, 50.0]),
-    (35.0, [125.0, 48.0, 2.5, 0.0, 0.6, 0.6, 58.0]),
-    (37.0, [155.0, 25.0, 3.1, 0.0, 0.62, 1.0, 55.0]),
-    (40.0, [160.0, 25.0, 3.1, 0.0, 0.62, 1.0, 52.0]),
-    (42.5, [118.0, 46.0, 2.7, 0.0, 0.7, 0.3, 55.0]),
-    (45.5, [60.0, 42.0, 4.2, -0.05, 0.6, -0.2, 54.0]),
-    (50.0, [48.0, 16.0, 2.9, -0.04, 0.64, 0.0, 46.0]),
-    (53.0, [40.0, 22.0, 3.8, -0.12, 0.7, -0.2, 50.0]),
-    (56.5, [34.0, 20.0, 4.5, -0.25, 0.8, -0.5, 52.0]),
+    (17.3, [25.5, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
+    (20.1, [21.5, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
+    (20.6, [21.0, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
+    (23.0, [36.0, 11.0, 3.0, -0.06, 0.5, 0.04, 45.0]),
+    (26.5, [46.0, 13.0, 3.1, -0.1, 0.5, 0.06, 46.0]),
+    (32.5, [36.0, 12.0, 3.0, -0.08, 0.5, 0.06, 46.0]),
+    (35.0, [90.0, 22.0, 2.6, 0.0, 0.7, 0.4, 50.0]),
+    (37.0, [125.0, 48.0, 2.5, 0.0, 0.6, 0.6, 58.0]),
+    (39.0, [155.0, 25.0, 3.1, 0.0, 0.62, 1.0, 55.0]),
+    (46.0, [160.0, 25.0, 3.1, 0.0, 0.62, 1.0, 52.0]),
+    (48.5, [118.0, 46.0, 2.7, 0.0, 0.7, 0.3, 55.0]),
+    (51.5, [60.0, 42.0, 4.2, -0.05, 0.6, -0.2, 54.0]),
+    (56.0, [48.0, 16.0, 2.9, -0.04, 0.64, 0.0, 46.0]),
+    (59.0, [40.0, 22.0, 3.8, -0.12, 0.7, -0.2, 50.0]),
+    (62.5, [34.0, 20.0, 4.5, -0.25, 0.8, -0.5, 52.0]),
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -411,21 +418,47 @@ pub fn orbit(t: f32) -> ([f32; 3], f32) {
     orbit_at(ORBIT_TURNS, ORBIT_TILT, ORBIT_SWINGS, 0.0, ORBIT_FLOW, t)
 }
 
-/// The inner ring wrapping the body at height `y`: (height, centre z, half
-/// width, half depth), eased between the `SCAN` keys.
-pub fn wrap(y: f32) -> [f32; 4] {
+/// The body's own wrap at height `y`, eased between the `SCAN` keys: its
+/// front and back (z) and half width.
+fn tight(y: f32) -> [f32; 3] {
     let y = y.clamp(SCAN[0][0], SCAN[SCAN.len() - 1][0]);
     let i = (0..SCAN.len() - 1)
         .find(|&i| y <= SCAN[i + 1][0])
         .unwrap_or(SCAN.len() - 2);
     let (a, b) = (SCAN[i], SCAN[i + 1]);
     let s = smooth(a[0], b[0], y);
-    [
-        y,
-        a[1] + (b[1] - a[1]) * s,
-        a[2] + (b[2] - a[2]) * s,
-        a[3] + (b[3] - a[3]) * s,
-    ]
+    let [z, w, d] = [1, 2, 3].map(|k| a[k] + (b[k] - a[k]) * s);
+    [z + d, z - d, w]
+}
+
+/// Heights tried within `SCAN_EASE` of a height, -1..1 of it.
+const EASE_TAPS: usize = 8;
+fn ease_tap(k: usize) -> f32 {
+    (2 * k + 1) as f32 / EASE_TAPS as f32 - 1.0
+}
+
+/// The inner ring wrapping the body at height `y`: (height, centre z, half
+/// width, half depth). It keeps clear of all of the body within `SCAN_EASE`
+/// up and down, softened over the same height, so it changes shape slowly
+/// and never cuts into the body.
+pub fn wrap(y: f32) -> [f32; 4] {
+    let reach = |y: f32| {
+        (0..EASE_TAPS).fold([f32::MIN, f32::MAX, f32::MIN], |r, k| {
+            let [front, back, w] = tight(y + SCAN_EASE * ease_tap(k));
+            [r[0].max(front), r[1].min(back), r[2].max(w)]
+        })
+    };
+    let (mut sum, mut weight) = ([0.0f32; 3], 0.0f32);
+    for k in 0..EASE_TAPS {
+        let x = ease_tap(k);
+        let share = 0.5 + 0.5 * (std::f32::consts::PI * x).cos();
+        for (total, v) in sum.iter_mut().zip(reach(y + SCAN_EASE * x)) {
+            *total += share * v;
+        }
+        weight += share;
+    }
+    let [front, back, w] = sum.map(|v| v / weight);
+    [y, 0.5 * (front + back), w, 0.5 * (front - back)]
 }
 
 /// The inner ring at `t`: it comes up at the chest as the third echo
@@ -778,6 +811,19 @@ mod tests {
         for i in 1..SCAN.len() {
             assert!(SCAN[i][0] > SCAN[i - 1][0], "{i}");
         }
+        // Calm (Art: «слишком быстрое и дерганно переходит от некоторых
+        // частей»): per 1/60 s it climbs little and changes its shape a little,
+        // even where the body changes from one part to the next.
+        let step = 1.0 / 60.0;
+        let (mut climb, mut reshape) = (0f32, 0f32);
+        every(step, |t| {
+            let (a, b) = (scan(t), scan(t + step));
+            climb = climb.max((b[0] - a[0]).abs());
+            for k in 1..4 {
+                reshape = reshape.max((b[k] - a[k]).abs());
+            }
+        });
+        assert!(climb < 0.005 && reshape < 0.011, "{climb} {reshape}");
     }
 
     #[test]

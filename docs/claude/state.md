@@ -217,7 +217,15 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 pixel-identical.
   Checked in the 4 dark themes (sheet `output/prototypes/step-seven/kadry-04-temy.jpg`) and in
   a production export. Ring 3 joins on page 05.
-- Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
+- Page 05 «Третье кольцо — ДЕЙСТВИЕ» (chapter 5, `dynamic-action`, on the branch, not on
+  `main`): direction А «Темп дня». One day in a row (sit, rise, walk, drink, speak aloud, a
+  phone call, carry a box, stop and breathe, walk on with lit support, sit). Ring 3 joins at
+  the start and spins with the body's tempo, fastest with the box, slowing to the breath;
+  rings 1 and 2 stay steady. Held things (cup, phone, box) build in the hand (line kind 16).
+  On the call his own voice returns from the glass, the caller's comes from far. Art approved
+  Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
+  `output/shots/page05-themes.jpg`). Waiting for Art's word to ship.
+- Next: pages 06–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

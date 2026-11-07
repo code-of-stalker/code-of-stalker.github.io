@@ -45,6 +45,13 @@ void main() {
     float twinkle = 0.65 + 0.35 * sin(w * pace(seed + 5u, 5.0) + phase);
     light = MOTE_LIGHT * WORLD.w * mix(0.25, 1.0, rand(seed + 4u)) * twinkle * edge
           * (1.0 + SCAN_LIGHT * scanned(p)) * (1.0 + WAVE_GAIN * lockWave(p));
+    // Page 03's lantern lights the dust round it, most near the flame;
+    // what is in a figure's shadow stays dark.
+    if (LAMP.w > 0.0) {
+      float x = length(p - LAMP.xyz) / LAMP_MIST;
+      light += MOTE_LIGHT * LAMP_DUST * mix(0.25, 1.0, rand(seed + 4u)) * twinkle * edge
+             * (0.3 + 0.7 / (1.0 + x * x)) * lampOn(p, 0.0);
+    }
     sigma0 = 0.0013;
     keepMore = true;
   } else if (kind == 1) {
@@ -74,6 +81,10 @@ void main() {
     float twinkle = 0.75 + 0.25 * sin(w * pace(seed + 3u, 6.0) + rand(seed + 4u) * TAU);
     light = FLOOR_LIGHT * WORLD.z * pool(flat_) * mix(0.3, 1.0, rand(seed + 2u)) * twinkle
           * (1.0 + 3.0 * rippled + WAVE_GAIN * lockWave(p) + SCAN_LIGHT * scanned(p) + 1.2 * inside * SHELLS.y);
+    if (LAMP.w > 0.0) {
+      light += LAMP_FLOOR * mix(0.3, 1.0, rand(seed + 2u)) * twinkle * (1.0 + 3.0 * rippled)
+             * lampMeets(p) * lampOn(p, 0.0);
+    }
     sigma0 = 0.0012;
   } else if (kind == 2) {
     sized = true;
@@ -83,6 +94,12 @@ void main() {
       p = bend(f.xyz);
       light = 0.4 * f.w * WORLD.z;
       sigma0 = 0.05;
+    } else if (i >= 4) {
+      // Page 03's lantern: its flame and the glow round it, which flares
+      // as the crown's plane sweeps through it.
+      p = LAMP.xyz;
+      light = LAMP.w * (i == 4 ? LAMP_CORE : LAMP_HALO) * (1.0 + 2.0 * scanned(p));
+      sigma0 = i == 4 ? 0.02 : 0.22;
     } else {
       // The crown ring's knot on each strand.
       int strand = i - 2;

@@ -16,7 +16,7 @@ export const isDreamArt = (kind: ArtKind): kind is DreamArtKind => kind.startsWi
 export const isStepOneArt = (kind: ArtKind): kind is StepOneArtKind => kind === 'identity-imprints' || kind === 'lived-paths';
 export const isInlineReadingArt = (kind: ArtKind) => kind === 'book' || kind === 'reflections' || kind === 'single-hero' || isDreamArt(kind) || isStepOneArt(kind);
 /** Live Rust illustrations that replace a page's artwork in the browser. */
-export type WebScene = 'theatre-marionette' | 'world-in-glasses' | 'simple-practice' | 'hear-state' | 'tuning-questions' | 'persona-dream' | 'persona-program' | 'persona-belief' | 'hero-labyrinth' | 'awakening' | 'witnessing' | 'call-bell' | 'essence-flame' | 'true-sight' | 'sphere-hero' | 'inner-hero' | 'sphere-world' | 'sphere-anchor' | 'sphere-room' | 'sphere-orbit' | 'sphere-voice' | 'sphere-lake' | 'sphere-everywhere' | 'dynamic-hero' | 'dynamic-rings';
+export type WebScene = 'theatre-marionette' | 'world-in-glasses' | 'simple-practice' | 'hear-state' | 'tuning-questions' | 'persona-dream' | 'persona-program' | 'persona-belief' | 'hero-labyrinth' | 'awakening' | 'witnessing' | 'call-bell' | 'essence-flame' | 'true-sight' | 'sphere-hero' | 'inner-hero' | 'sphere-world' | 'sphere-anchor' | 'sphere-room' | 'sphere-orbit' | 'sphere-voice' | 'sphere-lake' | 'sphere-everywhere' | 'dynamic-hero' | 'dynamic-rings' | 'dynamic-life' | 'dynamic-night';
 export type ArtController = { interact(value: ArtInteraction): void };
 export type ArtProps = {
   kind: ArtKind;

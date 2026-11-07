@@ -183,3 +183,76 @@ vec3 constellationStar(int c, int j) {
   }
   return vec3(cos(at.y) * sin(at.x), sin(at.y), cos(at.y) * cos(at.x));
 }
+
+// Page 03's lantern (lib.rs Frame lamp): where it is and how lit, 0 on
+// every other page; a ball round each figure that holds it; the limbs that
+// throw its shadows, each from a (xyz, radius) to b.
+#define LAMP u_d[SLOT_LAMP]
+#define BOUND(b) u_d[SLOT_LAMP + 1 + (b)]
+#define CASTER(c, j) u_d[SLOT_CASTER + 2 * (c) + (j)]
+
+// The lantern's light this far from it, of its light at the flame: a pool
+// that fades fast into the night.
+float lampFall(float d) {
+  float x = d / LAMP_REACH;
+  float f = 1.0 / (1.0 + x * x);
+  return f * f;
+}
+// The closest the segment p..q comes to the segment a..b, and how far along
+// p..q that is (Ericson, Real-Time Collision Detection, 5.1.9).
+vec2 closestOfSegments(vec3 p, vec3 q, vec3 a, vec3 b) {
+  vec3 d1 = q - p;
+  vec3 d2 = b - a;
+  vec3 r = p - a;
+  float aa = dot(d1, d1);
+  float ee = dot(d2, d2);
+  float f = dot(d2, r);
+  float c = dot(d1, r);
+  float bb = dot(d1, d2);
+  float den = aa * ee - bb * bb;
+  float s = den > 1e-9 ? clamp((bb * f - c * ee) / den, 0.0, 1.0) : 0.0;
+  float t = ee > 1e-9 ? (bb * s + f) / ee : 0.0;
+  if (t < 0.0) {
+    t = 0.0;
+    s = clamp(-c / aa, 0.0, 1.0);
+  } else if (t > 1.0) {
+    t = 1.0;
+    s = clamp((bb - c) / aa, 0.0, 1.0);
+  }
+  return vec2(length(r + d1 * s - d2 * t), s);
+}
+// How much of the flame a point sees past the figures' limbs, 0..1. The
+// shadow's edge softens with the flame's size the nearer the limb is to it;
+// limbs within `near` m of the point are its own.
+float lampSeen(vec3 p, float near) {
+  vec3 l = LAMP.xyz;
+  vec3 d = l - p;
+  float len = length(d);
+  if (len < 1e-3) return 1.0;
+  float seen = 1.0;
+  for (int b = 0; b < 2; b++) {
+    vec4 ball = BOUND(b);
+    float u = clamp(dot(ball.xyz - p, d) / (len * len), 0.0, 1.0);
+    if (ball.w <= 0.0 || length(p + d * u - ball.xyz) > ball.w + LAMP_SIZE) continue;
+    for (int k = 0; k < CASTERS / 2; k++) {
+      int c = b * (CASTERS / 2) + k;
+      vec4 a = CASTER(c, 0);
+      vec2 h = closestOfSegments(p, l, a.xyz, CASTER(c, 1).xyz);
+      if (h.y * len < near) continue;
+      float w = max(LAMP_SIZE * h.y, 0.004);
+      seen *= smoothstep(a.w - w, a.w + w, h.x);
+    }
+  }
+  return seen;
+}
+// What the lantern gives a point, of its light at the flame; nothing when
+// it is out.
+float lampOn(vec3 p, float near) {
+  if (LAMP.w <= 0.0) return 0.0;
+  return LAMP.w * lampFall(length(p - LAMP.xyz)) * lampSeen(p, near);
+}
+// How square the lantern's light meets the ground at p: edge on it keeps
+// `LAMP_FLAT` of it.
+float lampMeets(vec3 p) {
+  return mix(LAMP_FLAT, 1.0, max(dot(normalize(p - planetCentre()), normalize(LAMP.xyz - p)), 0.0));
+}

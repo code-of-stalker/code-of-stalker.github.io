@@ -3,7 +3,8 @@
 // and its trail (3), where the glass meets the ground (4), the ripples of
 // the heel strikes (5), the footprints (6), the lock's wave along the
 // ground (7), the figures among the stars (8), the wires (9), the things
-// the walk passes (10), the spires over the horizon (11). Each instance is
+// the walk passes (10), the spires over the horizon (11), the seats (12).
+// Each instance is
 // one straight piece of a curve, drawn as a band a few blurred widths
 // across (line.frag).
 out vec3 v_color;
@@ -254,6 +255,70 @@ void main() {
             * (1.0 + 4.0 * scanned(m) * inside) * (1.0 + WAVE_GAIN * lockWave(m));
       width = 0.9;
     }
+  } else if (kind == 12) {
+    // A seat of light: a block's edges and level lines round its sides. It
+    // builds from the ground up, its growing top bright, and melts back
+    // down into the ground the same way.
+    int edges = 12 * SEAT_PIECES;
+    int per = edges + 4 * SEAT_LEVELS * SEAT_PIECES;
+    int c = i / per;
+    int local = i - c * per;
+    vec4 s = u_d[SLOT_SEAT + c];
+    vec3 size = vec3(SEAT_HALF_X, 0.5 * SEAT_TOP, SEAT_HALF_Z);
+    vec3 mid = vec3(s.x, 0.5 * SEAT_TOP, s.y);
+    vec3 pa;
+    vec3 pb;
+    float t0;
+    float t1;
+    float strength;
+    if (local < edges) {
+      int e = local / SEAT_PIECES;
+      int piece = local - e * SEAT_PIECES;
+      int axis = e / 4;
+      int bits = e - axis * 4;
+      float u = float(bits & 1) * 2.0 - 1.0;
+      float v = float(bits >> 1) * 2.0 - 1.0;
+      vec3 one = axis == 0 ? vec3(1.0, 0.0, 0.0) : (axis == 1 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0));
+      vec3 two = axis == 0 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+      vec3 three = axis == 2 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+      vec3 q = two * u + three * v;
+      pa = q - one;
+      pb = q + one;
+      t0 = float(piece) / float(SEAT_PIECES);
+      t1 = float(piece + 1) / float(SEAT_PIECES);
+      strength = 1.0;
+    } else {
+      int j = local - edges;
+      int level = j / (4 * SEAT_PIECES);
+      int k = j - level * 4 * SEAT_PIECES;
+      int side_ = k / SEAT_PIECES;
+      int piece = k - side_ * SEAT_PIECES;
+      float h = 2.0 * (float(level) + 1.0) / float(SEAT_LEVELS + 1) - 1.0;
+      vec2 corner[4] = vec2[4](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0));
+      vec2 ca = corner[side_];
+      vec2 cb = corner[(side_ + 1) % 4];
+      pa = vec3(ca.x, h, ca.y);
+      pb = vec3(cb.x, h, cb.y);
+      t0 = float(piece) / float(SEAT_PIECES);
+      t1 = float(piece + 1) / float(SEAT_PIECES);
+      strength = 0.32;
+    }
+    vec3 qa = mid + size * mix(pa, pb, t0);
+    vec3 qb = mid + size * mix(pa, pb, t1);
+    a = bend(qa);
+    b = bend(qb);
+    vec3 m = 0.5 * (qa + qb);
+    // Built up to here; the growing top is lit while it moves.
+    float top = s.w * SEAT_TOP;
+    float built = smoothstep(top + 0.015, top - 0.03, m.y);
+    float moving = smoothstep(0.0, 0.06, s.w) * (1.0 - smoothstep(0.94, 1.0, s.w));
+    float rim = (m.y - top) / 0.03;
+    float growing = moving * exp(-rim * rim);
+    float inside = smoothstep(0.04, -0.1, length(m - SPH.xyz) - SPH.w);
+    light = SEAT_LIGHT * s.z * (strength * built * mix(0.45, 1.0, inside) + 1.6 * growing)
+          * (1.0 + 2.5 * scanned(m));
+    if (hidden(m)) light = 0.0;
+    width = strength > 0.5 ? 0.9 : 0.7;
   } else if (kind == 11) {
     // A spire over the horizon: a mast and three stays to the ground; a
     // light climbs the mast.

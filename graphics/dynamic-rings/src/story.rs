@@ -1,12 +1,12 @@
 //! The chapters: what the camera, the figure, its sphere and the rings in
 //! it do through each page's loop. Everything is a pure function of loop
 //! time.
-use crate::body::{build, Body, Walk, TOE_OUT};
+use crate::body::{build, Body, Rest, Step, Walk, PRIMITIVES, SEAT_BACK, TOE_OUT};
 use crate::math::{hermite, min_jerk, mix, monotone, pulse, smooth, v3, window, V3, Y};
 use crate::{
     Frame, Ring, Tentacle, BEAT, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT, CROWN_TOP,
-    GHOSTS, GHOST_STEP, PRINTS, SCANNER, SCANNER_FLOOR, SPHERE_HEIGHT, SPHERE_RADIUS, SPHERE_SHARE,
-    SPIN_PERIOD, SWEEP, TENTACLES, THINGS, WRITHE,
+    GHOSTS, GHOST_STEP, PRINTS, SCANNER, SCANNER_FLOOR, SEATS, SPHERE_HEIGHT, SPHERE_RADIUS,
+    SPHERE_SHARE, SPIN_PERIOD, SWEEP, TENTACLES, THINGS, WRITHE,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -28,12 +28,19 @@ pub enum Chapter {
     /// sphere starts to turn, lighting the glass. Then all is held while
     /// the figure walks, and the camera returns to the eyes.
     Arrive,
+    /// Page 02: the figure sits on a seat of light inside its sphere, every
+    /// ring held; it rises and the rings answer one after another; it walks
+    /// toward the camera, which rises and leads it, the seat left behind
+    /// melting into the ground; it stops, a new seat builds behind it and
+    /// it sits down again. Nothing of the sphere is lost through any of it.
+    Life,
 }
 
 impl Chapter {
     pub fn from_code(code: u32) -> Chapter {
         match code {
             1 => Chapter::Arrive,
+            2 => Chapter::Life,
             _ => Chapter::Hero,
         }
     }
@@ -41,6 +48,7 @@ impl Chapter {
         match self {
             Chapter::Hero => HERO_LOOP,
             Chapter::Arrive => ARRIVE_LOOP,
+            Chapter::Life => LIFE_LOOP,
         }
     }
     /// Reduced motion holds one moment with every ring.
@@ -48,6 +56,7 @@ impl Chapter {
         match self {
             Chapter::Hero => 40.0,
             Chapter::Arrive => 36.0,
+            Chapter::Life => 22.0,
         }
     }
     /// When the glass passes each thing the walk meets (s).
@@ -55,6 +64,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_THINGS,
             Chapter::Arrive => &ARRIVE_THINGS,
+            Chapter::Life => &[],
         }
     }
     /// When each wire breaks on the glass (s); they take turns, wire `i` is
@@ -63,6 +73,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_WIRES,
             Chapter::Arrive => &ARRIVE_WIRES,
+            Chapter::Life => &[],
         }
     }
 }
@@ -131,6 +142,41 @@ const GAZE_SLOPE: [f32; 2] = [-0.32, 0.16];
 /// From the eyes the head looks round before it rises out: each turn
 /// (start, end, to this yaw in radians, left is +x) eases from rest to rest.
 const LOOK_ROUND: [[f32; 3]; 3] = [[1.2, 3.6, 0.75], [4.4, 7.4, -0.75], [8.0, 10.2, 0.0]];
+
+/// Page 02: 10 breaths. Seated, it rises over `LIFE_UP`; the rings answer
+/// as it stands, at `LIFE_GATHER`; its first heel strikes at `LIFE_FIRST`,
+/// then a step every `CADENCE` s, `LIFE_STEPS` of them, from half a stride
+/// on to the next seat, and two short ones bring the feet together; it
+/// sits down over `LIFE_DOWN`. The seat left behind melts over
+/// `LIFE_LEAVE`; the next builds over `LIFE_BUILD`.
+pub const LIFE_LOOP: f32 = 44.0;
+const LIFE_STEPS: usize = 44;
+pub const LIFE_UP: [f32; 2] = [4.0, 7.8];
+const LIFE_GATHER: f32 = 7.8;
+const LIFE_FIRST: f32 = 9.3;
+pub const LIFE_DOWN: [f32; 2] = [36.0, 40.2];
+const LIFE_LEAVE: [f32; 2] = [12.5, 19.0];
+const LIFE_BUILD: [f32; 2] = [34.0, 35.8];
+/// Seated and stopped, the feet stand this far either side; walking, the
+/// steps land this far either side.
+const LIFE_STANCE: f32 = 0.11;
+const LIFE_WIDTH: f32 = 0.06;
+/// The seat stands this much further back than the pelvis on it.
+const SEAT_SET: f32 = 0.02;
+/// Page 02's camera: before the figure, this way round from straight ahead
+/// (degrees, + to its left), this far, its eye and aim this high seated,
+/// standing and leading; it rises to lead the walk over `LIFE_LEAD` and
+/// comes down again over `LIFE_RETURN`.
+const LIFE_AZIMUTH: [f32; 2] = [48.0, 8.0];
+const LIFE_RANGE: [f32; 2] = [3.7, 4.5];
+const LIFE_EYE: [f32; 3] = [0.95, 1.1, 2.0];
+const LIFE_AIM: [f32; 3] = [0.82, 1.0, 0.95];
+/// Close and low it takes a wider lens to hold the whole glass.
+const LIFE_LENS: [f32; 2] = [0.72, 0.92];
+const LIFE_STANDS: [f32; 2] = [4.2, 8.2];
+const LIFE_SITS: [f32; 2] = [36.2, 40.6];
+const LIFE_LEAD: [f32; 2] = [9.6, 16.5];
+const LIFE_RETURN: [f32; 2] = [29.5, 35.8];
 
 /// A wire reaches for the glass this long (s) before it breaks, and is
 /// gone this long after.
@@ -339,29 +385,113 @@ fn arrive_spin(t: f32) -> (f32, f32) {
 }
 
 /// The body's scanner at `high` (0 the feet … 1 the top of the head):
-/// level, round the body's axis at that height, hugging the figure.
-fn scanner(body: &Body, high: f32) -> (V3, f32) {
+/// level, round the body's axis at that height, hugging the figure; seated
+/// (`risen` 0) it rings what of the body crosses its level instead.
+fn scanner(body: &Body, high: f32, risen: f32) -> (V3, f32) {
     let y = mix(SCANNER_FLOOR, body.high.y - 0.03, high);
     let (p, c, h) = (body.pelvis, body.chest, body.head);
     let along = |a: V3, b: V3| a.lerp(b, ((y - a.y) / (b.y - a.y)).clamp(0.0, 1.0));
     let axis = if y <= c.y { along(p, c) } else { along(c, h) };
-    (v3(axis.x, y, axis.z), monotone(&SCANNER, y))
+    let standing = (v3(axis.x, y, axis.z), monotone(&SCANNER, y));
+    if risen >= 1.0 {
+        return standing;
+    }
+    let (centre, radius) = section(body, y).unwrap_or(standing);
+    let seated = min_jerk(1.0 - risen);
+    (
+        standing.0.lerp(centre, seated),
+        mix(standing.1, radius, seated),
+    )
+}
+
+/// A ring round what of the body crosses the level `y`: the middle of the
+/// cones there and how far out the farthest reaches, each part coming in
+/// softly as the level nears it.
+fn section(body: &Body, y: f32) -> Option<(V3, f32)> {
+    const SAMPLES: usize = 7;
+    const MARGIN: f32 = 0.06;
+    let mut parts = [(0.0f32, 0.0f32, 0.0f32, 0.0f32); PRIMITIVES * SAMPLES];
+    let (mut n, mut weight, mut x, mut z) = (0, 0.0, 0.0, 0.0);
+    for c in 0..PRIMITIVES {
+        let [ax, ay, az, ra] = body.cones[3 * c];
+        let [bx, by, bz, rb] = body.cones[3 * c + 1];
+        for k in 0..SAMPLES {
+            let u = k as f32 / (SAMPLES - 1) as f32;
+            let r = mix(ra, rb, u);
+            let w = 1.0 - smooth(0.6 * r, r + 0.08, (mix(ay, by, u) - y).abs());
+            if w > 0.0 {
+                let (px, pz) = (mix(ax, bx, u), mix(az, bz, u));
+                parts[n] = (px, pz, r, w);
+                n += 1;
+                weight += w;
+                x += w * px;
+                z += w * pz;
+            }
+        }
+    }
+    if weight <= 0.0 {
+        return None;
+    }
+    let (x, z) = (x / weight, z / weight);
+    let reach = parts[..n]
+        .iter()
+        .map(|&(px, pz, r, w)| w * ((px - x).hypot(pz - z) + r))
+        .fold(0.0, f32::max);
+    Some((v3(x, y, z), reach + MARGIN))
+}
+
+/// Page 02's walk: from the seat a half stride, then whole ones, to the
+/// next seat, and the feet brought together there.
+fn life_walk() -> Walk {
+    let swing = 0.76 * CADENCE;
+    let mut steps: Vec<Step> = (0..LIFE_STEPS)
+        .map(|j| {
+            let side = j % 2;
+            let land = LIFE_FIRST + j as f32 * CADENCE;
+            Step {
+                side,
+                lift: land - if j == 0 { 0.5 } else { swing },
+                land,
+                x: if side == 0 { LIFE_WIDTH } else { -LIFE_WIDTH },
+                z: (0.5 + j as f32) * STRIDE,
+            }
+        })
+        .collect();
+    let end = LIFE_STEPS as f32 * STRIDE;
+    let mut land = steps[LIFE_STEPS - 1].land;
+    for (side, after) in [(0, 0.6), (1, 0.65)] {
+        land += after;
+        steps.push(Step {
+            side,
+            lift: land - 0.5,
+            land,
+            x: if side == 0 { LIFE_STANCE } else { -LIFE_STANCE },
+            z: end,
+        });
+    }
+    let rest = |[from, to]: [f32; 2], up| Rest { from, to, up };
+    Walk::new([[LIFE_STANCE, 0.0], [-LIFE_STANCE, 0.0]], steps, BEAT)
+        .with_rests(vec![rest(LIFE_UP, true), rest(LIFE_DOWN, false)])
 }
 
 impl Story {
     pub fn new(chapter: Chapter) -> Story {
         let loop_seconds = chapter.loop_seconds();
-        let steps = match chapter {
-            Chapter::Hero => HERO_STEPS,
-            Chapter::Arrive => ARRIVE_STEPS,
+        let steady = |steps: i32| {
+            let walk = Walk::steady(CADENCE, STRIDE, 0.06, -12, steps + 16, BEAT);
+            (steps as f32 * STRIDE, walk)
         };
-        let distance = steps as f32 * STRIDE;
+        let (distance, walk) = match chapter {
+            Chapter::Hero => steady(HERO_STEPS),
+            Chapter::Arrive => steady(ARRIVE_STEPS),
+            Chapter::Life => (LIFE_STEPS as f32 * STRIDE, life_walk()),
+        };
         Story {
             chapter,
             loop_seconds,
             distance,
             mote_box: distance / (distance / 10.0).round(),
-            walk: Walk::steady(CADENCE, STRIDE, 0.06, -12, steps + 16, BEAT),
+            walk,
         }
     }
 
@@ -378,6 +508,7 @@ impl Story {
         match self.chapter {
             Chapter::Hero => self.hero(time),
             Chapter::Arrive => self.arrive(time),
+            Chapter::Life => self.life(time),
         }
     }
 
@@ -410,6 +541,15 @@ impl Story {
         let (high, light, flash, scan) = match self.chapter {
             Chapter::Hero => (sweep(t), 1.0, 0.45 * pulse(at.rem_euclid(SWEEP)), 1.0),
             Chapter::Arrive => arrive_crown(at),
+            Chapter::Life => {
+                let answer = pulse(at - LIFE_GATHER - 0.35);
+                (
+                    sweep(t),
+                    1.0,
+                    (0.45 * pulse(at.rem_euclid(SWEEP))).max(answer),
+                    1.0,
+                )
+            }
         };
         let h = crown_height(high);
         // Its axis leans and goes round, rocking to and fro with each step;
@@ -566,7 +706,7 @@ impl Story {
             let at = build(&self.walk.pose(ARRIVE_LOCK, breath(ARRIVE_LOCK)));
             let fade = 1.0 - age / WAVE_SECONDS;
             (
-                scanner(&at, sweep(ARRIVE_LOCK)).0,
+                scanner(&at, sweep(ARRIVE_LOCK), 1.0).0,
                 WAVE_SPEED * age,
                 fade * fade * smooth(0.0, 0.1, age),
             )
@@ -591,6 +731,80 @@ impl Story {
             wave,
         };
         self.frame(t, shot, cues)
+    }
+
+    fn life(&self, t: f32) -> Frame {
+        // As it stands the scanner, the crown and the sphere's ring answer
+        // in turn, and a soft wave runs out from the scanner.
+        let answer = |k: f32| pulse(t - LIFE_GATHER - 0.35 * k);
+        let age = t - LIFE_GATHER;
+        let wave = if (0.0..WAVE_SECONDS).contains(&age) {
+            let at = self.walk.pose(LIFE_GATHER, breath(LIFE_GATHER));
+            let fade = 1.0 - age / WAVE_SECONDS;
+            (
+                scanner(&build(&at), sweep(LIFE_GATHER), at.risen).0,
+                WAVE_SPEED * age,
+                0.6 * fade * fade * smooth(0.0, 0.1, age),
+            )
+        } else {
+            (Y, -1.0, 0.0)
+        };
+        let cues = Cues {
+            inner: 1.0,
+            form: 1.0,
+            flash: (0.5 * pulse(t.rem_euclid(SWEEP))).max(answer(0.0)),
+            spin: [
+                1.0,
+                self.cycle(t, SPIN_PERIOD),
+                1.0,
+                (0.4 * pulse(t.rem_euclid(SPIN_PERIOD))).max(answer(2.0)),
+            ],
+            filled: 1.0,
+            fill: TAU,
+            spokes: 1.0,
+            world: 0.0,
+            wave,
+        };
+        self.frame(t, self.front(t), cues)
+    }
+
+    /// Page 02's camera: low before the seated figure and to its left; as
+    /// it walks the camera rises and leads it, looking back along the way
+    /// it came, and comes down again as it stops to sit.
+    fn front(&self, t: f32) -> Shot {
+        let ground = self.ground(t);
+        let stood = min_jerk(stage(t, LIFE_STANDS)) * (1.0 - min_jerk(stage(t, LIFE_SITS)));
+        let lead = min_jerk(stage(t, LIFE_LEAD)) * (1.0 - min_jerk(stage(t, LIFE_RETURN)));
+        let pick = |[low, high, over]: [f32; 3]| mix(mix(low, high, stood), over, lead);
+        let azimuth = mix(LIFE_AZIMUTH[0], LIFE_AZIMUTH[1], lead).to_radians();
+        let range = mix(LIFE_RANGE[0], LIFE_RANGE[1], lead);
+        let eye = ground
+            + v3(range * azimuth.sin(), pick(LIFE_EYE), range * azimuth.cos())
+            + self.drift(t);
+        Shot {
+            eye,
+            target: ground + v3(0.0, pick(LIFE_AIM), -0.1),
+            lens: mix(LIFE_LENS[0], LIFE_LENS[1], lead),
+            focus: (eye - self.sphere(t)).length(),
+            aperture: 0.007,
+        }
+    }
+
+    /// The seats of page 02: the one it rises from melts into the ground
+    /// behind it; the next builds where it stops. Other pages have none.
+    fn seats(&self, t: f32) -> [[f32; 4]; SEATS] {
+        match self.chapter {
+            Chapter::Life => {
+                let back = -SEAT_BACK - SEAT_SET;
+                let [left, gone] = LIFE_LEAVE;
+                let [start, built] = LIFE_BUILD;
+                [
+                    [0.0, back, 1.0, 1.0 - smooth(left, gone, t)],
+                    [0.0, self.distance + back, 1.0, smooth(start, built, t)],
+                ]
+            }
+            _ => [[0.0; 4]; SEATS],
+        }
     }
 
     /// From the eyes, the gaze following the crown ring up and down while
@@ -654,7 +868,7 @@ impl Story {
         let forward = (shot.target - shot.eye).normalize();
         let right = forward.cross(Y).normalize();
         let up = right.cross(forward);
-        let (scan_center, scan_radius) = scanner(&body, sweep(t));
+        let (scan_center, scan_radius) = scanner(&body, sweep(t), pose.risen);
         let rings = [
             self.crown(t),
             Ring {
@@ -717,6 +931,7 @@ impl Story {
             things: cues.world,
             things_at,
             tentacles,
+            seats: self.seats(t),
             prints,
             feet,
             floor: 1.0,

@@ -141,6 +141,14 @@ pub const DEBRIS_FADE: f32 = 0.6;
 /// How fast it writhes (radians a second) and how far, of its length.
 pub const WRITHE: f32 = 2.4;
 pub const WRITHE_REACH: f32 = 0.09;
+/// Seats of light (page 02): a block this high and this wide and deep
+/// (half-sizes, m), its edges and level lines round its sides, each in this
+/// many pieces.
+pub const SEATS: usize = 2;
+pub const SEAT_TOP: f32 = 0.43;
+pub const SEAT_HALF: [f32; 2] = [0.22, 0.2];
+pub const SEAT_LEVELS: u32 = 7;
+pub const SEAT_PIECES: u32 = 8;
 /// Spires stand along the horizon, their stays running to the ground.
 pub const SPIRES: u32 = 22;
 pub const SPIRE_PIECES: u32 = 40;
@@ -183,6 +191,7 @@ pub const GHOST_LIGHT: f32 = 0.3;
 pub const SPOKE_LIGHT: f32 = 0.6;
 pub const SCAN_LIGHT: f32 = 2.2;
 pub const THING_LIGHT: f32 = 0.9;
+pub const SEAT_LIGHT: f32 = 0.8;
 pub const TENTACLE_LIGHT: f32 = 1.4;
 pub const DEBRIS_LIGHT: f32 = 1.2;
 pub const SPIRE_LIGHT: f32 = 1.4;
@@ -290,6 +299,8 @@ pub struct Frame {
     /// chapter, 0 if not.
     pub things_at: [[f32; 2]; THINGS as usize],
     pub tentacles: [Tentacle; TENTACLES],
+    /// Each seat: x, z, light, how far built (0 none … 1 whole).
+    pub seats: [[f32; 4]; SEATS],
     /// The newest landings: x, z, yaw, seconds since.
     pub prints: [[f32; 4]; PRINTS],
     /// Where each foot meets the ground and how much it presses.
@@ -318,7 +329,8 @@ pub const SLOT_FEET: usize = SLOT_PRINT + PRINTS;
 pub const SLOT_TENTACLE: usize = SLOT_FEET + 2;
 pub const SLOT_META: usize = SLOT_TENTACLE + 5 * TENTACLES;
 pub const SLOT_THING: usize = SLOT_META + 1;
-pub const SLOTS: usize = SLOT_THING + THINGS as usize / 2;
+pub const SLOT_SEAT: usize = SLOT_THING + THINGS as usize / 2;
+pub const SLOTS: usize = SLOT_SEAT + SEATS;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -366,6 +378,9 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     d[SLOT_META] = [story.loop_seconds, f.lens, f.aperture, f.things];
     for (k, two) in f.things_at.chunks(2).enumerate() {
         d[SLOT_THING + k] = [two[0][0], two[0][1], two[1][0], two[1][1]];
+    }
+    for (k, seat) in f.seats.iter().enumerate() {
+        d[SLOT_SEAT + k] = *seat;
     }
     d
 }
@@ -480,11 +495,16 @@ pub fn engrave(look: &Look, page: [f32; 3], dark: [f32; 3]) -> [f32; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::SEAT_BACK;
     use crate::math::v3;
-    use crate::story::{crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP};
+    use crate::story::{crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, LIFE_LOOP};
 
-    fn chapters() -> [Story; 2] {
-        [Story::new(Chapter::Hero), Story::new(Chapter::Arrive)]
+    fn chapters() -> [Story; 3] {
+        [
+            Story::new(Chapter::Hero),
+            Story::new(Chapter::Arrive),
+            Story::new(Chapter::Life),
+        ]
     }
 
     fn close(a: f32, b: f32, tolerance: f32) -> bool {
@@ -832,6 +852,9 @@ mod tests {
         for story in chapters() {
             let (things, wires) = (story.chapter.things(), story.chapter.wires());
             assert!(things.len() <= THINGS as usize);
+            if things.is_empty() && wires.is_empty() {
+                continue;
+            }
             // First a thing is scanned, then a wire breaks, and then more and
             // more of both, closer and closer together.
             assert!(things[0] < wires[0] && wires[0] < things[1]);
@@ -852,6 +875,57 @@ mod tests {
             let f = story.compose(t);
             assert!(f.tentacles.iter().all(|w| w.light == 0.0), "{t}");
         }
+    }
+
+    #[test]
+    fn on_page_two_it_sits_rises_walks_and_sits_again() {
+        let story = Story::new(Chapter::Life);
+        let walk = story.walk();
+        let mut t = 0.0;
+        while t < LIFE_LOOP {
+            let f = story.compose(t);
+            // Every ring is held throughout, and nothing of the world comes.
+            for r in &f.rings {
+                assert!(r.light > 0.99 && r.form > 0.99, "{t}");
+            }
+            assert!(f.tentacles.iter().all(|w| w.light == 0.0) && f.things == 0.0);
+            // The camera stands before the figure.
+            let rel = f.eye - f.sphere;
+            assert!(rel.z > 2.2 && f.forward.z < -0.6, "{t}: {rel:?}");
+            let seated = walk.risen(t) < 1e-3;
+            if seated {
+                // On a seat that is there, under the pelvis.
+                let seat = f.seats.iter().find(|s| s[3] > 0.99).expect("a seat");
+                assert!((seat[1] - f.body.pelvis.z).abs() < 0.1, "{t}");
+                assert!(f.body.high.y < 1.45, "{t}");
+                // The scanner rings what of the body is at its level.
+                let r = &f.rings[1];
+                let (lo, hi) = (f.body.low, f.body.high);
+                assert!(r.radius < 0.75, "{t}: {}", r.radius);
+                assert!(
+                    (lo.x..hi.x).contains(&r.center.x) && (lo.z..hi.z).contains(&r.center.z),
+                    "{t}"
+                );
+            }
+            for s in &f.seats {
+                assert!((0.0..=1.0).contains(&s[3]), "{t}");
+            }
+            t += 0.1;
+        }
+        for t in [0.5, 3.0, 41.0, LIFE_LOOP - 0.1] {
+            assert_eq!(walk.risen(t), 0.0, "{t}");
+            assert!(story.compose(t).amount < 1e-3, "{t}");
+        }
+        // Between, it stands and walks, and no seat is there.
+        let walking = story.compose(22.0);
+        assert!(walking.amount > 0.99 && walking.body.high.y > 1.6);
+        assert!(walking.seats.iter().all(|s| s[3] < 1e-3));
+        // It sits on the seat that has built where it stopped.
+        let end = story.compose(LIFE_LOOP - 0.1);
+        let seat = end.seats[1];
+        assert!(seat[3] > 0.99 && close(seat[1], story.distance - SEAT_BACK - 0.02, 1e-4));
+        // The camera rises to lead the walk.
+        assert!(walking.eye.y > 1.8 && story.compose(1.0).eye.y < 1.1);
     }
 
     #[test]

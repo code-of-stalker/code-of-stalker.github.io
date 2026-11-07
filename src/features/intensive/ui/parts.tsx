@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import type { StyleProp, TextInputProps, ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
-import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProductLayout } from '../../product/layout';
 import type { ProductColors } from '../../product/theme';
-import { fonts } from '../../product/theme';
 import { ProductIconButton, ProductText } from '../../product/ui';
 import { BackendError } from '../backend';
 import type { Place } from '../backend';
+import { Glyph, Hero, useContour } from './chrome';
 
 export const placeLabels: Record<Place, string> = {
   walker: 'ИДУЩИЙ', guide: 'ПРОВОДНИК', admin: 'АДМИН ПРОВОДНИКА', main: 'ГЛАВНЫЙ АДМИН',
@@ -48,49 +48,11 @@ export function Header({ subtitle, onBack, action }: { subtitle: string; onBack:
   </View>;
 }
 
-export function Divider() {
-  return <View style={useThemeStyles(createStyles).divider} />;
-}
-
-export function Heading({ children }: { children: ReactNode }) {
-  return <ProductText variant="title" style={useThemeStyles(createStyles).heading2}>{children}</ProductText>;
-}
-
 export function Note({ children, tone = 'muted', style, center = false }: { children: ReactNode; tone?: 'muted' | 'error' | 'text'; style?: StyleProp<ViewStyle>; center?: boolean }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   return <View style={style}><ProductText accessibilityRole={tone === 'error' ? 'alert' : undefined}
     style={[styles.note, center && styles.center, { color: tone === 'error' ? colors.error : tone === 'text' ? colors.text : colors.muted }]}>{children}</ProductText></View>;
-}
-
-export function Field({ label, style, ...props }: TextInputProps & { label?: string }) {
-  const colors = useThemeColors();
-  const styles = useThemeStyles(createStyles);
-  return <View style={styles.fieldWrap}>
-    {label ? <ProductText variant="label" style={styles.fieldLabel}>{label}</ProductText> : null}
-    <View style={styles.field}>
-      <PanelBorder />
-      <TextInput placeholderTextColor={colors.faint} autoCorrect={false} spellCheck={false} {...props}
-        style={[styles.input, props.multiline && styles.multiline, style]} />
-    </View>
-  </View>;
-}
-
-/** A plain row button with a hairline frame, used for lists. */
-export function Row({ title, detail, onPress, selected = false, right }: {
-  title: string; detail?: string; onPress?: () => void; selected?: boolean; right?: ReactNode;
-}) {
-  const colors = useThemeColors();
-  const styles = useThemeStyles(createStyles);
-  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} disabled={!onPress}
-    style={[styles.row, selected && { backgroundColor: colors.subtle }]}>
-    <PanelBorder color={selected ? colors.accent : undefined} />
-    <View style={styles.rowCopy}>
-      <ProductText numberOfLines={1} style={styles.rowTitle}>{title}</ProductText>
-      {detail ? <ProductText variant="label" numberOfLines={2} style={styles.rowDetail}>{detail}</ProductText> : null}
-    </View>
-    {right}
-  </Pressable>;
 }
 
 /** `fit` sizes each tab to its label, so longer labels with counts still fit on a phone. */
@@ -108,21 +70,38 @@ export function Tabs<T extends string>({ value, options, onChange, fit = false }
   </View>;
 }
 
-/** Six dots and a keypad; digits typed on a keyboard work too. */
+const KEY = { width: 80, height: 60 };
+
+function PinKey({ label, digit, onPress, disabled }: { label: string; digit: string; onPress: () => void; disabled: boolean }) {
+  const styles = useThemeStyles(createStyles);
+  const plain = useContour(KEY.width, KEY.height, 'plain'), pressed = useContour(KEY.width, KEY.height, 'pressed');
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} disabled={disabled} style={styles.key}>
+    {({ pressed: down }) => <>
+      <Image pointerEvents="none" source={down ? pressed : plain} style={StyleSheet.absoluteFill} contentFit="contain" />
+      <ProductText variant="title" style={styles.keyText}>{digit}</ProductText>
+    </>}
+  </Pressable>;
+}
+
+/** Six marks and a keypad, as on a phone lock screen; digits typed on a keyboard work too. */
 export function PinPad({ title, detail, busy = false, error, onComplete }: {
   title: string; detail?: string; busy?: boolean; error?: string; onComplete: (pin: string) => void;
 }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [digits, setDigits] = useState('');
-  const press = (key: string) => {
-    if (busy) return;
-    if (key === 'back') { setDigits(digits.slice(0, -1)); return; }
-    if (digits.length >= 6) return;
-    const next = digits + key;
-    setDigits(next.length === 6 ? '' : next);
-    if (next.length === 6) onComplete(next);
-  };
+  // Keys arrive faster than renders: the typed digits and the latest props live in refs.
+  const typed = useRef('');
+  const latest = useRef({ busy, onComplete });
+  useLayoutEffect(() => { latest.current = { busy, onComplete }; });
+  const press = useCallback((key: string) => {
+    if (latest.current.busy) return;
+    const current = typed.current;
+    const next = key === 'back' ? current.slice(0, -1) : current.length < 6 ? current + key : current;
+    typed.current = next.length === 6 ? '' : next;
+    setDigits(typed.current);
+    if (next.length === 6) latest.current.onComplete(next);
+  }, []);
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const listener = (event: KeyboardEvent) => {
@@ -132,22 +111,21 @@ export function PinPad({ title, detail, busy = false, error, onComplete }: {
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  });
+  }, [press]);
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
   return <View style={styles.pin}>
-    <Heading>{title}</Heading>
-    {detail ? <Note center>{detail}</Note> : null}
+    <Hero glyph="lock" title={title} lines={detail ? [detail] : []} tight />
     <View accessibilityLabel={`Введено цифр: ${digits.length} из 6`} style={styles.dots}>
-      {Array.from({ length: 6 }, (_, i) => <View key={i} style={[styles.dot, { borderColor: colors.accent }, (i < digits.length || busy) && { backgroundColor: colors.accent }]} />)}
+      {Array.from({ length: 6 }, (_, i) => <View key={i} style={[styles.dot, { borderColor: error ? colors.error : colors.accent }, (i < digits.length || busy) && { backgroundColor: colors.accent }]} />)}
     </View>
     <View style={styles.errorSlot}>{error ? <Note center tone="error">{error}</Note> : busy ? <Note center>Проверяю…</Note> : null}</View>
     <View style={styles.keypad}>
-      {keys.map((key, i) => key === '' ? <View key={i} style={styles.key} /> :
-        <Pressable key={i} accessibilityRole="button" accessibilityLabel={key === 'back' ? 'Стереть' : key} onPress={() => press(key)} disabled={busy}
-          style={({ pressed }) => [styles.key, pressed && { backgroundColor: colors.subtle }]}>
-          <PanelBorder />
-          <ProductText variant="title" style={styles.keyText}>{key === 'back' ? '⌫' : key}</ProductText>
-        </Pressable>)}
+      {keys.map((key, i) => key === '' ? <View key={i} style={styles.key} />
+        : key === 'back' ? <Pressable key={i} accessibilityRole="button" accessibilityLabel="Стереть" onPress={() => press('back')} disabled={busy}
+          style={({ pressed }) => [styles.key, pressed && { opacity: .6 }]}>
+          <Glyph name="erase" size={28} color={colors.muted} />
+        </Pressable>
+          : <PinKey key={i} label={key} digit={key} onPress={() => press(key)} disabled={busy} />)}
     </View>
   </View>;
 }
@@ -157,31 +135,17 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   heading: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3 },
   title: { fontSize: 20, lineHeight: 28 },
   subtitle: { fontSize: 8, lineHeight: 12, letterSpacing: 4.96, color: colors.muted },
-  divider: { height: 0.75, backgroundColor: colors.accent, opacity: 0.2 },
-  heading2: { fontSize: 14, lineHeight: 20 },
   note: { lineHeight: 18 },
   center: { textAlign: 'center' },
-  fieldWrap: { gap: 6 },
-  fieldLabel: { color: colors.muted },
-  field: { minHeight: 44, justifyContent: 'center' },
-  input: {
-    minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontFamily: fonts.body, fontSize: 14, lineHeight: 20,
-    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as object : {}),
-  },
-  multiline: { minHeight: 96, textAlignVertical: 'top' },
-  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 10 },
-  rowCopy: { flex: 1, minWidth: 0, gap: 4 },
-  rowTitle: { fontSize: 14, lineHeight: 18 },
-  rowDetail: { color: colors.muted, lineHeight: 14 },
   tabs: { flexDirection: 'row', gap: 4 },
   tab: { flex: 1, minHeight: 40, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'transparent', paddingHorizontal: 4 },
   fitTab: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
   fitLabel: { fontSize: 13, lineHeight: 18, letterSpacing: 0.4 },
-  pin: { alignItems: 'center', gap: 12, paddingTop: 8 },
-  dots: { flexDirection: 'row', gap: 14, marginTop: 8 },
-  dot: { width: 12, height: 12, borderWidth: 1, transform: [{ rotate: '45deg' }] },
-  errorSlot: { minHeight: 40, justifyContent: 'center' },
-  keypad: { width: 252, flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  key: { width: 76, height: 56, alignItems: 'center', justifyContent: 'center' },
-  keyText: { fontSize: 20, lineHeight: 26 },
+  pin: { alignItems: 'center', gap: 14, paddingTop: 4 },
+  dots: { flexDirection: 'row', gap: 18, marginTop: 10 },
+  dot: { width: 11, height: 11, borderWidth: .75, transform: [{ rotate: '45deg' }] },
+  errorSlot: { minHeight: 40, justifyContent: 'center', maxWidth: 320 },
+  keypad: { width: KEY.width * 3 + 28, flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center' },
+  key: { width: KEY.width, height: KEY.height, alignItems: 'center', justifyContent: 'center' },
+  keyText: { fontSize: 24, lineHeight: 30, fontWeight: '500' },
 });

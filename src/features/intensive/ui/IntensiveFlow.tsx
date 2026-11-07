@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useIsFocused } from 'expo-router';
 
+import { useProductSpacing } from '../../product/layout';
+import { MatrixBackdrop } from '../../product/motion/MatrixBackdrop';
 import { useThemeStyles } from '../../product/ProductTheme';
+import { useProduct } from '../../product/state/ProductProvider';
 import { ProductButton, ProductIconButton, ProductScreen } from '../../product/ui';
 import { BackendError } from '../backend';
 import type { BackendFactory, ChatSummary, TotpEnrollment } from '../backend';
@@ -14,6 +18,7 @@ import { hasDevice, IntensiveSession, shortCode, wipeDevice } from '../session';
 import { AccountView } from './AccountView';
 import { AdminPanel } from './AdminPanel';
 import { ChatList, ChatView } from './ChatView';
+import { ConfirmSheet, Plate } from './chrome';
 import { ConfirmWords, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
 import { Header, Note, PinPad, problemText, Tabs } from './parts';
 
@@ -47,6 +52,8 @@ function initialStep(factory: BackendFactory | null): Step {
 
 export function IntensiveFlow({ onExit }: { onExit: () => void }) {
   const styles = useThemeStyles(createStyles);
+  const { settings } = useProduct();
+  const focused = useIsFocused();
   const [factory] = useState(intensiveFactory);
   const [step, setStep] = useState<Step>(() => initialStep(factory));
   const [session, setSession] = useState<IntensiveSession | null>(null);
@@ -121,7 +128,8 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
 
   // ------------------------------------------------------------- views
 
-  let subtitle = 'ВХОД', body: ReactNode = null, fill = false, back: (() => void) = onExit, action: ReactNode = undefined;
+  // A bare step draws its own header and fills the screen, as a messenger chat does.
+  let subtitle = 'ВХОД', body: ReactNode = null, bare = false, back: (() => void) = onExit, action: ReactNode = undefined;
   const accountButton = <ProductIconButton icon="settings" onPress={() => go({ kind: 'account' })} />;
 
   switch (step.kind) {
@@ -129,7 +137,7 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
     case 'unavailable': subtitle = ''; body = <Unavailable title={step.title} lines={step.lines} onBack={onExit} />; break;
     case 'welcome':
       body = <View style={styles.stack}>
-        {step.notice ? <Note tone="text">{step.notice}</Note> : null}
+        {step.notice ? <Plate glyph="alert" title="Аккаунт убран с устройства">{step.notice}</Plate> : null}
         <Welcome busy={busy} personas={personas}
           onCreate={() => { const { words, entropy } = newPhrase(); go({ kind: 'phrase', words, entropy }); }}
           onRestore={() => go({ kind: 'restore' })}
@@ -198,11 +206,10 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
           if (result.status === 'wrong') { setError(`Неверный PIN. Осталось попыток: ${result.left}.`); return; }
           leave('После 5 неверных PIN аккаунт убран с этого устройства. Войди снова по 12 словам.');
         }, 'Не удалось открыть. Проверь интернет: попытка не засчитана.'); }} />
-        {step.forgot ? <View style={styles.stack}>
-          <Note tone="text">Без PIN аккаунт открывается только по 12 словам. Убрать его с устройства и войти по словам?</Note>
-          <ProductButton label="ДА, ВОЙТИ ПО СЛОВАМ" onPress={() => { wipeDevice(); go({ kind: 'restore' }); }} />
-          <ProductButton label="ОТМЕНА" kind="ghost" onPress={() => go({ kind: 'unlock' })} />
-        </View> : <ProductButton label="ЗАБЫЛ PIN" kind="ghost" onPress={() => go({ kind: 'unlock', forgot: true })} disabled={busy} />}
+        <ProductButton label="ЗАБЫЛ PIN" kind="ghost" onPress={() => go({ kind: 'unlock', forgot: true })} disabled={busy} />
+        <ConfirmSheet open={!!step.forgot} title="ЗАБЫЛ PIN?" confirmLabel="ВОЙТИ ПО СЛОВАМ"
+          text="Без PIN аккаунт открывается только по 12 словам. Убрать его с этого устройства и войти по словам?"
+          onConfirm={() => { wipeDevice(); go({ kind: 'restore' }); }} onClose={() => go({ kind: 'unlock' })} />
       </View>;
       break;
     case 'totp-enroll':
@@ -220,7 +227,7 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
       const status = session!.status!;
       const staff = status.mainAdmin || status.roles.length > 0;
       action = accountButton;
-      if (!staff) { subtitle = 'ПЕРЕПИСКА'; fill = true; body = <WalkerHome session={session!} onRecheck={() => enter(session!)} />; break; }
+      if (!staff) { bare = true; body = <WalkerHome session={session!} account={accountButton} onExit={onExit} onRecheck={() => enter(session!)} />; break; }
       subtitle = status.mainAdmin && homeTab === 'people' ? 'ЛЮДИ' : 'ПЕРЕПИСКИ';
       body = <View style={styles.stack}>
         {status.mainAdmin ? <Tabs value={homeTab} onChange={setHomeTab} options={[{ id: 'chats', label: 'ПЕРЕПИСКИ' }, { id: 'people', label: 'ЛЮДИ' }]} /> : null}
@@ -235,8 +242,8 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
       break;
     }
     case 'chat':
-      subtitle = step.chat.walkerName.toUpperCase(); fill = true; back = () => go({ kind: 'home' });
-      body = <ChatView session={session!} chat={step.chat} />;
+      bare = true;
+      body = <ChatView session={session!} chat={step.chat} onBack={() => go({ kind: 'home' })} />;
       break;
     case 'account':
       subtitle = 'АККАУНТ'; back = () => go({ kind: 'home' });
@@ -247,14 +254,19 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
       break;
   }
 
-  return <ProductScreen scroll={!fill} headerStyle={{ paddingTop: 16 }}
-    contentStyle={fill ? styles.fill : styles.content}
-    header={<Header subtitle={subtitle} onBack={back} action={action} />}>
-    <View style={fill ? styles.fillBody : styles.body}>{body}</View>
+  const backdrop = <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: .32 }]}>
+    <MatrixBackdrop active={focused} reducedMotion={settings.reducedMotion} />
+  </View>;
+  return <ProductScreen scroll={!bare} headerStyle={{ paddingTop: 16 }} background={backdrop}
+    contentStyle={bare ? styles.bare : styles.content}
+    header={bare ? undefined : <Header subtitle={subtitle} onBack={back} action={action} />}>
+    <View style={bare ? styles.fillBody : styles.body}>{body}</View>
   </ProductScreen>;
 }
 
-function WalkerHome({ session, onRecheck }: { session: IntensiveSession; onRecheck: () => void }) {
+function WalkerHome({ session, account, onExit, onRecheck }: { session: IntensiveSession; account: ReactNode; onExit: () => void; onRecheck: () => void }) {
+  const styles = useThemeStyles(createStyles);
+  const { gutter } = useProductSpacing();
   const [chat, setChat] = useState<ChatSummary | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -270,18 +282,18 @@ function WalkerHome({ session, onRecheck }: { session: IntensiveSession; onReche
     const timer = waiting ? setInterval(() => { void load(); }, 30_000) : null;
     return () => { alive = false; if (timer) clearInterval(timer); };
   }, [session, version, waiting]);
-  if (chat) return <ChatView session={session} chat={chat} />;
-  if (chat === undefined) return error ? <Note tone="error">{error}</Note> : <Note>Загружаю…</Note>;
-  return <View style={{ gap: 16 }}>
-    <Waiting name={session.status!.name ?? ''} code={shortCode(session.id)} busy={busy} onRefresh={() => {
+  if (chat) return <ChatView session={session} chat={chat} onBack={onExit} action={account} />;
+  return <ScrollView style={styles.fillBody} contentContainerStyle={[styles.waiting, { padding: gutter }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <Header subtitle={chat === undefined ? 'ВХОД' : 'ОЖИДАНИЕ'} onBack={onExit} action={account} />
+    {chat === undefined ? (error ? <Note tone="error">{error}</Note> : <Note>Загружаю…</Note>) : <Waiting name={session.status!.name ?? ''} code={shortCode(session.id)} busy={busy} onRefresh={() => {
       setBusy(true);
       void session.refresh()
         .then(status => { if (status.roles.length || status.mainAdmin) onRecheck(); else setVersion(current => current + 1); })
         .catch(problem => setError(problemText(problem)))
         .finally(() => setBusy(false));
-    }} />
-    {error ? <Note tone="error">{error}</Note> : null}
-  </View>;
+    }} />}
+    {error && chat !== undefined ? <Note tone="error">{error}</Note> : null}
+  </ScrollView>;
 }
 
 function StaffChats({ session, onOpen }: { session: IntensiveSession; onOpen: (chat: ChatSummary) => void }) {
@@ -297,12 +309,13 @@ function StaffChats({ session, onOpen }: { session: IntensiveSession; onOpen: (c
   }, [session]);
   if (error && !chats) return <Note tone="error">{error}</Note>;
   if (!chats) return <Note>Загружаю…</Note>;
-  return <ChatList chats={chats} onOpen={onOpen} />;
+  return <ChatList session={session} chats={chats} onOpen={onOpen} />;
 }
 
 const createStyles = () => StyleSheet.create({
   content: { paddingTop: 24, paddingBottom: 32 },
-  fill: { paddingTop: 12, paddingBottom: 0 },
+  bare: { padding: 0, paddingTop: 0, paddingBottom: 0 },
+  waiting: { gap: 24 },
   body: { gap: 16 },
   fillBody: { flex: 1, minHeight: 0 },
   stack: { gap: 16 },

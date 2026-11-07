@@ -1,5 +1,6 @@
 import { BackendError } from './backend';
 import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, KeyRow, Member, MessageRow, Place, StaffRole, Status, TotpEnrollment } from './backend';
+import { clearChatMemory, forgetSeen } from './chatMemory';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
 
@@ -18,6 +19,7 @@ function readDevice(): StoredDevice | null {
 export const hasDevice = () => readDevice() !== null;
 export function wipeDevice() {
   try { globalThis.localStorage?.removeItem(DEVICE_KEY); } catch { /* Storage may be blocked; nothing to wipe then. */ }
+  forgetSeen();
 }
 
 /** Auth tokens live in memory; every change is resealed into the device vault. */
@@ -158,6 +160,7 @@ export class IntensiveSession {
 
   /** Drops every secret from memory; the device vault stays. */
   lock() {
+    clearChatMemory();
     this.store.onChange = null;
     this.backend.close();
     this.entropy = new Uint8Array(16);

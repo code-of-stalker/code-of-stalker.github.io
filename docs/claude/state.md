@@ -191,12 +191,20 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   (connect-src adds the server read from config.ts via `scripts/intensive-server.mjs`).
   Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
 - Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
-  «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
+  «готовится» modal. Dev builds never use it: they use a local Supabase named in `.env.local`
+  (`EXPO_PUBLIC_INTENSIVE_URL/KEY`), else the in-memory demo (Яна, Мира, Олег, Алекс, Ника).
 - Server set 2026-11-07 (5ddf367): `https://tcbqlkjtofanmdffjqyt.supabase.co`, schema run
   (ping answers), sign-ups on, confirm email off, anon reads refused. No test accounts made
   there by Claude. Next, Art: setup steps 5–7 (GitHub 2FA, Яна's account + SQL main admin,
-  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on). Only
-  Тишина checked so far (phone + PC); the other dark themes after his OK.
+  end to end, ideally a walker in Russia; check Auth → Multi-Factor → TOTP is on).
+- End-to-end test 2026-11-07 on a local Supabase (recipe in `qa.md`): Яна + Мира + Олег on
+  three PC origins, Алекс on Art's phone (Chrome over USB). Passed: sign-up, roles, guide/admin
+  assignment, TOTP gate, live delivery both ways, ciphertext only in the DB, RLS per role
+  (walker, stranger, staff at aal1, removed admin, anon), removed admin cannot send, 5 wrong
+  PINs wipe the device, restore by words reopens the history. Fixed on the branch (not on
+  `main` yet): a guide/admin assigned while the chat was open showed as «бывший участник»
+  (ChatView now reloads members), PIN step after restore said «новый аккаунт». Only Тишина
+  checked; the other dark themes after Art's OK.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

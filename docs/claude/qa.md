@@ -38,6 +38,28 @@ parallel headless runs time out and leave skeleton placeholders on screen.
 - Wheel input in tests: 120 px steps ~140 ms apart, and stop on state change, or «Всё открыто»
   lets the wheel run through all four Step 4 questions at once.
 
+## Intensive chat, end to end (never on the real Supabase)
+- Local server: Docker Desktop + `npx supabase@3.0.0 init` in a scratch folder, set
+  `[auth.mfa.totp] enroll_enabled = verify_enabled = true` in its `supabase/config.toml`, copy
+  `supabase/intensive-schema.sql` into `supabase/migrations/<timestamp>_intensive.sql`,
+  `npx supabase@3.0.0 start`. Docker may be missing from PATH in an old shell: add
+  `C:\Program Files\Docker\Docker\resources\bin`.
+- Dev builds read `EXPO_PUBLIC_INTENSIVE_URL` / `EXPO_PUBLIC_INTENSIVE_KEY` from a git-ignored
+  `.env.local` (`http://127.0.0.1:54321` and the CLI's fixed local publishable key); without them
+  dev uses the in-memory demo. Main admin: `insert into public.main_admins (user_id) values (...)` via psql on 54322.
+- Separate "devices" on one PC are separate origins: `localhost`, `127.0.0.1`, `<name>.localhost`
+  (each has its own localStorage). TOTP codes: RFC 6238 from the manual key (Node `crypto` HMAC-SHA1).
+- Phone over USB: `adb reverse tcp:8093 tcp:8093` and `tcp:54321 tcp:54321` (the phone then uses
+  the same `localhost` URLs); `adb forward tcp:9222 localabstract:chrome_devtools_remote` gives CDP.
+  RN-web Pressables ignore synthetic CDP touches: tap with `adb shell input tap`
+  (physical = CSS × dpr, plus `(screen.height − innerHeight) × dpr` for Chrome's toolbar), type
+  with `Input.insertText`. Screenshots: `cmd /c "adb exec-out screencap -p > file.png"`
+  (a PowerShell `>` corrupts binary output).
+- Fast Refresh of `IntensiveFlow.tsx` runs its unmount cleanup and locks the open session:
+  reload the tab after editing it, or crypto calls fail with «Не удалось открыть переписку».
+- RLS spot checks: `begin; set local role authenticated; select set_config('request.jwt.claims',
+  '{"sub":"<uuid>","role":"authenticated","aal":"aal1"}', true); select count(*) from public.messages; rollback;`
+
 ## Deploy
 Push to `main` → GitHub Actions "Deploy web build to GitHub Pages" (`.github/workflows/pages.yml`).
 The build runs `npm ci --ignore-scripts` and `npm run export:web`; there is no Rust toolchain

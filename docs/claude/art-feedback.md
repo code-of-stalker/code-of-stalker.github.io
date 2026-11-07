@@ -75,3 +75,6 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
 - Walkers may be in Russia; check that every service the app uses works there.
 - The first chat UI read as «сыроватый прототип»: he wants messenger quality (Telegram as the model) built from the diary's own components (glass, framed contours, bottom sheet, Disket/Tektur roles), not new ad-hoc parts.
+- The first admin page was «идея нравится исполнение кривоватое»: empty columns, small rows and a cramped layout. Admin tools need real UI/UX care: big rows, no wasted columns, master-detail (list + side card), clear filters and bulk actions.
+- The admin page speaks formally: «в админке более уважительный тон, не на "ты"». Walker screens keep «ты».
+- Chat details he asked for: no cut top corner on follow-up bubbles (both sides), no member icons over the chat, no «переписка зашифрована» footer; show «изменено» on edited messages.

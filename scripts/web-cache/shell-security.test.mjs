@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
+import { intensiveConnectOrigins, readIntensiveServer } from '../intensive-server.mjs';
 import { contentSecurityPolicy, diaryEditorScript, secureShell, shellGuard } from './shell-security.mjs';
 
 const hash = text => `'sha256-${crypto.createHash('sha256').update(text).digest('base64')}'`;
@@ -33,6 +34,24 @@ test('the policy keeps data on this origin and allows no foreign or injected scr
   const scripts = policy.split('; ').find(item => item.startsWith('script-src'));
   assert.equal(scripts, `script-src 'self' 'unsafe-eval' ${hash('a')}`);
   assert.doesNotMatch(policy, /https?:|\*|'unsafe-inline'[^;]*script|script-src[^;]*'unsafe-inline'/);
+});
+
+test('the Intensive server is the only other host, and only a public key may name it', async () => {
+  const config = (url, key) => `export const intensiveServer = { url: '${url}', publishableKey: '${key}' };`;
+  assert.deepEqual(await intensiveConnectOrigins(config('', '')), []);
+  const origins = await intensiveConnectOrigins(config('https://abcd1234.supabase.co', 'sb_publishable_x1-Y_2'));
+  assert.deepEqual(origins, ['https://abcd1234.supabase.co', 'wss://abcd1234.supabase.co']);
+  const policy = contentSecurityPolicy(['a'], origins);
+  assert.ok(policy.includes("connect-src 'self' blob: https://abcd1234.supabase.co wss://abcd1234.supabase.co"));
+  assert.equal(policy.match(/https:/g).length, 1);
+  const jwt = role => `h.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.s`;
+  assert.equal((await readIntensiveServer(config('https://a.supabase.co', jwt('anon')))).publishableKey, jwt('anon'));
+  await assert.rejects(readIntensiveServer(config('https://a.supabase.co', jwt('service_role'))), /publishable/);
+  await assert.rejects(readIntensiveServer(config('https://a.supabase.co', 'sb_secret_abc')), /publishable/);
+  await assert.rejects(readIntensiveServer(config('https://evil.example.com', '')), /Unexpected/);
+  await assert.rejects(readIntensiveServer(config("https://a.supabase.co/path", '')), /Unexpected/);
+  // The committed config itself must parse.
+  await readIntensiveServer();
 });
 
 test('the diary editor script is fixed and reads its entry from a JSON element', async () => {

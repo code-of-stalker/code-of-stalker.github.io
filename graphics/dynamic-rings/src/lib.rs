@@ -213,16 +213,23 @@ pub const BODY_POINTS: u32 = 26000;
 pub const BODY_SIZE: f32 = 0.0006;
 /// A body point's own size, metres: closer points grow, as on a real skin.
 pub const BODY_DOT: f32 = 0.003;
-/// Page 04: what flares up inside the figure (a thought, a feeling, an
-/// impulse, a sensation) branches out from where it starts: a tree of
-/// branches each splitting in two, `BRANCH_DEPTH` deep, each in so many
-/// pieces, every next one this much shorter. The scanner folds it back
-/// into one bead of light.
-pub const EVENTS: usize = 4;
+/// Page 04: what flares up inside the figure (a thought, a feeling, one in
+/// the belly, an impulse, a sensation) branches out from where it starts:
+/// a tree of branches each splitting in two, `BRANCH_DEPTH` deep, each in
+/// so many pieces, every next one this much shorter. The scanner folds it
+/// back into one bead of light.
+pub const EVENTS: usize = 5;
 pub const BRANCH_DEPTH: u32 = 6;
 pub const BRANCHES: u32 = (1 << BRANCH_DEPTH) - 1;
 pub const BRANCH_SEGMENTS: u32 = 12;
 pub const BRANCH_SHRINK: f32 = 0.72;
+/// Each drags the skin round its root its way: within this far of it (m),
+/// each point by up to this much more than the skin it is on.
+pub const PULL_NEAR: f32 = 0.2;
+pub const PULL_STRETCH: f32 = 1.4;
+/// The thought melts the figure from its feet up: the points go out over
+/// this far under the melt's front (m).
+pub const MELT_BAND: f32 = 0.45;
 
 /// Peak light of each family.
 pub const CROWN_LIGHT: f32 = 1.0;
@@ -412,10 +419,14 @@ pub struct Frame {
     /// page); each thing that flares inside the figure, three slots each:
     /// its root and size, the way it grows and how far grown, how far
     /// folded, its light, its seed and how far it has writhed; and the bead
-    /// each folds into: where, how lit.
+    /// each folds into: where, how lit; which way each drags the skin
+    /// round its root, and how far (m).
     pub warmth: f32,
     pub branches: [[f32; 4]; 3 * EVENTS],
     pub facts: [[f32; 4]; EVENTS],
+    pub pulls: [[f32; 4]; EVENTS],
+    /// Page 04: the height of the melt's front (m) and how far it holds.
+    pub melt: [f32; 2],
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
@@ -434,7 +445,7 @@ pub const SLOT_DESK: usize = SLOT_VOICE + 2 * VOICES;
 pub const SLOT_LAMP: usize = SLOT_DESK + 2 * SEATS;
 pub const SLOT_CASTER: usize = SLOT_LAMP + 3;
 pub const SLOT_INNER: usize = SLOT_CASTER + 2 * CASTERS;
-pub const SLOTS: usize = SLOT_INNER + 1 + 4 * EVENTS;
+pub const SLOTS: usize = SLOT_INNER + 1 + 5 * EVENTS;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -505,12 +516,15 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     for (k, c) in f.casters.iter().enumerate() {
         d[SLOT_CASTER + k] = *c;
     }
-    d[SLOT_INNER] = [f.warmth, 0.0, 0.0, 0.0];
+    d[SLOT_INNER] = [f.warmth, f.melt[0], f.melt[1], 0.0];
     for (k, b) in f.branches.iter().enumerate() {
         d[SLOT_INNER + 1 + k] = *b;
     }
     for (k, b) in f.facts.iter().enumerate() {
         d[SLOT_INNER + 1 + 3 * EVENTS + k] = *b;
+    }
+    for (k, b) in f.pulls.iter().enumerate() {
+        d[SLOT_INNER + 1 + 4 * EVENTS + k] = *b;
     }
     d
 }
@@ -960,15 +974,18 @@ mod tests {
             assert!(touch > last && touch + 2.0 < INNER_LOOP, "{e}: {touch}");
             last = touch;
             let f = story.compose(touch);
-            let root = [f.branches[3 * e], f.facts[e]];
-            let y = if e < 3 { root[0][1] } else { root[1][1] };
+            let sized = f.branches[3 * e][3] > 0.0;
+            let y = f.facts[e][1];
             assert!(
                 (f.rings[1].center.y - y).abs() < 0.01,
                 "{e}: {}",
                 f.rings[1].center.y - y
             );
+            // It drags the figure till then, and lets go after.
+            assert!(story.compose(touch - 0.1).pulls[e][3] > 0.1, "{e}");
+            assert!(story.compose(touch + 1.5).pulls[e][3].abs() < 1e-4, "{e}");
             // Grown before, folded and gone after; the bead stays on its root.
-            if e < 3 {
+            if sized {
                 let before = story.compose(touch - 0.1);
                 assert!(
                     before.branches[3 * e + 1][3] > 0.99 && before.branches[3 * e + 2][1] > 0.99
@@ -988,6 +1005,17 @@ mod tests {
         let thought = story.touches[0];
         assert!(story.compose(thought - 1.0).amount < 1e-3);
         assert!(story.compose(thought + 3.0).amount > 0.99);
+        // The thought lifts it off the floor, its feet dark, and melts it
+        // from the feet up; it is down and whole again as it walks on.
+        let (aloft, down) = (story.compose(thought - 0.2), story.compose(thought + 1.2));
+        assert!(aloft.body.low.y - down.body.low.y > 0.15);
+        assert!(aloft.feet.iter().all(|f| f[3] < 0.05));
+        assert!(aloft.melt[1] > 0.99 && aloft.melt[0] - aloft.body.low.y > 0.7);
+        assert!(down.melt[1] < 1e-3, "{}", down.melt[1]);
+        for t in [5.0, 30.0, 45.0] {
+            let f = story.compose(t);
+            assert!(f.melt[1] < 1e-3, "{t}");
+        }
         // The loop starts and ends with no bead.
         for t in [0.0, INNER_LOOP - 0.3] {
             assert!(story.compose(t).facts.iter().all(|b| b[3] < 1e-3), "{t}");

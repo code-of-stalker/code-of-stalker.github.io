@@ -194,7 +194,10 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   sensation at the left knee); each leaves a warm bead on the body; far side camera. Warm
   light rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 stay
   pixel-identical. Матрица prototype and sheet `output/prototypes/step-seven/kadry-04.jpg`
-  sent to Art; waits for his word. Not wired into the app yet (`dynamic-second-ring` →
+  sent to Art. Art then asked (2026-11-08) for a point in the belly, the thought lifting the
+  figure off the floor while it melts from the feet up, and each event visibly dragging the
+  body its way: done (five events, belly spark at 26.3; `INNER_PULL`, `inner_way`, melt in
+  `body.vert`), sheet `kadry-04-v2.jpg` sent; waits for his word. Not wired into the app yet (`dynamic-second-ring` →
   chapter 4 in `stepSevenContent.ts`, `DynamicRings.web.tsx`, `types.ts`); other 3 themes
   after his OK; `main` needs a new OK.
 - Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after

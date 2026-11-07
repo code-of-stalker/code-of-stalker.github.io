@@ -198,6 +198,7 @@ vec3 constellationStar(int c, int j) {
 #define INNER u_d[SLOT_INNER]
 #define EVENT(e, j) u_d[SLOT_INNER + 1 + 3 * (e) + (j)]
 #define FACT(e) u_d[SLOT_INNER + 1 + 3 * EVENTS + (e)]
+#define PULL(e) u_d[SLOT_INNER + 1 + 4 * EVENTS + (e)]
 // What of a light is kept warm goes into the frame's alpha, by its luma;
 // the warm pass (warm.frag) adds it back in the theme's warm color.
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);

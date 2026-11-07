@@ -5,7 +5,9 @@
 // gathers at the outline, dims on the far side, and answers the scanner
 // running up and down it, the breath's beat and the lock's wave. The one
 // it meets on page 02 (u_kind.z 1) takes every second point and its own
-// light (u_kind.w), and nothing of the rings.
+// light (u_kind.w), and nothing of the rings. On page 04 what flares in
+// it pulls its skin out round the root, and the thought melts it from the
+// feet up.
 uniform vec4 u_b[CONES * 3];
 out vec3 v_color;
 out float v_warm;
@@ -99,6 +101,27 @@ void main() {
   float dist = 0.25 * (d1 + d2 + d3 + d4);
   vec3 n = normalize(k.xyy * d1 + k.yyx * d2 + k.yxy * d3 + k.xxx * d4);
   p -= n * dist;
+  float melted = 0.0;
+  if (!other && INNER.x > 0.0) {
+    // Each point near a root is drawn out its way, some more, some less.
+    for (int e = 0; e < EVENTS; e++) {
+      vec4 pull = PULL(e);
+      if (pull.w > 0.0) {
+        vec3 r = p - EVENT(e, 0).xyz;
+        float near = exp(-dot(r, r) / (PULL_NEAR * PULL_NEAR));
+        p += pull.xyz * pull.w * near * PULL_STRETCH * rand(seed + 6u);
+      }
+    }
+    // Under the melt's front the points loosen, drift off and go out.
+    melted = INNER.z * smoothstep(0.0, MELT_BAND, INNER.y - p.y);
+    if (melted > 0.0) {
+      float a = TAU * rand(seed + 7u);
+      vec3 away = vec3(cos(a), 0.0, sin(a)) * (0.03 + 0.07 * rand(seed + 8u))
+                + vec3(0.0, 0.03 + 0.12 * rand(seed + 9u), 0.0);
+      float sway = 0.75 + 0.25 * sin(loopPhase() * pace(seed + 10u, 2.0) + TAU * rand(seed + 11u));
+      p += away * melted * sway;
+    }
+  }
   vec3 v = toView(p);
   float light = (other ? u_kind.w : LOCK2.y) * BODY_LIGHT;
   if (dist < -0.02 || v.z < 0.3 || light <= 0.0 || (other && hidden(p))) {
@@ -163,7 +186,7 @@ void main() {
   gl_PointSize = 6.0 * sigma;
   // In focus each point peaks at its light; a blurred one keeps its energy.
   float spread = s0 / sigma;
-  v_color = u_glow * light * spread * spread * depthCue(v.z);
+  v_color = u_glow * light * spread * spread * depthCue(v.z) * (1.0 - 0.75 * melted);
   v_warm = dot(v_color, LUMA) * warm;
   v_color *= 1.0 - warm;
 }

@@ -328,9 +328,25 @@ const INNER_PAUSE: f32 = 16.0 * CADENCE;
 const INNER_EVENTS: [(f32, f32, f32, bool); EVENTS] = [
     (9.6, 1.0, 0.85, true),
     (22.3, 0.6, 0.45, true),
+    (26.3, 0.0, 0.0, false),
     (36.6, 0.3, 0.2, false),
     (46.3, 0.0, 0.0, false),
 ];
+/// How far (m) each drags the skin round its root its way at the most,
+/// and how far round the root the drag reaches (m); the figure above its
+/// feet leans after it, by this share of the drag at the root's height.
+const INNER_PULL: [(f32, f32); EVENTS] = [
+    (0.14, 0.55),
+    (0.18, 0.45),
+    (0.16, 0.35),
+    (0.22, 0.35),
+    (0.14, 0.3),
+];
+const INNER_LEAN: f32 = 0.5;
+/// The thought lifts the figure this far off the floor (m), and melts it
+/// from its feet up this far (m).
+const INNER_LIFT: f32 = 0.2;
+const INNER_MELT: f32 = 0.75;
 /// The scanner's share of the light kept warm on page 04, and when the
 /// beads it carries go out before the loop ends.
 const INNER_WARMTH: f32 = 0.75;
@@ -906,8 +922,9 @@ fn inner_walk() -> Walk {
 }
 
 /// Where what flares at event `e` grows from on `body`, and which way its
-/// branches reach: above the head, before the chest, from the right
-/// hand's fingertips, at the left knee (that one only sparks).
+/// branches reach: above the head, before the chest, in the belly (that
+/// one only sparks), from the right hand's fingertips, at the left knee
+/// (a spark too).
 fn inner_root(e: usize, body: &Body) -> (V3, V3) {
     let (face, chest) = (body.face, body.chest_axes);
     let cone = |i: usize| {
@@ -923,9 +940,28 @@ fn inner_root(e: usize, body: &Body) -> (V3, V3) {
             body.chest + chest.forward * 0.05,
             chest.forward + chest.up * 0.3,
         ),
-        2 => (cone(3 * 18 + 1), chest.forward * 0.6 - chest.left - Y * 0.3),
+        2 => (
+            body.pelvis.lerp(body.chest, 0.45) + chest.forward * 0.06,
+            chest.forward + Y * 0.1,
+        ),
+        3 => (cone(3 * 18 + 1), chest.forward * 0.6 - chest.left - Y * 0.3),
         _ => (cone(3 * 7), Y),
     }
+}
+
+/// Which way what flares at event `e` drags `body`: the thought up, the
+/// feeling out to its left, the belly and the impulse to its right, the
+/// knee up and out; each across the page's camera, which stands before it.
+fn inner_way(e: usize, body: &Body) -> V3 {
+    let (face, chest) = (body.face, body.chest_axes);
+    let way = match e {
+        0 => Y + face.forward * 0.3,
+        1 => chest.left * 0.8 + chest.forward * 0.4 + Y * 0.25,
+        2 => chest.forward * 0.5 - chest.left * 0.9,
+        3 => chest.forward * 0.6 - chest.left - Y * 0.3,
+        _ => chest.left * 0.6 + chest.forward * 0.6 + Y * 0.5,
+    };
+    way.normalize()
 }
 
 impl Story {
@@ -982,7 +1018,11 @@ impl Story {
             touches: [0.0; EVENTS],
         };
         if chapter == Chapter::Inner {
-            story.touches = std::array::from_fn(|e| story.touch(e));
+            // What flares drags the figure, and so where the scanner meets
+            // it; the drag holds the same till then, so a few rounds settle.
+            for _ in 0..3 {
+                story.touches = std::array::from_fn(|e| story.touch(e));
+            }
         }
         story
     }
@@ -992,8 +1032,7 @@ impl Story {
     fn touch(&self, e: usize) -> f32 {
         let (flare, _, _, rising) = INNER_EVENTS[e];
         let gap = |t: f32| {
-            let pose = self.pose(t);
-            let body = build(&pose);
+            let (pose, body) = self.figure(t);
             let d = scanner(&body, sweep(t), pose.risen).0.y - inner_root(e, &body).0.y;
             if rising {
                 d
@@ -1421,6 +1460,47 @@ impl Story {
         smooth(flare, flare + 1.2, t) * (1.0 - smooth(touch + 0.4, touch + 1.9, t))
     }
 
+    /// How hard what flared at event `e` holds the figure at `t`: from the
+    /// flare till the scanner reaches it, when it lets go.
+    fn held(&self, e: usize, t: f32) -> f32 {
+        let (flare, touch) = (INNER_EVENTS[e].0, self.touches[e]);
+        if touch <= flare {
+            return 0.0;
+        }
+        let on = min_jerk(stage(t, [flare, flare + 0.95 * (touch - flare)]));
+        on * (1.0 - min_jerk(stage(t, [touch + 0.05, touch + 1.0])))
+    }
+
+    /// How far it drags the figure at `t`, tugging.
+    fn pull(&self, e: usize, t: f32) -> f32 {
+        let tug = 1.0 + 0.15 * (self.cycle(t, 0.9) + 1.9 * e as f32).sin();
+        INNER_PULL[e].0 * self.held(e, t) * tug
+    }
+
+    /// The figure at `t`, its pose and its body; on page 04 what flares in
+    /// it drags the skin round its root its way, and the thought lifts it.
+    fn figure(&self, t: f32) -> (Pose, Body) {
+        let pose = self.pose(t);
+        let body = build(&pose);
+        if self.chapter != Chapter::Inner {
+            return (pose, body);
+        }
+        let pulls: [(V3, V3, f32); EVENTS] = std::array::from_fn(|e| {
+            let root = inner_root(e, &body).0;
+            (root, inner_way(e, &body) * self.pull(e, t), INNER_PULL[e].1)
+        });
+        let lift = Y * (INNER_LIFT * self.held(0, t));
+        let floor = body.low.y;
+        let dragged = body.moved(|p| {
+            pulls.iter().fold(lift, |by, &(root, way, near)| {
+                let d = p - root;
+                let up = ((p.y - floor) / (root.y - floor).max(0.2)).clamp(0.0, 1.0);
+                by + way * (INNER_LEAN * up + (-d.dot(d) / (near * near)).exp())
+            })
+        });
+        (pose, dragged)
+    }
+
     /// Page 04's crown: what flares takes its light, the more the bigger.
     fn inner_crown(&self, t: f32) -> f32 {
         let taken: f32 = (0..EVENTS)
@@ -1471,6 +1551,8 @@ impl Story {
             f.branches[3 * e] = [root.x, root.y, root.z, size];
             f.branches[3 * e + 1] = [dir.x, dir.y, dir.z, grow];
             f.branches[3 * e + 2] = [fold, light, flow(t) * 7.0 + 1.7 * e as f32, 0.0];
+            let way = inner_way(e, &body);
+            f.pulls[e] = [way.x, way.y, way.z, self.pull(e, t)];
             // What is left is a bead on its root, a fact noted where it
             // is; one that only sparks shows as a spark till the touch.
             let lit = smooth(touch + 0.6, touch + 1.0, t);
@@ -1480,6 +1562,20 @@ impl Story {
                 0.6 * smooth(flare, flare + 0.3, t)
             };
             f.facts[e] = [root.x, root.y, root.z, lit.max(spark) * out];
+        }
+        // The thought melts it from its feet up, slowly, and it forms
+        // again as the scanner reaches the thought; aloft, its feet leave
+        // no light on the floor.
+        let (flare, touch) = (INNER_EVENTS[0].0, self.touches[0]);
+        let front = min_jerk(stage(t, [flare + 0.8, touch]));
+        let holds = 1.0 - min_jerk(stage(t, [touch + 0.05, touch + 1.2]));
+        f.melt = [
+            body.low.y + INNER_MELT * front,
+            holds * smooth(0.0, 0.02, front),
+        ];
+        let aloft = smooth(0.0, 0.4, self.held(0, t));
+        for foot in &mut f.feet {
+            foot[3] *= 1.0 - aloft;
         }
         f
     }
@@ -1771,8 +1867,7 @@ impl Story {
         let breath = breath(t);
         let walk = &self.walk;
         let amount = walk.amount(t);
-        let pose = self.pose(t);
-        let body = build(&pose);
+        let (pose, body) = self.figure(t);
         let track = walk.track(t);
         let forward = (shot.target - shot.eye).normalize();
         let right = forward.cross(Y).normalize();
@@ -1861,6 +1956,8 @@ impl Story {
             warmth: 0.0,
             branches: [[0.0; 4]; 3 * EVENTS],
             facts: [[0.0; 4]; EVENTS],
+            pulls: [[0.0; 4]; EVENTS],
+            melt: [0.0; 2],
         }
     }
 }

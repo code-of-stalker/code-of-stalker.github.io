@@ -74,3 +74,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
 - Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
 - Walkers may be in Russia; check that every service the app uses works there.
+
+## App icon (2026-11-07)
+- The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).
+- A stick figure of thin capsules with a black outline was rejected; the runner is a bold pictogram like the exit sign (broad shoulders, thick limbs, straight cuts), solid, no dark outline.

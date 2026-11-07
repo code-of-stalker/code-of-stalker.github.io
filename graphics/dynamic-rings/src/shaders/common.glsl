@@ -191,6 +191,24 @@ vec3 constellationStar(int c, int j) {
 #define BOUND(b) u_d[SLOT_LAMP + 1 + (b)]
 #define CASTER(c, j) u_d[SLOT_CASTER + 2 * (c) + (j)]
 
+// Page 04 (lib.rs Frame warmth, branches, facts): the scanner's warm
+// share; for each thing that flares its root and size, the way it reaches
+// and how far it has grown, how far it has folded, its light and writhe;
+// and the bead it leaves, with its light. All 0 on every other page.
+#define INNER u_d[SLOT_INNER]
+#define EVENT(e, j) u_d[SLOT_INNER + 1 + 3 * (e) + (j)]
+#define FACT(e) u_d[SLOT_INNER + 1 + 3 * EVENTS + (e)]
+// What of a light is kept warm goes into the frame's alpha, by its luma;
+// the warm pass (warm.frag) adds it back in the theme's warm color.
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+
+// `v` turned `angle` about the unit `axis`.
+vec3 turnAbout(vec3 v, vec3 axis, float angle) {
+  float c = cos(angle);
+  float s = sin(angle);
+  return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+}
+
 // The lantern's light this far from it, of its light at the flame: a pool
 // that fades fast into the night.
 float lampFall(float d) {

@@ -3,10 +3,12 @@
 // stars (3), the beads of the crown and the scanner (4), the spokes of
 // beads that run between them once they lock (5), the columns of data over
 // the horizon (6), and (7) the dust of the crumbling wires, their tips and
-// roots, the lights on the spires. Each instance is a square three blurred
+// roots, the lights on the spires, and (8) page 04's beads, what the scanner
+// keeps of each thing that flared. Each instance is a square three blurred
 // widths out from its centre (sprite.frag).
 out vec3 v_color;
 out vec2 v_q;
+out float v_warm;
 
 // Pixels of a size in metres at depth z.
 float worldPx(float metres, float z) {
@@ -27,6 +29,9 @@ void main() {
   // soft out-of-focus light; the lights keep their energy.
   bool keepMore = false;
   bool far = false;
+  // How much of its light is warm (page 04).
+  float warm = 0.0;
+  v_warm = 0.0;
   if (kind == 0) {
     uint seed = uint(i) * 8u + 11u;
     float L = WORLD.y;
@@ -160,6 +165,7 @@ void main() {
     light = n.w * BEAD_LIGHT * ring * mix(0.35, 1.0, gathered) * (0.55 + 0.45 * big + 0.6 * pow(knot, 6.0))
           * (1.0 + FLASH_GAIN * x.x) * (1.0 + WAVE_GAIN * lockWave(p));
     if (k == 0) light *= 1.0 + 1.5 * x.w;
+    if (k == 1) warm = INNER.x;
     sigma0 = mix(0.0045, 0.0075, big) * (k == 0 ? 0.8 : 1.0);
     sized = true;
   } else if (kind == 5) {
@@ -231,6 +237,16 @@ void main() {
       if (hidden(p)) light = 0.0;
       sigma0 = 0.06;
     }
+  } else if (kind == 8) {
+    // A bead of warm light on the body, breathing a little, flaring as the
+    // scanner's plane runs through it again.
+    vec4 f = FACT(i);
+    p = f.xyz;
+    float level = (p.y - RC(1).y) / 0.06;
+    light = FACT_LIGHT * f.w * (0.85 + 0.15 * sin(w * pace(uint(i) + 900u, 3.0))) * (1.0 + 1.5 * RN(1).w * exp(-level * level));
+    sigma0 = 0.018;
+    sized = true;
+    warm = 1.0;
   } else {
     // A column of data over the horizon: a bright head falls, the code it
     // leaves fading above it.
@@ -278,4 +294,6 @@ void main() {
   float kept = keepMore ? spread : spread * spread;
   // Nothing flares right at the lens.
   v_color = u_glow * light * kept * smoothstep(0.3, 1.2, v.z) * (kind == 1 || far ? 1.0 : depthCue(v.z));
+  v_warm = dot(v_color, LUMA) * warm;
+  v_color *= 1.0 - warm;
 }

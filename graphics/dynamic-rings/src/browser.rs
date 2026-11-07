@@ -6,10 +6,11 @@
 use crate::body::{BLEND, PRIMITIVES};
 use crate::{
     cone_points, look, pack, Chapter, Look, Story, ATMOSPHERE_LIGHT, BEADS, BEAD_LIGHT, BODY_DOT,
-    BODY_LIGHT, BODY_POINTS, BODY_SIZE, CASTERS, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
-    CONSTELLATIONS, CONSTELLATION_LIGHT, CONSTELLATION_STARS, CONTACT_LIGHT, CROWN_GAP,
-    CROWN_LIGHT, DEBRIS, DEBRIS_FADE, DEBRIS_LIGHT, DESK_AHEAD, DESK_HALF, DESK_LEGS, DESK_LIGHT,
-    DESK_LINES, DESK_PIECES, DESK_SLAB, DESK_TOP, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN,
+    BODY_LIGHT, BODY_POINTS, BODY_SIZE, BRANCHES, BRANCH_DEPTH, BRANCH_LIGHT, BRANCH_SEGMENTS,
+    BRANCH_SHRINK, CASTERS, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT, CONSTELLATIONS,
+    CONSTELLATION_LIGHT, CONSTELLATION_STARS, CONTACT_LIGHT, CROWN_GAP, CROWN_LIGHT, DEBRIS,
+    DEBRIS_FADE, DEBRIS_LIGHT, DESK_AHEAD, DESK_HALF, DESK_LEGS, DESK_LIGHT, DESK_LINES,
+    DESK_PIECES, DESK_SLAB, DESK_TOP, ENGRAVE_GAMMA, ENGRAVE_WHITE, EVENTS, FACT_LIGHT, FLASH_GAIN,
     FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT, FLOOR_POOL, FOCAL, FRAME_ASPECT, GHOSTS, GHOST_LIGHT,
     GHOST_SEGMENTS, GLASS_FOG, GLYPHS, GLYPH_COLUMNS, GLYPH_ROWS, HALO, HALO_SPREAD,
     INNER_LINE_LIGHT, KEY_COLUMNS, KEY_ROWS, LAMP_AIR, LAMP_BODY, LAMP_CORE, LAMP_DUST, LAMP_FLAT,
@@ -20,12 +21,12 @@ use crate::{
     RIPPLE_LIGHT, RIPPLE_REACH, RIPPLE_SECONDS, RIPPLE_SEGMENTS, SCAN_LIGHT, SCAN_WIDTH, SEATS,
     SEAT_HALF, SEAT_LEVELS, SEAT_LIGHT, SEAT_PIECES, SEAT_TOP, SHELL, SHELL_GRID, SHELL_LATENT,
     SHELL_LIGHT, SHELL_WAVE, SLICE, SLICE_GLOW, SLICE_LIGHT, SLOTS, SLOT_CASTER, SLOT_DESK,
-    SLOT_FEET, SLOT_GHOST, SLOT_LAMP, SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_SEAT, SLOT_TENTACLE,
-    SLOT_THING, SLOT_VIEW, SLOT_VOICE, SLOT_WORLD, SPIN_LIGHT, SPIN_STEP, SPIN_TRAIL, SPIRES,
-    SPIRE_LIGHT, SPIRE_PIECES, SPOKES, SPOKE_BEADS, SPOKE_LIGHT, STARS, STAR_LIGHT, SWEEP,
-    TENTACLES, TENTACLE_BREAK, TENTACLE_LIGHT, TENTACLE_SEGMENTS, TENTACLE_STRANDS, THINGS,
-    THING_LIGHT, THING_PIECES, THING_RING, UNSCANNED, VOICES, VOICE_LIGHT, VOICE_SEGMENTS,
-    WAVE_GAIN, WRITHE, WRITHE_REACH,
+    SLOT_FEET, SLOT_GHOST, SLOT_INNER, SLOT_LAMP, SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_SEAT,
+    SLOT_TENTACLE, SLOT_THING, SLOT_VIEW, SLOT_VOICE, SLOT_WORLD, SPIN_LIGHT, SPIN_STEP,
+    SPIN_TRAIL, SPIRES, SPIRE_LIGHT, SPIRE_PIECES, SPOKES, SPOKE_BEADS, SPOKE_LIGHT, STARS,
+    STAR_LIGHT, SWEEP, TENTACLES, TENTACLE_BREAK, TENTACLE_LIGHT, TENTACLE_SEGMENTS,
+    TENTACLE_STRANDS, THINGS, THING_LIGHT, THING_PIECES, THING_RING, UNSCANNED, VOICES,
+    VOICE_LIGHT, VOICE_SEGMENTS, WAVE_GAIN, WRITHE, WRITHE_REACH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -44,10 +45,11 @@ const BODY_FRAG: &str = include_str!("shaders/body.frag");
 const WORLD_FRAG: &str = include_str!("shaders/world.frag");
 const SCREEN: &str = include_str!("shaders/screen.vert");
 const FINISH: &str = include_str!("shaders/finish.frag");
+const WARM: &str = include_str!("shaders/warm.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// Every uniform any program reads; a program without one ignores it.
-const NAMES: [&str; 11] = [
+const NAMES: [&str; 12] = [
     "u_d",
     "u_b",
     "u_glow",
@@ -59,6 +61,7 @@ const NAMES: [&str; 11] = [
     "u_mid",
     "u_ink",
     "u_frame",
+    "u_warm",
 ];
 
 /// lib.rs's constants as the shaders' `#define`s, so both read one source.
@@ -189,6 +192,14 @@ fn defines() -> String {
         ("MOTE_SPAN_Y", f(MOTE_SPAN[1])),
         ("SLOT_LAMP", SLOT_LAMP.to_string()),
         ("SLOT_CASTER", SLOT_CASTER.to_string()),
+        ("SLOT_INNER", SLOT_INNER.to_string()),
+        ("EVENTS", EVENTS.to_string()),
+        ("BRANCHES", BRANCHES.to_string()),
+        ("BRANCH_DEPTH", BRANCH_DEPTH.to_string()),
+        ("BRANCH_SEGMENTS", BRANCH_SEGMENTS.to_string()),
+        ("BRANCH_SHRINK", f(BRANCH_SHRINK)),
+        ("BRANCH_LIGHT", f(BRANCH_LIGHT)),
+        ("FACT_LIGHT", f(FACT_LIGHT)),
         ("CASTERS", CASTERS.to_string()),
         ("LAMP_REACH", f(LAMP_REACH)),
         ("LAMP_SIZE", f(LAMP_SIZE)),
@@ -395,6 +406,7 @@ pub struct DynamicRings {
     sprite: Prog,
     body: Prog,
     finish: Prog,
+    warm: Prog,
     target: Target,
     empty: WebGlVertexArrayObject,
     themed: Themed,
@@ -443,6 +455,7 @@ impl DynamicRings {
             &scene_source(&defines, BODY_FRAG),
         )?;
         let finish = Prog::new(&gl, SCREEN, FINISH)?;
+        let warm = Prog::new(&gl, SCREEN, WARM)?;
         let target = Target::new(&gl)?;
         let themed = Themed::new(&gl, false)?;
         let empty = gl
@@ -461,6 +474,7 @@ impl DynamicRings {
             sprite,
             body,
             finish,
+            warm,
             target,
             empty,
             themed,
@@ -584,6 +598,7 @@ impl DynamicRings {
             &self.sprite,
             &self.body,
             &self.finish,
+            &self.warm,
         ] {
             gl.delete_program(Some(&p.program));
         }
@@ -622,7 +637,8 @@ impl DynamicRings {
         let keep = self.target.keep();
         let gl = &self.gl;
         gl.viewport(0, 0, width, height);
-        gl.clear_color(0.0, 0.0, 0.0, 1.0);
+        // Alpha holds page 04's warm light, so it starts empty.
+        gl.clear_color(0.0, 0.0, 0.0, 0.0);
         gl.clear(Gl::COLOR_BUFFER_BIT);
         gl.enable(Gl::BLEND);
         gl.blend_func(Gl::CONSTANT_COLOR, Gl::ONE);
@@ -685,6 +701,15 @@ impl DynamicRings {
                 f.desks.iter().map(|d| d[2]).fold(0.0, f32::max),
                 SEATS as u32 * DESK_LINES,
             ),
+            (
+                f.branches
+                    .iter()
+                    .skip(2)
+                    .step_by(3)
+                    .map(|b| b[1])
+                    .fold(0.0, f32::max),
+                EVENTS as u32 * BRANCHES * BRANCH_SEGMENTS,
+            ),
         ];
         for (kind, (on, count)) in families.iter().enumerate() {
             if *on > 0.0 {
@@ -715,6 +740,11 @@ impl DynamicRings {
             (crown.max(scanner), 2 * BEADS, 4.0),
             (f.spokes, SPOKES * SPOKE_BEADS, 5.0),
             (f.world, TENTACLES as u32 * (DEBRIS + 2) + SPIRES, 7.0),
+            (
+                f.facts.iter().map(|b| b[3]).fold(0.0, f32::max),
+                EVENTS as u32,
+                8.0,
+            ),
         ];
         for (on, count, kind) in lights {
             if on > 0.0 {
@@ -754,6 +784,35 @@ impl DynamicRings {
         if offscreen {
             let edges = self.soft_edges.then_some(EDGES);
             self.themed.present(gl, self.backdrop, edges);
+            // Page 04's warm light, added over the recolored frame.
+            let warm = f.warmth > 0.0
+                || f.branches.iter().skip(2).step_by(3).any(|b| b[1] > 0.0)
+                || f.facts.iter().any(|b| b[3] > 0.0);
+            if warm && self.look.warm != [0.0; 3] {
+                let p = &self.warm;
+                gl.bind_framebuffer(Gl::FRAMEBUFFER, None);
+                gl.viewport(0, 0, width, height);
+                gl.enable(Gl::BLEND);
+                gl.blend_func(Gl::ONE, Gl::ONE);
+                gl.use_program(Some(&p.program));
+                gl.active_texture(Gl::TEXTURE2);
+                gl.bind_texture(Gl::TEXTURE_2D, self.target.texture.as_ref());
+                gl.uniform4f(
+                    p.at("u_out"),
+                    f32::from(self.look.soft),
+                    f32::from(self.soft_edges),
+                    0.0,
+                    1.0 / keep,
+                );
+                gl.uniform4fv_with_f32_array(p.at("u_edges"), &EDGES);
+                gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
+                gl.bind_vertex_array(Some(&self.empty));
+                gl.draw_arrays(Gl::TRIANGLES, 0, 3);
+                gl.bind_vertex_array(None);
+                gl.bind_texture(Gl::TEXTURE_2D, None);
+                gl.active_texture(Gl::TEXTURE0);
+                gl.disable(Gl::BLEND);
+            }
         }
         self.frames = self.frames.wrapping_add(1);
     }

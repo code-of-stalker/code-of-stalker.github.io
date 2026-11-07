@@ -5,8 +5,8 @@ use crate::body::{build, Axes, Body, Pose, Rest, Step, Walk, PRIMITIVES, SEAT_BA
 use crate::math::{hermite, min_jerk, mix, monotone, pulse, smooth, v3, window, V3, Y};
 use crate::{
     Frame, Ring, Tentacle, BEAT, CASTERS, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT,
-    CROWN_TOP, DESK_AHEAD, GHOSTS, GHOST_STEP, GLYPHS, LAPTOP_TOP, LID_HEIGHT, LID_HINGE, LID_OPEN,
-    PLANET_RADIUS, PRINTS, SCANNER, SCANNER_FLOOR, SEATS, SPHERE_HEIGHT, SPHERE_RADIUS,
+    CROWN_TOP, DESK_AHEAD, EVENTS, GHOSTS, GHOST_STEP, GLYPHS, LAPTOP_TOP, LID_HEIGHT, LID_HINGE,
+    LID_OPEN, PLANET_RADIUS, PRINTS, SCANNER, SCANNER_FLOOR, SEATS, SPHERE_HEIGHT, SPHERE_RADIUS,
     SPHERE_SHARE, SPIN_PERIOD, SWEEP, TENTACLES, THINGS, VOICES, WRITHE,
 };
 use std::f32::consts::{PI, TAU};
@@ -44,6 +44,14 @@ pub enum Chapter {
     /// shade, each step rings out on the ground. Seen from overhead, the
     /// camera slowly going round.
     Night,
+    /// Page 04: the figure walks in its sphere, seen from afar; only the
+    /// crown and the scanner are lit. Four times something flares in it, a
+    /// thought at the head, a feeling at the chest, an urge in the hand, a
+    /// touch at the knee, each smaller than the last: it branches out warm
+    /// and the crown dims as it draws the figure in (for the thought it
+    /// stops). The scanner reaches it, the branches fold into one bead, the
+    /// crown burns again and the bead rides the scanner on.
+    Inner,
 }
 
 impl Chapter {
@@ -52,6 +60,7 @@ impl Chapter {
             1 => Chapter::Arrive,
             2 => Chapter::Life,
             3 => Chapter::Night,
+            4 => Chapter::Inner,
             _ => Chapter::Hero,
         }
     }
@@ -61,6 +70,7 @@ impl Chapter {
             Chapter::Arrive => ARRIVE_LOOP,
             Chapter::Life => LIFE_LOOP,
             Chapter::Night => NIGHT_LOOP,
+            Chapter::Inner => INNER_LOOP,
         }
     }
     /// Reduced motion holds one moment with every ring.
@@ -70,6 +80,7 @@ impl Chapter {
             Chapter::Arrive => 36.0,
             Chapter::Life => 22.0,
             Chapter::Night => 22.0,
+            Chapter::Inner => 48.5,
         }
     }
     /// When the glass passes each thing the walk meets (s).
@@ -77,7 +88,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_THINGS,
             Chapter::Arrive => &ARRIVE_THINGS,
-            Chapter::Life | Chapter::Night => &[],
+            Chapter::Life | Chapter::Night | Chapter::Inner => &[],
         }
     }
     /// When each wire breaks on the glass (s); they take turns, wire `i` is
@@ -86,7 +97,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_WIRES,
             Chapter::Arrive => &ARRIVE_WIRES,
-            Chapter::Life | Chapter::Night => &[],
+            Chapter::Life | Chapter::Night | Chapter::Inner => &[],
         }
     }
 }
@@ -304,6 +315,39 @@ const CASTER_CONES: [(usize, f32); CASTERS / 2] = [
     (16, 0.028),
 ];
 
+/// Page 04: 12 breaths, 80 steps walked over 96 steps' time: it stops for
+/// the thought, its last step landing on `INNER_HALT`, and walks on
+/// `INNER_PAUSE` s later.
+pub const INNER_LOOP: f32 = 52.8;
+const INNER_STEPS: i32 = 80;
+const INNER_HALT: i32 = 18;
+const INNER_PAUSE: f32 = 16.0 * CADENCE;
+/// What flares in it: when, how big its branches grow (of the thought's),
+/// how much of the crown's light it takes, and the scanner's way when it
+/// reaches it (true going up).
+const INNER_EVENTS: [(f32, f32, f32, bool); EVENTS] = [
+    (9.6, 1.0, 0.85, true),
+    (22.3, 0.6, 0.45, true),
+    (36.6, 0.3, 0.2, false),
+    (46.3, 0.0, 0.0, false),
+];
+/// The scanner's share of the light kept warm on page 04, and when the
+/// beads it carries go out before the loop ends.
+const INNER_WARMTH: f32 = 0.75;
+const INNER_BEADS_OUT: [f32; 2] = [49.0, 52.3];
+/// Before the thought the floor and the world dim to this much of their
+/// light at its deepest.
+const INNER_DIM: f32 = 0.6;
+/// The camera: far off, ahead of the figure to its right (degrees,
+/// swinging this much), this far, its eye this high, with a long lens
+/// that leans in for the thought.
+const INNER_AZIMUTH: [f32; 2] = [-25.0, 8.0];
+const INNER_RANGE: f32 = 9.75;
+const INNER_HIGH: f32 = 1.25;
+const INNER_LENS: [f32; 2] = [1.9, 2.3];
+const INNER_AIM: [f32; 2] = [1.0, 1.1];
+const INNER_CLOSER: [f32; 4] = [9.4, 12.6, 18.4, 21.6];
+
 /// A wire reaches for the glass this long (s) before it breaks, and is
 /// gone this long after.
 const WIRE_REACH: f32 = 3.2;
@@ -328,6 +372,8 @@ pub struct Story {
     /// mouth and whose.
     other: Option<Walk>,
     voices: Vec<(f32, usize)>,
+    /// Page 04: when the scanner reaches each thing that flared.
+    pub touches: [f32; EVENTS],
 }
 
 /// A camera: where it is, what it looks at, its zoom, focus and aperture.
@@ -817,6 +863,71 @@ fn bound(body: &Body) -> [f32; 4] {
     [m.x, m.y, m.z, r]
 }
 
+/// Page 04's walk: steady, then two short steps bring the feet together
+/// after `INNER_HALT`, and a short step sets off again `INNER_PAUSE` s on.
+fn inner_walk() -> Walk {
+    let swing = 0.76 * CADENCE;
+    let aside = |side: usize, x: f32| if side == 0 { x } else { -x };
+    let stop = (INNER_HALT as f32 + 0.5) * STRIDE;
+    let mut steps = vec![];
+    for k in -12..INNER_STEPS + 16 {
+        let side = k.rem_euclid(2) as usize;
+        let z = k as f32 * STRIDE;
+        let land = k as f32 * CADENCE + if k > INNER_HALT { INNER_PAUSE } else { 0.0 };
+        let lift = land - if k == INNER_HALT + 1 { 0.5 } else { swing };
+        steps.push(Step {
+            side,
+            lift,
+            land,
+            x: aside(side, LIFE_WIDTH),
+            z,
+        });
+        if k == INNER_HALT {
+            let mut at = land;
+            for (side, after) in [(1 - side, 0.6), (side, 0.65)] {
+                at += after;
+                steps.push(Step {
+                    side,
+                    lift: at - 0.5,
+                    land: at,
+                    x: aside(side, LIFE_STANCE),
+                    z: stop,
+                });
+            }
+        }
+    }
+    let behind = |k: i32| {
+        [
+            aside(k.rem_euclid(2) as usize, LIFE_WIDTH),
+            (k - 2) as f32 * STRIDE,
+        ]
+    };
+    Walk::new([behind(-12), behind(-11)], steps, BEAT)
+}
+
+/// Where what flares at event `e` grows from on `body`, and which way its
+/// branches reach: above the head, before the chest, from the right
+/// hand's fingertips, at the left knee (that one only sparks).
+fn inner_root(e: usize, body: &Body) -> (V3, V3) {
+    let (face, chest) = (body.face, body.chest_axes);
+    let cone = |i: usize| {
+        let [x, y, z, _] = body.cones[i];
+        v3(x, y, z)
+    };
+    match e {
+        0 => (
+            body.head + face.forward * 0.06 + face.up * 0.03,
+            face.up + face.forward * 0.6,
+        ),
+        1 => (
+            body.chest + chest.forward * 0.05,
+            chest.forward + chest.up * 0.3,
+        ),
+        2 => (cone(3 * 18 + 1), chest.forward * 0.6 - chest.left - Y * 0.3),
+        _ => (cone(3 * 7), Y),
+    }
+}
+
 impl Story {
     pub fn new(chapter: Chapter) -> Story {
         let loop_seconds = chapter.loop_seconds();
@@ -843,6 +954,7 @@ impl Story {
                 };
                 (0.0, Walk::new(stance, vec![never], BEAT))
             }
+            Chapter::Inner => (INNER_STEPS as f32 * STRIDE, inner_walk()),
         };
         let (other, voices) = match chapter {
             Chapter::Life => (Some(bouts(&OTHER_BOUTS)), voice_list()),
@@ -855,7 +967,7 @@ impl Story {
             }
             _ => (None, vec![]),
         };
-        Story {
+        let mut story = Story {
             chapter,
             loop_seconds,
             distance,
@@ -867,7 +979,46 @@ impl Story {
             walk,
             other,
             voices,
+            touches: [0.0; EVENTS],
+        };
+        if chapter == Chapter::Inner {
+            story.touches = std::array::from_fn(|e| story.touch(e));
         }
+        story
+    }
+
+    /// When the scanner, going its way, first comes to the height of what
+    /// flared at event `e` after it flared.
+    fn touch(&self, e: usize) -> f32 {
+        let (flare, _, _, rising) = INNER_EVENTS[e];
+        let gap = |t: f32| {
+            let pose = self.pose(t);
+            let body = build(&pose);
+            let d = scanner(&body, sweep(t), pose.risen).0.y - inner_root(e, &body).0.y;
+            if rising {
+                d
+            } else {
+                -d
+            }
+        };
+        let (mut a, mut t) = (flare, flare + 0.01);
+        while t < flare + 2.0 * SWEEP {
+            if gap(a) < 0.0 && gap(t) >= 0.0 {
+                let mut b = t;
+                for _ in 0..30 {
+                    let m = 0.5 * (a + b);
+                    if gap(m) < 0.0 {
+                        a = m;
+                    } else {
+                        b = m;
+                    }
+                }
+                return b;
+            }
+            a = t;
+            t += 0.01;
+        }
+        flare + SWEEP
     }
 
     pub fn walk(&self) -> &Walk {
@@ -885,6 +1036,7 @@ impl Story {
             Chapter::Arrive => self.arrive(time),
             Chapter::Life => self.life(time),
             Chapter::Night => self.night(time),
+            Chapter::Inner => self.inner(time),
         }
     }
 
@@ -921,6 +1073,10 @@ impl Story {
                 (sweep(t), NIGHT_RINGS[0], flash, 1.0)
             }
             Chapter::Arrive => arrive_crown(at),
+            Chapter::Inner => {
+                let flash = 0.3 * pulse(at.rem_euclid(SWEEP));
+                (sweep(t), self.inner_crown(at), flash, 1.0)
+            }
             Chapter::Life => {
                 let answer = pulse(at - LIFE_GATHER - 0.35);
                 (
@@ -1255,6 +1411,95 @@ impl Story {
             lens: NIGHT_LENS,
             focus: (eye - self.sphere(t)).length(),
             aperture: 0.004,
+        }
+    }
+
+    /// How much what flared at event `e` holds the figure at `t`: from the
+    /// flare till a while after the scanner reaches it.
+    fn drawn_in(&self, e: usize, t: f32) -> f32 {
+        let (flare, touch) = (INNER_EVENTS[e].0, self.touches[e]);
+        smooth(flare, flare + 1.2, t) * (1.0 - smooth(touch + 0.4, touch + 1.9, t))
+    }
+
+    /// Page 04's crown: what flares takes its light, the more the bigger.
+    fn inner_crown(&self, t: f32) -> f32 {
+        let taken: f32 = (0..EVENTS)
+            .map(|e| INNER_EVENTS[e].2 * self.drawn_in(e, t))
+            .sum();
+        (1.0 - taken).clamp(0.0, 1.0)
+    }
+
+    fn inner(&self, t: f32) -> Frame {
+        let touched = self
+            .touches
+            .iter()
+            .map(|&at| pulse(t - at))
+            .fold(0.0, f32::max);
+        let cues = Cues {
+            inner: 1.0,
+            latent: 0.3,
+            form: 1.0,
+            flash: (0.5 * pulse(t.rem_euclid(SWEEP))).max(touched),
+            spin: [0.0, self.cycle(t, SPIN_PERIOD), 1.0, 0.0],
+            filled: 0.2,
+            fill: TAU,
+            spokes: 0.0,
+            world: 0.0,
+            wave: (Y, -1.0, 0.0),
+        };
+        let mut f = self.frame(t, self.inner_shot(t), cues);
+        let dim = 1.0 - INNER_DIM * self.drawn_in(0, t);
+        f.floor = dim;
+        f.world = dim;
+        f.warmth = INNER_WARMTH;
+        let body = f.body;
+        let flow = |t: f32| self.cycle(t, 17.6);
+        let out = 1.0 - smooth(INNER_BEADS_OUT[0], INNER_BEADS_OUT[1], t);
+        for (e, &(flare, size, _, _)) in INNER_EVENTS.iter().enumerate() {
+            let touch = self.touches[e];
+            let (root, toward) = inner_root(e, &body);
+            let dir = toward.normalize();
+            // It branches out from the flare till near the touch, and
+            // folds into its root as the scanner reaches it.
+            let grow = min_jerk(stage(t, [flare, flare + (touch - flare).min(4.0) * 0.9]));
+            let fold = min_jerk(stage(t, [touch, touch + 1.0]));
+            let light = if size > 0.0 {
+                smooth(flare, flare + 0.4, t) * (1.0 - smooth(touch + 0.7, touch + 1.0, t))
+            } else {
+                0.0
+            };
+            f.branches[3 * e] = [root.x, root.y, root.z, size];
+            f.branches[3 * e + 1] = [dir.x, dir.y, dir.z, grow];
+            f.branches[3 * e + 2] = [fold, light, flow(t) * 7.0 + 1.7 * e as f32, 0.0];
+            // What is left is a bead on its root, a fact noted where it
+            // is; one that only sparks shows as a spark till the touch.
+            let lit = smooth(touch + 0.6, touch + 1.0, t);
+            let spark = if size > 0.0 {
+                0.0
+            } else {
+                0.6 * smooth(flare, flare + 0.3, t)
+            };
+            f.facts[e] = [root.x, root.y, root.z, lit.max(spark) * out];
+        }
+        f
+    }
+
+    /// Page 04's camera: far off before the figure, a long lens leaning in
+    /// for the thought.
+    fn inner_shot(&self, t: f32) -> Shot {
+        let ground = self.ground(t);
+        let [from, swing] = INNER_AZIMUTH;
+        let a = (from + swing * self.cycle(t, 26.4).sin()).to_radians();
+        let [c0, c1, c2, c3] = INNER_CLOSER;
+        let closer = window(t, c0, c1, c2, c3);
+        let eye =
+            ground + v3(INNER_RANGE * a.sin(), INNER_HIGH, INNER_RANGE * a.cos()) + self.drift(t);
+        Shot {
+            eye,
+            target: ground + Y * mix(INNER_AIM[0], INNER_AIM[1], closer),
+            lens: mix(INNER_LENS[0], INNER_LENS[1], closer),
+            focus: (eye - self.sphere(t)).length(),
+            aperture: 0.003,
         }
     }
 
@@ -1613,6 +1858,9 @@ impl Story {
             lamp: [0.0; 4],
             bounds: [[0.0; 4]; 2],
             casters: [[0.0; 4]; 2 * CASTERS],
+            warmth: 0.0,
+            branches: [[0.0; 4]; 3 * EVENTS],
+            facts: [[0.0; 4]; EVENTS],
         }
     }
 }

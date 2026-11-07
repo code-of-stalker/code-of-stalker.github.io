@@ -8,6 +8,7 @@
 // light (u_kind.w), and nothing of the rings.
 uniform vec4 u_b[CONES * 3];
 out vec3 v_color;
+out float v_warm;
 
 const float BLEND[CONES] = float[CONES](BLENDS);
 const int CONE_END[CONES] = int[CONES](CONE_ENDS);
@@ -54,6 +55,7 @@ float body(vec3 p) {
 }
 
 void main() {
+  v_warm = 0.0;
   bool other = u_kind.z > 0.5;
   int i = other ? 2 * gl_VertexID : gl_VertexID;
   int c = 0;
@@ -137,7 +139,10 @@ void main() {
   lift += 1.4 * RN(0).w * exp(-(along * along + r * r) / (0.12 * 0.12));
   // On page 03 the crown's plane lights the passer-by it sweeps through.
   float caught = other && LAMP.w > 0.0 ? scanned(p) : 0.0;
-  light *= other ? 1.0 + SLICE_LIGHT * caught : 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  float gain = 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  // On page 04 the scanner's cut is warm.
+  float warm = other ? 0.0 : INNER.x * SLICE_LIGHT * cut / gain;
+  light *= other ? 1.0 + SLICE_LIGHT * caught : gain;
   // Page 03's lantern lights the skin that faces it, where no limb is
   // between.
   if (LAMP.w > 0.0) {
@@ -159,4 +164,6 @@ void main() {
   // In focus each point peaks at its light; a blurred one keeps its energy.
   float spread = s0 / sigma;
   v_color = u_glow * light * spread * spread * depthCue(v.z);
+  v_warm = dot(v_color, LUMA) * warm;
+  v_color *= 1.0 - warm;
 }

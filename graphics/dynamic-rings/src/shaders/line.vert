@@ -4,13 +4,14 @@
 // the heel strikes (5), the footprints (6), the lock's wave along the
 // ground (7), the figures among the stars (8), the wires (9), the things
 // the walk passes (10), the spires over the horizon (11), the seats (12),
-// the voices in a talk (13), the desks and their laptops (14).
-// Each instance is
+// the voices in a talk (13), the desks and their laptops (14), and on page
+// 04 the branches of what flares in the figure (15). Each instance is
 // one straight piece of a curve, drawn as a band a few blurred widths
 // across (line.frag).
 out vec3 v_color;
 out float v_across;
 out float v_sigma;
+out float v_warm;
 
 // Nearer the camera than the glass's middle, brighter; from inside the
 // glass all of a ring is near.
@@ -21,6 +22,14 @@ float facing(vec3 p) {
   return mix(1.0, mix(0.45, 1.2, 0.5 + 0.5 * f), smoothstep(SPH.w * 0.8, SPH.w * 1.4, far));
 }
 
+// Inside the glass and over the ground.
+vec3 keepIn(vec3 q) {
+  vec3 o = q - SPH.xyz;
+  q = SPH.xyz + o * min(1.0, 0.97 * SPH.w / max(length(o), 1e-4));
+  q.y = max(q.y, 0.02);
+  return q;
+}
+
 void main() {
   int kind = int(u_kind.x);
   int i = gl_InstanceID;
@@ -29,6 +38,9 @@ void main() {
   float light = 0.0;
   float width = 1.0;
   bool sharp = false;
+  // How much of its light is warm (page 04).
+  float warm = 0.0;
+  v_warm = 0.0;
   if (kind == 0 || kind == 2 || kind == 3) {
     // The rings: two strands of the crown, the scanner and its echo, the
     // sphere's ring and the trail it leaves as it turns.
@@ -68,6 +80,7 @@ void main() {
     } else if (kind == 2) {
       light = n.w * INNER_LINE_LIGHT * smoothstep(0.5, 1.0, x.z) * flash * facing(mid) * fade;
       width = 1.1;
+      warm = INNER.x;
     } else {
       // Under the ground it is gone.
       light = n.w * SPIN_LIGHT * flash * facing(mid) * fade * smoothstep(-0.02, 0.06, min(a.y, b.y));
@@ -493,6 +506,74 @@ void main() {
     light = DESK_LIGHT * (strength * there + flare * float(strength > 0.0))
           * mix(0.45, 1.0, inside) * (1.0 + 2.5 * scanned(m));
     if (hidden(m)) light = 0.0;
+  } else if (kind == 15) {
+    // What flares in the figure: a tree of curved branches out of its
+    // root, each shorter than the one it grows from, the growing tips
+    // burning, all of it writhing; as the scanner reaches it, it folds,
+    // turning, back into its root.
+    int per = BRANCHES * BRANCH_SEGMENTS;
+    int e = i / per;
+    int n = i - e * per;
+    int br = n / BRANCH_SEGMENTS;
+    int s = n - br * BRANCH_SEGMENTS;
+    vec4 e0 = EVENT(e, 0);
+    vec4 e1 = EVENT(e, 1);
+    vec4 e2 = EVENT(e, 2);
+    if (e0.w > 0.0 && e2.y > 0.0) {
+      vec3 root = e0.xyz;
+      vec3 way = normalize(e1.xyz);
+      vec3 dir = way;
+      vec3 p = root;
+      // Its depth in the tree (GLSL ES 3.00 has no findMSB).
+      int d = 0;
+      for (int k = 1; k < BRANCH_DEPTH; k++) {
+        if (br + 1 >= (1 << k)) d = k;
+      }
+      float grown = e1.w * float(BRANCH_DEPTH);
+      float f = 0.0;
+      float len = 0.0;
+      vec3 curl = vec3(0.0);
+      // Down the branches it grows from, to its own.
+      for (int j = 0; j < BRANCH_DEPTH; j++) {
+        if (j > d) break;
+        uint node = uint(br + 1) >> uint(d - j);
+        uint seed = uint(e) * 977u + node * 31u + 5u;
+        vec3 u = normalize(cross(dir, abs(dir.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+        float roll = TAU * rand(seed);
+        vec3 side = cos(roll) * u + sin(roll) * cross(dir, u);
+        float writhe = 0.15 * sin(e2.z + TAU * rand(seed + 1u));
+        curl = side * (mix(-0.5, 0.5, rand(seed + 2u)) + writhe);
+        len = 0.3 * e0.w * pow(BRANCH_SHRINK, float(j)) * mix(0.8, 1.2, rand(seed + 3u));
+        f = clamp(grown - float(j), 0.0, 1.0);
+        if (j < d) {
+          // The next grows from this one's end, turned off its way to one
+          // side or the other.
+          p += len * (dir + 0.25 * curl);
+          vec3 tangent = normalize(dir + 0.5 * curl);
+          uint child = (uint(br + 1) >> uint(d - j - 1)) & 1u;
+          float spread = 0.45 * mix(0.7, 1.3, rand(seed + 4u)) * (child == 1u ? 1.0 : -1.0);
+          vec3 u2 = normalize(cross(tangent, abs(tangent.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+          float roll2 = TAU * rand(seed + 5u);
+          vec3 axis = cos(roll2) * u2 + sin(roll2) * cross(tangent, u2);
+          dir = turnAbout(tangent, axis, spread);
+        }
+      }
+      float u0 = float(s) / float(BRANCH_SEGMENTS);
+      float u1 = min(float(s + 1) / float(BRANCH_SEGMENTS), f);
+      if (u0 < f) {
+        vec3 qa = p + len * (dir * u0 + 0.25 * curl * u0 * u0);
+        vec3 qb = p + len * (dir * u1 + 0.25 * curl * u1 * u1);
+        float fold = e2.x;
+        a = keepIn(root + turnAbout(qa - root, way, 2.0 * fold) * (1.0 - fold));
+        b = keepIn(root + turnAbout(qb - root, way, 2.0 * fold) * (1.0 - fold));
+        float edge = (u1 - f) * 12.0;
+        float tip = 1.0 + 2.0 * exp(-edge * edge) * (1.0 - 0.6 * step(0.999, f));
+        float deep = float(d) / float(BRANCH_DEPTH - 1);
+        light = BRANCH_LIGHT * e2.y * (1.0 + 2.0 * fold) * tip * mix(1.0, 0.55, deep);
+        width = mix(1.3, 0.7, deep);
+        warm = 1.0;
+      }
+    }
   } else {
     // A figure of stars: each joined to the next.
     int per = CONSTELLATION_STARS - 1;
@@ -541,4 +622,6 @@ void main() {
   v_sigma = sigma;
   // A blurred line keeps its light, spread wider.
   v_color = u_glow * light * (sharp ? 1.0 : depthCue(z)) * base / sigma;
+  v_warm = dot(v_color, LUMA) * warm;
+  v_color *= 1.0 - warm;
 }

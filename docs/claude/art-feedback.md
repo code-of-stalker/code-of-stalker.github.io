@@ -64,3 +64,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).
 - Too much at once at the start was rejected: slower rings, a calm opening, then one thing scanned, then one wire deflected, «постепенно всё больше и больше». (Hero and page 01.)
 - A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)
+
+## Accounts and security (Intensive chat, 2026-11-07)
+- Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.
+- Private chats need strong protection: email-only access is «слабо»; nothing may reach other hands.
+- Walkers may be in Russia; check that every service the app uses works there.

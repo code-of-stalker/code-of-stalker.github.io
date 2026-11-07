@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-02. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Intensive chat built locally 2026-11-07 (not shipped). Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -167,6 +167,25 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   day (Art: «Так, пушим»).
 - Next: scenes for pages 02–10 (placeholder names in the content file), each a new chapter of
   the same world; a stage-finale screen after page 10 needs Art's wording first.
+
+## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`, local, NOT pushed)
+Built 2026-11-07 after Art's «Да, делаем»; commit 4f611d5. Push only on Art's word.
+- Three places per chat: идущий, его проводник, админ этого проводника; Яна is the main
+  admin (also a guide), set only by SQL in `public.main_admins`. One chat per walker; the
+  history stays with the walker when the guide changes.
+- Supabase free plan (`supabase/intensive-schema.sql`: RLS, checked server functions,
+  PGlite tests). Wallet-style account: 12 words → sign-in + identity key, no email;
+  6-digit PIN per entry, 5 wrong PINs wipe the device. Authenticator codes required for
+  guides/admins/Яна (database-enforced), optional for walkers. Messages are E2EE in the browser.
+- Code `src/features/intensive/`, route `src/app/(product)/intensive.tsx`. Shared files:
+  `levels.tsx` (opens /intensive), `package.json`/lock, `scripts/web-cache/shell-security.mjs`
+  (connect-src adds the server read from config.ts via `scripts/intensive-server.mjs`).
+  Daily keep-awake: `.github/workflows/intensive-keepalive.yml`.
+- Switch-on: `intensiveServer` in `src/features/intensive/config.ts`. Empty → site keeps the
+  «готовится» modal; dev uses an in-memory demo (Яна, Мира, Олег, Алекс, Ника; any 6-digit code).
+- Waiting for Art: `docs/intensive/setup-ru.md` steps 1–4, then send Project URL + publishable
+  key; then he checks end to end (ideally a walker in Russia). Only Тишина checked so far
+  (phone + PC); the other dark themes after his OK.
 
 ## Shipped features (all on main)
 - Themes: 4 dark on the site, Матрица default, then Тишина, Искра, Астрал (2026-11-01). The light

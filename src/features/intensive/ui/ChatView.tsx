@@ -54,19 +54,31 @@ export function ChatView({ session, chat }: { session: IntensiveSession; chat: C
 
   useEffect(() => {
     let alive = true, retry: ReturnType<typeof setTimeout> | null = null, poll: ReturnType<typeof setInterval> | null = null;
+    let roster: ReturnType<typeof setInterval> | null = null;
     let unwatch = () => {};
+    let known = new Set<string>();
+    const showMembers = (list: Member[]) => { known = new Set(list.map(m => m.userId)); setMembers(list); };
+    const reloadMembers = async () => {
+      try { const list = await session.members(chatId); if (alive) showMembers(list); }
+      catch { /* The next roster check catches up. */ }
+    };
+    // A guide or admin assigned while this chat is open writes under their name, not «бывший участник».
+    const take = (incoming: DecodedMessage[]) => {
+      merge(incoming);
+      if (incoming.some(m => m.senderId !== session.id && !known.has(m.senderId))) void reloadMembers();
+    };
     const pull = async () => {
-      try { const rows = await session.messages(chatId, lastId.current); if (alive) merge(rows); }
+      try { const rows = await session.messages(chatId, lastId.current); if (alive) take(rows); }
       catch { /* The next poll or live event catches up. */ }
     };
     const start = async () => {
       try {
         const [list, cipher] = await Promise.all([session.members(chatId), session.chatCipher(chatId)]);
         if (!alive) return;
-        setMembers(list);
+        showMembers(list);
         if (!cipher) { setPhase('no-key'); retry = setTimeout(() => { void start(); }, 8000); return; }
         unwatch = session.backend.watch(chatId,
-          row => { void session.decode(chatId, row).then(message => { if (alive) merge([message]); }); },
+          row => { void session.decode(chatId, row).then(message => { if (alive) take([message]); }); },
           () => { poll ??= setInterval(() => { void pull(); }, 5000); });
         await pull();
         if (!alive) return;
@@ -74,6 +86,8 @@ export function ChatView({ session, chat }: { session: IntensiveSession; chat: C
         setError('');
         // A slow safety net in case a live event is lost without an error.
         poll ??= setInterval(() => { void pull(); }, 20000);
+        // The header names whoever can read the chat, so a new admin shows up before writing.
+        roster ??= setInterval(() => { void reloadMembers(); }, 30000);
       } catch (problem) {
         if (!alive) return;
         setError(problemText(problem, 'Не удалось открыть переписку.'));
@@ -81,7 +95,7 @@ export function ChatView({ session, chat }: { session: IntensiveSession; chat: C
       }
     };
     void start();
-    return () => { alive = false; unwatch(); if (retry) clearTimeout(retry); if (poll) clearInterval(poll); };
+    return () => { alive = false; unwatch(); if (retry) clearTimeout(retry); if (poll) clearInterval(poll); if (roster) clearInterval(roster); };
   }, [session, chatId, merge]);
 
   const names = useMemo(() => new Map(members.map(m => [m.userId, m.name])), [members]);

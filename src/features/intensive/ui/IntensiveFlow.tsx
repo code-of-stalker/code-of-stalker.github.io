@@ -170,7 +170,8 @@ export function IntensiveFlow({ onExit }: { onExit: () => void }) {
       body = <NameStep busy={busy} error={error} onSubmit={name => { void run(async () => { await session!.createProfile(name); enter(session!); }); }} />;
       break;
     case 'pin': {
-      subtitle = step.change ? 'НОВЫЙ PIN' : 'НОВЫЙ АККАУНТ';
+      // Restoring by the words lands here too, so the subtitle names the device, not a new account.
+      subtitle = step.change ? 'НОВЫЙ PIN' : 'ЭТО УСТРОЙСТВО';
       if (step.change) back = () => go({ kind: 'account' });
       const repeat = step.first !== undefined;
       body = <PinPad key={repeat ? 'repeat' : 'first'} busy={busy} error={error}

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -182,16 +182,15 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   the crate's `README.txt`. Art approved Матрица, then all 7 themes («Ок, дальше», «Оставить»).
   Page 01's first-person look turns the head left, then right (about 45°), shipped the same
   day (Art: «Так, пушим»).
-- On the branch, approved and wired but NOT pushed (they wait together for Art's push command):
-  page 02 «Жизнь в сфере» (chapter 2, `dynamic-life`, 489edfb), page 03 «Ночь и фонарь»
-  (chapter 3, `dynamic-night`, d02a6b2 + 997af6f). Both are checked in the 4 dark themes and
-  in a production export (ready, gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on
-  page 04, ring 3 on page 05.
-- Waiting for Art: his pick for page 04 «Второе кольцо» from
-  `output/prototypes/step-seven/varianty-04.jpg` (А «Бусины фактов», recommended; Б «Не
-  проваливаться»; В «Прилив дыхания»). In all three, ring 2 is warm, like the inner warmth of
-  the Step 6 hero.
-- Next: pages 04–10, each a new chapter of the same world; a stage-finale screen after
+- Shipped to `main` 2026-11-07 (Art: «Б и предыдущие работы залей в мэин уже»): page 02
+  «Жизнь в сфере» (chapter 2, `dynamic-life`), page 03 «Ночь и фонарь» (chapter 3,
+  `dynamic-night`). Both checked in the 4 dark themes and in a production export (ready,
+  gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on page 04, ring 3 on page 05.
+- In work: page 04 «Второе кольцо», Art chose Б «Не проваливаться» (2026-11-07): something
+  arises inside and branches, the crown dims, the person is pulled in; the warm scanner (ring 2,
+  like the Step 6 hero's inner warmth) touches it and it folds into one point, the crown
+  relights. Chapter 4, Матрица first.
+- Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

@@ -76,6 +76,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A first-person view must look round: he missed head turns left and right; about 45° each way, eased, passed. (Page 01.)
 - A loop of simple actions (sit, rise, walk, sit) lacked plot: «не хватает сюжета». Work at a laptop, a talk with a second person and work again passed, and the rings and glass glowed softer so the action led. (Page 02.)
 - A scene must plainly belong to its page text: «как оно к тексту относится вообще?». A top view where all the rings cover the figure confused him. A low side camera with only the ring the text names (ring 1) lit passed. (Page 03.)
+- For page 04 he chose a scene with a plot (Б: get pulled in, the scanner brings you back) over the recommended calm one (А: beads of facts). Drama over a quiet catalogue. (Page 04.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

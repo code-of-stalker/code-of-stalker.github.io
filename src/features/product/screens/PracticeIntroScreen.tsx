@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { firstStepExplanations, productStepNames } from '../content';
+import { typeset } from '../typeset';
 import { Art } from '../motion/Art';
 import { Reveal } from '../motion/Reveal';
 import { ScrollGate } from '../motion/ScrollGate';
@@ -262,10 +263,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                   onReady={presentation.active ? setReady : () => {}} onProgress={presentation.active ? setProgress : () => {}}
                   onAdvance={advance} onRetreat={retreat}>
                   {presentation.textWrapper ? presentation.textWrapper(<ProductText style={styles.explanationText} onLayout={event => presentation.onTextHeight(event.nativeEvent.layout.height)}>
-                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{run.text}</Text>)}
+                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{typeset(run.text)}</Text>)}
                   </ProductText>) : <Animated.View style={presentation.textStyle ?? { opacity: presentation.text, transform: [{ translateY: presentation.text.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
                     <ProductText style={styles.explanationText} onLayout={event => presentation.onTextHeight(event.nativeEvent.layout.height)}>
-                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{run.text}</Text>)}
+                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{typeset(run.text)}</Text>)}
                     </ProductText>
                   </Animated.View>}
                   <View style={styles.explanationArt}>

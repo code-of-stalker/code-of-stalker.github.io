@@ -1,19 +1,22 @@
-//! Browser adapter: one WebGL2 program, its uniforms and the baked inside of
-//! the body (a small 3D texture). Every motion value comes from `compose`;
-//! one full-screen pass traces each pixel's ray through the room, the chair
-//! and the person and adds the light straight onto the page in the theme's
-//! own cold, warm and pale (`look`). The scene is two-toned, so it does not
-//! go through the monochrome theme recolor.
+//! Browser adapter: one WebGL2 program, its uniforms, the baked inside of
+//! the body (a small 3D texture) and the words under the scene (an atlas
+//! image, the scene's one loaded input). Every motion value comes from
+//! `compose`; one full-screen pass traces each pixel's ray through the room,
+//! the chair, the person and both spheres and adds the light straight onto
+//! the page in the theme's own cold, warm and pale (`look`). The scene is
+//! two-toned, so it does not go through the monochrome theme recolor.
 use crate::body::{occupancy, CELLS, CELL_FROM};
+use crate::generated::{ATLAS, LABEL_BAND, LABEL_BASE, LABEL_CAP, LABEL_INK};
 use crate::{
-    compose, look, Look, BACK, DOOR, DOUBLE, ECHO_LEVELS, FADE_FROM, FRAME_ASPECT, HEART,
-    INNER_BASE, INNER_POINTS, INNER_RING, INSIDE, LAMP, LEFT, LEVELS, LOOP_SECONDS, MOVERS, ORBIT,
-    ORBIT_POINTS, PERSON, REACH, SINK, SPACING, SPARK_POINTS, STILL, TABLE, WINDOW,
+    compose, look, Look, BACK, CAPTION, DOOR, DOUBLE_Z, ECHO_LEVELS, EYES, FADE_FROM, FRAME_ASPECT,
+    HEAD, HEART, INNER_BASE, INNER_FLOW, INNER_RUNNERS, INSIDE, KNOT, KNOT_POINTS, LAMP, LEFT,
+    LEVELS, LOOP_SECONDS, ORBIT, ORBIT_FLOW, ORBIT_RUNNERS, PERSON, PROJECT_TO, REACH,
+    SHELL_SPACING, SPACING, SPARK_POINTS, STILL, TABLE, THOUGHT, WINDOW,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
-    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader, WebGlTexture,
-    WebGlUniformLocation, WebGlVertexArrayObject,
+    HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader,
+    WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
 };
 
 const SCENE: &str = include_str!("shaders/scene.frag");
@@ -22,7 +25,7 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 20] = [
+const NAMES: [&str; 26] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -34,8 +37,13 @@ const NAMES: [&str; 20] = [
     "u_echo_l",
     "u_room",
     "u_inner",
+    "u_orbit",
+    "u_ring",
     "u_noise",
     "u_misc",
+    "u_text",
+    "u_flare_a",
+    "u_flare_b",
     "u_cold",
     "u_warm",
     "u_pale",
@@ -43,22 +51,34 @@ const NAMES: [&str; 20] = [
     "u_edges",
     "u_out",
     "u_body",
+    "u_atlas",
 ];
 
 /// lib.rs's constants as the shader's `#define`s, so both read one source.
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
+    let v2 = |v: [f32; 2]| format!("vec2({:?}, {:?})", v[0], v[1]);
     let v3 = |v: [f32; 3]| format!("vec3({:?}, {:?}, {:?})", v[0], v[1], v[2]);
     let v4 = |v: [f32; 4]| format!("vec4({:?}, {:?}, {:?}, {:?})", v[0], v[1], v[2], v[3]);
     let iv3 = |v: [i32; 3]| format!("ivec3({}, {}, {})", v[0], v[1], v[2]);
     let sparks = SPARK_POINTS.map(v3).join(", ");
+    let project = PROJECT_TO.map(v3).join(", ");
+    let ink = LABEL_INK.map(v2).join(", ");
     let lines = [
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
         ("HEART", v3(HEART)),
         ("ORBIT", f(ORBIT)),
-        ("ORBIT_POINTS", f(ORBIT_POINTS)),
-        ("INNER_RING", f(INNER_RING)),
-        ("INNER_POINTS", f(INNER_POINTS)),
+        ("ORBIT_RUNNERS", f(ORBIT_RUNNERS)),
+        ("INNER_RUNNERS", f(INNER_RUNNERS)),
+        // Which way each orbit's runners go, for their tails.
+        ("ORBIT_DIR", f(ORBIT_FLOW.signum())),
+        ("INNER_DIR", f(INNER_FLOW.signum())),
+        ("SHELL_SPACING", v2(SHELL_SPACING)),
+        // Where the sphere of presence meets the floor.
+        (
+            "FLOOR_RING",
+            f((ORBIT * ORBIT - HEART[1] * HEART[1]).sqrt()),
+        ),
         ("REACH", f(REACH)),
         ("FADE_FROM", f(FADE_FROM)),
         ("BACK", f(BACK)),
@@ -73,13 +93,30 @@ fn defines() -> String {
         ("INSIDE", f(INSIDE)),
         ("CELL_FROM", iv3(CELL_FROM)),
         ("CELLS", iv3(CELLS.map(|n| n as i32))),
-        ("SINK", f(SINK)),
-        ("DOUBLE", v3(DOUBLE)),
-        ("MOVERS", f(MOVERS)),
         ("LEVELS", v3(LEVELS)),
         ("ECHO_LEVELS", v3(ECHO_LEVELS)),
         ("INNER_BASE", f(INNER_BASE)),
         ("SPARK_LIST", format!("vec3[6]({sparks})")),
+        ("THOUGHT", v3(THOUGHT)),
+        ("HEAD", v2(HEAD)),
+        ("KNOT", f(KNOT)),
+        ("KNOT_POINTS", f(KNOT_POINTS)),
+        ("DOUBLE_Z", f(DOUBLE_Z)),
+        ("EYES", v3(EYES)),
+        (
+            "PROJECT_LIST",
+            format!("vec3[{}]({project})", PROJECT_TO.len()),
+        ),
+        ("FRAME_ASPECT", f(FRAME_ASPECT)),
+        ("CAPTION", v3(CAPTION)),
+        ("ATLAS", v2(ATLAS)),
+        (
+            "LABEL_INK_LIST",
+            format!("vec2[{}]({ink})", LABEL_INK.len()),
+        ),
+        ("LABEL_BAND", v2(LABEL_BAND)),
+        ("LABEL_BASE", f(LABEL_BASE)),
+        ("LABEL_CAP", f(LABEL_CAP)),
     ];
     lines
         .iter()
@@ -177,12 +214,42 @@ fn body_texture(gl: &Gl) -> Result<WebGlTexture, JsValue> {
     Ok(texture)
 }
 
+/// The words under the scene on texture unit `slot`, mipmapped so they stay
+/// clean when drawn smaller than baked.
+fn image_texture(gl: &Gl, slot: u32, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> {
+    let t = gl.create_texture().ok_or("Cannot allocate texture")?;
+    gl.active_texture(Gl::TEXTURE0 + slot);
+    gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
+    gl.tex_parameteri(
+        Gl::TEXTURE_2D,
+        Gl::TEXTURE_MIN_FILTER,
+        Gl::LINEAR_MIPMAP_LINEAR as i32,
+    );
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
+    gl.pixel_storei(Gl::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+    gl.pixel_storei(Gl::UNPACK_ALIGNMENT, 4);
+    gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
+        Gl::TEXTURE_2D,
+        0,
+        Gl::RGBA as i32,
+        Gl::RGBA,
+        Gl::UNSIGNED_BYTE,
+        image,
+    )?;
+    gl.generate_mipmap(Gl::TEXTURE_2D);
+    gl.bind_texture(Gl::TEXTURE_2D, None);
+    Ok(t)
+}
+
 #[wasm_bindgen]
 pub struct InnerEcho {
     gl: Gl,
     canvas: HtmlCanvasElement,
     scene: Prog,
     body: WebGlTexture,
+    labels: WebGlTexture,
     empty: WebGlVertexArrayObject,
     look: Look,
     soft_edges: bool,
@@ -197,10 +264,10 @@ pub struct InnerEcho {
 
 #[wasm_bindgen]
 impl InnerEcho {
-    /// Nothing to load: the inside of the body is baked here, the shader
-    /// traces the rest.
+    /// `labels` is the words' atlas (`assets/labels.webp`), decoded; the
+    /// inside of the body is baked here and the shader traces the rest.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement) -> Result<InnerEcho, JsValue> {
+    pub fn new(canvas: HtmlCanvasElement, labels: HtmlImageElement) -> Result<InnerEcho, JsValue> {
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
         js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
@@ -215,8 +282,10 @@ impl InnerEcho {
             &format!("#version 300 es\n{}{SCENE}", defines()),
         )?;
         let body = body_texture(&gl)?;
+        let labels = image_texture(&gl, 1, &labels)?;
         gl.use_program(Some(&scene.program));
         gl.uniform1i(scene.at("u_body"), 0);
+        gl.uniform1i(scene.at("u_atlas"), 1);
         let empty = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
@@ -225,6 +294,7 @@ impl InnerEcho {
             canvas,
             scene,
             body,
+            labels,
             empty,
             look: look(2),
             soft_edges: false,
@@ -279,7 +349,7 @@ impl InnerEcho {
         self.last_time = None;
     }
     /// Reduced motion holds one moment: the room and the inside both clear,
-    /// both rings lit, both sweeps on.
+    /// the inner sphere open against the outer one.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -322,6 +392,7 @@ impl InnerEcho {
         }
         let gl = &self.gl;
         gl.delete_texture(Some(&self.body));
+        gl.delete_texture(Some(&self.labels));
         gl.delete_vertex_array(Some(&self.empty));
         gl.delete_program(Some(&self.scene.program));
         self.disposed = true;
@@ -342,6 +413,8 @@ impl InnerEcho {
         gl.bind_vertex_array(Some(&self.empty));
         gl.active_texture(Gl::TEXTURE0);
         gl.bind_texture(Gl::TEXTURE_3D, Some(&self.body));
+        gl.active_texture(Gl::TEXTURE1);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.labels));
 
         // The whole 3:2 frame stays in view on a canvas of any shape.
         let (w, h) = (width as f32, height as f32);
@@ -370,10 +443,19 @@ impl InnerEcho {
         gl.uniform4f(p.at("u_front"), w0[1], w1[1], w2[1], f.inward[1]);
         gl.uniform4f(p.at("u_echo"), e0[0], e1[0], e2[0], f.together[0]);
         gl.uniform4f(p.at("u_echo_l"), e0[1], e1[1], e2[1], f.together[1]);
-        gl.uniform4f(p.at("u_room"), f.room, f.orbit, f.skin, f.scan);
-        gl.uniform4f(p.at("u_inner"), f.inner, f.ring, f.inner_scan, f.sparks);
-        gl.uniform4f(p.at("u_noise"), f.sink, f.grid, f.tremble, f.double);
-        gl.uniform4f(p.at("u_misc"), f.sweep, 0.0, 0.0, 0.0);
+        let [ox, oy, oz] = f.orbit;
+        let [ix, iy, iz] = f.ring_orbit;
+        let [s0, s1, s2, s3, s4, s5] = f.flares;
+        let [row0, row1, words] = f.caption;
+        gl.uniform4f(p.at("u_room"), f.room, f.shell, f.skin, f.presence);
+        gl.uniform4f(p.at("u_inner"), f.inner, f.ring, f.ring_radius, f.outside);
+        gl.uniform4f(p.at("u_orbit"), ox, oy, oz, f.orbit_flow);
+        gl.uniform4f(p.at("u_ring"), ix, iy, iz, f.ring_flow);
+        gl.uniform4f(p.at("u_noise"), f.fall, f.grid, f.tremble, f.twin);
+        gl.uniform4f(p.at("u_misc"), f.draw_up, f.knot_turn, f.projection, 0.0);
+        gl.uniform4f(p.at("u_text"), row0, row1, words, 0.0);
+        gl.uniform4f(p.at("u_flare_a"), s0, s1, s2, s3);
+        gl.uniform4f(p.at("u_flare_b"), s4, s5, 0.0, 0.0);
         gl.uniform3fv_with_f32_array(p.at("u_cold"), &self.look.cold);
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);

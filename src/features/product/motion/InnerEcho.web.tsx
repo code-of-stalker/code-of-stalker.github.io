@@ -26,8 +26,9 @@ export type InnerEchoProps = ArtProps & {
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
  * frames; Rust owns the seated person, the room drawn in points by the waves
- * of perception, the orbit and its sweep, the warm inside of the body with its
- * ring, sweep and sparks, and the colors of the four dark themes. */
+ * of perception, the sphere of presence with its turning orbit, the warm inner
+ * sphere with its own orbit and sparks, the double, the «Без…» captions and
+ * the colors of the four dark themes. */
 export function InnerEcho(props: InnerEchoProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
@@ -55,8 +56,8 @@ export function InnerEcho(props: InnerEchoProps) {
       controller.report(id, { level: snapshot.level, surface: 'artwork', density: output.width / Math.max(1, rect.width),
         buffer: [output.width, output.height], source: [output.width, output.height], blur: [0, 0], draws: renderer.frame_count(),
         sourceUpdates: 1, blurUpdates: 0, contourUpdates: 0, idle: !removeJob, cadence,
-        backend: 'Rust · inner echo WebGL2', textures: 1,
-        textureBytes: 24 * 56 * 36 });
+        backend: 'Rust · inner echo WebGL2', textures: 2,
+        textureBytes: 24 * 56 * 36 + 1536 * 640 * 4 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);
@@ -141,7 +142,7 @@ export function InnerEcho(props: InnerEchoProps) {
     };
   }, [controller]);
   return <View testID="inner-echo" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Человек ровно сидит на стуле в тёмной комнате. От его груди расходятся волны и рисуют комнату холодными точками: пол, стену с окном, стену с дверью, стол, торшер. Вокруг него кольцо точек на высоте груди, по нему идёт луч. Потом одна волна возвращается внутрь, и в теле проступают тёплые точки, они становятся такими же ясными, как комната. С каждым «Без…» точки на миг оседают, встают в сетку, дрожат, уходят двойником и возвращаются. Внутренний луч идёт вместе с внешним и будит искры ощущений, на «здесь и сейчас» одна волна проходит сквозь тело и комнату вместе."
+    {failed ? props.fallback : <div role="img" aria-label="Человек ровно сидит на стуле в тёмной комнате. Волны от него рисуют комнату холодными точками, вокруг раскрывается прозрачная сфера присутствия, по её орбите бегут огоньки. Потом внутри тела раскрывается вторая, тёплая сфера со своей орбитой, и внутреннее видно так же ясно, как комната. На каждое «Без…» внизу появляется подпись: при проваливании гаснет всё вокруг, кроме человека и узла мысли в голове; точки встают в сетку и отпускаются; дрожат и успокаиваются; при уходе в образы себя тело гаснет, а голова проецирует перед ним двойника. Искры ощущений вспыхивают внутри, на «здесь и сейчас» одна волна проходит сквозь обе сферы."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
       <canvas ref={outputRef} data-graphics="rust-inner-echo" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

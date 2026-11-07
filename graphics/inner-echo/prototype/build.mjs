@@ -19,6 +19,7 @@ const fill = {
   __DISKET__: b64(path.join(root, 'assets/product/fonts/Disket-Mono-Regular.ttf')),
   __TEKTUR__: b64(path.join(root, 'assets/product/fonts/Tektur-Medium.ttf')),
   __WASM__: b64(path.join(pub, 'pkg/watcher_inner_echo_bg.wasm')),
+  __LABELS__: b64(path.join(pub, 'assets/labels.webp')),
   __GLUE__: glue,
 };
 let page = readFileSync(path.join(here, 'template.html'), 'utf8');

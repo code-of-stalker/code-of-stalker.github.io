@@ -8,7 +8,9 @@ await mkdir(path.join(output, 'pkg'), { recursive: true });
 for (const file of ['watcher_inner_echo.js', 'watcher_inner_echo_bg.wasm']) {
   await copyFile(path.join(root, 'output/motion/inner-echo/pkg', file), path.join(output, 'pkg', file));
 }
-// No images: one shader traces the whole scene.
+// One image: the words under the «Без…» beats; the shader traces everything else.
+await mkdir(path.join(output, 'assets'), { recursive: true });
+await copyFile(path.join(scene, 'assets/labels.webp'), path.join(output, 'assets/labels.webp'));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_inner_echo_bg.wasm')))) throw new Error('Invalid inner-echo WASM');
-console.log('Packaged Rust «Внутрь» (Эхо): 60-second seamless loop, a person seated on a chair, waves of perception drawing the room in cold points, the inside of the body in warm points.');
+console.log('Packaged Rust «Внутрь» (Эхо): 60-second seamless loop, a person seated on a chair inside a sphere of presence with a turning orbit, an inner sphere with its own orbit, captions under the «Без…» beats.');

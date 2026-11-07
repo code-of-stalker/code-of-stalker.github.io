@@ -50,14 +50,15 @@ export class InnerEcho {
         return ret >>> 0;
     }
     /**
-     * Nothing to load: the inside of the body is baked here, the shader
-     * traces the rest.
+     * `labels` is the words' atlas (`assets/labels.webp`), decoded; the
+     * inside of the body is baked here and the shader traces the rest.
      * @param {HTMLCanvasElement} canvas
+     * @param {HTMLImageElement} labels
      */
-    constructor(canvas) {
+    constructor(canvas, labels) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.innerecho_new(retptr, addHeapObject(canvas));
+            wasm.innerecho_new(retptr, addHeapObject(canvas), addHeapObject(labels));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -86,7 +87,7 @@ export class InnerEcho {
     }
     /**
      * Reduced motion holds one moment: the room and the inside both clear,
-     * both rings lit, both sweeps on.
+     * the inner sphere open against the outer one.
      * @param {boolean} value
      */
     reduced(value) {
@@ -180,6 +181,9 @@ function __wbg_get_imports() {
         __wbg_drawArrays_08872e02fb57b847: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
         },
+        __wbg_generateMipmap_cd49f6eec9558721: function(arg0, arg1) {
+            getObject(arg0).generateMipmap(arg1 >>> 0);
+        },
         __wbg_getContext_051324720aa5b7e8: function() { return handleError(function (arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2), getObject(arg3));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -255,6 +259,9 @@ function __wbg_get_imports() {
         __wbg_shaderSource_c8812639b47d87b9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).shaderSource(getObject(arg1), getStringFromWasm0(arg2, arg3));
         },
+        __wbg_texImage2D_1dfb26facf36a854: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+            getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4 >>> 0, arg5 >>> 0, getObject(arg6));
+        }, arguments); },
         __wbg_texImage3D_5f82d40b133d8c4e: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
             getObject(arg0).texImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8 >>> 0, arg9 >>> 0, arg10 === 0 ? undefined : getArrayU8FromWasm0(arg10, arg11));
         }, arguments); },

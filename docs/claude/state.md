@@ -151,13 +151,15 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
 - Page 01 «Внутрь» (inner-second-level): «Срез» (`inner-slice`) was rejected 2026-11-07 and
   removed (figure in lotus; must sit upright on a chair). Art chose Б «Эхо» («Б»): crate
   `graphics/inner-echo`, bridge `InnerEcho.web.tsx`, `webScene: 'inner-echo'` (on this branch,
-  not on `main`). Waves from the chest draw the room in cold points, orbit at chest height and
-  on the floor with a sweep; a wave back in lights the body's inside in warm points; each «Без…»
-  pulls them (sink, grid, tremble, double); inner sweep with sparks; «здесь и сейчас» one wave
-  through both. Beats in the crate README. Тишина prototype
-  `output/prototypes/inner-echo/index.html`, key frames `kadry-tishina.jpg`; shown to Art,
+  not on `main`). Round 2 (Art's notes 2026-11-07, «Попробуй еще раз»): no sweep beam; a
+  sphere of presence (shell, rim, breathing volume) whose orbit is a bright great circle with
+  runners that keeps turning; an inner sphere with its own turning orbit; «Без проваливания»
+  turns everything outside off but the person (a thought-knot in the head); «Без ухода в образы
+  себя» dims the body but the head, which projects a double in front, facing the person (camera
+  behind the shoulder); a caption under each «Без…» (atlas `assets/labels.webp`, the scene's
+  only image). Beats in the crate README. Тишина prototype
+  `output/prototypes/inner-echo/index.html`, sheet `kadry-tishina-2.jpg`; shown to Art,
   waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
-  Exported-app check: mounts, ready, spans the text column on 1180 wide.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

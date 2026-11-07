@@ -31,6 +31,7 @@ SOURCES = {
     "sphere-room": ["room", "depth"],
     "sphere-lake": ["lake"],
     "sphere-everywhere": ["strip"],
+    "inner-echo": ["labels"],
 }
 
 

@@ -309,8 +309,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   bubbles of one run cut only the outer corners (`BubbleSpot` alone/head/middle/tail in
   `ui/chrome.tsx`). Voice cap raised to 5 min on Art's word (shipped 2026-11-08): one sealed row
   (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB, 5 min ≈ 0.9 MB at 24 kbit/s); longer needs a schema change.
-- Next: the other dark themes after Art's OK. Walker screens still name Яна («Яна назначит…»)
-  while Art is the main admin; asked him whether to say «главный админ». Small idea left: the list preview names a main admin by place
+- Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
+  even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)

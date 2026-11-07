@@ -275,7 +275,7 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   Phone: one column, the card replaces the list. All admin texts use «Вы» (`FormalTone` in
   `ui/parts.tsx`; walker screens keep «ты»). Screenshots `output/admin/1…9-*.png`.
 - Chat edits (df3c87e) after Art: voice messages (diary hold gesture, `ui/useChatVoice.ts`,
-  audio sealed apart in `message_media`, 3 min max), edit/delete own messages from a long-press
+  audio sealed apart in `message_media`, 5 min max), edit/delete own messages from a long-press
   menu, «ИЗМЕНЕНО» mark, follow-up bubbles without the cut corner on both sides, no member
   avatars over the chat, no «переписка зашифрована» footer. Shared files touched:
   `useObservationRecorder.ts` (optional bit rate), `DiaryRecordButton.tsx` (type export).
@@ -297,8 +297,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
 - Art checked the live site 2026-11-08 as main admin (his own account, SQL main admin, a test
   walker on his phone): «вроде всё работает». Then (159dd96, shipped 2026-11-08 as a small fix):
   bubbles of one run cut only the outer corners (`BubbleSpot` alone/head/middle/tail in
-  `ui/chrome.tsx`). Voice cap 3 min: one sealed row (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB)
-  and the 500 MB free plan; up to ~5 min fits without SQL, longer needs a schema change.
+  `ui/chrome.tsx`). Voice cap raised to 5 min on Art's word (shipped 2026-11-08): one sealed row
+  (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB, 5 min ≈ 0.9 MB at 24 kbit/s); longer needs a schema change.
 - Next: the other dark themes after Art's OK. Walker screens still name Яна («Яна назначит…»)
   while Art is the main admin; asked him whether to say «главный админ». Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.

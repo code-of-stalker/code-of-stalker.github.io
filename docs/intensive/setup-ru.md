@@ -6,9 +6,13 @@
 ## 1. Проект Supabase
 
 1. Зайди на https://supabase.com и создай аккаунт (можно через GitHub).
-2. New project. Название: `code-of-stalker-intensive`. Регион: Frankfurt
-   (`eu-central-1`) или другой европейский. План: Free.
+2. New project. Название: `code-of-stalker-intensive`. План: Free. Регион:
+   не Auto, а «Need a specific region?» → Central EU (Frankfurt).
 3. Пароль базы данных сохрани в своём менеджере паролей. Он нужен только тебе.
+4. Security: **Enable Data API** включено; **Automatically expose new tables**
+   выключено (наш SQL сам выдаёт только нужные права); **Enable automatic RLS**
+   можно не трогать (наш SQL сам включает защиту на каждой таблице).
+   Postgres Type: Postgres (по умолчанию).
 
 ## 2. Вход без почты
 

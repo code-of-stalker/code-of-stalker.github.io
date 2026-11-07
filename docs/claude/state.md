@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -185,7 +185,17 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   темы»); Искра, Астрал, Матрица needed no change (sheets
   `output/prototypes/inner-frame/kadry-tishina.jpg`, `kadry-temy.jpg`). Export checked at
   1440×900 and 390×844 in all 4 dark themes: ready, no graphics error.
-- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 03–08 on `claude/step-6-scenes`,
+- Page 03 «Тело как форма» (inner-body-form), shipped to `main` 2026-11-08 (Art: «Пушим»),
+  direction В «Наполнение»: crate `graphics/inner-vessel`, bridge `InnerVessel.web.tsx`,
+  `webScene: 'inner-vessel'`. One ray-marched pass, no textures: a glass man sits upright on a
+  chair; thought sparks in the head sink to the soles on «Ощути его», warm light fills him feet →
+  crown word by word, breathes, grows heavy, runs down the chair legs, roots into the floor on
+  «заземление» (3/4 view from above); then it drains into the head and cools. 50 s loop, still
+  at 38 s; beats in the crate README. Тишина approved with no notes («Ок, делай темы»); Искра,
+  Астрал, Матрица needed no change (sheets `output/prototypes/inner-vessel/kadry.jpg`,
+  `temy.jpg`). Export checked at 1440×900 (all 4 dark themes) and 390×844: ready, no graphics
+  error. Known: on «дыхание» (≈14–18 s) the camera is closer and the feet leave the frame.
+- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 04–08 on `claude/step-6-scenes`,
   2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

@@ -95,9 +95,10 @@ void main() {
       light = 0.4 * f.w * WORLD.z;
       sigma0 = 0.05;
     } else if (i >= 4) {
-      // Page 03's lantern: its flame and the glow round it.
+      // Page 03's lantern: its flame and the glow round it, which flares
+      // as the crown's plane sweeps through it.
       p = LAMP.xyz;
-      light = LAMP.w * (i == 4 ? LAMP_CORE : LAMP_HALO);
+      light = LAMP.w * (i == 4 ? LAMP_CORE : LAMP_HALO) * (1.0 + 2.0 * scanned(p));
       sigma0 = i == 4 ? 0.02 : 0.22;
     } else {
       // The crown ring's knot on each strand.

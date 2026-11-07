@@ -135,7 +135,9 @@ void main() {
   float along = dot(q, RN(0).xyz);
   float r = length(q - RN(0).xyz * along) - RC(0).w;
   lift += 1.4 * RN(0).w * exp(-(along * along + r * r) / (0.12 * 0.12));
-  light *= other ? 1.0 : 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  // On page 03 the crown's plane lights the passer-by it sweeps through.
+  float caught = other && LAMP.w > 0.0 ? scanned(p) : 0.0;
+  light *= other ? 1.0 + SLICE_LIGHT * caught : 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
   // Page 03's lantern lights the skin that faces it, where no limb is
   // between.
   if (LAMP.w > 0.0) {
@@ -149,7 +151,7 @@ void main() {
   float s0 = max(max(BODY_DOT / v.z * VIEW.y * 0.5 * VIEW.w, BODY_SIZE * VIEW.w), 0.65);
   // In the scanner's cut the points swell into a line, as wide close up
   // as far off.
-  s0 += 1.3 * BODY_SIZE * VIEW.w * cut;
+  s0 += 1.3 * BODY_SIZE * VIEW.w * (cut + caught);
   float blur = lensBlur(v.z);
   float sigma = min(sqrt(s0 * s0 + blur * blur), u_kind.y / 6.0);
   gl_Position = pxToClip(toPx(v));

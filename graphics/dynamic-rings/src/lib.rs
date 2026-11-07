@@ -1143,13 +1143,15 @@ mod tests {
             let f = story.compose(t);
             assert!(f.lamp[3] <= 0.0 && f.other_light <= 0.0, "{t}");
         }
-        let (mut least, mut most, mut eye) = (f32::MAX, 0.0f32, f32::MAX);
+        let (mut least, mut most) = (f32::MAX, 0.0f32);
+        let (mut low, mut high) = (f32::MAX, f32::MIN);
         let mut around = 0.0;
         let mut previous: Option<V3> = None;
         let mut t = 0.0;
         while t < l {
             let f = story.compose(t);
-            eye = eye.min(f.eye.y - f.sphere.y);
+            low = low.min(f.eye.y - f.sphere.y);
+            high = high.max(f.eye.y - f.sphere.y);
             if f.lamp[3] > 0.0 {
                 // The lantern and the passer-by stay out of the glass, and
                 // every step it leaves lies outside it.
@@ -1174,8 +1176,8 @@ mod tests {
         assert!(least > SPHERE_RADIUS + 0.3, "{least}");
         assert!(most > 0.99, "{most}");
         assert!(around > TAU && around < TAU + PI, "{around}");
-        // Overhead all the while.
-        assert!(eye > 7.0, "{eye}");
+        // Beside the glass all the while, a little over the figure's head.
+        assert!(low > 0.8 && high < 1.6, "{low} {high}");
         // Lit, it lights the figure from the side it walks on.
         let f = story.compose(story.chapter.still());
         assert!(f.lamp[3] > 0.99 && f.bounds.iter().all(|b| b[3] > 0.5));

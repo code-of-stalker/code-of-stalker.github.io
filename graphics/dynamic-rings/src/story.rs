@@ -273,19 +273,21 @@ const LAMP_SWING: f32 = 0.03;
 /// figure turns its head after the light this far.
 const NIGHT_LOOK: f32 = 0.35;
 const FIGURE_LOOK: f32 = 0.55;
-/// At night the crown, the scanner and the sphere's ring are held this
-/// low, the glass before and after it fills this, and the floor and the
-/// world round it this.
-const NIGHT_RINGS: [f32; 3] = [0.7, 0.4, 0.35];
-const NIGHT_GLASS: [f32; 2] = [0.4, 0.25];
+/// At night only the crown, ring 1, is lit: the scanner and the sphere's
+/// ring wait for pages 04 and 05. The glass before and after it fills is
+/// this faint, and the floor and the world round it this.
+const NIGHT_RINGS: [f32; 3] = [1.0, 0.0, 0.0];
+const NIGHT_GLASS: [f32; 2] = [0.3, 0.2];
 const NIGHT_FLOOR: f32 = 0.08;
 const NIGHT_WORLD: f32 = 0.6;
-/// The camera: high over the glass and a little off, going once round it
-/// a loop from this way round (radians), with this lens.
-const NIGHT_AZIMUTH: f32 = -0.7;
-const NIGHT_RANGE: f32 = 3.4;
-const NIGHT_HIGH: f32 = 9.0;
-const NIGHT_LENS: f32 = 0.88;
+/// The camera: out beside the glass, a little over the figure's head,
+/// looking at the glass's middle and going once round it a loop from this
+/// way round (radians), with this lens.
+const NIGHT_AZIMUTH: f32 = -1.3;
+const NIGHT_RANGE: f32 = 7.0;
+const NIGHT_HIGH: f32 = 2.2;
+const NIGHT_AIM: f32 = 0.95;
+const NIGHT_LENS: f32 = 1.0;
 /// The limbs that throw the lantern's shadows, of each body, and how thick
 /// each is: pelvis, trunk, head, thighs, shins, upper arms, forearms.
 const CASTER_CONES: [(usize, f32); CASTERS / 2] = [
@@ -1242,14 +1244,14 @@ impl Story {
         (body, lamp)
     }
 
-    /// Page 03's camera: high over the glass, going once round it a loop.
+    /// Page 03's camera: beside the glass, going once round it a loop.
     fn night_shot(&self, t: f32) -> Shot {
         let ground = self.ground(t);
         let (sin, cos) = (NIGHT_AZIMUTH + TAU * t / self.loop_seconds).sin_cos();
         let eye = ground + v3(NIGHT_RANGE * sin, NIGHT_HIGH, NIGHT_RANGE * cos) + self.drift(t);
         Shot {
             eye,
-            target: ground + v3(-0.2 * sin, 0.2, -0.2 * cos),
+            target: ground + v3(0.0, NIGHT_AIM, 0.0),
             lens: NIGHT_LENS,
             focus: (eye - self.sphere(t)).length(),
             aperture: 0.004,

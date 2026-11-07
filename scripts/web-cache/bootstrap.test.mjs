@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 const script = await fs.readFile(new URL('./bootstrap.js', import.meta.url), 'utf8');
 const flush = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(); };
-function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false, firstVisit = false } = {}) {
+function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false, firstVisit = false, stuck = false, saved = new Map(), cacheNames = [] } = {}) {
   let now = 100000, nextTimer = 0, remote = 'new-1', active = legacy ? 'old-9' : 'new-1', reloads = 0, dialog = false;
   const timers = new Map(), intervals = [], checks = [], registrations = [], pinned = [], events = [];
   const window = new EventTarget(), document = new EventTarget(), serviceWorker = new EventTarget();
@@ -12,7 +12,10 @@ function fixture({ legacy = false, registered = true, readyState = 'complete', o
   Object.assign(document, { documentElement: root, visibilityState: 'visible', readyState, activeElement: { tagName: 'BODY' },
     getElementById: () => ({ dataset: { release: 'new-1' } }), querySelector: () => dialog ? {} : null });
   const location = { href: 'https://watcher.test/diary', reload() { reloads++; } };
-  Object.assign(window, { isSecureContext: true, location, requestIdleCallback: callback => { void callback(); },
+  let unregistered = 0;
+  const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, String(value)), removeItem: key => saved.delete(key) };
+  const caches = { keys: async () => [...cacheNames], delete: async name => { cacheNames.splice(cacheNames.indexOf(name), 1); return true; } };
+  Object.assign(window, { isSecureContext: true, location, localStorage, caches, requestIdleCallback: callback => { void callback(); },
     setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, at: now + delay }); return id; },
     clearTimeout: id => timers.delete(id), setInterval: (callback, delay) => { intervals.push({ callback, delay, at: now + delay }); return intervals.length; } });
   window.addEventListener('watcher-graphics-update', event => events.push(event.detail.available));
@@ -25,18 +28,21 @@ function fixture({ legacy = false, registered = true, readyState = 'complete', o
       ports[0].postMessage({ version: active, clientRouting: !legacy || active !== 'old-9' });
     } };
   }
-  const reg = { active: { scriptURL: 'https://watcher.test/graphics-cache-worker.js?release=new-1' }, update: async () => {} };
+  const reg = { active: { scriptURL: 'https://watcher.test/graphics-cache-worker.js?release=new-1' }, update: async () => {}, unregister: async () => { unregistered++; return true; } };
   serviceWorker.controller = firstVisit ? null : controller();
   serviceWorker.getRegistration = async () => registered ? reg : undefined;
   serviceWorker.register = async url => {
-    registrations.push(url); registered = true; active = remote; reg.active.scriptURL = new URL(url, location.href).href;
+    registrations.push(url); registered = true;
+    // A stuck phone keeps its old worker: the new release never finishes installing.
+    if (stuck) return reg;
+    active = remote; reg.active.scriptURL = new URL(url, location.href).href;
     serviceWorker.controller = controller(); serviceWorker.dispatchEvent(new Event('controllerchange')); return reg;
   };
   const navigator = { serviceWorker, onLine: online };
   vm.runInNewContext(script, { window, document, navigator, location, URL, AbortController, MessageChannel: Channel, Event, CustomEvent,
     Date: class extends Date { static now() { return now; } },
     fetch: async (url, options) => { checks.push({ url, options }); const first = checks.length === 1; const stalled = () => new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(Error('request timeout')), { once: true })); if (hangFirst && first) await stalled(); return { ok: true, json: async () => { if (hangFirstBody && first) await stalled(); return { version: remote }; } }; } });
-  return { window, document, navigator, registrations, checks, events, pinned, reloads: () => reloads,
+  return { window, document, navigator, registrations, checks, events, pinned, saved, cacheNames, reloads: () => reloads, unregistered: () => unregistered,
     remote: value => { remote = value; }, dialog: value => { dialog = value; }, busy: value => { root.dataset.watcherUpdateBusy = String(value); window.dispatchEvent(new Event('watcher-update-safety')); },
     async advance(ms) { now += ms; await flush(); const due = [...timers].filter(([, timer]) => timer.at <= now); for (const [id, timer] of due) { timers.delete(id); timer.callback(); } for (const timer of intervals) if (timer.at <= now) { timer.at = now + timer.delay; timer.callback(); } await flush(); } };
 }
@@ -110,4 +116,28 @@ test('a first visit still installs offline support when graphics never become re
   const app = fixture({ registered: false, firstVisit: true }); await flush();
   await app.advance(89999); assert.equal(app.registrations.length, 0);
   await app.advance(1); assert.deepEqual(app.registrations, ['/graphics-cache-worker.js?release=new-1']);
+});
+
+test('a release that never installs drops the stale snapshot after half an hour of checks', async () => {
+  const app = fixture({ stuck: true }); await flush();
+  app.remote('new-2'); app.window.dispatchEvent(new Event('focus')); await flush();
+  for (let i = 0; i < 10; i++) await app.advance(60000);
+  assert.equal(app.unregistered(), 0); assert.equal(app.reloads(), 0);
+  for (let i = 0; i < 20; i++) await app.advance(60000);
+  assert.equal(app.unregistered(), 1); assert.equal(app.saved.get('watcher-graphics-reset'), '1');
+  await app.advance(2000); assert.equal(app.reloads(), 1);
+});
+test('an installed update, offline checks and a busy page never reset the snapshot', async () => {
+  const app = fixture(); await flush(); app.busy(true); app.remote('new-2');
+  for (let i = 0; i < 40; i++) await app.advance(60000);
+  assert.equal(app.unregistered(), 0); assert.equal(app.saved.has('watcher-graphics-stuck'), false);
+  const offline = fixture({ stuck: true }); await flush(); offline.remote('new-2'); offline.navigator.onLine = false;
+  for (let i = 0; i < 40; i++) await offline.advance(60000);
+  assert.equal(offline.unregistered(), 0);
+});
+test('the network load after a reset clears the old snapshots and keeps voice caches', async () => {
+  const app = fixture({ firstVisit: true, registered: false, saved: new Map([['watcher-graphics-reset', '1']]),
+    cacheNames: ['watcher-graphics-v1-old-9', 'watcher-graphics-clients-v1', 'unrelated-audio-cache'] });
+  await flush();
+  assert.deepEqual(app.cacheNames, ['unrelated-audio-cache']); assert.equal(app.saved.has('watcher-graphics-reset'), false);
 });

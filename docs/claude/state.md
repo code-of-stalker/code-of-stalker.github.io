@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-01. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-02. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -183,6 +183,12 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   a 720 column; two home columns at width ≥ 900 in landscape. Sheets stay 480. Native is portrait only.
 - Performance: engine WASM 55 → 8.8 MB via external assets fetched per scene; service worker
   installs after `watcher-graphics-ready`; lossless WebP.
+- Stuck releases self-heal (2026-11-02, `scripts/web-cache/bootstrap.js`): if the site offers
+  a newer release that the phone's worker never installs (30 min, 4 checks), the page drops
+  the worker and its snapshots and reloads from the network. Only phones that already run this
+  bootstrap get it; an older stuck phone needs a one-time site data clear (backup first).
+  Note: the old address watcher-observation-qtas5.cold-breezy.chatgpt.site still serves a
+  frozen old build; github.io is blocked on Art's work VPN, which keeps the cached snapshot.
 - Skeleton loading (`graphics/skeleton`, `src/features/product/skeleton/`) on every screen.
 - Soft wheel scroll in the «Плавность» mode (`graphics/soft-scroll`; opt out with
   `data-soft-scroll="off"`). Touch, keys and native stay native.

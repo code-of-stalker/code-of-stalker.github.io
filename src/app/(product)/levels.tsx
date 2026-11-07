@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { intensiveAvailable } from '../../features/intensive/config';
 import { MotionModal } from '../../features/product/motion/MotionModal';
 import { LevelsScreen } from '../../features/product/screens/LevelsScreen';
 import type { ProductLevel } from '../../features/product/state/model';
@@ -12,6 +13,7 @@ export default function Levels() {
   const [preview, setPreview] = useState<{ level: Exclude<ProductLevel, 'basic'>; visible: boolean } | null>(null);
   const closePreview = () => setPreview(current => current && { ...current, visible: false });
   async function start(level: ProductLevel) {
+    if (level === 'intensive' && intensiveAvailable()) { router.push('/intensive'); return; }
     if (level !== 'basic') { setPreview({ level, visible: true }); return; }
     try { await updateProgress({ selectedLevel: level }); router.push('/practice'); } catch { /* Error is rendered below. */ }
   }

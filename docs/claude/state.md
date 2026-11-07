@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -207,10 +207,16 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   «Жизнь в сфере» (chapter 2, `dynamic-life`), page 03 «Ночь и фонарь» (chapter 3,
   `dynamic-night`). Both checked in the 4 dark themes and in a production export (ready,
   gpu-error 0). Page 03 lights ring 1 only; ring 2 joins on page 04, ring 3 on page 05.
-- In work: page 04 «Второе кольцо», Art chose Б «Не проваливаться» (2026-11-07): something
-  arises inside and branches, the crown dims, the person is pulled in; the warm scanner (ring 2,
-  like the Step 6 hero's inner warmth) touches it and it folds into one point, the crown
-  relights. Chapter 4, Матрица first.
+- Shipped to `main` 2026-11-08 (Art: «Пушим»): page 04 «Второе кольцо» (chapter 4,
+  `dynamic-inner`), direction Б «Не проваливаться». The figure walks on (96 steady steps);
+  five warm events flare and branch (thought at the head, emotion in the chest, a spark in the
+  belly, impulse at the right fingertips, sensation at the left knee), each drags the body its
+  way (`INNER_PULL`, `inner_way`), the crown dims and the world darkens; the thought lifts him
+  0.2 m and melts him from the feet up while he keeps walking. The warm scanner reaches each,
+  it folds into a warm bead, the crown relights; five beads fade by the loop's end. Warm light
+  rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 pixel-identical.
+  Checked in the 4 dark themes (sheet `output/prototypes/step-seven/kadry-04-temy.jpg`) and in
+  a production export. Ring 3 joins on page 05.
 - Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 

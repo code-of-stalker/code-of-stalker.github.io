@@ -24,14 +24,15 @@ export type DynamicRingsProps = ArtProps & {
   fallback?: ReactNode;
 };
 
-/** The step's story chapters: the hero above the panel and pages 01 to 03. */
-const chapters = { 'dynamic-hero': 0, 'dynamic-rings': 1, 'dynamic-life': 2, 'dynamic-night': 3 } as const;
-const names = { 'dynamic-hero': 'Динамическая сфера · Шаг 7', 'dynamic-rings': 'Третий уровень · Шаг 7', 'dynamic-life': 'Жизнь в сфере · Шаг 7', 'dynamic-night': 'Ночь и фонарь · Шаг 7' } as const;
+/** The step's story chapters: the hero above the panel and pages 01 to 04. */
+const chapters = { 'dynamic-hero': 0, 'dynamic-rings': 1, 'dynamic-life': 2, 'dynamic-night': 3, 'dynamic-inner': 4 } as const;
+const names = { 'dynamic-hero': 'Динамическая сфера · Шаг 7', 'dynamic-rings': 'Третий уровень · Шаг 7', 'dynamic-life': 'Жизнь в сфере · Шаг 7', 'dynamic-night': 'Ночь и фонарь · Шаг 7', 'dynamic-inner': 'Факты внутри · Шаг 7' } as const;
 const labels = {
   'dynamic-hero': 'Светящийся человек идёт внутри стеклянной сферы из трёх колец. Корона света ходит по сфере, сканер бежит по телу, сфера медленно кружится. Сначала тихо, потом под сферу попадает предмет и сканируется, потом провод тянется к сфере и распадается о стекло, и дальше всё чаще.',
   'dynamic-rings': 'Взгляд изнутри фигуры: наверху стекла загорается корона света и ходит до земли и обратно. Камера выходит за плечо, из бусин собирается сканер и ходит по телу. На полном вдохе корона и сканер сходятся во вспышке, сфера начинает кружиться, фигура идёт, предметы сканируются, провода распадаются о стекло, и всё удерживается. Потом кольца гаснут по одному.',
   'dynamic-life': 'Человек из света печатает на ноутбуке за столом внутри своей сферы, закрывает крышку, стол тает, и он встаёт. Снаружи сферы навстречу идёт другой человек; они поворачиваются друг к другу и разговаривают, слова летят светлыми кругами. Они кивают и расходятся. Позади собирается сиденье, он садится, появляется стол, он открывает ноутбук и печатает дальше. Кольца всё время горят мягко.',
   'dynamic-night': 'Ночь. Человек из света стоит в стеклянной сфере, и горит только одно кольцо: корона света без остановки проходит сферу сверху вниз и обратно. Мимо идёт прохожий с фонарём и обходит сферу кругом: свет фонаря ложится пятном на землю, тени бегут по планете, от шагов расходятся круги. Когда корона проходит сквозь прохожего, на нём загорается полоса, фонарь вспыхивает, и голова человека в сфере поворачивается вслед за светом.',
+  'dynamic-inner': 'Человек из света идёт в своей сфере, корона ходит по стеклу, сканер по телу. В нём вспыхивает тёплый свет и ветвится: мысль у головы, эмоция в груди, искра в животе, импульс в руке, ощущение в колене. Каждая вспышка тянет тело в свою сторону, корона гаснет, мир темнеет; мысль поднимает его над полом, и он тает от ног вверх, но продолжает идти. Тёплый сканер доходит до вспышки, ветви складываются в одну тёплую точку, корона снова горит. Пять точек горят на теле и тают к началу петли.',
 } as const;
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
@@ -40,7 +41,7 @@ const labels = {
  * theme (light themes engrave the same scene). */
 export function DynamicRings(props: DynamicRingsProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
-  const scene = props.webScene === 'dynamic-rings' || props.webScene === 'dynamic-life' || props.webScene === 'dynamic-night' ? props.webScene : 'dynamic-hero', chapter = chapters[scene];
+  const scene = props.webScene === 'dynamic-rings' || props.webScene === 'dynamic-life' || props.webScene === 'dynamic-night' || props.webScene === 'dynamic-inner' ? props.webScene : 'dynamic-hero', chapter = chapters[scene];
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
   const latest = useRef({ props, focused, background: colors.background, palette: paletteCode(colors) });
   const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);

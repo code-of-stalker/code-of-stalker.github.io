@@ -213,6 +213,23 @@ pub const BODY_POINTS: u32 = 26000;
 pub const BODY_SIZE: f32 = 0.0006;
 /// A body point's own size, metres: closer points grow, as on a real skin.
 pub const BODY_DOT: f32 = 0.003;
+/// Page 04: what flares up inside the figure (a thought, a feeling, one in
+/// the belly, an impulse, a sensation) branches out from where it starts:
+/// a tree of branches each splitting in two, `BRANCH_DEPTH` deep, each in
+/// so many pieces, every next one this much shorter. The scanner folds it
+/// back into one bead of light.
+pub const EVENTS: usize = 5;
+pub const BRANCH_DEPTH: u32 = 6;
+pub const BRANCHES: u32 = (1 << BRANCH_DEPTH) - 1;
+pub const BRANCH_SEGMENTS: u32 = 12;
+pub const BRANCH_SHRINK: f32 = 0.72;
+/// Each drags the skin round its root its way: within this far of it (m),
+/// each point by up to this much more than the skin it is on.
+pub const PULL_NEAR: f32 = 0.2;
+pub const PULL_STRETCH: f32 = 1.4;
+/// The thought melts the figure from its feet up: the points go out over
+/// this far under the melt's front (m).
+pub const MELT_BAND: f32 = 0.45;
 
 /// Peak light of each family.
 pub const CROWN_LIGHT: f32 = 1.0;
@@ -227,6 +244,8 @@ pub const THING_LIGHT: f32 = 0.9;
 pub const SEAT_LIGHT: f32 = 0.8;
 pub const DESK_LIGHT: f32 = 0.75;
 pub const VOICE_LIGHT: f32 = 1.15;
+pub const BRANCH_LIGHT: f32 = 1.0;
+pub const FACT_LIGHT: f32 = 2.2;
 /// The one met on page 02, of the figure's light.
 pub const OTHER_LIGHT: f32 = 0.6;
 /// Page 03's lantern: its light falls to a quarter this far from it (m); its flame is
@@ -396,6 +415,18 @@ pub struct Frame {
     pub lamp: [f32; 4],
     pub bounds: [[f32; 4]; 2],
     pub casters: [[f32; 4]; 2 * CASTERS],
+    /// Page 04: how much of the scanner's light is warm (0 on every other
+    /// page); each thing that flares inside the figure, three slots each:
+    /// its root and size, the way it grows and how far grown, how far
+    /// folded, its light, its seed and how far it has writhed; and the bead
+    /// each folds into: where, how lit; which way each drags the skin
+    /// round its root, and how far (m).
+    pub warmth: f32,
+    pub branches: [[f32; 4]; 3 * EVENTS],
+    pub facts: [[f32; 4]; EVENTS],
+    pub pulls: [[f32; 4]; EVENTS],
+    /// Page 04: the height of the melt's front (m) and how far it holds.
+    pub melt: [f32; 2],
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
@@ -413,7 +444,8 @@ pub const SLOT_VOICE: usize = SLOT_SEAT + SEATS;
 pub const SLOT_DESK: usize = SLOT_VOICE + 2 * VOICES;
 pub const SLOT_LAMP: usize = SLOT_DESK + 2 * SEATS;
 pub const SLOT_CASTER: usize = SLOT_LAMP + 3;
-pub const SLOTS: usize = SLOT_CASTER + 2 * CASTERS;
+pub const SLOT_INNER: usize = SLOT_CASTER + 2 * CASTERS;
+pub const SLOTS: usize = SLOT_INNER + 1 + 5 * EVENTS;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -484,6 +516,16 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     for (k, c) in f.casters.iter().enumerate() {
         d[SLOT_CASTER + k] = *c;
     }
+    d[SLOT_INNER] = [f.warmth, f.melt[0], f.melt[1], 0.0];
+    for (k, b) in f.branches.iter().enumerate() {
+        d[SLOT_INNER + 1 + k] = *b;
+    }
+    for (k, b) in f.facts.iter().enumerate() {
+        d[SLOT_INNER + 1 + 3 * EVENTS + k] = *b;
+    }
+    for (k, b) in f.pulls.iter().enumerate() {
+        d[SLOT_INNER + 1 + 4 * EVENTS + k] = *b;
+    }
     d
 }
 
@@ -543,6 +585,11 @@ pub struct Look {
     pub glow: [f32; 3],
     pub deep: [f32; 3],
     pub mid: [f32; 3],
+    /// Page 04's warm light, added over the recolored frame in this color;
+    /// `soft` when the theme inks its light softly (Тишина, Астрал), as
+    /// scene-palette's recolor does.
+    pub warm: [f32; 3],
+    pub soft: bool,
 }
 
 const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
@@ -561,6 +608,16 @@ pub fn look(code: u32) -> Look {
         glow: GREEN,
         deep,
         mid,
+        warm: [0.0; 3],
+        soft: false,
+    };
+    let dark = |warm| Look {
+        light: false,
+        glow: GREEN,
+        deep: [0.0; 3],
+        mid: [0.0; 3],
+        warm,
+        soft: Palette::from_code(code).mode() == 2.0,
     };
     match Palette::from_code(code) {
         // Дюна: soft sepia, never orange.
@@ -569,12 +626,13 @@ pub fn look(code: u32) -> Look {
         Palette::Mirage => print(rgb(38, 59, 107), rgb(93, 97, 162)),
         // Рассвет: plum text ink, then wine dulled toward copper.
         Palette::Dawn => print(rgb(96, 51, 70), rgb(140, 84, 79)),
-        _ => Look {
-            light: false,
-            glow: GREEN,
-            deep: [0.0; 3],
-            mid: [0.0; 3],
-        },
+        // The warm light: an ember on Искра, sand on Тишина, a rose glow on
+        // Астрал, amber against Матрица's green.
+        Palette::Dark => dark(rgb(255, 122, 40)),
+        Palette::Neutral => dark(rgb(242, 179, 117)),
+        Palette::Violet => dark(rgb(240, 158, 128)),
+        Palette::Matrix => dark(rgb(255, 184, 64)),
+        Palette::Original => dark(rgb(255, 184, 64)),
     }
 }
 
@@ -600,17 +658,18 @@ mod tests {
     use crate::body::SEAT_BACK;
     use crate::math::{v3, V3};
     use crate::story::{
-        crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, LIFE_DOWN, LIFE_LOOP, LIFE_UP, TALK,
-        VOICE_LIFE,
+        crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, INNER_LOOP, LIFE_DOWN, LIFE_LOOP,
+        LIFE_UP, TALK, VOICE_LIFE,
     };
     use std::f32::consts::{PI, TAU};
 
-    fn chapters() -> [Story; 4] {
+    fn chapters() -> [Story; 5] {
         [
             Story::new(Chapter::Hero),
             Story::new(Chapter::Arrive),
             Story::new(Chapter::Life),
             Story::new(Chapter::Night),
+            Story::new(Chapter::Inner),
         ]
     }
 
@@ -902,6 +961,69 @@ mod tests {
     }
 
     #[test]
+    fn on_page_four_what_flares_folds_where_the_scanner_meets_it() {
+        let story = Story::new(Chapter::Inner);
+        assert!(close(
+            INNER_LOOP / SWEEP,
+            (INNER_LOOP / SWEEP).round(),
+            1e-5
+        ));
+        let mut last = 0.0;
+        for (e, &touch) in story.touches.iter().enumerate() {
+            // Each in turn, inside the loop, the scanner at its root's height.
+            assert!(touch > last && touch + 2.0 < INNER_LOOP, "{e}: {touch}");
+            last = touch;
+            let f = story.compose(touch);
+            let sized = f.branches[3 * e][3] > 0.0;
+            let y = f.facts[e][1];
+            assert!(
+                (f.rings[1].center.y - y).abs() < 0.01,
+                "{e}: {}",
+                f.rings[1].center.y - y
+            );
+            // It drags the figure till then, and lets go after.
+            assert!(story.compose(touch - 0.1).pulls[e][3] > 0.1, "{e}");
+            assert!(story.compose(touch + 1.5).pulls[e][3].abs() < 1e-4, "{e}");
+            // Grown before, folded and gone after; the bead stays on its root.
+            if sized {
+                let before = story.compose(touch - 0.1);
+                assert!(
+                    before.branches[3 * e + 1][3] > 0.99 && before.branches[3 * e + 2][1] > 0.99
+                );
+                assert!(
+                    before.rings[0].light < 0.9,
+                    "{e}: the crown {}",
+                    before.rings[0].light
+                );
+            }
+            let after = story.compose(touch + 2.0);
+            assert!(after.branches[3 * e + 2][1] < 1e-3 && after.facts[e][3] > 0.99);
+            let (bead, root) = (after.facts[e], after.branches[3 * e]);
+            assert!((0..3).all(|k| (bead[k] - root[k]).abs() < 1e-5), "{e}");
+        }
+        // The figure walks on through the thought.
+        let thought = story.touches[0];
+        for t in [thought - 3.0, thought, thought + 1.0] {
+            assert!(story.compose(t).amount > 0.99, "{t}");
+        }
+        // The thought lifts it off the floor, its feet dark, and melts it
+        // from the feet up; it is down and whole again after it.
+        let (aloft, down) = (story.compose(thought - 0.2), story.compose(thought + 1.2));
+        assert!(aloft.body.low.y - down.body.low.y > 0.15);
+        assert!(aloft.feet.iter().all(|f| f[3] < 0.05));
+        assert!(aloft.melt[1] > 0.99 && aloft.melt[0] - aloft.body.low.y > 0.7);
+        assert!(down.melt[1] < 1e-3, "{}", down.melt[1]);
+        for t in [5.0, 30.0, 45.0] {
+            let f = story.compose(t);
+            assert!(f.melt[1] < 1e-3, "{t}");
+        }
+        // The loop starts and ends with no bead.
+        for t in [0.0, INNER_LOOP - 0.3] {
+            assert!(story.compose(t).facts.iter().all(|b| b[3] < 1e-3), "{t}");
+        }
+    }
+
+    #[test]
     fn the_still_frames_hold_every_ring() {
         for story in chapters() {
             // Every ring and the glass as bright as the chapter holds them.
@@ -926,6 +1048,10 @@ mod tests {
                 assert!(f.other_light > 0.99 && f.voices.iter().any(|v| v[7] > 0.1));
             } else if story.chapter == Chapter::Night {
                 assert!(f.lamp[3] > 0.99 && f.other_light > 0.99);
+            } else if story.chapter == Chapter::Inner {
+                // Page 04 stills on the walk with every bead the scanner
+                // has gathered, the crown burning again.
+                assert!(f.facts.iter().all(|b| b[3] > 0.5) && f.rings[0].light > 0.99);
             } else {
                 assert!(f.amount > 0.99, "{:?}", story.chapter);
             }

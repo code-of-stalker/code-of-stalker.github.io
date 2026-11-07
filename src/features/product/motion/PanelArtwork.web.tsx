@@ -20,12 +20,22 @@ export function PanelArtwork({ source, color, style, flipY=false }: { source: Pa
     // must not replace fitted paths with the original authored markup.
     element.innerHTML = markup.svg;
     let disposed = false, size = { width: 0, height: 0 };
-    const paths = [...element.querySelectorAll('[data-panel-contour]')].map(path => ({ path, source: path.getAttribute('d')! }));
+    const paths = [...element.querySelectorAll('[data-panel-contour]')].map(path => ({ path, source: path.getAttribute('d')!,
+      stroke: Number(path.getAttribute('stroke-width') ?? 1), opacity: Number(path.getAttribute('stroke-opacity') ?? 1) }));
     paths.forEach(({path,source}) => path.setAttribute('data-panel-source',source));
     let fit: ((path: string, fromWidth: number, fromHeight: number, width: number, height: number) => string) | undefined;
     const paint = () => {
       if (!fit || !(size.width > 0 && size.height > 0)) return;
-      for (const { path, source } of paths) path.setAttribute('d', fit(source, markup.size.width, markup.size.height, size.width, size.height));
+      // Below one device pixel Chrome draws strokes as aliased hairlines, so
+      // diagonals turn into stairs on 1x-1.75x screens. Draw one device pixel
+      // at the hairline's own intensity instead; dense phone screens keep it.
+      const ratio = window.devicePixelRatio || 1;
+      for (const { path, source, stroke, opacity } of paths) {
+        path.setAttribute('d', fit(source, markup.size.width, markup.size.height, size.width, size.height));
+        const thin = ratio < 2 && stroke > 0 && stroke * ratio < 1;
+        path.setAttribute('stroke-width', String(thin ? 1 / ratio : stroke));
+        path.setAttribute('stroke-opacity', String(thin ? opacity * stroke : opacity));
+      }
       element.style.visibility = 'visible';
     };
     const observer = new ResizeObserver(([entry]) => { size = entry.contentRect; paint(); });

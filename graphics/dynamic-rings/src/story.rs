@@ -1,12 +1,13 @@
 //! The chapters: what the camera, the figure, its sphere and the rings in
 //! it do through each page's loop. Everything is a pure function of loop
 //! time.
-use crate::body::{build, Body, Walk, TOE_OUT};
+use crate::body::{build, Axes, Body, Pose, Rest, Step, Walk, PRIMITIVES, SEAT_BACK, TOE_OUT};
 use crate::math::{hermite, min_jerk, mix, monotone, pulse, smooth, v3, window, V3, Y};
 use crate::{
-    Frame, Ring, Tentacle, BEAT, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT, CROWN_TOP,
-    GHOSTS, GHOST_STEP, PRINTS, SCANNER, SCANNER_FLOOR, SPHERE_HEIGHT, SPHERE_RADIUS, SPHERE_SHARE,
-    SPIN_PERIOD, SWEEP, TENTACLES, THINGS, WRITHE,
+    Frame, Ring, Tentacle, BEAT, CASTERS, CROWN_FLOOR, CROWN_PERIOD, CROWN_SHARE, CROWN_TILT,
+    CROWN_TOP, DESK_AHEAD, GHOSTS, GHOST_STEP, GLYPHS, LAPTOP_TOP, LID_HEIGHT, LID_HINGE, LID_OPEN,
+    PLANET_RADIUS, PRINTS, SCANNER, SCANNER_FLOOR, SEATS, SPHERE_HEIGHT, SPHERE_RADIUS,
+    SPHERE_SHARE, SPIN_PERIOD, SWEEP, TENTACLES, THINGS, VOICES, WRITHE,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -28,12 +29,29 @@ pub enum Chapter {
     /// sphere starts to turn, lighting the glass. Then all is held while
     /// the figure walks, and the camera returns to the eyes.
     Arrive,
+    /// Page 02: inside its sphere, every ring held softly, the figure types
+    /// at a desk of light; it closes the lid, the desk goes, it rises and
+    /// the rings answer one after another. It walks to meet someone coming
+    /// the other way outside the glass; they stop and talk, their words
+    /// rings of light between them, and part. It walks on, a seat builds
+    /// where it stops, it sits, a desk comes, it opens the lid and types
+    /// again. Nothing of the sphere is lost through any of it.
+    Life,
+    /// Page 03: night. The figure stands in its sphere, its outer ring
+    /// sweeping the glass; out of the dark a passer-by comes with a lantern,
+    /// walks once round the glass and goes on. The figure's shadows run long
+    /// over the planet and swing round it, the glass marks the light and the
+    /// shade, each step rings out on the ground. Seen from overhead, the
+    /// camera slowly going round.
+    Night,
 }
 
 impl Chapter {
     pub fn from_code(code: u32) -> Chapter {
         match code {
             1 => Chapter::Arrive,
+            2 => Chapter::Life,
+            3 => Chapter::Night,
             _ => Chapter::Hero,
         }
     }
@@ -41,6 +59,8 @@ impl Chapter {
         match self {
             Chapter::Hero => HERO_LOOP,
             Chapter::Arrive => ARRIVE_LOOP,
+            Chapter::Life => LIFE_LOOP,
+            Chapter::Night => NIGHT_LOOP,
         }
     }
     /// Reduced motion holds one moment with every ring.
@@ -48,6 +68,8 @@ impl Chapter {
         match self {
             Chapter::Hero => 40.0,
             Chapter::Arrive => 36.0,
+            Chapter::Life => 22.0,
+            Chapter::Night => 22.0,
         }
     }
     /// When the glass passes each thing the walk meets (s).
@@ -55,6 +77,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_THINGS,
             Chapter::Arrive => &ARRIVE_THINGS,
+            Chapter::Life | Chapter::Night => &[],
         }
     }
     /// When each wire breaks on the glass (s); they take turns, wire `i` is
@@ -63,6 +86,7 @@ impl Chapter {
         match self {
             Chapter::Hero => &HERO_WIRES,
             Chapter::Arrive => &ARRIVE_WIRES,
+            Chapter::Life | Chapter::Night => &[],
         }
     }
 }
@@ -132,6 +156,154 @@ const GAZE_SLOPE: [f32; 2] = [-0.32, 0.16];
 /// (start, end, to this yaw in radians, left is +x) eases from rest to rest.
 const LOOK_ROUND: [[f32; 3]; 3] = [[1.2, 3.6, 0.75], [4.4, 7.4, -0.75], [8.0, 10.2, 0.0]];
 
+/// Page 02: 14 breaths. At a desk of light it types; it closes the lid and
+/// the desk goes; it rises over `LIFE_UP` and the rings answer as it
+/// stands, at `LIFE_GATHER`. It walks to meet someone coming the other way,
+/// they talk and part, and it walks on to the next seat and sits down over
+/// `LIFE_DOWN`; a desk comes, it opens the lid and types again.
+pub const LIFE_LOOP: f32 = 61.6;
+pub const LIFE_UP: [f32; 2] = [6.0, 9.8];
+const LIFE_GATHER: f32 = 9.8;
+pub const LIFE_DOWN: [f32; 2] = [45.4, 49.6];
+/// Its bouts of walking: the first heel strike and how many strides (even),
+/// from half a stride on; two short steps bring the feet together after each.
+const LIFE_BOUTS: [(f32, usize); 2] = [(11.2, 10), (29.8, 24)];
+/// The seat left behind melts over `LIFE_LEAVE`; the next builds over
+/// `LIFE_BUILD`, once the feet are clear of it.
+const LIFE_LEAVE: [f32; 2] = [12.5, 18.5];
+const LIFE_BUILD: [f32; 2] = [43.5, 45.2];
+/// Seated and stopped, the feet stand this far either side; walking, the
+/// steps land this far either side.
+const LIFE_STANCE: f32 = 0.11;
+const LIFE_WIDTH: f32 = 0.06;
+/// The seat stands this much further back than the pelvis on it.
+const SEAT_SET: f32 = 0.02;
+/// On page 02 the rings and the glass are held softer, so that what the
+/// figure does comes first: the crown, the scanner, the sphere's ring; the
+/// glass before and after it fills.
+pub const LIFE_RINGS: [f32; 3] = [0.62, 0.72, 0.56];
+pub const LIFE_GLASS: [f32; 2] = [0.5, 0.42];
+
+/// The desks: the first goes, the next comes. At the first it types till
+/// the first of `LID_CLOSES`; its right hand goes to the lid, closes it, and
+/// both hands come back to rest. At the next its right hand goes to the
+/// lid, opens it, both go to the keys, and from the last of `LID_OPENS` it
+/// types on where it left off.
+const DESK_GONE: [f32; 2] = [5.4, 6.6];
+const DESK_COMES: [f32; 2] = [49.6, 50.8];
+const LID_CLOSES: [f32; 4] = [4.2, 4.6, 5.3, 5.8];
+const LID_OPENS: [f32; 4] = [50.8, 51.2, 52.1, 52.6];
+/// The page holds this many glyphs as the loop starts; a page of them is
+/// typed a loop.
+const TEXT_START: f32 = 20.0;
+/// Typing, its head bows and its trunk leans this much more (radians), and
+/// its hands bend this far down at the wrist.
+const TYPING_NOD: f32 = 0.25;
+const TYPING_LEAN: f32 = 0.1;
+const TYPING_WRIST: f32 = 0.55;
+
+/// The one it meets walks the other way along a line this far to the
+/// figure's left (+x), from this far on (z), in two bouts: up to where they
+/// meet, just outside the glass, and on after the talk. It is seen only
+/// between the first two and the last two of `OTHER_SHOWN`.
+const OTHER_ASIDE: f32 = 1.75;
+const OTHER_FROM: f32 = 21.24;
+const OTHER_BOUTS: [(f32, usize); 2] = [(4.2, 22), (29.6, 24)];
+const OTHER_SHOWN: [f32; 4] = [1.0, 4.0, 38.0, 42.0];
+/// They turn their heads to each other this far (radians; the chests and
+/// the pelvises take less), the figure and then the other over each's times.
+const TALK_TURN: f32 = 0.9;
+const FACING: [[f32; 4]; 2] = [[17.0, 18.2, 28.6, 29.6], [16.6, 17.8, 28.6, 29.4]];
+/// Who speaks (0 the figure, 1 the other) from when to when; they nod to
+/// part.
+pub const TALK: [(usize, f32, f32); 4] = [
+    (1, 18.3, 20.7),
+    (0, 21.1, 23.6),
+    (1, 24.0, 25.8),
+    (0, 26.2, 27.8),
+];
+const FAREWELL: f32 = 28.0;
+/// A voice: a ring about every `VOICE_EVERY` s from the speaker's mouth
+/// toward the listener's, this fast, this long, growing between these radii.
+const VOICE_EVERY: f32 = 0.3;
+const VOICE_SPEED: f32 = 1.6;
+pub const VOICE_LIFE: f32 = 1.1;
+const VOICE_RADIUS: [f32; 2] = [0.08, 0.42];
+
+/// Page 02's camera: round the figure this way (degrees from straight
+/// ahead, + to its left), this far, its eye this high, looking at this
+/// point over the ground under it (x, y, z), with this lens. It starts at
+/// `LIFE_VIEW`, close over the left shoulder onto the screen, the glass
+/// about the frame, and eases to each key over its times: back to the side
+/// as it rises, behind it to see who comes, across the two as they meet,
+/// round past the other's shoulder to its face as it speaks, back to the
+/// other's as that answers, before it to lead the walk, down to the side as
+/// it sits, and in over the shoulder again.
+const LIFE_VIEW: [f32; 7] = [118.0, 2.5, 1.55, 0.0, 0.88, 0.3, 1.0];
+const LIFE_KEYS: [([f32; 2], [f32; 7]); 9] = [
+    ([5.4, 9.2], [96.0, 3.9, 1.15, 0.0, 0.95, 0.05, 0.72]),
+    ([9.8, 15.6], [142.0, 5.0, 1.6, 0.7, 1.0, 1.5, 0.86]),
+    ([15.6, 19.0], [140.0, 4.7, 1.5, 0.7, 1.05, 0.6, 0.88]),
+    ([20.2, 23.4], [100.0, 4.0, 1.45, 0.5, 1.1, 0.6, 0.86]),
+    ([23.6, 26.4], [152.0, 4.4, 1.5, 0.8, 1.05, 0.7, 0.9]),
+    ([28.6, 39.0], [12.0, 4.6, 2.0, 0.0, 0.95, -0.1, 0.92]),
+    ([39.6, 46.0], [70.0, 3.8, 1.1, 0.0, 0.85, 0.1, 0.72]),
+    ([48.0, 52.0], [120.0, 3.2, 1.15, 0.0, 0.87, 0.2, 0.74]),
+    ([51.5, 56.0], LIFE_VIEW),
+];
+
+/// Page 03: 10 breaths. The figure stands; the passer-by walks the whole
+/// loop, a step every `NIGHT_CADENCE` s, `NIGHT_STRIDE` m long.
+pub const NIGHT_LOOP: f32 = 44.0;
+const NIGHT_CADENCE: f32 = 0.6;
+const NIGHT_STRIDE: f32 = 0.6;
+const NIGHT_WIDTH: f32 = 0.07;
+/// It comes up from behind along a line this far to the figure's right,
+/// is abeam it this far along its walk, goes once round it, its left to the
+/// glass, and on the way it came.
+const NIGHT_LAP: f32 = 2.7;
+const NIGHT_MEET: f32 = 13.0;
+/// It and its lantern come out of the dark and go back into it over these.
+pub const NIGHT_SHOWN: [f32; 4] = [1.0, 5.0, 36.0, 41.0];
+/// The lantern hangs this far under the left hand, which holds it out
+/// from the hip, and swings this much with the gait.
+const LAMP_HANG: f32 = 0.14;
+const LAMP_SWING: f32 = 0.03;
+/// Round the glass the passer-by looks at it this far (radians); the
+/// figure turns its head after the light this far.
+const NIGHT_LOOK: f32 = 0.35;
+const FIGURE_LOOK: f32 = 0.55;
+/// At night only the crown, ring 1, is lit: the scanner and the sphere's
+/// ring wait for pages 04 and 05. The glass before and after it fills is
+/// this faint, and the floor and the world round it this.
+const NIGHT_RINGS: [f32; 3] = [1.0, 0.0, 0.0];
+const NIGHT_GLASS: [f32; 2] = [0.3, 0.2];
+const NIGHT_FLOOR: f32 = 0.08;
+const NIGHT_WORLD: f32 = 0.6;
+/// The camera: out beside the glass, a little over the figure's head,
+/// looking at the glass's middle and going once round it a loop from this
+/// way round (radians), with this lens.
+const NIGHT_AZIMUTH: f32 = -1.3;
+const NIGHT_RANGE: f32 = 7.0;
+const NIGHT_HIGH: f32 = 2.2;
+const NIGHT_AIM: f32 = 0.95;
+const NIGHT_LENS: f32 = 1.0;
+/// The limbs that throw the lantern's shadows, of each body, and how thick
+/// each is: pelvis, trunk, head, thighs, shins, upper arms, forearms.
+const CASTER_CONES: [(usize, f32); CASTERS / 2] = [
+    (0, 0.11),
+    (1, 0.12),
+    (4, 0.071),
+    (5, 0.058),
+    (6, 0.058),
+    (7, 0.036),
+    (8, 0.036),
+    (13, 0.038),
+    (14, 0.038),
+    (15, 0.028),
+    (16, 0.028),
+];
+
 /// A wire reaches for the glass this long (s) before it breaks, and is
 /// gone this long after.
 const WIRE_REACH: f32 = 3.2;
@@ -152,6 +324,10 @@ pub struct Story {
     pub distance: f32,
     pub mote_box: f32,
     walk: Walk,
+    /// Page 02: the one the figure meets, and when each voice ring leaves a
+    /// mouth and whose.
+    other: Option<Walk>,
+    voices: Vec<(f32, usize)>,
 }
 
 /// A camera: where it is, what it looks at, its zoom, focus and aperture.
@@ -224,6 +400,8 @@ impl Shot {
 /// How lit and how far along the rest is, 0..1.
 struct Cues {
     inner: f32,
+    /// The glass before it fills.
+    latent: f32,
     form: f32,
     flash: f32,
     /// The sphere's ring: how lit, how far turned (radians), how fast (of
@@ -339,29 +517,356 @@ fn arrive_spin(t: f32) -> (f32, f32) {
 }
 
 /// The body's scanner at `high` (0 the feet … 1 the top of the head):
-/// level, round the body's axis at that height, hugging the figure.
-fn scanner(body: &Body, high: f32) -> (V3, f32) {
+/// level, round the body's axis at that height, hugging the figure; seated
+/// (`risen` 0) it rings what of the body crosses its level instead.
+fn scanner(body: &Body, high: f32, risen: f32) -> (V3, f32) {
     let y = mix(SCANNER_FLOOR, body.high.y - 0.03, high);
     let (p, c, h) = (body.pelvis, body.chest, body.head);
     let along = |a: V3, b: V3| a.lerp(b, ((y - a.y) / (b.y - a.y)).clamp(0.0, 1.0));
     let axis = if y <= c.y { along(p, c) } else { along(c, h) };
-    (v3(axis.x, y, axis.z), monotone(&SCANNER, y))
+    let standing = (v3(axis.x, y, axis.z), monotone(&SCANNER, y));
+    if risen >= 1.0 {
+        return standing;
+    }
+    let (centre, radius) = section(body, y).unwrap_or(standing);
+    let seated = min_jerk(1.0 - risen);
+    (
+        standing.0.lerp(centre, seated),
+        mix(standing.1, radius, seated),
+    )
+}
+
+/// A ring round what of the body crosses the level `y`: the middle of the
+/// cones there and how far out the farthest reaches, each part coming in
+/// softly as the level nears it.
+fn section(body: &Body, y: f32) -> Option<(V3, f32)> {
+    const SAMPLES: usize = 7;
+    const MARGIN: f32 = 0.06;
+    let mut parts = [(0.0f32, 0.0f32, 0.0f32, 0.0f32); PRIMITIVES * SAMPLES];
+    let (mut n, mut weight, mut x, mut z) = (0, 0.0, 0.0, 0.0);
+    for c in 0..PRIMITIVES {
+        let [ax, ay, az, ra] = body.cones[3 * c];
+        let [bx, by, bz, rb] = body.cones[3 * c + 1];
+        for k in 0..SAMPLES {
+            let u = k as f32 / (SAMPLES - 1) as f32;
+            let r = mix(ra, rb, u);
+            let w = 1.0 - smooth(0.6 * r, r + 0.12, (mix(ay, by, u) - y).abs());
+            if w > 0.0 {
+                let (px, pz) = (mix(ax, bx, u), mix(az, bz, u));
+                parts[n] = (px, pz, r, w);
+                n += 1;
+                weight += w;
+                x += w * px;
+                z += w * pz;
+            }
+        }
+    }
+    if weight <= 0.0 {
+        return None;
+    }
+    let (x, z) = (x / weight, z / weight);
+    let reach = parts[..n]
+        .iter()
+        .map(|&(px, pz, r, w)| w * ((px - x).hypot(pz - z) + r))
+        .fold(0.0, f32::max);
+    Some((v3(x, y, z), reach + MARGIN))
+}
+
+/// Bouts of strides along +z from the feet together at z 0: the first heel
+/// strike of each and how many strides (even), from half a stride on; two
+/// short steps bring the feet together after each.
+fn bouts(list: &[(f32, usize)]) -> Walk {
+    let swing = 0.76 * CADENCE;
+    let aside = |side: usize, x: f32| if side == 0 { x } else { -x };
+    let mut steps = vec![];
+    let mut z = 0.0;
+    for &(first, strides) in list {
+        for j in 0..strides {
+            let side = j % 2;
+            let land = first + j as f32 * CADENCE;
+            steps.push(Step {
+                side,
+                lift: land - if j == 0 { 0.5 } else { swing },
+                land,
+                x: aside(side, LIFE_WIDTH),
+                z: z + (0.5 + j as f32) * STRIDE,
+            });
+        }
+        z += strides as f32 * STRIDE;
+        let mut land = first + (strides - 1) as f32 * CADENCE;
+        for (side, after) in [(0, 0.6), (1, 0.65)] {
+            land += after;
+            steps.push(Step {
+                side,
+                lift: land - 0.5,
+                land,
+                x: aside(side, LIFE_STANCE),
+                z,
+            });
+        }
+    }
+    Walk::new([[LIFE_STANCE, 0.0], [-LIFE_STANCE, 0.0]], steps, BEAT)
+}
+
+/// Page 02's walk: from the seat to where it meets the other, then on to
+/// the next seat.
+fn life_walk() -> Walk {
+    let rest = |[from, to]: [f32; 2], up| Rest { from, to, up };
+    bouts(&LIFE_BOUTS).with_rests(vec![rest(LIFE_UP, true), rest(LIFE_DOWN, false)])
+}
+
+/// When each voice ring leaves a mouth, and whose: about every
+/// `VOICE_EVERY` s through each phrase, a word left out now and then.
+fn voice_list() -> Vec<(f32, usize)> {
+    let mut list = vec![];
+    for (k, &(who, from, to)) in TALK.iter().enumerate() {
+        let (mut t, mut n) = (from + 0.1, 0u32);
+        while t < to - 0.15 {
+            let seed = k as u32 * 97 + n * 7 + 3;
+            if rand(seed) > 0.18 {
+                list.push((t, who));
+            }
+            t += VOICE_EVERY * mix(0.8, 1.3, rand(seed + 1));
+            n += 1;
+        }
+    }
+    list
+}
+
+/// How much `p` (0 the figure, 1 the other) is speaking at `t`, 0..1.
+fn speaking(p: usize, t: f32) -> f32 {
+    TALK.iter()
+        .filter(|s| s.0 == p)
+        .map(|&(_, from, to)| {
+            smooth(from - 0.3, from + 0.3, t) * (1.0 - smooth(to - 0.3, to + 0.3, t))
+        })
+        .fold(0.0, f32::max)
+}
+
+/// How far the lid of the desk in use is open: closing on the first,
+/// opening on the next.
+fn lid(t: f32) -> f32 {
+    let open = if t < 0.5 * LIFE_LOOP {
+        1.0 - min_jerk(stage(t, [LID_CLOSES[1], LID_CLOSES[2]]))
+    } else {
+        min_jerk(stage(t, [LID_OPENS[1], LID_OPENS[2]]))
+    };
+    open.clamp(0.0, 1.0)
+}
+
+/// How busy the hands are on the keys, 0..1.
+fn typing(t: f32) -> f32 {
+    let (stops, starts) = (LID_CLOSES[0], LID_OPENS[3]);
+    if t < 0.5 * LIFE_LOOP {
+        1.0 - smooth(stops - 0.3, stops, t)
+    } else {
+        smooth(starts, starts + 0.3, t)
+    }
+}
+
+/// How many glyphs have been typed: a page of them a loop, the next desk
+/// going on where the first left off.
+fn text(t: f32) -> f32 {
+    let (stops, starts) = (LID_CLOSES[0], LID_OPENS[3]);
+    let rate = GLYPHS as f32 / (stops + LIFE_LOOP - starts);
+    let typed = if t < 0.5 * LIFE_LOOP {
+        t.min(stops)
+    } else {
+        stops + (t - starts).max(0.0)
+    };
+    TEXT_START + rate * typed
+}
+
+/// Where each wrist rests over the keys (0 left, 1 right), for the feet at `z`.
+fn keys_at(z: f32, side: usize) -> V3 {
+    v3(if side == 0 { 0.09 } else { -0.09 }, 0.79, z - 0.06)
+}
+
+/// Where the right wrist holds the lid's top edge, open `open`, for the
+/// feet at `z`.
+fn lid_grip(z: f32, open: f32) -> V3 {
+    let angle = open * LID_OPEN;
+    let hinge = v3(-0.07, LAPTOP_TOP, z + DESK_AHEAD + LID_HINGE);
+    hinge + v3(0.0, angle.sin(), -angle.cos()) * LID_HEIGHT + v3(0.0, 0.03, -0.09)
+}
+
+/// A point on the flat ground bent onto the planet over `track`
+/// (common.glsl bend).
+fn bend(p: V3, track: f32) -> V3 {
+    let (dx, dz) = (p.x, p.z - track);
+    let r = dx.hypot(dz);
+    if r < 1e-4 {
+        return p;
+    }
+    let a = r / PLANET_RADIUS;
+    let h = PLANET_RADIUS + p.y;
+    v3(
+        dx / r * a.sin() * h,
+        a.cos() * h - PLANET_RADIUS,
+        track + dz / r * a.sin() * h,
+    )
+}
+
+/// The other's body, built in its own frame, turned round to come the
+/// other way along its line and bent onto the planet over `track`.
+fn place(local: &Body, track: f32) -> Body {
+    carry(
+        local,
+        track,
+        |p| v3(OTHER_ASIDE - p.x, p.y, OTHER_FROM - p.z),
+        |_, d| v3(-d.x, d.y, -d.z),
+    )
+}
+
+/// A body built in its own walk's frame, carried onto the ground by `to`
+/// (a point of that frame to the flat ground) and `way` (a direction at a
+/// point of that frame to the flat ground's), and bent onto the planet
+/// over `track`.
+fn carry(local: &Body, track: f32, to: impl Fn(V3) -> V3, way: impl Fn(V3, V3) -> V3) -> Body {
+    let on = |p: V3| bend(to(p), track);
+    let mut b = *local;
+    let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
+    for c in 0..PRIMITIVES {
+        let [ax, ay, az, ra] = local.cones[3 * c];
+        let [bx, by, bz, rb] = local.cones[3 * c + 1];
+        let [sx, sy, sz, keep] = local.cones[3 * c + 2];
+        let (la, le) = (v3(ax, ay, az), v3(bx, by, bz));
+        let (a, e) = (to(la), to(le));
+        let m = (a + e) * 0.5;
+        let s = way((la + le) * 0.5, v3(sx, sy, sz));
+        let squash = (bend(m + s * 0.01, track) - bend(m, track)).normalize();
+        let (a, e) = (bend(a, track), bend(e, track));
+        b.cones[3 * c] = [a.x, a.y, a.z, ra];
+        b.cones[3 * c + 1] = [e.x, e.y, e.z, rb];
+        b.cones[3 * c + 2] = [squash.x, squash.y, squash.z, keep];
+        let r = ra.max(rb);
+        let pad = v3(r, r, r);
+        low = low.min(a - pad).min(e - pad);
+        high = high.max(a + pad).max(e + pad);
+    }
+    let turned = |at: V3, x: Axes| Axes {
+        left: way(at, x.left),
+        up: way(at, x.up),
+        forward: way(at, x.forward),
+    };
+    b.pelvis = on(local.pelvis);
+    b.chest = on(local.chest);
+    b.head = on(local.head);
+    b.mouth = on(local.mouth);
+    b.pelvic = turned(local.pelvis, local.pelvic);
+    b.chest_axes = turned(local.chest, local.chest_axes);
+    b.face = turned(local.head, local.face);
+    b.low = low;
+    b.high = high;
+    b
+}
+
+/// Forward and left for a heading `h` (radians, + to the left).
+fn heading(h: f32) -> (V3, V3) {
+    let (sin, cos) = h.sin_cos();
+    (v3(sin, 0.0, cos), v3(cos, 0.0, -sin))
+}
+
+/// Page 03's passer-by: where its path is on the flat ground, `s` m on
+/// from abeam the figure standing over `track`, and its heading there. Up
+/// from behind on the figure's right, once round it, and on ahead.
+fn night_path(s: f32, track: f32) -> (V3, f32) {
+    let centre = v3(0.0, 0.0, track);
+    let lap = TAU * NIGHT_LAP;
+    let abeam = centre - heading(0.0).1 * NIGHT_LAP;
+    if s < 0.0 {
+        (abeam + heading(0.0).0 * s, 0.0)
+    } else if s <= lap {
+        let h = s / NIGHT_LAP;
+        (centre - heading(h).1 * NIGHT_LAP, h)
+    } else {
+        (abeam + heading(0.0).0 * (s - lap), TAU)
+    }
+}
+
+/// How much of the way round the glass the passer-by is, 0 off the lap … 1
+/// on it, easing in and out.
+fn lapping(s: f32) -> f32 {
+    let lap = TAU * NIGHT_LAP;
+    smooth(-1.5, 1.0, s) * (1.0 - smooth(lap - 1.0, lap + 1.5, s))
+}
+
+/// A point of the passer-by's walk frame (z along its walk, x to its left)
+/// on the flat ground along its path.
+fn night_to(p: V3, track: f32) -> V3 {
+    let (at, h) = night_path(p.z - NIGHT_MEET, track);
+    at + heading(h).1 * p.x + Y * p.y
+}
+
+/// A direction of the passer-by's walk frame at the point `at` of it.
+fn night_way(at: V3, d: V3) -> V3 {
+    let (forward, left) = heading(night_path(at.z - NIGHT_MEET, 0.0).1);
+    left * d.x + Y * d.y + forward * d.z
+}
+
+/// How lit the passer-by and its lantern are at `t`.
+fn night_light(t: f32) -> f32 {
+    let [a, b, c, d] = NIGHT_SHOWN;
+    window(t, a, b, c, d)
+}
+
+/// The ball round a body, for the lantern's shadows: its middle and reach.
+fn bound(body: &Body) -> [f32; 4] {
+    let m = (body.low + body.high) * 0.5;
+    let r = (body.high - body.low).length() * 0.5;
+    [m.x, m.y, m.z, r]
 }
 
 impl Story {
     pub fn new(chapter: Chapter) -> Story {
         let loop_seconds = chapter.loop_seconds();
-        let steps = match chapter {
-            Chapter::Hero => HERO_STEPS,
-            Chapter::Arrive => ARRIVE_STEPS,
+        let steady = |steps: i32| {
+            let walk = Walk::steady(CADENCE, STRIDE, 0.06, -12, steps + 16, BEAT);
+            (steps as f32 * STRIDE, walk)
         };
-        let distance = steps as f32 * STRIDE;
+        let (distance, walk) = match chapter {
+            Chapter::Hero => steady(HERO_STEPS),
+            Chapter::Arrive => steady(ARRIVE_STEPS),
+            Chapter::Life => {
+                let strides: usize = LIFE_BOUTS.iter().map(|b| b.1).sum();
+                (strides as f32 * STRIDE, life_walk())
+            }
+            // It stands: its one step never comes.
+            Chapter::Night => {
+                let stance = [[LIFE_STANCE, 0.0], [-LIFE_STANCE, 0.0]];
+                let never = Step {
+                    side: 0,
+                    lift: 1e4,
+                    land: 1e4 + 0.5,
+                    x: LIFE_STANCE,
+                    z: 0.0,
+                };
+                (0.0, Walk::new(stance, vec![never], BEAT))
+            }
+        };
+        let (other, voices) = match chapter {
+            Chapter::Life => (Some(bouts(&OTHER_BOUTS)), voice_list()),
+            Chapter::Night => {
+                let (c, s) = (NIGHT_CADENCE, NIGHT_STRIDE);
+                (
+                    Some(Walk::steady(c, s, NIGHT_WIDTH, -20, 100, BEAT)),
+                    vec![],
+                )
+            }
+            _ => (None, vec![]),
+        };
         Story {
             chapter,
             loop_seconds,
             distance,
-            mote_box: distance / (distance / 10.0).round(),
-            walk: Walk::steady(CADENCE, STRIDE, 0.06, -12, steps + 16, BEAT),
+            mote_box: if distance > 0.0 {
+                distance / (distance / 10.0).round()
+            } else {
+                10.0
+            },
+            walk,
+            other,
+            voices,
         }
     }
 
@@ -378,6 +883,8 @@ impl Story {
         match self.chapter {
             Chapter::Hero => self.hero(time),
             Chapter::Arrive => self.arrive(time),
+            Chapter::Life => self.life(time),
+            Chapter::Night => self.night(time),
         }
     }
 
@@ -409,7 +916,20 @@ impl Story {
         let at = t.rem_euclid(self.loop_seconds);
         let (high, light, flash, scan) = match self.chapter {
             Chapter::Hero => (sweep(t), 1.0, 0.45 * pulse(at.rem_euclid(SWEEP)), 1.0),
+            Chapter::Night => {
+                let flash = 0.3 * pulse(at.rem_euclid(SWEEP));
+                (sweep(t), NIGHT_RINGS[0], flash, 1.0)
+            }
             Chapter::Arrive => arrive_crown(at),
+            Chapter::Life => {
+                let answer = pulse(at - LIFE_GATHER - 0.35);
+                (
+                    sweep(t),
+                    LIFE_RINGS[0],
+                    (0.45 * pulse(at.rem_euclid(SWEEP))).max(answer),
+                    1.0,
+                )
+            }
         };
         let h = crown_height(high);
         // Its axis leans and goes round, rocking to and fro with each step;
@@ -530,6 +1050,7 @@ impl Story {
         let beat = t.rem_euclid(SWEEP);
         let cues = Cues {
             inner: 1.0,
+            latent: 1.0,
             form: 1.0,
             flash: 0.5 * pulse(beat),
             spin: [
@@ -566,7 +1087,7 @@ impl Story {
             let at = build(&self.walk.pose(ARRIVE_LOCK, breath(ARRIVE_LOCK)));
             let fade = 1.0 - age / WAVE_SECONDS;
             (
-                scanner(&at, sweep(ARRIVE_LOCK)).0,
+                scanner(&at, sweep(ARRIVE_LOCK), 1.0).0,
                 WAVE_SPEED * age,
                 fade * fade * smooth(0.0, 0.1, age),
             )
@@ -576,6 +1097,7 @@ impl Story {
         let [on, full, off, out] = WORLD_ON;
         let cues = Cues {
             inner,
+            latent: 1.0,
             form,
             flash: (0.5 * pulse(t.rem_euclid(SWEEP)) * form).max(1.2 * locked),
             spin: [
@@ -591,6 +1113,362 @@ impl Story {
             wave,
         };
         self.frame(t, shot, cues)
+    }
+
+    fn life(&self, t: f32) -> Frame {
+        // As it stands the scanner, the crown and the sphere's ring answer
+        // in turn, and a soft wave runs out from the scanner.
+        let answer = |k: f32| pulse(t - LIFE_GATHER - 0.35 * k);
+        let age = t - LIFE_GATHER;
+        let wave = if (0.0..WAVE_SECONDS).contains(&age) {
+            let at = self.pose(LIFE_GATHER);
+            let fade = 1.0 - age / WAVE_SECONDS;
+            (
+                scanner(&build(&at), sweep(LIFE_GATHER), at.risen).0,
+                WAVE_SPEED * age,
+                0.6 * fade * fade * smooth(0.0, 0.1, age),
+            )
+        } else {
+            (Y, -1.0, 0.0)
+        };
+        let (voices, spoken, heard) = self.voices(t);
+        let [_, inner, spin] = LIFE_RINGS;
+        let [latent, filled] = LIFE_GLASS;
+        let cues = Cues {
+            inner,
+            latent,
+            form: 1.0,
+            flash: (0.5 * pulse(t.rem_euclid(SWEEP)))
+                .max(answer(0.0))
+                .max(spoken),
+            spin: [
+                spin,
+                self.cycle(t, SPIN_PERIOD),
+                1.0,
+                (0.4 * pulse(t.rem_euclid(SPIN_PERIOD))).max(answer(2.0)),
+            ],
+            filled,
+            fill: TAU,
+            spokes: 1.0,
+            world: 0.0,
+            wave,
+        };
+        let mut f = self.frame(t, self.life_shot(t), cues);
+        // The other's words light the crown as they meet the glass.
+        f.rings[0].flash = f.rings[0].flash.max(heard);
+        f.other = self.other_body(t);
+        let [a, b, c, d] = OTHER_SHOWN;
+        f.other_light = window(t, a, b, c, d);
+        // A voice goes out as a sphere of sound: what is seen of it is
+        // its rim, a circle that faces the eye.
+        f.voices = voices.map(|v| {
+            let n = (f.eye - v3(v[0], v[1], v[2])).normalize();
+            [v[0], v[1], v[2], v[3], n.x, n.y, n.z, v[7]]
+        });
+        f
+    }
+
+    fn night(&self, t: f32) -> Frame {
+        let [_, inner, spin] = NIGHT_RINGS;
+        let [latent, filled] = NIGHT_GLASS;
+        let cues = Cues {
+            inner,
+            latent,
+            form: 1.0,
+            flash: 0.35 * pulse(t.rem_euclid(SWEEP)),
+            spin: [
+                spin,
+                self.cycle(t, SPIN_PERIOD),
+                1.0,
+                0.25 * pulse(t.rem_euclid(SPIN_PERIOD)),
+            ],
+            filled,
+            fill: TAU,
+            spokes: 0.0,
+            world: 0.0,
+            wave: (Y, -1.0, 0.0),
+        };
+        let mut f = self.frame(t, self.night_shot(t), cues);
+        f.floor = NIGHT_FLOOR;
+        f.world = NIGHT_WORLD;
+        let Some(walk) = &self.other else {
+            return f;
+        };
+        let light = night_light(t);
+        let (walker, lamp) = self.walker(walk, t);
+        f.other = walker;
+        f.other_light = light;
+        // A flame's small unrest.
+        let flicker =
+            1.0 + 0.04 * self.cycle(t, 0.31).sin() + 0.03 * (self.cycle(t, 0.13) + 1.3).sin();
+        f.lamp = [lamp.x, lamp.y, lamp.z, light * flicker];
+        f.bounds = [bound(&f.body), bound(&f.other)];
+        for (k, body) in [&f.body, &f.other].into_iter().enumerate() {
+            for (j, &(c, r)) in CASTER_CONES.iter().enumerate() {
+                let [ax, ay, az, _] = body.cones[3 * c];
+                let [bx, by, bz, _] = body.cones[3 * c + 1];
+                let slot = 2 * (k * CASTER_CONES.len() + j);
+                f.casters[slot] = [ax, ay, az, r];
+                f.casters[slot + 1] = [bx, by, bz, 0.0];
+            }
+        }
+        // Its steps, while it is seen, on the ground along its path.
+        let track = self.walk.track(t);
+        let [from, .., to] = NIGHT_SHOWN;
+        let mut prints = [[0.0, 0.0, 0.0, 99.0]; PRINTS];
+        let steps = walk.landings(t).filter(|s| (from..=to).contains(&s.land));
+        for (slot, s) in prints.iter_mut().zip(steps) {
+            let (_, h) = night_path(s.z - NIGHT_MEET, track);
+            let at = night_to(v3(s.x, 0.0, s.z), track);
+            let yaw = h + if s.side == 0 { TOE_OUT } else { -TOE_OUT };
+            *slot = [at.x, at.z, yaw, t - s.land];
+        }
+        f.prints = prints;
+        f
+    }
+
+    /// Page 03's passer-by at `t`, on the planet, and its lantern: it walks
+    /// its path holding the lantern out in its left hand, toward the glass,
+    /// and looks at the glass as it goes round.
+    fn walker(&self, walk: &Walk, t: f32) -> (Body, V3) {
+        let track = self.walk.track(t);
+        let mut pose = walk.pose(t, breath(t + 1.7));
+        pose.turn = NIGHT_LOOK * lapping(walk.track(t) - NIGHT_MEET);
+        let p = pose.pelvis;
+        pose.hands[0] = [p.x + 0.26, p.y + 0.1, p.z + 0.16, 1.0];
+        let local = build(&pose);
+        let [x, y, z, _] = local.cones[3 * 15 + 1];
+        let swing = LAMP_SWING * self.cycle(t, 2.0 * NIGHT_CADENCE).sin();
+        let lamp = bend(night_to(v3(x, y - LAMP_HANG, z + swing), track), track);
+        let body = carry(&local, track, |p| night_to(p, track), night_way);
+        (body, lamp)
+    }
+
+    /// Page 03's camera: beside the glass, going once round it a loop.
+    fn night_shot(&self, t: f32) -> Shot {
+        let ground = self.ground(t);
+        let (sin, cos) = (NIGHT_AZIMUTH + TAU * t / self.loop_seconds).sin_cos();
+        let eye = ground + v3(NIGHT_RANGE * sin, NIGHT_HIGH, NIGHT_RANGE * cos) + self.drift(t);
+        Shot {
+            eye,
+            target: ground + v3(0.0, NIGHT_AIM, 0.0),
+            lens: NIGHT_LENS,
+            focus: (eye - self.sphere(t)).length(),
+            aperture: 0.004,
+        }
+    }
+
+    /// The figure at `t`: the walk's pose; on page 02 it also types at the
+    /// desks, turns to the one it meets, nods and speaks with a hand; on
+    /// page 03 its head goes after the lantern's light.
+    fn pose(&self, t: f32) -> Pose {
+        let mut pose = self.walk.pose(t, breath(t));
+        if self.chapter == Chapter::Life {
+            (pose.turn, pose.nod) = self.regard(0, t);
+            self.at_desk(t, &mut pose);
+            if speaking(0, t) > 0.0 {
+                pose.hands[0] = self.gesture(0, t, &build(&pose));
+            }
+        }
+        if let (Chapter::Night, Some(walk)) = (self.chapter, &self.other) {
+            let track = self.walk.track(t);
+            let (at, _) = night_path(walk.track(t) - NIGHT_MEET, track);
+            let toward = at.x.atan2(at.z - track);
+            pose.turn = FIGURE_LOOK * toward.sin() * night_light(t);
+        }
+        pose
+    }
+
+    /// At the desks: the hands on the keys, the right one closing the lid
+    /// and opening it, the head bowed to the screen.
+    fn at_desk(&self, t: f32, pose: &mut Pose) {
+        let first = t < 0.5 * self.loop_seconds;
+        let z = if first { 0.0 } else { self.distance };
+        let [reach, turn, rest, done] = if first { LID_CLOSES } else { LID_OPENS };
+        let s = |a: f32, b: f32| min_jerk(stage(t, [a, b]));
+        let grip = lid_grip(z, lid(t));
+        let busy = typing(t);
+        let keys = [0, 1].map(|i| {
+            let k = 2.1 * i as f32;
+            let jitter = v3(
+                0.012 * (self.cycle(t, 0.37) + k).sin(),
+                0.008 * (self.cycle(t, 0.23) + k).sin().max(0.0),
+                0.01 * (self.cycle(t, 0.29) + k).sin(),
+            );
+            keys_at(z, i) + jitter * busy
+        });
+        let (right, right_reach, left_reach) = if first {
+            (
+                keys[1].lerp(grip, s(reach, turn)),
+                1.0 - s(rest, done),
+                1.0 - s(reach + 0.1, turn + 0.4),
+            )
+        } else {
+            (
+                grip.lerp(keys[1], s(rest, done)),
+                s(reach, turn),
+                s(rest - 0.3, done),
+            )
+        };
+        let at = |p: V3, w: f32| [p.x, p.y, p.z, w];
+        pose.hands = [at(keys[0], left_reach), at(right, right_reach)];
+        pose.wrists = [TYPING_WRIST * left_reach, TYPING_WRIST * right_reach];
+        let bowed = if first {
+            1.0 - s(rest - 0.3, rest + 0.7)
+        } else {
+            s(reach + 0.2, turn + 0.8)
+        };
+        pose.nod += bowed * (TYPING_NOD + 0.02 * self.cycle(t, 3.1).sin());
+        pose.lean += TYPING_LEAN * bowed;
+    }
+
+    /// How far each (0 the figure, 1 the other) has turned its head to the
+    /// other, and how far it nods: listening now and then, speaking a
+    /// little with its words, and both to part.
+    fn regard(&self, p: usize, t: f32) -> (f32, f32) {
+        let [a, b, c, d] = FACING[p];
+        let turn = TALK_TURN * min_jerk(stage(t, [a, b])) * (1.0 - min_jerk(stage(t, [c, d])));
+        let bow =
+            |at: f32, depth: f32, long: f32| depth * (PI * stage(t, [at, at + long])).sin().powi(2);
+        let mut nod = bow(FAREWELL, 0.2, 0.9) + 0.035 * speaking(p, t) * self.cycle(t, 0.9).sin();
+        for &(who, from, to) in &TALK {
+            if who != p {
+                nod += bow(from + 0.9, 0.12, 0.6) + bow(to - 0.5, 0.1, 0.6);
+            }
+        }
+        (turn, nod)
+    }
+
+    /// The speaker's hand nearer the listener (its left): raised before the
+    /// chest, beating with the words.
+    fn gesture(&self, p: usize, t: f32, body: &Body) -> [f32; 4] {
+        let ch = body.chest_axes;
+        let beat = 0.02 * self.cycle(t, 0.45).sin() + 0.012 * self.cycle(t, 1.3).sin();
+        let at = body.chest + ch.forward * 0.3 - ch.up * (0.12 - beat) + ch.left * 0.14;
+        [at.x, at.y, at.z, speaking(p, t)]
+    }
+
+    /// The one the figure meets, at `t`: its own walk the other way, its
+    /// head turned to the figure in the talk, a hand speaking; on the planet.
+    fn other_body(&self, t: f32) -> Body {
+        let Some(walk) = &self.other else {
+            return build(&self.walk.pose(t, breath(t)));
+        };
+        let mut pose = walk.pose(t, breath(t + 1.7));
+        (pose.turn, pose.nod) = self.regard(1, t);
+        if speaking(1, t) > 0.0 {
+            pose.hands[0] = self.gesture(1, t, &build(&pose));
+        }
+        place(&build(&pose), self.walk.track(t))
+    }
+
+    /// The voice rings in the air at `t`; how much the figure's own words
+    /// light its scanner, and the other's the crown as they meet the glass.
+    fn voices(&self, t: f32) -> ([[f32; 8]; VOICES], f32, f32) {
+        let mut out = [[0.0; 8]; VOICES];
+        let (mut spoken, mut heard) = (0.0f32, 0.0f32);
+        let live = self
+            .voices
+            .iter()
+            .filter(|(at, _)| (0.0..VOICE_LIFE).contains(&(t - at)));
+        for (slot, &(at, who)) in out.iter_mut().zip(live) {
+            let age = t - at;
+            let (me, other) = (build(&self.pose(at)), self.other_body(at));
+            let (from, to) = if who == 0 {
+                (me.mouth, other.mouth)
+            } else {
+                (other.mouth, me.mouth)
+            };
+            let way = (to - from).normalize();
+            let p = age / VOICE_LIFE;
+            let centre = from + way * (VOICE_SPEED * age);
+            let radius = mix(
+                VOICE_RADIUS[0],
+                VOICE_RADIUS[1],
+                1.0 - (1.0 - p) * (1.0 - p),
+            );
+            let light = (1.0 - p) * (1.0 - p) * smooth(0.0, 0.08, age);
+            *slot = [
+                centre.x, centre.y, centre.z, radius, way.x, way.y, way.z, light,
+            ];
+            if who == 0 {
+                spoken = spoken.max(0.3 * pulse(age));
+            } else {
+                let to_glass = (from - self.sphere(at)).length() - SPHERE_RADIUS;
+                heard = heard.max(0.35 * pulse(age - to_glass.max(0.0) / VOICE_SPEED));
+            }
+        }
+        (out, spoken, heard)
+    }
+
+    /// Page 02's camera, eased from key to key round the figure.
+    fn life_shot(&self, t: f32) -> Shot {
+        let mut v = LIFE_VIEW;
+        for (times, key) in LIFE_KEYS {
+            let s = min_jerk(stage(t, times));
+            for (x, k) in v.iter_mut().zip(key) {
+                *x = mix(*x, k, s);
+            }
+        }
+        let [azimuth, range, high, ax, ay, az, lens] = v;
+        let ground = self.ground(t);
+        let a = azimuth.to_radians();
+        let eye = ground + v3(range * a.sin(), high, range * a.cos()) + self.drift(t);
+        Shot {
+            eye,
+            target: ground + v3(ax, ay, az),
+            lens,
+            focus: (eye - self.sphere(t)).length(),
+            aperture: 0.007,
+        }
+    }
+
+    /// The seats of page 02: the one it rises from melts into the ground
+    /// behind it; the next builds where it stops. Other pages have none.
+    fn seats(&self, t: f32) -> [[f32; 4]; SEATS] {
+        match self.chapter {
+            Chapter::Life => {
+                let back = -SEAT_BACK - SEAT_SET;
+                let [left, gone] = LIFE_LEAVE;
+                let [start, built] = LIFE_BUILD;
+                [
+                    [0.0, back, 1.0, 1.0 - smooth(left, gone, t)],
+                    [0.0, self.distance + back, 1.0, smooth(start, built, t)],
+                ]
+            }
+            _ => [[0.0; 4]; SEATS],
+        }
+    }
+
+    /// The desks of page 02 before the seats: x and z of the middle, how
+    /// much is there, the lid, the keys, the glyphs typed.
+    fn desks(&self, t: f32) -> [[f32; 6]; SEATS] {
+        match self.chapter {
+            Chapter::Life => {
+                let first = t < 0.5 * self.loop_seconds;
+                let (open, busy, typed) = (lid(t), typing(t), text(t));
+                let here = |on: bool, v: f32| if on { v } else { 0.0 };
+                [
+                    [
+                        0.0,
+                        DESK_AHEAD,
+                        1.0 - smooth(DESK_GONE[0], DESK_GONE[1], t),
+                        here(first, open),
+                        here(first, busy),
+                        typed,
+                    ],
+                    [
+                        0.0,
+                        self.distance + DESK_AHEAD,
+                        smooth(DESK_COMES[0], DESK_COMES[1], t),
+                        here(!first, open),
+                        here(!first, busy),
+                        typed,
+                    ],
+                ]
+            }
+            _ => [[0.0; 6]; SEATS],
+        }
     }
 
     /// From the eyes, the gaze following the crown ring up and down while
@@ -648,13 +1526,13 @@ impl Story {
         let breath = breath(t);
         let walk = &self.walk;
         let amount = walk.amount(t);
-        let pose = walk.pose(t, breath);
+        let pose = self.pose(t);
         let body = build(&pose);
         let track = walk.track(t);
         let forward = (shot.target - shot.eye).normalize();
         let right = forward.cross(Y).normalize();
         let up = right.cross(forward);
-        let (scan_center, scan_radius) = scanner(&body, sweep(t));
+        let (scan_center, scan_radius) = scanner(&body, sweep(t), pose.risen);
         let rings = [
             self.crown(t),
             Ring {
@@ -708,7 +1586,7 @@ impl Story {
             body,
             body_light: 1.0,
             sphere: self.sphere(t),
-            latent: 1.0,
+            latent: cues.latent,
             filled: cues.filled,
             fill: cues.fill.min(PI + 0.5),
             rings,
@@ -717,6 +1595,11 @@ impl Story {
             things: cues.world,
             things_at,
             tentacles,
+            seats: self.seats(t),
+            desks: self.desks(t),
+            other: body,
+            other_light: 0.0,
+            voices: [[0.0; 8]; VOICES],
             prints,
             feet,
             floor: 1.0,
@@ -727,6 +1610,9 @@ impl Story {
             mote_box: self.mote_box,
             track,
             amount,
+            lamp: [0.0; 4],
+            bounds: [[0.0; 4]; 2],
+            casters: [[0.0; 4]; 2 * CASTERS],
         }
     }
 }

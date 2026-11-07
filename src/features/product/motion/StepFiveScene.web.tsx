@@ -27,7 +27,7 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'sphere-lake' ? SphereLake
     : page.webScene === 'sphere-everywhere' ? SphereEverywhere
     : page.webScene === 'inner-echo' ? InnerEcho
-    : page.webScene === 'dynamic-rings' ? DynamicRings : undefined;
+    : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' ? DynamicRings : undefined;
   if (!Scene) return placeholder;
   // These pages have no engine art; the kind only names the load for the skeleton.
   const props: ArtProps = { kind: 'grounding-hero', webScene: page.webScene, width, height, active, reducedMotion: reducedMotion || systemReduced };

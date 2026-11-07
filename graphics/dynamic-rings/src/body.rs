@@ -36,6 +36,10 @@ const BOB: f32 = 0.012;
 const AHEAD: f32 = 0.06;
 const SWAY: f32 = 0.42;
 const SHIFT: f32 = 0.5;
+/// Turning to look aside, the pelvis and the chest take these shares of
+/// the head's turn.
+const PELVIS_TURN: f32 = 0.35;
+const CHEST_TURN: f32 = 0.75;
 /// It turns with the legs and rolls down on the swinging side; radians.
 const TURN: f32 = 0.075;
 const DIP: f32 = 0.05;
@@ -58,6 +62,41 @@ const HEEL_OFF: f32 = 0.25;
 const CLEARANCE: f32 = 0.07;
 /// Toes turn out this much, radians.
 pub const TOE_OUT: f32 = 5.0 * PI / 180.0;
+
+/// Seated, the pelvis rides this high and this far behind the heels, the
+/// trunk leans this little, and the hands rest on the thighs: the arms
+/// forward this much, the elbows bent this much more.
+pub const SEAT_PELVIS: f32 = 0.56;
+pub const SEAT_BACK: f32 = 0.42;
+const SEAT_LEAN: f32 = 0.03;
+const SEAT_ARMS: f32 = 0.34;
+const SEAT_BEND: f32 = 0.3;
+/// Rising, the trunk first leans this far forward over the feet (radians);
+/// then the seat is left and the legs straighten as it comes upright.
+const SEAT_FLEX: f32 = 0.55;
+/// Seated, the walk's track stays this share of the way back to the seat.
+const SEAT_FOLLOW: f32 = 0.5;
+
+/// A rise from a seat (`up`) or a sit down onto one between two times; the
+/// feet stay where they stand.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Rest {
+    pub from: f32,
+    pub to: f32,
+    pub up: bool,
+}
+
+/// Rising from a seat, `s` 0 seated … 1 standing: how far the pelvis has
+/// gone forward and how far up toward standing, how far the trunk leans
+/// over the feet, how much the hands still rest on the thighs. Sitting
+/// down is the same run backwards.
+fn rising(s: f32) -> (f32, f32, f32, f32) {
+    let forward = 0.08 * smooth(0.0, 0.35, s) + 0.92 * min_jerk((s - 0.3) / 0.6);
+    let up = min_jerk((s - 0.34) / 0.6);
+    let flex = smooth(0.0, 0.38, s) * (1.0 - smooth(0.42, 0.95, s));
+    let hands = 1.0 - smooth(0.2, 0.65, s);
+    (forward, up, flex, hands)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Foot {
@@ -141,50 +180,87 @@ pub struct Walk {
     amount: Vec<(f32, f32)>,
     /// Standing, the body sways once in this many seconds.
     sway: f32,
+    /// When it rises from a seat and sits down again, in time order.
+    rests: Vec<Rest>,
 }
 
 impl Walk {
-    /// `steps` in time order, left foot 0, right foot 1; the first lifts the
-    /// foot that does not carry the weight, the last brings a foot to rest.
+    /// `steps` in time order, left foot 0, right foot 1. They come in bouts
+    /// with a pause of at least `PAUSE` s between: the first step of each
+    /// lifts the foot that does not carry the weight, the last brings a foot
+    /// to rest.
     pub fn new(start: [[f32; 2]; 2], steps: Vec<Step>, sway: f32) -> Walk {
         let mut feet = [Vec::new(), Vec::new()];
         for s in &steps {
             feet[s.side].push(*s);
         }
-        let first = steps[0];
-        let last = steps[steps.len() - 1];
         let mean = |w: [[f32; 2]; 2], i: usize| 0.5 * (w[0][i] + w[1][i]);
         let mut place = start;
-        let mut pelvis_z = vec![(first.lift - 0.15, mean(start, 1) + AHEAD)];
-        let mut pelvis_x = vec![
-            (first.lift - 0.6, mean(start, 0)),
-            (first.lift - 0.02, SHIFT * start[1 - first.side][0]),
-        ];
-        for (i, s) in steps.iter().enumerate() {
-            place[s.side] = [s.x, s.z];
-            if i + 1 == steps.len() {
-                pelvis_z.push((s.land + 0.3, mean(place, 1) + AHEAD));
-                pelvis_x.push((s.land + 0.45, mean(place, 0)));
-            } else {
-                pelvis_z.push((s.land, mean(place, 1) + AHEAD));
-                pelvis_x.push((s.land + 0.25, SWAY * s.x));
+        let (mut pelvis_z, mut pelvis_x, mut amount) = (vec![], vec![], vec![]);
+        let mut from = 0;
+        while from < steps.len() {
+            let mut to = from + 1;
+            while to < steps.len() && steps[to].lift - steps[to - 1].land < PAUSE {
+                to += 1;
             }
-        }
-        let before_last = steps[steps.len().saturating_sub(2)];
-        Walk {
-            amount: vec![
+            let bout = &steps[from..to];
+            let first = bout[0];
+            let last = bout[bout.len() - 1];
+            pelvis_z.push((first.lift - 0.15, mean(place, 1) + AHEAD));
+            pelvis_x.push((first.lift - 0.6, mean(place, 0)));
+            pelvis_x.push((first.lift - 0.02, SHIFT * place[1 - first.side][0]));
+            for (i, s) in bout.iter().enumerate() {
+                place[s.side] = [s.x, s.z];
+                if i + 1 == bout.len() {
+                    pelvis_z.push((s.land + 0.3, mean(place, 1) + AHEAD));
+                    pelvis_x.push((s.land + 0.45, mean(place, 0)));
+                } else {
+                    pelvis_z.push((s.land, mean(place, 1) + AHEAD));
+                    pelvis_x.push((s.land + 0.25, SWAY * s.x));
+                }
+            }
+            let before_last = bout[bout.len().saturating_sub(2)];
+            amount.extend([
                 (first.lift - 0.5, 0.0),
                 (first.land, 1.0),
                 (before_last.land, 1.0),
                 (last.land + 0.3, 0.0),
-            ],
+            ]);
+            from = to;
+        }
+        Walk {
+            amount,
             steps,
             feet,
             start,
             pelvis_z,
             pelvis_x,
             sway,
+            rests: Vec::new(),
         }
+    }
+
+    /// The same walk, rising from a seat and sitting down at `rests`; seated
+    /// before the first if that one rises.
+    pub fn with_rests(mut self, rests: Vec<Rest>) -> Walk {
+        self.rests = rests;
+        self
+    }
+
+    /// How far the figure has risen from its seat, 0 seated … 1 standing.
+    pub fn risen(&self, t: f32) -> f32 {
+        let mut s = match self.rests.first() {
+            Some(r) if r.up => 0.0,
+            _ => 1.0,
+        };
+        for r in &self.rests {
+            if t < r.from {
+                break;
+            }
+            let p = ((t - r.from) / (r.to - r.from)).clamp(0.0, 1.0);
+            s = if r.up { p } else { 1.0 - p };
+        }
+        s
     }
 
     /// A step of `stride` every `period` seconds from step `from` to `to`,
@@ -220,7 +296,8 @@ impl Walk {
     /// The pelvis's path forward without its idle sway: what the camera and
     /// the outer ring follow.
     pub fn track(&self, t: f32) -> f32 {
-        monotone(&self.pelvis_z, t)
+        let (forward, ..) = rising(self.risen(t));
+        monotone(&self.pelvis_z, t) - SEAT_FOLLOW * (SEAT_BACK + AHEAD) * (1.0 - forward)
     }
 
     /// How much the figure is walking, 0 standing to 1.
@@ -300,21 +377,45 @@ impl Walk {
         }
         let lagged = |side: usize| self.foot(side, t - ARM_LAG).ankle.z;
         let apart = lagged(0) - lagged(1);
+        let mut arms = [-0.5 * ARM_SWING * apart, 0.5 * ARM_SWING * apart];
+        let mut lean = LEAN * amount;
+        let mut bend = [0.0; 2];
+        // Off the seat: the trunk leans over the feet, the pelvis leaves
+        // the seat and rises as the legs straighten.
+        let risen = self.risen(t);
+        let mut z = z;
+        if risen < 1.0 {
+            let (forward, up, flex, hands) = rising(risen);
+            let seat = 0.5 * (feet[0].heel.z + feet[1].heel.z) - SEAT_BACK;
+            z = mix(seat, z, forward);
+            y = mix(SEAT_PELVIS, y, up);
+            lean = mix(SEAT_LEAN, lean, up) + SEAT_FLEX * flex;
+            arms = arms.map(|a| mix(a, SEAT_ARMS, hands));
+            bend = [SEAT_BEND * hands; 2];
+        }
         Pose {
             pelvis: v3(x, y, z),
             yaw,
             roll: -DIP * (feet[0].swing - feet[1].swing),
-            lean: LEAN * amount,
+            lean,
             feet,
-            arms: [-0.5 * ARM_SWING * apart, 0.5 * ARM_SWING * apart],
+            arms,
+            bend,
             amount,
+            risen,
             breath,
+            turn: 0.0,
+            nod: 0.0,
+            hands: [[0.0; 4]; 2],
+            wrists: [0.0; 2],
         }
     }
 }
 
 /// A foot spends this share of a step's period in the air.
 const SWING_SHARE: f32 = 0.76;
+/// A pause this long (s) between two steps ends a bout of walking.
+pub const PAUSE: f32 = 1.5;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pose {
@@ -323,10 +424,22 @@ pub struct Pose {
     pub roll: f32,
     pub lean: f32,
     pub feet: [Foot; 2],
-    /// Each arm's swing forward, radians.
+    /// Each arm's swing forward, radians, and how much more its elbow bends.
     pub arms: [f32; 2],
+    pub bend: [f32; 2],
     pub amount: f32,
+    /// 0 seated … 1 standing.
+    pub risen: f32,
     pub breath: f32,
+    /// How far the upper body turns to the left (radians at the head; the
+    /// chest and the pelvis take less of it) and the head nods forward.
+    pub turn: f32,
+    pub nod: f32,
+    /// Each hand reaching for a point: its wrist's target and how much it
+    /// reaches (0 the arm hangs as the walk swings it … 1 there), and how
+    /// far the hand bends down at the wrist (radians).
+    pub hands: [[f32; 4]; 2],
+    pub wrists: [f32; 2],
 }
 
 /// A body part's own left, up and forward.
@@ -374,6 +487,9 @@ pub struct Body {
     pub chest: V3,
     pub chest_axes: Axes,
     pub head: V3,
+    /// Where its voice leaves the head, and which way the head faces.
+    pub mouth: V3,
+    pub face: Axes,
     /// The box around every cone.
     pub low: V3,
     pub high: V3,
@@ -396,19 +512,19 @@ pub fn build(pose: &Pose) -> Body {
     };
     let b = pose.breath;
     let p = pose.pelvis;
-    let pelvic = axes(pose.yaw, pose.lean, pose.roll);
+    let pelvic = axes(pose.yaw + PELVIS_TURN * pose.turn, pose.lean, pose.roll);
     let waist = p + pelvic.up * 0.15;
     let ch = axes(
-        -0.55 * pose.yaw,
+        -0.55 * pose.yaw + CHEST_TURN * pose.turn,
         pose.lean + 0.02 * pose.amount - 0.012 * b,
         -0.5 * pose.roll,
     );
     let chest = waist + ch.up * 0.2;
     let neck = chest + ch.up * 0.16;
     let head_base = neck + (ch.up + Y * 2.0).normalize() * 0.1;
-    let hd = axes(0.2 * pose.yaw, 0.0, 0.0);
-    let jaw = head_base + Y * 0.025 + hd.forward * 0.025;
-    let crown = head_base + Y * 0.105 - hd.forward * 0.005;
+    let hd = axes(0.2 * pose.yaw + pose.turn, pose.nod, 0.0);
+    let jaw = head_base + hd.up * 0.025 + hd.forward * 0.025;
+    let crown = head_base + hd.up * 0.105 - hd.forward * 0.005;
     cone(
         p - pelvic.up * 0.02,
         0.13,
@@ -459,12 +575,30 @@ pub fn build(pose: &Pose) -> Body {
         let shoulder = shoulder_line + ch.left * (SHOULDER * s);
         let hang = rotate(-ch.up, ch.forward, ABDUCT * s);
         let upper = rotate(hang, ch.left, -pose.arms[i]);
-        let elbow = shoulder + upper * UPPER_ARM;
         let across = upper.cross(ch.forward).normalize();
-        let bend = 0.22 + 0.3 * pose.arms[i].max(0.0) / 0.28 + 0.03 * b;
+        let bend = 0.22 + 0.3 * pose.arms[i].max(0.0) / 0.28 + 0.03 * b + pose.bend[i];
         let lower = rotate(rotate(upper, across, bend), ch.forward, -ADDUCT * s);
+        let [tx, ty, tz, reach] = pose.hands[i];
+        let (upper, lower, across) = if reach > 0.0 {
+            // The wrist reaches for its target, the elbow out and down.
+            let d = v3(tx, ty, tz) - shoulder;
+            let dir = d.normalize();
+            let len = d.length().clamp(0.1, (UPPER_ARM + FOREARM) * 0.998);
+            let a = (len * len + UPPER_ARM * UPPER_ARM - FOREARM * FOREARM) / (2.0 * len);
+            let h = (UPPER_ARM * UPPER_ARM - a * a).max(0.0).sqrt();
+            let pole = ch.left * (0.7 * s) - ch.up - ch.forward * 0.3;
+            let out = (pole - dir * pole.dot(dir)).normalize();
+            let elbow = dir * a + out * h;
+            let up = (upper * (1.0 - reach) + elbow.normalize() * reach).normalize();
+            let wrist = dir * len - elbow;
+            let low = (lower * (1.0 - reach) + wrist.normalize() * reach).normalize();
+            (up, low, up.cross(ch.forward).normalize())
+        } else {
+            (upper, lower, across)
+        };
+        let elbow = shoulder + upper * UPPER_ARM;
         let wrist = elbow + lower * FOREARM;
-        let hand = rotate(lower, across, 0.1);
+        let hand = rotate(lower, across, 0.1 - pose.wrists[i]);
         let palm = (ch.left - hand * ch.left.dot(hand)).normalize();
         (shoulder, elbow, wrist, wrist + hand * HAND, palm)
     });
@@ -484,6 +618,8 @@ pub fn build(pose: &Pose) -> Body {
         chest,
         chest_axes: ch,
         head: crown,
+        mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
+        face: hd,
         low,
         high,
     }
@@ -569,6 +705,58 @@ mod tests {
         // Shoulders a little narrower than a quarter of the height.
         let width = body.high.x - body.low.x;
         assert!((0.42..0.6).contains(&width), "{width}");
+    }
+
+    /// Seated, it rises over 2..5.8 s, sits again over 8..12.2 s and takes
+    /// one step afterwards.
+    fn seated() -> Walk {
+        let step = Step {
+            side: 0,
+            lift: 20.0,
+            land: 20.45,
+            x: 0.11,
+            z: 0.0,
+        };
+        let rest = |from, to, up| Rest { from, to, up };
+        Walk::new([[0.11, 0.0], [-0.11, 0.0]], vec![step], 7.0)
+            .with_rests(vec![rest(2.0, 5.8, true), rest(8.0, 12.2, false)])
+    }
+
+    #[test]
+    fn it_sits_rises_and_sits_down_again() {
+        let w = seated();
+        let mut previous = w.pose(0.0, 0.5);
+        let mut lean = 0.0f32;
+        for i in 1..1500 {
+            let t = i as f32 * 0.01;
+            let pose = w.pose(t, 0.5);
+            let body = build(&pose);
+            // The feet stay planted and the legs reach them, seated or not.
+            for f in &pose.feet {
+                assert!(lowest(f) > -1e-3 && lowest(f) < 0.01, "{t}");
+            }
+            let hips = [1.0f32, -1.0].map(|s| pose.pelvis + body.pelvic.left * (HIP * s));
+            for (f, hip) in pose.feet.iter().zip(&hips) {
+                assert!((f.ankle - *hip).length() < THIGH + SHIN, "{t}");
+            }
+            let moved = (pose.pelvis - previous.pelvis).length();
+            assert!(moved < 0.01, "{t}: {moved}");
+            lean = lean.max(pose.lean);
+            previous = pose;
+        }
+        // It rises leaning forward over its feet.
+        assert!(lean > 0.45, "{lean}");
+        for t in [1.0, 13.0] {
+            let pose = w.pose(t, 0.5);
+            let body = build(&pose);
+            assert_eq!(w.risen(t), 0.0, "{t}");
+            assert!((pose.pelvis.y - SEAT_PELVIS).abs() < 1e-4, "{t}");
+            assert!((pose.pelvis.z + SEAT_BACK).abs() < 1e-3, "{t}");
+            assert!((1.2..1.4).contains(&body.high.y), "{t}: {}", body.high.y);
+        }
+        let standing = build(&w.pose(7.0, 0.5));
+        assert_eq!(w.risen(7.0), 1.0);
+        assert!(standing.high.y > 1.68, "{}", standing.high.y);
     }
 
     #[test]

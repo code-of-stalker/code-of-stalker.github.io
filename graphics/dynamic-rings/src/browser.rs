@@ -6,20 +6,26 @@
 use crate::body::{BLEND, PRIMITIVES};
 use crate::{
     cone_points, look, pack, Chapter, Look, Story, ATMOSPHERE_LIGHT, BEADS, BEAD_LIGHT, BODY_DOT,
-    BODY_LIGHT, BODY_POINTS, BODY_SIZE, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
+    BODY_LIGHT, BODY_POINTS, BODY_SIZE, CASTERS, COLUMNS, COLUMN_DOTS, COLUMN_GAP, COLUMN_LIGHT,
     CONSTELLATIONS, CONSTELLATION_LIGHT, CONSTELLATION_STARS, CONTACT_LIGHT, CROWN_GAP,
-    CROWN_LIGHT, DEBRIS, DEBRIS_FADE, DEBRIS_LIGHT, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN,
+    CROWN_LIGHT, DEBRIS, DEBRIS_FADE, DEBRIS_LIGHT, DESK_AHEAD, DESK_HALF, DESK_LEGS, DESK_LIGHT,
+    DESK_LINES, DESK_PIECES, DESK_SLAB, DESK_TOP, ENGRAVE_GAMMA, ENGRAVE_WHITE, FLASH_GAIN,
     FLOOR_CELL, FLOOR_GRID, FLOOR_LIGHT, FLOOR_POOL, FOCAL, FRAME_ASPECT, GHOSTS, GHOST_LIGHT,
-    GHOST_SEGMENTS, GLASS_FOG, HALO, HALO_SPREAD, INNER_LINE_LIGHT, LINE_WIDTH, MID_AT, MOTES,
-    MOTE_LIGHT, MOTE_SPAN, NEBULA_LIGHT, PLANET_CELL, PLANET_LIGHT, PLANET_RADIUS, PLANET_REACH,
-    PRINTS, PRINT_FADE, PRINT_LIGHT, PRINT_SEGMENTS, RING_SEGMENTS, RIPPLE_LIGHT, RIPPLE_REACH,
-    RIPPLE_SECONDS, RIPPLE_SEGMENTS, SCAN_LIGHT, SCAN_WIDTH, SHELL, SHELL_GRID, SHELL_LATENT,
-    SHELL_LIGHT, SHELL_WAVE, SLICE, SLICE_GLOW, SLICE_LIGHT, SLOTS, SLOT_FEET, SLOT_GHOST,
-    SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_TENTACLE, SLOT_THING, SLOT_VIEW, SLOT_WORLD, SPIN_LIGHT,
-    SPIN_STEP, SPIN_TRAIL, SPIRES, SPIRE_LIGHT, SPIRE_PIECES, SPOKES, SPOKE_BEADS, SPOKE_LIGHT,
-    STARS, STAR_LIGHT, SWEEP, TENTACLES, TENTACLE_BREAK, TENTACLE_LIGHT, TENTACLE_SEGMENTS,
-    TENTACLE_STRANDS, THINGS, THING_LIGHT, THING_PIECES, THING_RING, UNSCANNED, WAVE_GAIN, WRITHE,
-    WRITHE_REACH,
+    GHOST_SEGMENTS, GLASS_FOG, GLYPHS, GLYPH_COLUMNS, GLYPH_ROWS, HALO, HALO_SPREAD,
+    INNER_LINE_LIGHT, KEY_COLUMNS, KEY_ROWS, LAMP_AIR, LAMP_BODY, LAMP_CORE, LAMP_DUST, LAMP_FLAT,
+    LAMP_FLOOR, LAMP_GLASS, LAMP_GLINT, LAMP_GROUND, LAMP_HALO, LAMP_MIST, LAMP_PRINT, LAMP_REACH,
+    LAMP_SIZE, LAPTOP_FRONT, LAPTOP_HALF, LAPTOP_TOP, LID_HEIGHT, LID_HINGE, LID_OPEN, LINE_WIDTH,
+    MID_AT, MOTES, MOTE_LIGHT, MOTE_SPAN, NEBULA_LIGHT, OTHER_LIGHT, PLANET_CELL, PLANET_LIGHT,
+    PLANET_RADIUS, PLANET_REACH, PRINTS, PRINT_FADE, PRINT_LIGHT, PRINT_SEGMENTS, RING_SEGMENTS,
+    RIPPLE_LIGHT, RIPPLE_REACH, RIPPLE_SECONDS, RIPPLE_SEGMENTS, SCAN_LIGHT, SCAN_WIDTH, SEATS,
+    SEAT_HALF, SEAT_LEVELS, SEAT_LIGHT, SEAT_PIECES, SEAT_TOP, SHELL, SHELL_GRID, SHELL_LATENT,
+    SHELL_LIGHT, SHELL_WAVE, SLICE, SLICE_GLOW, SLICE_LIGHT, SLOTS, SLOT_CASTER, SLOT_DESK,
+    SLOT_FEET, SLOT_GHOST, SLOT_LAMP, SLOT_META, SLOT_PRINT, SLOT_RING, SLOT_SEAT, SLOT_TENTACLE,
+    SLOT_THING, SLOT_VIEW, SLOT_VOICE, SLOT_WORLD, SPIN_LIGHT, SPIN_STEP, SPIN_TRAIL, SPIRES,
+    SPIRE_LIGHT, SPIRE_PIECES, SPOKES, SPOKE_BEADS, SPOKE_LIGHT, STARS, STAR_LIGHT, SWEEP,
+    TENTACLES, TENTACLE_BREAK, TENTACLE_LIGHT, TENTACLE_SEGMENTS, TENTACLE_STRANDS, THINGS,
+    THING_LIGHT, THING_PIECES, THING_RING, UNSCANNED, VOICES, VOICE_LIGHT, VOICE_SEGMENTS,
+    WAVE_GAIN, WRITHE, WRITHE_REACH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -69,6 +75,38 @@ fn defines() -> String {
         ("SLOT_TENTACLE", SLOT_TENTACLE.to_string()),
         ("SLOT_META", SLOT_META.to_string()),
         ("SLOT_THING", SLOT_THING.to_string()),
+        ("SLOT_SEAT", SLOT_SEAT.to_string()),
+        ("SEAT_TOP", f(SEAT_TOP)),
+        ("SEAT_HALF_X", f(SEAT_HALF[0])),
+        ("SEAT_HALF_Z", f(SEAT_HALF[1])),
+        ("SEAT_LEVELS", n(SEAT_LEVELS)),
+        ("SEAT_PIECES", n(SEAT_PIECES)),
+        ("SEAT_LIGHT", f(SEAT_LIGHT)),
+        ("SLOT_VOICE", SLOT_VOICE.to_string()),
+        ("SLOT_DESK", SLOT_DESK.to_string()),
+        ("VOICE_SEGMENTS", n(VOICE_SEGMENTS)),
+        ("VOICE_LIGHT", f(VOICE_LIGHT)),
+        ("DESK_AHEAD", f(DESK_AHEAD)),
+        ("DESK_HALF_X", f(DESK_HALF[0])),
+        ("DESK_HALF_Z", f(DESK_HALF[1])),
+        ("DESK_TOP", f(DESK_TOP)),
+        ("DESK_SLAB", f(DESK_SLAB)),
+        ("DESK_LEGS_X", f(DESK_LEGS[0])),
+        ("DESK_LEGS_Z", f(DESK_LEGS[1])),
+        ("DESK_PIECES", n(DESK_PIECES)),
+        ("DESK_LINES", n(DESK_LINES)),
+        ("DESK_LIGHT", f(DESK_LIGHT)),
+        ("LAPTOP_HALF", f(LAPTOP_HALF)),
+        ("LAPTOP_TOP", f(LAPTOP_TOP)),
+        ("LAPTOP_FRONT", f(LAPTOP_FRONT)),
+        ("LID_HINGE", f(LID_HINGE)),
+        ("LID_HEIGHT", f(LID_HEIGHT)),
+        ("LID_OPEN", f(LID_OPEN)),
+        ("GLYPH_COLUMNS", n(GLYPH_COLUMNS)),
+        ("GLYPH_ROWS", n(GLYPH_ROWS)),
+        ("GLYPHS", n(GLYPHS)),
+        ("KEY_COLUMNS", n(KEY_COLUMNS)),
+        ("KEY_ROWS", n(KEY_ROWS)),
         ("PRINTS", PRINTS.to_string()),
         ("TENTACLES", TENTACLES.to_string()),
         ("CONES", PRIMITIVES.to_string()),
@@ -149,6 +187,23 @@ fn defines() -> String {
         ("WAVE_GAIN", f(WAVE_GAIN)),
         ("MOTE_SPAN_X", f(MOTE_SPAN[0])),
         ("MOTE_SPAN_Y", f(MOTE_SPAN[1])),
+        ("SLOT_LAMP", SLOT_LAMP.to_string()),
+        ("SLOT_CASTER", SLOT_CASTER.to_string()),
+        ("CASTERS", CASTERS.to_string()),
+        ("LAMP_REACH", f(LAMP_REACH)),
+        ("LAMP_SIZE", f(LAMP_SIZE)),
+        ("LAMP_FLAT", f(LAMP_FLAT)),
+        ("LAMP_MIST", f(LAMP_MIST)),
+        ("LAMP_GROUND", f(LAMP_GROUND)),
+        ("LAMP_FLOOR", f(LAMP_FLOOR)),
+        ("LAMP_PRINT", f(LAMP_PRINT)),
+        ("LAMP_GLASS", f(LAMP_GLASS)),
+        ("LAMP_GLINT", f(LAMP_GLINT)),
+        ("LAMP_BODY", f(LAMP_BODY)),
+        ("LAMP_DUST", f(LAMP_DUST)),
+        ("LAMP_AIR", f(LAMP_AIR)),
+        ("LAMP_CORE", f(LAMP_CORE)),
+        ("LAMP_HALO", f(LAMP_HALO)),
     ];
     let list = |items: Vec<String>| items.join(", ");
     lines.push(("BLENDS", list(BLEND.iter().map(|&b| f(b)).collect())));
@@ -618,6 +673,18 @@ impl DynamicRings {
             ),
             (f.things, THINGS * (12 * THING_PIECES + THING_RING)),
             (f.world, SPIRES * SPIRE_PIECES),
+            (
+                f.seats.iter().map(|s| s[2] * s[3]).fold(0.0, f32::max),
+                SEATS as u32 * SEAT_PIECES * (12 + 4 * SEAT_LEVELS),
+            ),
+            (
+                f.voices.iter().map(|v| v[7]).fold(0.0, f32::max),
+                VOICES as u32 * VOICE_SEGMENTS,
+            ),
+            (
+                f.desks.iter().map(|d| d[2]).fold(0.0, f32::max),
+                SEATS as u32 * DESK_LINES,
+            ),
         ];
         for (kind, (on, count)) in families.iter().enumerate() {
             if *on > 0.0 {
@@ -631,10 +698,20 @@ impl DynamicRings {
             gl.uniform4fv_with_f32_array(self.body.at("u_b"), &cones);
             gl.draw_arrays(Gl::POINTS, 0, BODY_POINTS as i32);
         }
-        // The lights, the rings' beads, the spokes between them, the wires'
-        // dust and the spires' lights.
+        // The one it meets, fainter and in half the points, outside the glass.
+        if f.other_light > 0.0 {
+            let other: Vec<f32> = f.other.cones.iter().flatten().copied().collect();
+            scene(&self.body, 0.0);
+            gl.uniform4fv_with_f32_array(self.body.at("u_b"), &other);
+            let light = f.other_light * OTHER_LIGHT;
+            gl.uniform4f(self.body.at("u_kind"), 0.0, largest, 1.0, light);
+            gl.draw_arrays(Gl::POINTS, 0, BODY_POINTS as i32 / 2);
+        }
+        // The lights (the feet, the crown's knots, page 03's lantern), the
+        // rings' beads, the spokes between them, the wires' dust and the
+        // spires' lights.
         let lights = [
-            (1.0, 4, 2.0),
+            (1.0, 6, 2.0),
             (crown.max(scanner), 2 * BEADS, 4.0),
             (f.spokes, SPOKES * SPOKE_BEADS, 5.0),
             (f.world, TENTACLES as u32 * (DEBRIS + 2) + SPIRES, 7.0),

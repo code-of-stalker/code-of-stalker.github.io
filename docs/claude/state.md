@@ -160,8 +160,13 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   only image). Round 3 (2026-11-07): the sphere has no fill (rim, turning orbit, floor
   circle only); the inner ring has no sphere: a warm level ring hugging the body, scanning it
   feet ↔ crown every 6 s and lighting the band; the four «Без…» take 7 s each (14–41.6 s).
-  Beats in the crate README. Тишина prototype `output/prototypes/inner-echo/index.html`,
-  sheet `kadry-tishina-3.jpg`; shown to Art, waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
+  Round 4 (2026-11-07): only two rings (outer = the turning orbit, inner = the scan; no
+  sphere rim, no floor circle); on «Без проваливания» the body below the head vanishes and
+  the camera closes on the head with the knot; on «Без ухода в образы себя» the head beams
+  out four different images of himself in an arc (arms up, striding, hands on hips, curled
+  on the floor; `src/selves.rs`), not a mirrored double. Beats in the crate README. Тишина
+  prototype `output/prototypes/inner-echo/index.html`, sheet `kadry-tishina-4.jpg`; shown to
+  Art, waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

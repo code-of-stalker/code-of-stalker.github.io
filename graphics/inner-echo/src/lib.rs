@@ -2,21 +2,22 @@
 //! person sits upright on a chair in a dark room. The room exists only where
 //! perception touches it: waves run out from the chest as spheres and draw
 //! it in cold points (floor, the back wall with its window, the left wall
-//! with its door, a table, a floor lamp). The third one stays: a sphere of
-//! presence round the person, only its rim and its orbit, a line of light
-//! with runners whose plane keeps turning, so in time it passes over all of
-//! the sphere; presence is spherical, all round at once, never a beam, and
-//! the sphere holds no fill (Art). «ты переходишь внутрь»: one wave runs
-//! back in from the walls to the chest, and where it passes, the inside of
-//! the body comes up in warm points; three echoes inside raise it and leave
-//! the inner ring, no sphere: a warm ring round the body that scans all of
-//! it, from the feet to the crown and back (Art). Each «Без…» shows, slowly,
-//! what it is without, with its words under the scene: falling into a
-//! thought (everything outside the person goes dark and the warm points draw
-//! up into a knot in the head), analysis (they lock into a grid), trying to
-//! understand or fix (they tremble), going off into images of oneself (the
-//! body goes dark but for the head, which projects a double of it in
-//! front). Then both rings run together, seen from above, sparks of
+//! with its door, a table, a floor lamp). The third one stays as the outer
+//! ring: the orbit of the sphere of presence, a line of light with runners
+//! whose plane keeps turning, so in time it passes over all of the sphere;
+//! presence is spherical, all round at once, never a beam, and there is no
+//! other outer line (Art: an outer ring and an inner one). «ты переходишь
+//! внутрь»: one wave runs back in from the walls to the chest, and where it
+//! passes, the inside of the body comes up in warm points; three echoes
+//! inside raise it and leave the inner ring, no sphere: a warm ring round the
+//! body that scans all of it, from the feet to the crown and back (Art).
+//! Each «Без…» shows, slowly, what it is without, with its words under the
+//! scene: falling into a thought (everything goes dark, the body too, but
+//! the head with a knot of thought in it), analysis (the points lock into a
+//! grid), trying to understand or fix (they tremble), going off into images
+//! of oneself (the body goes dark but for the head, which projects four
+//! different images of himself in front of him: `selves`). Then both rings
+//! run together, seen from above, sparks of
 //! sensation wake in the body one by one, and at «здесь и сейчас» one wave
 //! goes through the body and the sphere. Every value here is
 //! a pure function of loop time; `browser.rs` only uploads it and one
@@ -27,6 +28,7 @@ use watcher_scene_palette::Palette;
 
 pub mod body;
 pub mod generated;
+pub mod selves;
 
 #[cfg(target_arch = "wasm32")]
 mod browser;
@@ -126,37 +128,21 @@ pub const WITHOUT: [f32; 4] = [14.0, 21.0, 28.0, 35.0];
 pub const PULL: [f32; 4] = [1.4, 1.2, 1.2, 1.8];
 pub const HOLD: [f32; 4] = [3.8, 4.0, 4.0, 3.4];
 pub const RELEASE: [f32; 4] = [1.4, 1.4, 1.4, 1.4];
-/// Falling into a thought: everything outside the person goes dark; the
-/// inside draws up toward the thought in the head, `DRAW_UP` of the way
-/// smaller, and goes dark below the head (rest height, from .. to); the
-/// thought is a knot of `KNOT_POINTS` points this big, turning `KNOT_TURNS`
-/// whole times a loop.
+/// Falling into a thought: everything outside the person goes dark, and the
+/// body too below the head (from .. to, Art: «тело исчезало а оставалась
+/// голова»); the thought is a knot of `KNOT_POINTS` points this big in the
+/// head, turning `KNOT_TURNS` whole times a loop.
 pub const THOUGHT: [f32; 3] = [0.0, 1.32, -0.01];
-pub const DRAW_UP: f32 = 0.38;
 pub const HEAD: [f32; 2] = [1.12, 1.22];
 pub const KNOT: f32 = 0.019;
 pub const KNOT_POINTS: f32 = 72.0;
 pub const KNOT_TURNS: f32 = 8.0;
-/// Images of oneself: the double sits in front, facing the person (the body
-/// mirrored through z = `DOUBLE_Z`); the head projects it from the eyes onto
-/// these points of the body (rest shape; the shader mirrors them).
-pub const DOUBLE_Z: f32 = 0.9;
+/// Images of oneself: the body goes dark but for the head, and light runs
+/// out of the eyes to four images of himself in front of him (`selves`),
+/// one after another: each starts forming here and is whole this much later.
 pub const EYES: [f32; 3] = [0.0, 1.335, 0.07];
-pub const PROJECT_TO: [[f32; 3]; 13] = [
-    [0.0, 1.29, 0.0],
-    [0.2, 1.08, -0.05],
-    [-0.2, 1.08, -0.05],
-    [0.222, 0.81, 0.0],
-    [-0.222, 0.81, 0.0],
-    [0.166, 0.625, 0.33],
-    [-0.166, 0.625, 0.33],
-    [0.112, 0.53, 0.43],
-    [-0.112, 0.53, 0.43],
-    [0.126, 0.04, 0.62],
-    [-0.126, 0.04, 0.62],
-    [0.0, 0.79, -0.04],
-    [0.0, 0.6, 0.0],
-];
+pub const SELF_FORM: [f32; 4] = [36.0, 36.8, 37.6, 38.4];
+pub const SELF_FORM_SECONDS: f32 = 0.9;
 /// The words under the scene for each «Без…»: their rows in the label atlas,
 /// the second -1 for a single line.
 pub const CAPTIONS: [[f32; 2]; 4] = [[0.0, -1.0], [1.0, -1.0], [2.0, 3.0], [4.0, -1.0]];
@@ -200,20 +186,28 @@ pub const SKIN_INSIDE: f32 = 0.35;
 /// The camera, keyed through the loop: round the person (degrees from +z
 /// toward +x), over the floor (degrees), how far, the point it looks at, and
 /// the height of the frame (degrees). Wide for the room, close for the
-/// inside, close on the head as it falls into a thought, slowly round the
-/// person through the grid and the trembling, from behind the shoulder for
-/// the double in front, high over both rings, close again, back.
-pub const CAMERA: [(f32, [f32; 7]); 13] = [
+/// inside, close on the head while the body is gone into a thought, slowly
+/// round the person through the grid and the trembling, up over his right
+/// shoulder (high, so the lamp stays below and behind) and down behind him
+/// for the images of himself in front, up over the shoulder again and high
+/// over both rings, close again, back.
+pub const CAMERA: [(f32, [f32; 7]); 19] = [
     (0.0, [34.0, 18.0, 4.9, -0.3, 0.8, -0.6, 52.0]),
     (4.5, [26.0, 19.0, 4.75, -0.3, 0.8, -0.55, 52.0]),
     (8.0, [34.0, 15.0, 3.6, -0.15, 0.7, -0.25, 48.0]),
     (11.5, [42.0, 12.0, 2.9, -0.06, 0.6, 0.0, 46.0]),
-    (16.0, [30.0, 10.0, 3.0, -0.02, 0.47, 0.02, 44.0]),
+    (14.9, [32.0, 10.0, 3.0, -0.02, 0.5, 0.02, 44.0]),
+    (16.8, [26.0, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
+    (17.6, [24.0, 8.0, 2.4, 0.0, 1.3, 0.0, 22.0]),
+    (20.0, [36.0, 11.0, 3.0, -0.06, 0.5, 0.04, 45.0]),
     (23.5, [46.0, 13.0, 3.1, -0.1, 0.5, 0.06, 46.0]),
     (30.0, [36.0, 12.0, 3.0, -0.08, 0.5, 0.06, 46.0]),
-    (37.0, [150.0, 27.0, 3.4, 0.0, 0.38, 1.0, 58.0]),
-    (40.0, [152.0, 27.0, 3.4, 0.0, 0.38, 1.0, 58.0]),
-    (45.5, [60.0, 40.0, 4.2, -0.05, 0.6, -0.2, 54.0]),
+    (33.0, [90.0, 22.0, 2.6, 0.0, 0.7, 0.4, 50.0]),
+    (35.0, [125.0, 48.0, 2.5, 0.0, 0.6, 0.6, 58.0]),
+    (37.0, [155.0, 25.0, 3.1, 0.0, 0.62, 1.0, 55.0]),
+    (40.0, [160.0, 25.0, 3.1, 0.0, 0.62, 1.0, 52.0]),
+    (42.5, [118.0, 46.0, 2.7, 0.0, 0.7, 0.3, 55.0]),
+    (45.5, [60.0, 42.0, 4.2, -0.05, 0.6, -0.2, 54.0]),
     (50.0, [48.0, 16.0, 2.9, -0.04, 0.64, 0.0, 46.0]),
     (53.0, [40.0, 22.0, 3.8, -0.12, 0.7, -0.2, 50.0]),
     (56.5, [34.0, 20.0, 4.5, -0.25, 0.8, -0.5, 52.0]),
@@ -261,14 +255,13 @@ pub struct Frame {
     pub grid: f32,
     pub tremble: f32,
     pub image: f32,
-    /// Falling in: what is left of everything outside the person, how big
-    /// the inside is round the thought, how far the knot has turned.
+    /// Falling in: what is left of everything outside the person, how far
+    /// the knot has turned.
     pub outside: f32,
-    pub draw_up: f32,
     pub knot_turn: f32,
-    /// Images of oneself: the projection from the head, the double's light.
+    /// Images of oneself: the projection from the head, each image's light.
     pub projection: f32,
-    pub twin: f32,
+    pub selves: [f32; 4],
     /// The words under the scene: first row, second row (-1 for none), light.
     pub caption: [f32; 3],
     /// Each spark's light.
@@ -481,6 +474,14 @@ pub fn ring_lit() -> f32 {
     ECHOES[2] + 0.5 * ECHO_SECONDS
 }
 
+/// Image `i` of oneself at `t`: it forms in its turn and goes with the rest
+/// as the pull lets go.
+pub fn self_light(i: usize, t: f32) -> f32 {
+    let go = WITHOUT[3] + PULL[3] + HOLD[3];
+    smooth(SELF_FORM[i], SELF_FORM[i] + SELF_FORM_SECONDS, t)
+        * (1.0 - smooth(go, go + RELEASE[3], t))
+}
+
 pub fn compose(t: f32) -> Frame {
     let time = if t.is_finite() {
         t.rem_euclid(LOOP_SECONDS)
@@ -515,7 +516,14 @@ pub fn compose(t: f32) -> Frame {
     let fall = pull(0, time);
     let image = pull(3, time);
     let outside = 1.0 - fall;
-    let projection = smooth(0.0, 0.6, image);
+    // The body goes quickly as the images start, and comes back only once
+    // they are gone and the words have left.
+    let held = WITHOUT[3] + PULL[3] + HOLD[3];
+    let projection = if time < held {
+        smooth(0.0, 0.45, image)
+    } else {
+        1.0 - smooth(held + RELEASE[3] - 0.2, held + RELEASE[3] + 0.8, time)
+    };
     let (orbit, orbit_flow) = orbit(time);
     let scan = scan(time);
 
@@ -545,7 +553,7 @@ pub fn compose(t: f32) -> Frame {
         orbit_flow,
         inner: window(time, INWARD[0], INWARD[0] + 0.5, INNER_OUT[0], INNER_OUT[1]),
         ring: (smooth(ring_at, ring_at + 0.5, time) * inner_out + 0.8 * flash(0.4))
-            * (1.0 - 0.85 * fall)
+            * outside
             * (1.0 - 0.7 * projection),
         scan,
         ring_flow: TAU * INNER_FLOW * time / LOOP_SECONDS,
@@ -554,10 +562,9 @@ pub fn compose(t: f32) -> Frame {
         tremble: pull(2, time),
         image,
         outside,
-        draw_up: 1.0 - DRAW_UP * fall,
         knot_turn: TAU * KNOT_TURNS * time / LOOP_SECONDS,
         projection,
-        twin: smooth(0.3, 1.0, image),
+        selves: std::array::from_fn(|i| self_light(i, time)),
         caption: caption(time),
         flares: std::array::from_fn(|k| flare(k, time)),
     }
@@ -574,12 +581,6 @@ pub fn project(f: &Frame, point: [f32; 3]) -> Option<[f32; 2]> {
             dot(v, f.up) / (z * f.lens),
         ]
     })
-}
-
-/// A point of the body as the double holds it: mirrored through
-/// z = `DOUBLE_Z`, so it sits in front, facing the person.
-pub fn doubled(p: [f32; 3]) -> [f32; 3] {
-    [-p[0], p[1], 2.0 * DOUBLE_Z - p[2]]
 }
 
 /// The scene's three lights in a theme's colors: the cold room and skin, the
@@ -862,9 +863,11 @@ mod tests {
                     f.tremble,
                     f.image,
                     f.outside,
-                    f.draw_up,
                     f.projection,
-                    f.twin,
+                    f.selves[0],
+                    f.selves[1],
+                    f.selves[2],
+                    f.selves[3],
                     f.caption[2],
                     f.inward[1],
                     f.together[1],
@@ -991,14 +994,18 @@ mod tests {
     }
 
     #[test]
-    fn falling_into_a_thought_leaves_only_the_person() {
+    fn falling_into_a_thought_leaves_only_the_head() {
         // Art: «потерять наблюдение за внешним кольцом погрузившись внутрь
-        // мысли … выключить всё внешнее кроме персонажа».
+        // мысли … выключить всё внешнее кроме персонажа», then «на
+        // проваливании … тело исчезало а оставалась голова». Both rings go;
+        // the shader takes the body below `HEAD` down with `fall`, and the
+        // inside keeps its place (nothing draws up into a second, smaller
+        // person).
         let f = compose(WITHOUT[0] + PULL[0] + 0.5 * HOLD[0]);
         assert!(f.outside < 1e-3 && f.room < 1e-3 && f.shell < 1e-3);
-        assert!(f.ring < 0.2 && f.inner > 0.99);
+        assert!(f.ring < 1e-3 && f.inner > 0.99 && f.fall > 0.999);
         assert!(close(f.skin, SKIN_INSIDE, 1e-3));
-        assert!(close(f.draw_up, 1.0 - DRAW_UP, 1e-3));
+        const { assert!(HEAD[0] > 1.1 && HEAD[1] < 1.25) };
         // The thought is in the head; the knot fits inside it.
         assert!(body::figure(THOUGHT) < -0.06, "{}", body::figure(THOUGHT));
         const { assert!(THOUGHT[1] > HEAD[1]) };
@@ -1018,26 +1025,30 @@ mod tests {
     }
 
     #[test]
-    fn the_double_sits_in_front_facing_the_person() {
-        // Art: «двойник был не сбоку а спереди … голова как бы проецировала
-        // двойника».
-        let front = BODY.iter().map(|p| p[2]).fold(f32::MIN, f32::max);
-        for p in BODY {
-            let q = doubled(p);
-            assert!(q[2] > front + 0.3, "{q:?}");
-            assert!(close(q[0], -p[0], 0.0) && close(q[1], p[1], 0.0));
-        }
-        // Its face looks back at the person: the double's nose is nearer
-        // the person than the back of its head.
-        assert!(doubled([0.0, 1.31, 0.08])[2] < doubled([0.0, 1.31, -0.12])[2]);
-        // The projection leaves the face and lands on the double.
+    fn the_head_projects_its_images_one_after_another() {
+        // Art: «он должен проецировать разные образы самого себя а не просто
+        // зеркально сидящую копию себя». The light leaves the face.
         assert!(body::figure(EYES) < 0.0 && body::figure(EYES) > -0.03);
-        for p in PROJECT_TO {
-            assert!(body::figure(p) < 0.0, "{p:?}");
+        let held = WITHOUT[3] + PULL[3] + 0.5 * HOLD[3];
+        let f = compose(held);
+        assert!(f.projection > 0.99 && f.outside > 0.999);
+        // Each forms in its turn, after the body has gone dark; the next is
+        // not there yet while one forms; all are whole before letting go.
+        for i in 0..4 {
+            assert_eq!(self_light(i, SELF_FORM[i] - 0.01), 0.0);
+            if i < 3 {
+                assert!(SELF_FORM[i + 1] - SELF_FORM[i] > 0.75 * SELF_FORM_SECONDS);
+            }
+            assert!(self_light(i, WITHOUT[3] + PULL[3] + HOLD[3]) > 0.999, "{i}");
+            assert_eq!(self_light(i, without_end(3)), 0.0);
         }
-        let f = compose(WITHOUT[3] + PULL[3] + 0.5 * HOLD[3]);
-        assert!(f.projection > 0.99 && f.twin > 0.99);
-        assert!(f.outside > 0.999);
+        const { assert!(SELF_FORM[0] > WITHOUT[3] + 0.5 * PULL[3]) };
+        let image = |t: f32| compose(t).selves;
+        every(0.05, |t| {
+            if !(WITHOUT[3]..without_end(3)).contains(&t) {
+                assert!(image(t).iter().all(|&v| v == 0.0), "{t}");
+            }
+        });
     }
 
     #[test]
@@ -1076,6 +1087,24 @@ mod tests {
                 std::array::from_fn(|i| (lo[i] - f.eye[i]).max(f.eye[i] - hi[i]).max(0.0));
             assert!(gap.iter().map(|g| g * g).sum::<f32>().sqrt() > 0.8, "{t}");
             assert!(distance(f.eye, HEART) > ORBIT + 0.5, "{t}");
+            // Off the lamp and the table, and when near one, not looking at it:
+            // its points would fill the frame.
+            for (at, half, tall) in [(LAMP, 0.19, 1.72), (TABLE, 0.36, 0.76)] {
+                let lo = [at[0] - half, 0.0, at[2] - half];
+                let hi = [at[0] + half, tall, at[2] + half];
+                let gap: [f32; 3] =
+                    std::array::from_fn(|i| (lo[i] - f.eye[i]).max(f.eye[i] - hi[i]).max(0.0));
+                let gap = gap.iter().map(|g| g * g).sum::<f32>().sqrt();
+                assert!(gap > 0.55, "{t}: {gap} from {at:?}");
+                for y in [0.3, 0.9, 0.5 * tall + 0.5 * tall.min(1.6)] {
+                    let p = [at[0], y, at[2]];
+                    if distance(f.eye, p) < 1.7 {
+                        if let Some([x, y]) = project(&f, p) {
+                            assert!(x.abs() > 1.1 || y.abs() > 1.1, "{t}: {at:?} at {x} {y}");
+                        }
+                    }
+                }
+            }
             // Level-ish: never under the floor's horizon, never straight down.
             let elevation = (-f.forward[1]).asin().to_degrees();
             assert!(elevation > 5.0 && elevation < 60.0, "{t}: {elevation}");
@@ -1101,45 +1130,65 @@ mod tests {
                 std::array::from_fn(|i| (lo[i] - f.eye[i]).max(f.eye[i] - hi[i]).max(0.0));
             let gap = gap.iter().map(|g| g * g).sum::<f32>().sqrt();
             let [ex, ey, ez] = f.eye;
+            let lamp = distance(f.eye, [LAMP[0], 1.5, LAMP[2]]);
+            let seen = project(&f, [LAMP[0], 1.5, LAMP[2]])
+                .map(|[x, y]| format!("{x:5.2} {y:5.2}"))
+                .unwrap_or_default();
             println!(
-                "{t:5.1} x {x0:6.2}..{x1:6.2} y {y0:6.2}..{y1:6.2} eye {ex:5.2} {ey:5.2} {ez:5.2} gap {gap:4.2} az {:6.1}",
+                "{t:5.1} x {x0:6.2}..{x1:6.2} y {y0:6.2}..{y1:6.2} eye {ex:5.2} {ey:5.2} {ez:5.2} gap {gap:4.2} az {:6.1} lamp {lamp:4.2} {seen}",
                 camera(0, t)
             );
             t += 0.5;
         }
     }
 
+    /// How much of the body at `p` shows: below the head it goes with the
+    /// fall into a thought and mostly with the projection.
+    fn shown(f: &Frame, p: [f32; 3]) -> f32 {
+        if p[1] < HEAD[0] {
+            (1.0 - f.fall) * (1.0 - 0.85 * f.projection)
+        } else {
+            1.0
+        }
+    }
+
     #[test]
-    fn the_person_and_the_double_stay_in_frame() {
+    fn the_person_and_the_images_stay_in_frame() {
         every(0.1, |t| {
             let f = compose(t);
             for p in BODY {
-                let [x, y] = project(&f, p).expect("in front");
-                assert!(x.abs() < 0.85 && y.abs() < 0.85, "{t}: {p:?} at {x} {y}");
-            }
-            // The words keep clear of the person's feet.
-            if f.caption[2] > 0.0 {
-                for p in BODY {
-                    let [_, y] = project(&f, p).unwrap();
-                    assert!(y > -0.62, "{t}: {p:?} at {y}");
+                if shown(&f, p) > 0.3 {
+                    let [x, y] = project(&f, p).expect("in front");
+                    assert!(x.abs() < 0.85 && y.abs() < 0.85, "{t}: {p:?} at {x} {y}");
+                    // The words keep clear of the person's feet.
+                    if f.caption[2] > 0.0 {
+                        assert!(y > -0.62, "{t}: {p:?} at {y}");
+                    }
                 }
             }
         });
-        for t in [
-            WITHOUT[3] + PULL[3] * 0.5,
-            WITHOUT[3] + PULL[3] + 0.5 * HOLD[3],
-            without_end(3) - 0.5,
-        ] {
+        // Every image, whole, in frame and above the words, wherever it shows.
+        let [w, h, _] = selves::SELF_CELLS;
+        let cells = selves::occupancy();
+        let n = selves::SELF_CELLS.iter().product::<usize>();
+        every(0.1, |t| {
             let f = compose(t);
-            for p in BODY {
-                let q = doubled(p);
-                let [x, y] = project(&f, q).expect("in front");
-                assert!(
-                    x.abs() < 0.9 && y.abs() < 0.85,
-                    "{t}: double {q:?} at {x} {y}"
-                );
+            for i in 0..4 {
+                if f.selves[i] > 0.05 {
+                    for (k, _) in cells[i * n..(i + 1) * n]
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, &v)| v > 0)
+                    {
+                        let q = selves::cell_centre(k % w, (k / w) % h, k / (w * h));
+                        let p = selves::to_world(i, q);
+                        let [x, y] = project(&f, p).expect("in front");
+                        assert!(x.abs() < 0.9 && y.abs() < 0.85, "{t}: image {i} at {x} {y}");
+                        assert!(y > -0.55, "{t}: image {i} at {y}");
+                    }
+                }
             }
-        }
+        });
     }
 
     #[test]

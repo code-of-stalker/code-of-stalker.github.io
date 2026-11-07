@@ -13,4 +13,4 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 await copyFile(path.join(scene, 'assets/labels.webp'), path.join(output, 'assets/labels.webp'));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_inner_echo_bg.wasm')))) throw new Error('Invalid inner-echo WASM');
-console.log('Packaged Rust «Внутрь» (Эхо): 60-second seamless loop, a person seated on a chair inside a sphere of presence with a turning orbit, an inner sphere with its own orbit, captions under the «Без…» beats.');
+console.log('Packaged Rust «Внутрь» (Эхо): 60-second seamless loop, a person seated on a chair, the turning outer orbit, the inner ring scanning the body, four images of himself, captions under the «Без…» beats.');

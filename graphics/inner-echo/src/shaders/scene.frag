@@ -3,14 +3,16 @@
 // the floor and the two walls (exact planes), the table, the vase and the
 // lamp, the chair and the seated person (distance fields marched inside
 // their boxes), and the surface it meets lights a point of a lattice laid on
-// it. Round the person stands the sphere of presence, left unfilled: only its
-// rim, its orbit (a line of light with runners, its plane turning) and the
-// circle where it meets the floor. The inside of the body is a second, warm
+// it. Round the person runs the outer ring: the orbit of the sphere of
+// presence, a line of light with runners whose plane keeps turning, and
+// nothing else of the sphere. The inside of the body is a second, warm
 // lattice walked cell by cell through the person's box; which cells hold a
 // point comes baked from Rust (u_body). The inner ring has no sphere: a level
 // ring hugging the body that scans it from the feet to the crown and back,
-// lighting the band it passes. The words under the scene come from a baked
-// atlas (u_atlas).
+// lighting the band it passes. The images of himself the head projects are
+// four more lattices (u_selves, stacked in z), each walked in its own turned
+// and scaled frame. The words under the scene come from a baked atlas
+// (u_atlas).
 // Light is added onto the page in the theme's cold, warm and pale. Rust puts
 // the version line and lib.rs's constants (#define) in front of it.
 precision highp float;
@@ -36,8 +38,9 @@ uniform vec4 u_room;   // room, outer sphere, skin, -
 uniform vec4 u_inner;  // inside, inner ring, how far its runners have run, what is left outside
 uniform vec4 u_orbit;  // the outer orbit: pole, how far its points have run
 uniform vec4 u_ring;   // the inner ring: height, centre z, half width x, half depth z
-uniform vec4 u_noise;  // falling in, grid, trembling, the double
-uniform vec4 u_misc;   // the inside's size round the thought, knot turn, projection, -
+uniform vec4 u_noise;  // falling in, grid, trembling, -
+uniform vec4 u_misc;   // -, knot turn, projection, -
+uniform vec4 u_self;   // each image of himself: its light
 uniform vec4 u_text;   // the words: first row, second row (-1 none), light, -
 uniform vec4 u_flare_a; // the sparks' light
 uniform vec4 u_flare_b;
@@ -48,10 +51,13 @@ uniform vec3 u_backdrop; // the page
 uniform vec4 u_edges;    // left, right, top, bottom
 uniform vec4 u_out;      // soft edges, -, -, -
 uniform sampler3D u_body; // which cells of the inside hold a point, by depth
+uniform sampler3D u_selves; // the same for the four images, stacked in z
 uniform sampler2D u_atlas; // the words, one 128 px row a line
 
 const vec3 SPARK_AT[6] = SPARK_LIST;
-const vec3 PROJECT_AT[13] = PROJECT_LIST;
+const vec4 SELF_AT[SELVES] = SELF_AT_LIST;     // under its feet; its size
+const vec2 SELF_TURN[SELVES] = SELF_TURN_LIST; // cos, sin of its turn
+const vec3 BEAM_AT[SELVES * 5] = BEAM_LIST;    // where the head's light lands
 const vec2 INK[5] = LABEL_INK_LIST;
 
 // The tangent of one pixel; the sparks' light now.
@@ -261,16 +267,7 @@ float lineAt(vec3 ro, vec3 rd, vec3 A, vec3 B, float tmax, float upto) {
   return (exp(-k) + 0.1 * exp(-k / 16.0)) * mix(1.0, 0.45, s) * smoothstep(0.0, 0.06, upto - s);
 }
 
-// ---------- the sphere and the rings
-// A sphere's rim seen along the ray: a thin line where the ray grazes it.
-// Nothing inside it: the sphere is not filled.
-float rimOf(vec3 ro, vec3 rd, vec3 c, float R, float tmax) {
-  vec3 w = c - ro;
-  float tc = dot(w, rd);
-  float h = sqrt(max(dot(w, w) - tc * tc, 0.0));
-  float wide = pixel * max(tc, 0.0) * 1.6 + 0.004;
-  return tc > 0.0 && tc < tmax ? 0.4 * exp(-sq((h - R) / wide)) : 0.0;
-}
+// ---------- the rings
 // A thin even line of light from A to B seen along the ray.
 float segAt(vec3 ro, vec3 rd, vec3 A, vec3 B, float tmax, float width) {
   vec3 ba = B - A;
@@ -420,30 +417,30 @@ vec3 surface(vec3 p, vec3 n, vec3 rd, float t, int id) {
   float graze = smoothstep(0.05, 0.35, facing);
   float fall = 1.0 / (1.0 + 0.12 * t);
   // The perceiver is there from the first frame; the chair it sits on goes
-  // with everything outside it when a thought takes it in. Going off into
-  // images of oneself, the body goes dark but for the head.
+  // with everything outside it when a thought takes it in, and so does the
+  // body below the head; going off into images of oneself, the body goes
+  // nearly dark but for the head.
   float seen = id == 5 ? 1.0 : seenAt(r) * u_room.x;
   if (id == 4) seen = max(seen, 0.6 * u_inner.w);
   float base = id == 5 ? u_room.z : id == 4 ? 1.0 : id == 3 ? 0.75 : 0.4;
-  if (id == 5) base *= mix(1.0 - 0.85 * u_misc.z, 1.0 + 0.4 * u_misc.z, smoothstep(HEAD.x, HEAD.y, p.y)) * (1.0 + 0.9 * u_noise.x);
+  if (id == 5) {
+    float gone = max(u_noise.x, 0.85 * u_misc.z);
+    base *= mix(1.0 - gone, 1.0 + 0.6 * u_noise.x + 0.4 * u_misc.z, smoothstep(HEAD.x, HEAD.y, p.y));
+  }
   vec3 tint = id == 5 ? mix(u_cold, u_pale, 0.55) : id == 4 ? mix(u_cold, u_pale, 0.25) : u_cold;
-  // Where the sphere meets the floor, a circle.
-  float circle = id == 0 ? u_room.y * exp(-sq((length(p.xz - HEART.xz) - FLOOR_RING) / 0.035)) : 0.0;
   // The skin lights in the band the inner ring passes, warm.
   float scanned = id == 5 ? u_inner.y * exp(-sq((p.y - u_ring.x) / 0.03)) : 0.0;
   tint = mix(tint, mix(u_warm, u_pale, 0.4), min(1.0, scanned));
   float front = fronts(r) * u_inner.w;
-  float light = seen * base * (0.55 + 0.45 * seed) + 0.7 * scanned + 1.2 * circle + front;
+  float light = seen * base * (0.55 + 0.45 * seed) + 0.7 * scanned + front;
   vec3 c = tint * dt * graze * fall * reach * light;
   if (edge < 1.0) c += u_cold * 0.35 * exp(-sq(edge / (pw * 1.3))) * fall * reach * (seen + front);
   return c;
 }
 
 // One warm point of the inside, in lattice cell `cell` (`depth` how deep
-// inside the skin). It sits at THOUGHT + (rest - THOUGHT) * k + shift: drawn
-// up toward the thought as the person falls into it. `twin` draws the
-// double (the ray comes mirrored), otherwise the person's own inside.
-vec3 point(vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, float k, vec3 shift, bool twin) {
+// inside the skin), moved by `shift` (the trembling).
+vec3 point(vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, vec3 shift) {
   float h = hash3(cell, 5u);
   float grid = u_noise.y;
   // The grid fills every cell; the points it adds come in softly.
@@ -458,7 +455,7 @@ vec3 point(vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, float k, vec3 s
     j += (mix(ja, jb, smoothstep(0.0, 1.0, fract(f))) - 0.5) * 0.5 * u_noise.z;
   }
   vec3 c = (cell + 0.5 + clamp(j, -0.46, 0.46)) * INSIDE;
-  vec3 w = THOUGHT + (c - THOUGHT) * k + shift - ro;
+  vec3 w = c + shift - ro;
   float tp = dot(w, rd);
   if (tp <= 0.0 || tp > tmax) return vec3(0.0);
   float rad = pixel * tp * 1.05;
@@ -482,31 +479,24 @@ vec3 point(vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, float k, vec3 s
     if (flare[i] > 0.0) spark += flare[i] * exp(-sq(length(c - SPARK_AT[i]) / 0.05));
   }
   // The inner ring's band: the points it passes light up as it scans.
-  float scanned = twin ? 0.0 : u_inner.y * exp(-sq((c.y - u_ring.x) / 0.035));
+  float scanned = u_inner.y * exp(-sq((c.y - u_ring.x) / 0.035));
   float b = (level * (0.5 + 0.5 * h) + front + 1.6 * spark + scanned) * (0.75 + 0.25 * depth);
   b *= u_inner.x * show;
   float head = smoothstep(HEAD.x, HEAD.y, c.y);
   vec3 tint = mix(u_warm, u_pale, 0.25 * h);
   tint = mix(tint, mix(u_cold, u_pale, 0.5), 0.45 * grid);
-  if (twin) {
-    // The double comes in from the head down as the projection lands.
-    float twinLight = u_noise.w;
-    b *= 0.9 * min(1.0, 1.5 * twinLight) * smoothstep(-0.06, 0.06, c.y - (1.5 - 1.65 * twinLight));
-    tint = mix(tint, u_pale, 0.3);
-  } else {
-    // Falling into a thought, everything below the head dims; images of
-    // oneself, the body goes dark but for the head, which projects.
-    b *= mix(1.0, mix(0.4, 1.0, head), smoothstep(0.15, 0.85, u_noise.x));
-    b *= mix(1.0 - 0.9 * u_misc.z, 1.0 + 0.6 * u_misc.z, head);
-  }
+  // Falling into a thought, the body goes out below the head; images of
+  // oneself, it nearly does, and the head that projects them brightens.
+  b *= mix(1.0, 1.25 * head, u_noise.x);
+  b *= mix(1.0 - 0.9 * u_misc.z, 1.0 + 0.6 * u_misc.z, head);
   return tint * g * b;
 }
 
 // The inside along the ray up to tmax: walk the lattice cell by cell in the
-// body's rest shape (k and shift as in `point`).
-vec3 inside(vec3 ro, vec3 rd, float tmax, float k, vec3 shift, bool twin) {
-  vec3 from = THOUGHT + (ro - shift - THOUGHT) / k;
-  vec3 d = rd / k;
+// body's rest shape (shift as in `point`).
+vec3 inside(vec3 ro, vec3 rd, float tmax, vec3 shift) {
+  vec3 from = ro - shift;
+  vec3 d = rd;
   vec3 inv = safeInv(d);
   vec3 lo = vec3(CELL_FROM) * INSIDE;
   vec3 hi = vec3(CELL_FROM + CELLS) * INSIDE;
@@ -522,7 +512,65 @@ vec3 inside(vec3 ro, vec3 rd, float tmax, float k, vec3 shift, bool twin) {
     ivec3 at = ivec3(cell) - CELL_FROM;
     if (any(lessThan(at, ivec3(0))) || any(greaterThanEqual(at, CELLS))) break;
     float v = texelFetch(u_body, at, 0).r;
-    if (v > 0.0) acc += point(cell, v, ro, rd, tmax, k, shift, twin);
+    if (v > 0.0) acc += point(cell, v, ro, rd, tmax, shift);
+    float tn = min(tm.x, min(tm.y, tm.z));
+    if (tn > span.y) break;
+    vec3 m = step(tm, vec3(tn));
+    cell += st * m;
+    tm += td * m;
+  }
+  return acc;
+}
+
+// ---------- images of oneself
+// One point of image `i`, in cell `cell` of its lattice (its own units;
+// `depth` how deep inside). The image forms point by point as its `light`
+// comes up, after the head's light has reached it, and goes the same way;
+// being only imagined, it shimmers a little. selves.rs's `to_world` sets it
+// in the room the same way.
+vec3 selfPoint(int i, vec3 cell, float depth, vec3 ro, vec3 rd, float tmax, float light) {
+  uint key = 60u + uint(i) * 8u;
+  float h = hash3(cell, key);
+  float show = smoothstep(h, h + 0.15, 1.7 * light - 0.55);
+  if (show <= 0.0) return vec3(0.0);
+  vec3 j = (vec3(hash3(cell, key + 1u), hash3(cell, key + 2u), hash3(cell, key + 3u)) - 0.5) * 0.7;
+  vec3 own = (cell + 0.5 + j) * SELF_CELL * SELF_AT[i].w;
+  vec2 cs = SELF_TURN[i];
+  vec3 P = SELF_AT[i].xyz + vec3(cs.x * own.x + cs.y * own.z, own.y, cs.x * own.z - cs.y * own.x);
+  vec3 w = P - ro;
+  float tp = dot(w, rd);
+  if (tp <= 0.0 || tp > tmax) return vec3(0.0);
+  float rad = pixel * tp * 1.05;
+  float g = exp(-dot(w - rd * tp, w - rd * tp) / (rad * rad));
+  if (g < 0.003) return vec3(0.0);
+  float shimmer = 0.75 + 0.25 * sin(u_eye.w * 5.0 + h * 40.0);
+  float b = 0.85 * show * (0.55 + 0.45 * hash3(cell, key + 4u)) * (0.7 + 0.3 * depth) * shimmer;
+  return mix(u_warm, u_pale, 0.35 + 0.3 * h) * g * b;
+}
+
+// Image `i` along the ray up to tmax: the ray turned and scaled into the
+// image's own frame and its lattice walked cell by cell there (the ray's t
+// is the same in both frames).
+vec3 selfImage(int i, vec3 ro, vec3 rd, float tmax, float light) {
+  vec4 at = SELF_AT[i];
+  vec2 cs = SELF_TURN[i];
+  vec3 q = ro - at.xyz;
+  vec3 from = vec3(cs.x * q.x - cs.y * q.z, q.y, cs.y * q.x + cs.x * q.z) / at.w;
+  vec3 d = vec3(cs.x * rd.x - cs.y * rd.z, rd.y, cs.y * rd.x + cs.x * rd.z) / at.w;
+  vec3 inv = safeInv(d);
+  vec2 span = box(from, inv, vec3(SELF_FROM) * SELF_CELL, vec3(SELF_FROM + SELF_CELLS) * SELF_CELL);
+  span.y = min(span.y, tmax);
+  if (span.x >= span.y) return vec3(0.0);
+  vec3 st = sign(inv);
+  vec3 cell = clamp(floor((from + d * (span.x + 1e-4)) / SELF_CELL), vec3(SELF_FROM), vec3(SELF_FROM + SELF_CELLS - 1));
+  vec3 td = abs(SELF_CELL * inv);
+  vec3 tm = ((cell + max(st, 0.0)) * SELF_CELL - from) * inv;
+  vec3 acc = vec3(0.0);
+  for (int k = 0; k < 128; k++) {
+    ivec3 a = ivec3(cell) - SELF_FROM;
+    if (any(lessThan(a, ivec3(0))) || any(greaterThanEqual(a, SELF_CELLS))) break;
+    float v = texelFetch(u_selves, a + ivec3(0, 0, i * SELF_CELLS.z), 0).r;
+    if (v > 0.0) acc += selfPoint(i, cell, v, ro, rd, tmax, light);
     float tn = min(tm.x, min(tm.y, tm.z));
     if (tn > span.y) break;
     vec3 m = step(tm, vec3(tn));
@@ -622,22 +670,20 @@ void main() {
     light = surface(p, n, rd, tHit, id);
   }
 
-  // The sphere of presence: its rim and its orbit, nothing inside.
+  // The outer ring: the orbit of the sphere of presence, and nothing else
+  // of the sphere.
   if (u_room.y > 0.001) {
-    light += u_cold * u_room.y * rimOf(ro, rd, HEART, ORBIT, tHit);
     light += mix(u_cold, u_pale, 0.4) * 0.9 * u_room.y * orbitLight(ro, rd, u_orbit, HEART, ORBIT, ORBIT_RUNNERS, ORBIT_DIR, 0.012, tHit);
   }
 
-  // The inside, moved as the pulls move it: drawn up into the thought,
-  // trembling; and the double in front, mirrored.
+  // The inside, trembling when it tries to fix itself; and the images of
+  // himself in front of him.
   vec3 wobble = u_noise.z * 0.004 * vec3(sin(time * 31.0), sin(time * 27.0 + 1.0), sin(time * 23.0 + 2.0));
   if (u_inner.x > 0.001 && u_wave.w < 1.25) {
-    light += inside(ro, rd, tStop, u_misc.x, wobble, false);
-    if (u_noise.w > 0.001) {
-      vec3 mro = vec3(-ro.x, ro.y, 2.0 * DOUBLE_Z - ro.z);
-      vec3 mrd = vec3(-rd.x, rd.y, -rd.z);
-      light += inside(mro, mrd, tStop, 1.0, vec3(0.0), true);
-    }
+    light += inside(ro, rd, tStop, wobble);
+  }
+  for (int i = 0; i < SELVES; i++) {
+    if (u_self[i] > 0.001) light += selfImage(i, ro, rd, tStop, u_self[i]);
   }
   // The inner ring scanning the body.
   if (u_inner.y > 0.001) {
@@ -660,18 +706,22 @@ void main() {
     }
     light += mix(u_warm, u_pale, 0.45) * u_noise.x * (1.1 * knot + 0.35 * glowAt(ro, rd, THOUGHT, 0.07, tStop));
   }
-  // Images of oneself: the head projects the double, lines from the eyes to
-  // its points and light running out along them.
+  // Images of oneself: the head's light runs out of the eyes to each
+  // image's head, hands and ankles, reaching it before it forms and drawn
+  // back as it goes.
   if (u_misc.z > 0.001) {
     float beam = 0.0;
-    for (int i = 0; i < 13; i++) {
-      vec3 P = PROJECT_AT[i];
-      vec3 B = vec3(-P.x, P.y, 2.0 * DOUBLE_Z - P.z);
-      beam += 0.22 * lineAt(ro, rd, EYES, B, tStop, 1.1 * u_misc.z);
-      for (int j = 0; j < 3; j++) {
-        float s = fract(time * 0.7 + float(i) * 0.37 + float(j) / 3.0);
-        float grow = smoothstep(0.0, 0.06, 1.1 * u_misc.z - s);
-        beam += 0.5 * grow * sin(PI * s) * glowAt(ro, rd, mix(EYES, B, s), 0.0, tStop);
+    for (int i = 0; i < SELVES; i++) {
+      float upto = clamp(2.2 * u_self[i], 0.0, 1.1);
+      if (upto <= 0.001) continue;
+      for (int k = 0; k < 5; k++) {
+        vec3 B = BEAM_AT[i * 5 + k];
+        beam += 0.2 * lineAt(ro, rd, EYES, B, tStop, upto);
+        for (int j = 0; j < 2; j++) {
+          float s = fract(time * 0.8 + float(i * 5 + k) * 0.37 + float(j) * 0.5);
+          float grow = smoothstep(0.0, 0.06, upto - s);
+          beam += 0.45 * grow * sin(PI * s) * glowAt(ro, rd, mix(EYES, B, s), 0.0, tStop);
+        }
       }
     }
     light += mix(u_warm, u_pale, 0.5) * u_misc.z * beam;

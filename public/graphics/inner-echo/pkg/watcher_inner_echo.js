@@ -51,7 +51,8 @@ export class InnerEcho {
     }
     /**
      * `labels` is the words' atlas (`assets/labels.webp`), decoded; the
-     * inside of the body is baked here and the shader traces the rest.
+     * inside of the body and the images of himself are baked here and the
+     * shader traces the rest.
      * @param {HTMLCanvasElement} canvas
      * @param {HTMLImageElement} labels
      */
@@ -87,7 +88,7 @@ export class InnerEcho {
     }
     /**
      * Reduced motion holds one moment: the room and the inside both clear,
-     * the inner sphere open against the outer one.
+     * the inner ring round the body inside the outer orbit.
      * @param {boolean} value
      */
     reduced(value) {

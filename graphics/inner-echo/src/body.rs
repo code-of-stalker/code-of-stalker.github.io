@@ -4,7 +4,7 @@
 //! chair, feet flat on the floor, hands on the thighs, facing +z.
 use crate::INSIDE;
 
-type V = [f32; 3];
+pub(crate) type V = [f32; 3];
 
 /// The lattice: its first cell and how many cells each way. Cell `i` spans
 /// `i * INSIDE .. (i + 1) * INSIDE`.
@@ -15,16 +15,16 @@ pub const CELLS: [usize; 3] = [24, 56, 36];
 pub const SKIN_GAP: f32 = 0.012;
 pub const DEPTH: f32 = 0.12;
 
-fn sub(a: V, b: V) -> V {
+pub(crate) fn sub(a: V, b: V) -> V {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
-fn dot(a: V, b: V) -> f32 {
+pub(crate) fn dot(a: V, b: V) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
-fn length(a: V) -> f32 {
+pub(crate) fn length(a: V) -> f32 {
     dot(a, a).sqrt()
 }
-fn scale(a: V, s: f32) -> V {
+pub(crate) fn scale(a: V, s: f32) -> V {
     a.map(|v| v * s)
 }
 /// GLSL's `sign`: 0 at 0.
@@ -38,7 +38,7 @@ fn sign(x: f32) -> f32 {
     }
 }
 
-fn ellipsoid(p: V, r: V) -> f32 {
+pub(crate) fn ellipsoid(p: V, r: V) -> f32 {
     let k0 = length([p[0] / r[0], p[1] / r[1], p[2] / r[2]]);
     let k1 = length([
         p[0] / (r[0] * r[0]),
@@ -48,14 +48,14 @@ fn ellipsoid(p: V, r: V) -> f32 {
     k0 * (k0 - 1.0) / k1
 }
 
-fn capsule(p: V, a: V, b: V, r: f32) -> f32 {
+pub(crate) fn capsule(p: V, a: V, b: V, r: f32) -> f32 {
     let (pa, ba) = (sub(p, a), sub(b, a));
     let h = (dot(pa, ba) / dot(ba, ba)).clamp(0.0, 1.0);
     length(sub(pa, scale(ba, h))) - r
 }
 
 /// A cone with round ends, radius `r1` at `a` and `r2` at `b` (exact).
-fn round_cone(p: V, a: V, b: V, r1: f32, r2: f32) -> f32 {
+pub(crate) fn round_cone(p: V, a: V, b: V, r1: f32, r2: f32) -> f32 {
     let ba = sub(b, a);
     let l2 = dot(ba, ba);
     let rr = r1 - r2;
@@ -78,7 +78,7 @@ fn round_cone(p: V, a: V, b: V, r1: f32, r2: f32) -> f32 {
     ((x2 * a2 * il2).sqrt() + y * rr) * il2 - r1
 }
 
-fn smin(a: f32, b: f32, k: f32) -> f32 {
+pub(crate) fn smin(a: f32, b: f32, k: f32) -> f32 {
     let h = (0.5 + 0.5 * (b - a) / k).clamp(0.0, 1.0);
     b + (a - b) * h - k * h * (1.0 - h)
 }

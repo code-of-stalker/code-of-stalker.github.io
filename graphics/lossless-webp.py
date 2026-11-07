@@ -34,6 +34,7 @@ SOURCES = {
     "hero-labyrinth": ["hero"],
     "inner-hero": ["painting", "depth"],
     "inner-echo": ["labels"],
+    "inner-frame": ["labels"],
 }
 
 

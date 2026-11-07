@@ -194,5 +194,5 @@ void main() {
     float k = sqrt(LAMP_MIST * LAMP_MIST + max(dot(c, c) - tc * tc, 0.0));
     light += LAMP_AIR * LAMP.w * LAMP_MIST * LAMP_MIST / k * (atan((end - tc) / k) + atan(tc / k));
   }
-  o = vec4(u_glow * light, 1.0);
+  o = vec4(u_glow * light, 0.0);
 }

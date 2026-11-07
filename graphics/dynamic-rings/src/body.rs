@@ -495,6 +495,37 @@ pub struct Body {
     pub high: V3,
 }
 
+impl Body {
+    /// The body with each of its points moved by `by` of where it is: the
+    /// cones' ends, its centres and its box; the axes stay.
+    pub fn moved(&self, by: impl Fn(V3) -> V3) -> Body {
+        let mut body = *self;
+        let shift = |p: V3| p + by(p);
+        let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
+        for c in 0..PRIMITIVES {
+            let mut r = 0.0f32;
+            for j in 0..2 {
+                let [x, y, z, w] = body.cones[3 * c + j];
+                let p = shift(v3(x, y, z));
+                body.cones[3 * c + j] = [p.x, p.y, p.z, w];
+                r = r.max(w);
+            }
+            let pad = v3(r, r, r);
+            for j in 0..2 {
+                let [x, y, z, _] = body.cones[3 * c + j];
+                low = low.min(v3(x, y, z) - pad);
+                high = high.max(v3(x, y, z) + pad);
+            }
+        }
+        body.pelvis = shift(body.pelvis);
+        body.chest = shift(body.chest);
+        body.head = shift(body.head);
+        body.mouth = shift(body.mouth);
+        (body.low, body.high) = (low, high);
+        body
+    }
+}
+
 pub fn build(pose: &Pose) -> Body {
     let mut cones = [[0.0; 4]; PRIMITIVES * 3];
     let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));

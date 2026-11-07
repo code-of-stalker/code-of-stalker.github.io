@@ -7,6 +7,11 @@ Text is upper-cased by CSS: search `innerText` case-insensitively.
 Step 5: `/settings` → «ОТКРЫТЬ ПЯТЫЙ ШАГ» opens it at the last page. In the desktop app's hidden
 browser pane, page on by dispatching `WheelEvent`s (deltaY 120, 140 ms apart) on the element at
 the viewport center; a reload there can take ~10 s before the page renders.
+A hidden pane may not tick `requestAnimationFrame` at all; then drive headless Chrome over CDP
+(`--headless=new --remote-debugging-port`, Node's built-in `WebSocket`). Paging arms only on a
+fresh wheel gesture (> 180 ms since the last wheel) at the page end: send bursts of 8 wheels
+(deltaY 120, 140 ms apart) with a 500 ms pause between bursts. A canvas below the viewport stays
+paused at 300×150 until it scrolls into view.
 
 ## Build and serve
 - Check the production build, not the dev server: `npm run export:web`, then serve

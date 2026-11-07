@@ -1,6 +1,7 @@
 import { ArtLoading } from '../skeleton/ArtLoading';
 import { DynamicRings } from './DynamicRings.web';
 import { InnerEcho } from './InnerEcho.web';
+import { InnerFrame } from './InnerFrame.web';
 import type { ReadingPage } from './readingPages';
 import { ScenePlaceholder } from './ScenePlaceholder';
 import { SphereAnchor } from './SphereAnchor.web';
@@ -27,7 +28,8 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'sphere-lake' ? SphereLake
     : page.webScene === 'sphere-everywhere' ? SphereEverywhere
     : page.webScene === 'inner-echo' ? InnerEcho
-    : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' ? DynamicRings : undefined;
+    : page.webScene === 'inner-frame' ? InnerFrame
+    : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' || page.webScene === 'dynamic-inner' ? DynamicRings : undefined;
   if (!Scene) return placeholder;
   // These pages have no engine art; the kind only names the load for the skeleton.
   const props: ArtProps = { kind: 'grounding-hero', webScene: page.webScene, width, height, active, reducedMotion: reducedMotion || systemReduced };

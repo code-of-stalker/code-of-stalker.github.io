@@ -6,6 +6,7 @@ import { ProductText } from '../ui';
 import { GlassHost } from './GlassHost';
 import { useThemeColors } from '../ProductTheme';
 import { panelAsset } from '../panelAssets';
+import { typeset } from '../typeset';
 import { PanelArtwork } from './PanelArtwork';
 
 // Figma 1130:42072: separate 25px header, 10px gap and 282px scroll viewport.
@@ -64,7 +65,7 @@ export function HintPanel({ text, reducedMotion = false }: { text: string; reduc
             scrollGeometry.current = { offset: event.nativeEvent.contentOffset.y, height: event.nativeEvent.layoutMeasurement.height, content: event.nativeEvent.contentSize.height };
             updateBottomFade();
           }}>
-          <ProductText style={styles.copy}>{text}</ProductText>
+          <ProductText style={styles.copy}>{typeset(text)}</ProductText>
         </ScrollView>
         </View>
       </View>

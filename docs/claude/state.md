@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes and the panel edge fix shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -240,6 +240,12 @@ Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-0
   on screens with DPR < 2 `PanelArtwork.web.tsx` draws sub-pixel outlines as 1 device px at the
   hairline's intensity, so diagonals are antialiased, not stairs. Headless Chrome hides both bugs:
   reproduce in a real Chrome window (`--app=` URL, DPR 1.25), not with device emulation.
+- Text wrapping (2026-11-07, `fix/text-wrap`): authored texts are typeset at render by
+  `typeset()` in `src/features/product/typeset.ts` (reading pages, titles, Step 2 tasks,
+  questions, hint, Step 1 intro, cooldown). Mid-sentence `\n` becomes a space; breaks stay
+  after `.!?…:;`, before `—`/`«`/numbers, around blank lines and between two lines ≤ 36 chars
+  (short couplets). Non-breaking space before « — » and after 1–2-letter words. Write new
+  texts with breaks only where a line must stand alone; the content files stay as authored.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 

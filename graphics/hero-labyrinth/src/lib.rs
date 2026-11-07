@@ -487,21 +487,43 @@ pub struct Look {
     pub lamp: [f32; 3],
     /// The brightest core of that light.
     pub core: [f32; 3],
+    /// The lines of the figure's drawing.
+    pub ink: [f32; 3],
+    /// How much of its light the figure's body keeps: a saturated lamp
+    /// fills one channel at once, and the drawing on the body would drown.
+    pub body: f32,
 }
 /// The app theme by its `graphicsPalette` code; the retired light codes
 /// show Тишина.
+/// How far a color is from grey: 0 grey, 1 one pure hue.
+fn saturation(c: [f32; 3]) -> f32 {
+    let high = c[0].max(c[1]).max(c[2]);
+    let low = c[0].min(c[1]).min(c[2]);
+    if high > 0.0 {
+        1.0 - low / high
+    } else {
+        0.0
+    }
+}
+
 pub fn look(code: u32) -> Look {
     let palette = match Palette::from_code(code) {
         p @ (Palette::Dark | Palette::Neutral | Palette::Violet | Palette::Matrix) => p,
         _ => Palette::Neutral,
     };
     let c = palette.colors().expect("dark palettes have colors");
+    let core = lerp3(c.highlight, [1.0; 3], 0.4);
+    // Матрица and Искра light in one pure hue: dim the body and draw the
+    // man in a paler ink, or he reads as one flat blot of color.
+    let pure = ((saturation(c.accent) - 0.5) / 0.4).clamp(0.0, 1.0);
     Look {
         paper: c.paper,
         stone: lerp3(lerp3(c.paper, c.highlight, 0.22), [0.5; 3], 0.12),
         moon: lerp3(c.highlight, [1.0; 3], 0.1),
         lamp: c.accent,
-        core: lerp3(c.highlight, [1.0; 3], 0.4),
+        core,
+        ink: lerp3(core, [1.0; 3], 0.5 * pure),
+        body: 1.0 - 0.45 * pure,
     }
 }
 
@@ -680,5 +702,18 @@ mod tests {
         }
         assert_eq!(look(1), look(2));
         assert_eq!(look(2).paper, Palette::Neutral.colors().unwrap().paper);
+    }
+
+    #[test]
+    fn the_figure_stays_drawn_in_a_pure_hue() {
+        // Тишина, the approved look, keeps its figure as it is.
+        assert_eq!(look(2).ink, look(2).core);
+        assert_eq!(look(2).body, 1.0);
+        // Матрица and Искра dim the body and pale the lines over it.
+        for code in [0, 4] {
+            let l = look(code);
+            assert!(l.body < 0.6, "body {code}");
+            assert!(saturation(l.ink) < saturation(l.core) * 0.6, "ink {code}");
+        }
     }
 }

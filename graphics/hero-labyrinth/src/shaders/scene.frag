@@ -17,6 +17,7 @@ uniform vec3 u_stone;
 uniform vec3 u_moon;
 uniform vec3 u_lamp;
 uniform vec3 u_core;
+uniform vec4 u_ink;      // the figure's drawing; a: how much light its body keeps
 uniform sampler2D u_hero;
 in vec2 v_uv;
 out vec4 o;
@@ -517,10 +518,10 @@ void main() {
           float sharp = smoothstep(60.0, 190.0, FIGURE / (tf * pixK));
           float heart = exp(-dot(hp - HEART, hp - HEART) / (0.3 * FIGURE * FIGURE));
           float rim = clamp(tex.b - tex.r, 0.0, 1.0);
-          vec3 body = mix(u_lamp, u_core, 0.25 + 0.45 * heart) * (mix(0.8, 0.34, sharp) + 0.35 * heart);
+          vec3 body = mix(u_lamp, u_core, 0.25 + 0.45 * heart) * (mix(0.8, 0.34, sharp) + 0.35 * heart) * u_ink.a;
           // The drawing keeps its strength once formed; only its light grows.
           float drawn = min(u_figure.y, 0.75);
-          vec3 fig = (body * tex.r + u_core * mix(0.2, 1.25, sharp) * tex.g) * shown * drawn;
+          vec3 fig = (body * tex.r + u_ink.rgb * mix(0.2, 1.25, sharp) * tex.g) * shown * drawn;
           fig += mix(u_lamp, u_core, 0.6) * (tex.r + 0.5 * tex.b) * edge * 1.6;
           col *= 1.0 - clamp(tex.r * shown * u_figure.y, 0.0, 1.0) * 0.85;
           glow += fig + u_lamp * (0.25 * tex.b + 0.5 * rim) * shown * drawn;

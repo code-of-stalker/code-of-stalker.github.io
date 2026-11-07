@@ -219,7 +219,7 @@ impl HeroLabyrinth {
             &scene_source(),
             &[
                 "u_res", "u_eye", "u_view", "u_walker", "u_trail", "u_figure", "u_wave",
-                "u_pieces", "u_paper", "u_stone", "u_moon", "u_lamp", "u_core", "u_hero",
+                "u_pieces", "u_paper", "u_stone", "u_moon", "u_lamp", "u_core", "u_ink", "u_hero",
             ],
         )?;
         let finish = Pass::new(
@@ -421,6 +421,7 @@ impl HeroLabyrinth {
         gl.uniform3fv_with_f32_array(s.at("u_moon"), &l.moon);
         gl.uniform3fv_with_f32_array(s.at("u_lamp"), &l.lamp);
         gl.uniform3fv_with_f32_array(s.at("u_core"), &l.core);
+        gl.uniform4f(s.at("u_ink"), l.ink[0], l.ink[1], l.ink[2], l.body);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
 
         // Bloom, grain, the seam's night and the page's edges, onto the canvas.

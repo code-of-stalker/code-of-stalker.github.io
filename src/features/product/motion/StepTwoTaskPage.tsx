@@ -55,7 +55,7 @@ export function StepTwoTaskPage({ part, active, enabled, width, reducedMotion, s
           {part === 4 && <ProductText variant="label" style={styles.count}>{value + 1} / {pages.length}</ProductText>}
           {!!block.title && <ProductText variant="title" style={styles.title}>{block.title}</ProductText>}
           <ProductText testID="step-two-task-copy" style={[styles.text, { fontSize, lineHeight: fontSize + 9 }, block.art === 'body-senses' && styles.emphasis]}>{block.text}</ProductText>
-          <View style={[styles.art, { paddingTop: 24 + extra, paddingBottom: 12 + extra }]} pointerEvents="none"><Art kind={block.art} {...art(block.art)} active={playing} reducedMotion={reducedMotion} /></View>
+          <View style={[styles.art, { paddingTop: 24 + extra, paddingBottom: 12 + extra }]} pointerEvents="none"><Art kind={block.art} webScene={block.art === 'author-intention' ? 'hero-labyrinth' : undefined} {...art(block.art)} active={playing} reducedMotion={reducedMotion} /></View>
           {part === 4 && value === pages.length - 1 && <StepSignature active={playing} reducedMotion={reducedMotion} style={styles.signature} />}
         </ScrollGate>
       </View>;

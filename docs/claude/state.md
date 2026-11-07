@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 04 built on the branch, waits for Art. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -189,7 +189,14 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
 - In work: page 04 «Второе кольцо», Art chose Б «Не проваливаться» (2026-11-07): something
   arises inside and branches, the crown dims, the person is pulled in; the warm scanner (ring 2,
   like the Step 6 hero's inner warmth) touches it and it folds into one point, the crown
-  relights. Chapter 4, Матрица first.
+  relights. Chapter 4 built on the branch (commit 911ba3e, 2026-11-08): four events, shorter
+  each time (thought above the head, emotion in the chest, impulse at the right fingertips,
+  sensation at the left knee); each leaves a warm bead on the body; far side camera. Warm
+  light rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 stay
+  pixel-identical. Матрица prototype and sheet `output/prototypes/step-seven/kadry-04.jpg`
+  sent to Art; waits for his word. Not wired into the app yet (`dynamic-second-ring` →
+  chapter 4 in `stepSevenContent.ts`, `DynamicRings.web.tsx`, `types.ts`); other 3 themes
+  after his OK; `main` needs a new OK.
 - Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
   page 10 needs Art's wording first.
 

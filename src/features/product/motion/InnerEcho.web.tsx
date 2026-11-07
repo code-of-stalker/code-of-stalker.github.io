@@ -16,19 +16,19 @@ type Renderer = {
 };
 type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
-const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/inner-slice/runtime.js')
+const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/inner-echo/runtime.js')
   .catch(error => { runtime = undefined; throw error; });
 
-export type InnerSliceProps = ArtProps & {
+export type InnerEchoProps = ArtProps & {
   /** Shown instead of the scene when WebGL2 or the runtime fails. */
   fallback?: ReactNode;
 };
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
- * frames; Rust owns the seated figure in its height lines, the outer ring and
- * its sweep, the slice and the inner ring on its cut, and the colors of the
- * four dark themes. */
-export function InnerSlice(props: InnerSliceProps) {
+ * frames; Rust owns the seated person, the room drawn in points by the waves
+ * of perception, the orbit and its sweep, the warm inside of the body with its
+ * ring, sweep and sparks, and the colors of the four dark themes. */
+export function InnerEcho(props: InnerEchoProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
   const latest = useRef({ props, focused, background: colors.background, palette: paletteCode(colors) });
@@ -55,8 +55,8 @@ export function InnerSlice(props: InnerSliceProps) {
       controller.report(id, { level: snapshot.level, surface: 'artwork', density: output.width / Math.max(1, rect.width),
         buffer: [output.width, output.height], source: [output.width, output.height], blur: [0, 0], draws: renderer.frame_count(),
         sourceUpdates: 1, blurUpdates: 0, contourUpdates: 0, idle: !removeJob, cadence,
-        backend: 'Rust · inner slice WebGL2', textures: 0,
-        textureBytes: 0 });
+        backend: 'Rust · inner echo WebGL2', textures: 1,
+        textureBytes: 24 * 56 * 36 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);
@@ -107,7 +107,7 @@ export function InnerSlice(props: InnerSliceProps) {
           setReady(true); output.dataset.ready = 'true'; latest.current.props.onReady?.();
         }).catch(error => {
           loading = false;
-          if (!disposed) { lost = true; setFailed(true); output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Inner slice scene:', error); }
+          if (!disposed) { lost = true; setFailed(true); output.dataset.graphicsError = String(error); latest.current.props.onReady?.(); console.error('Inner echo scene:', error); }
         });
       }
     };
@@ -140,10 +140,10 @@ export function InnerSlice(props: InnerSliceProps) {
       renderer?.dispose(); renderer?.free();
     };
   }, [controller]);
-  return <View testID="inner-slice" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Сидящая фигура нарисована холодными линиями высоты. Вокруг неё на полу внешнее кольцо с делениями: по нему бежит луч развёртки и вспыхивают сигналы мира. Сверху опускается плоскость среза и останавливается на груди. На срезе тёплые годовые кольца и внутреннее кольцо, сначала мутное. С каждым «Без…» уходит одна помеха: провал, линейка анализа, дёрганье, образы себя. Кольцо становится таким же ясным, как внешнее, получает свои деления, свой луч и свои сигналы. На «здесь и сейчас» оба кольца вспыхивают вместе, потом срез поднимается."
+  return <View testID="inner-echo" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
+    {failed ? props.fallback : <div role="img" aria-label="Человек ровно сидит на стуле в тёмной комнате. От его груди расходятся волны и рисуют комнату холодными точками: пол, стену с окном, стену с дверью, стол, торшер. Вокруг него кольцо точек на высоте груди, по нему идёт луч. Потом одна волна возвращается внутрь, и в теле проступают тёплые точки, они становятся такими же ясными, как комната. С каждым «Без…» точки на миг оседают, встают в сетку, дрожат, уходят двойником и возвращаются. Внутренний луч идёт вместе с внешним и будит искры ощущений, на «здесь и сейчас» одна волна проходит сквозь тело и комнату вместе."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
-      <canvas ref={outputRef} data-graphics="rust-inner-slice" aria-hidden
+      <canvas ref={outputRef} data-graphics="rust-inner-echo" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />
     </div>}
   </View>;

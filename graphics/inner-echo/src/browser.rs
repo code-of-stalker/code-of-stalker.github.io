@@ -1,16 +1,18 @@
-//! Browser adapter: one WebGL2 program and its uniforms. Every motion value
-//! comes from `compose`; one full-screen pass traces each pixel's ray
-//! through the floor, the figure and the slice and adds the light straight
-//! onto the page in the theme's own cold, warm and pale (`look`). The scene
-//! is two-toned, so it does not go through the monochrome theme recolor.
+//! Browser adapter: one WebGL2 program, its uniforms and the baked inside of
+//! the body (a small 3D texture). Every motion value comes from `compose`;
+//! one full-screen pass traces each pixel's ray through the room, the chair
+//! and the person and adds the light straight onto the page in the theme's
+//! own cold, warm and pale (`look`). The scene is two-toned, so it does not
+//! go through the monochrome theme recolor.
+use crate::body::{occupancy, CELLS, CELL_FROM};
 use crate::{
-    compose, look, Look, BLIPS, BLIP_SECONDS, BLIP_SPAN, BOUND, CHEST, CONTOUR, CROWN, FOCAL,
-    FRAME_ASPECT, HALO, HALO_SPREAD, INNER, INNER_SIGNALS, INNER_TICKS, ISOLINE, LINE_WIDTH,
-    LOOP_SECONDS, RIM, RING, STILL, SWEEP_TURNS, TICKS, TICK_SPAN,
+    compose, look, Look, BACK, DOOR, DOUBLE, ECHO_LEVELS, FADE_FROM, FRAME_ASPECT, HEART,
+    INNER_BASE, INNER_POINTS, INNER_RING, INSIDE, LAMP, LEFT, LEVELS, LOOP_SECONDS, MOVERS, ORBIT,
+    ORBIT_POINTS, PERSON, REACH, SINK, SPACING, SPARK_POINTS, STILL, TABLE, WINDOW,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
-    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader,
+    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader, WebGlTexture,
     WebGlUniformLocation, WebGlVertexArrayObject,
 };
 
@@ -20,15 +22,17 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 17] = [
+const NAMES: [&str; 20] = [
     "u_eye",
     "u_right",
     "u_up",
     "u_fwd",
     "u_view",
-    "u_scan",
-    "u_wave_r",
-    "u_wave_l",
+    "u_wave",
+    "u_front",
+    "u_echo",
+    "u_echo_l",
+    "u_room",
     "u_inner",
     "u_noise",
     "u_misc",
@@ -38,35 +42,44 @@ const NAMES: [&str; 17] = [
     "u_backdrop",
     "u_edges",
     "u_out",
+    "u_body",
 ];
 
 /// lib.rs's constants as the shader's `#define`s, so both read one source.
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
-    let [bx, by, bz, br] = BOUND;
+    let v3 = |v: [f32; 3]| format!("vec3({:?}, {:?}, {:?})", v[0], v[1], v[2]);
+    let v4 = |v: [f32; 4]| format!("vec4({:?}, {:?}, {:?}, {:?})", v[0], v[1], v[2], v[3]);
+    let iv3 = |v: [i32; 3]| format!("ivec3({}, {}, {})", v[0], v[1], v[2]);
+    let sparks = SPARK_POINTS.map(v3).join(", ");
     let lines = [
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
-        ("RING", f(RING)),
-        ("TICKS", f(TICKS)),
-        ("TICK_IN", f(TICK_SPAN[0])),
-        ("TICK_OUT", f(TICK_SPAN[1])),
-        ("SWEEP_TURNS", f(SWEEP_TURNS)),
-        ("BLIPS", BLIPS.to_string()),
-        ("BLIP_IN", f(BLIP_SPAN[0])),
-        ("BLIP_OUT", f(BLIP_SPAN[1])),
-        ("BLIP_SECONDS", f(BLIP_SECONDS)),
-        ("CROWN", f(CROWN)),
-        ("CHEST", f(CHEST)),
-        ("INNER", f(INNER)),
-        ("INNER_TICKS", f(INNER_TICKS)),
-        ("INNER_SIGNALS", INNER_SIGNALS.to_string()),
-        ("RIM", f(RIM)),
-        ("ISOLINE", f(ISOLINE)),
-        ("CONTOUR", f(CONTOUR)),
-        ("BOUND", format!("vec4({bx:?}, {by:?}, {bz:?}, {br:?})")),
-        ("LINE_WIDTH", f(LINE_WIDTH)),
-        ("HALO", f(HALO)),
-        ("HALO_SPREAD", f(HALO_SPREAD)),
+        ("HEART", v3(HEART)),
+        ("ORBIT", f(ORBIT)),
+        ("ORBIT_POINTS", f(ORBIT_POINTS)),
+        ("INNER_RING", f(INNER_RING)),
+        ("INNER_POINTS", f(INNER_POINTS)),
+        ("REACH", f(REACH)),
+        ("FADE_FROM", f(FADE_FROM)),
+        ("BACK", f(BACK)),
+        ("LEFT", f(LEFT)),
+        ("WINDOW", v4(WINDOW)),
+        ("DOOR", v4(DOOR)),
+        ("TABLE", v3(TABLE)),
+        ("LAMP", v3(LAMP)),
+        ("PERSON_FROM", v3(PERSON[0])),
+        ("PERSON_TO", v3(PERSON[1])),
+        ("SPACING", v4(SPACING)),
+        ("INSIDE", f(INSIDE)),
+        ("CELL_FROM", iv3(CELL_FROM)),
+        ("CELLS", iv3(CELLS.map(|n| n as i32))),
+        ("SINK", f(SINK)),
+        ("DOUBLE", v3(DOUBLE)),
+        ("MOVERS", f(MOVERS)),
+        ("LEVELS", v3(LEVELS)),
+        ("ECHO_LEVELS", v3(ECHO_LEVELS)),
+        ("INNER_BASE", f(INNER_BASE)),
+        ("SPARK_LIST", format!("vec3[6]({sparks})")),
     ];
     lines
         .iter()
@@ -131,11 +144,45 @@ impl Prog {
     }
 }
 
+/// The inside of the body as a 3D texture: one byte a cell, read exactly
+/// (no filtering).
+fn body_texture(gl: &Gl) -> Result<WebGlTexture, JsValue> {
+    let texture = gl.create_texture().ok_or("Cannot allocate texture")?;
+    let [w, h, d] = CELLS.map(|n| n as i32);
+    gl.active_texture(Gl::TEXTURE0);
+    gl.bind_texture(Gl::TEXTURE_3D, Some(&texture));
+    gl.pixel_storei(Gl::UNPACK_ALIGNMENT, 1);
+    gl.tex_image_3d_with_opt_u8_array(
+        Gl::TEXTURE_3D,
+        0,
+        Gl::R8 as i32,
+        w,
+        h,
+        d,
+        0,
+        Gl::RED,
+        Gl::UNSIGNED_BYTE,
+        Some(&occupancy()),
+    )?;
+    for (name, value) in [
+        (Gl::TEXTURE_MIN_FILTER, Gl::NEAREST),
+        (Gl::TEXTURE_MAG_FILTER, Gl::NEAREST),
+        (Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE),
+        (Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE),
+        (Gl::TEXTURE_WRAP_R, Gl::CLAMP_TO_EDGE),
+    ] {
+        gl.tex_parameteri(Gl::TEXTURE_3D, name, value as i32);
+    }
+    gl.bind_texture(Gl::TEXTURE_3D, None);
+    Ok(texture)
+}
+
 #[wasm_bindgen]
-pub struct InnerSlice {
+pub struct InnerEcho {
     gl: Gl,
     canvas: HtmlCanvasElement,
     scene: Prog,
+    body: WebGlTexture,
     empty: WebGlVertexArrayObject,
     look: Look,
     soft_edges: bool,
@@ -149,10 +196,11 @@ pub struct InnerSlice {
 }
 
 #[wasm_bindgen]
-impl InnerSlice {
-    /// Nothing to load: the shader traces the whole scene.
+impl InnerEcho {
+    /// Nothing to load: the inside of the body is baked here, the shader
+    /// traces the rest.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement) -> Result<InnerSlice, JsValue> {
+    pub fn new(canvas: HtmlCanvasElement) -> Result<InnerEcho, JsValue> {
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
         js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
@@ -166,6 +214,9 @@ impl InnerSlice {
             SCREEN,
             &format!("#version 300 es\n{}{SCENE}", defines()),
         )?;
+        let body = body_texture(&gl)?;
+        gl.use_program(Some(&scene.program));
+        gl.uniform1i(scene.at("u_body"), 0);
         let empty = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
@@ -173,6 +224,7 @@ impl InnerSlice {
             gl,
             canvas,
             scene,
+            body,
             empty,
             look: look(2),
             soft_edges: false,
@@ -226,8 +278,8 @@ impl InnerSlice {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: both rings clear, the inner one
-    /// open on the cut.
+    /// Reduced motion holds one moment: the room and the inside both clear,
+    /// both rings lit, both sweeps on.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -269,13 +321,14 @@ impl InnerSlice {
             return;
         }
         let gl = &self.gl;
+        gl.delete_texture(Some(&self.body));
         gl.delete_vertex_array(Some(&self.empty));
         gl.delete_program(Some(&self.scene.program));
         self.disposed = true;
     }
 }
 
-impl InnerSlice {
+impl InnerEcho {
     fn draw(&mut self) {
         if self.disposed || self.gl.is_context_lost() {
             return;
@@ -287,13 +340,16 @@ impl InnerSlice {
         gl.viewport(0, 0, width, height);
         gl.disable(Gl::BLEND);
         gl.bind_vertex_array(Some(&self.empty));
+        gl.active_texture(Gl::TEXTURE0);
+        gl.bind_texture(Gl::TEXTURE_3D, Some(&self.body));
 
         // The whole 3:2 frame stays in view on a canvas of any shape.
         let (w, h) = (width as f32, height as f32);
         let aspect = w / h;
+        let focal = 1.0 / f.lens;
         let view = [
-            FOCAL / aspect.max(FRAME_ASPECT),
-            FOCAL * aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
+            focal / aspect.max(FRAME_ASPECT),
+            focal * aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
             w,
             h,
         ];
@@ -302,19 +358,22 @@ impl InnerSlice {
         let [rx, ry, rz] = f.right;
         let [ux, uy, uz] = f.up;
         let [fx, fy, fz] = f.forward;
+        let [w0, w1, w2] = f.waves;
+        let [e0, e1, e2] = f.echoes;
         gl.use_program(Some(&p.program));
         gl.uniform4f(p.at("u_eye"), ex, ey, ez, f.time);
         gl.uniform4f(p.at("u_right"), rx, ry, rz, 0.0);
         gl.uniform4f(p.at("u_up"), ux, uy, uz, 0.0);
         gl.uniform4f(p.at("u_fwd"), fx, fy, fz, 0.0);
         gl.uniform4fv_with_f32_array(p.at("u_view"), &view);
-        gl.uniform4f(p.at("u_scan"), f.sweep, f.slice, f.rim, f.outer);
-        let [w0, w1, w2] = f.waves;
-        gl.uniform4f(p.at("u_wave_r"), w0[0], w1[0], w2[0], 0.0);
-        gl.uniform4f(p.at("u_wave_l"), w0[1], w1[1], w2[1], 0.0);
-        gl.uniform4f(p.at("u_inner"), f.inner, f.clarity, f.open, f.signals);
-        gl.uniform4f(p.at("u_noise"), f.sink, f.analysis, f.fixing, f.images);
-        gl.uniform4f(p.at("u_misc"), f.together, f.flow, 0.0, 0.0);
+        gl.uniform4f(p.at("u_wave"), w0[0], w1[0], w2[0], f.inward[0]);
+        gl.uniform4f(p.at("u_front"), w0[1], w1[1], w2[1], f.inward[1]);
+        gl.uniform4f(p.at("u_echo"), e0[0], e1[0], e2[0], f.together[0]);
+        gl.uniform4f(p.at("u_echo_l"), e0[1], e1[1], e2[1], f.together[1]);
+        gl.uniform4f(p.at("u_room"), f.room, f.orbit, f.skin, f.scan);
+        gl.uniform4f(p.at("u_inner"), f.inner, f.ring, f.inner_scan, f.sparks);
+        gl.uniform4f(p.at("u_noise"), f.sink, f.grid, f.tremble, f.double);
+        gl.uniform4f(p.at("u_misc"), f.sweep, 0.0, 0.0, 0.0);
         gl.uniform3fv_with_f32_array(p.at("u_cold"), &self.look.cold);
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);

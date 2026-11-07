@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01: the site has 4 тёмные темы. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -148,18 +148,16 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   08 «Осциллограф», 09 «Тише шума», 10 «Любая среда». Seven pages fully 3D; raster needed for
   the hero, 06, 09, 10. Outer ring cold lamp, inner ring a warm second tone.
 - Step 6's last page (10) scrolls on into Step 7 page 01.
-- Page 01 «Внутрь» (inner-second-level): Б «Срез» (crate `graphics/inner-slice`, bridge
-  `InnerSlice.web.tsx`, `webScene: 'inner-slice'`, commit 2a58699 on this branch, not on `main`)
-  was REJECTED 2026-11-07 («странно всё выглядит и тексту мало соответствует»; the figure must
-  sit on a chair with a straight back, not in lotus). Before any ship, drop or replace that
-  wiring so the page keeps its placeholder. Three new directions with a person upright on a
-  chair, stills in Тишина `output/prototypes/inner-chair/varianty.jpg` (sketch `varianty.html`,
-  JS/GLSL concept only): А «Изнутри» (glass person, cold orbit, camera goes into the chest and
-  sees the outer ring through the body), Б «Эхо» (perception waves draw the room in points, the
-  body's inside appears in warm points), В «Выдержка» (still camera, long-exposure light: three
-  orbits of sight/hearing/perception, a warm ring in the chest, both spheres together;
-  recommended). Waiting for Art's choice; then a new crate, Тишина prototype, other dark themes
-  only after his OK, ship only on his word.
+- Page 01 «Внутрь» (inner-second-level): «Срез» (`inner-slice`) was rejected 2026-11-07 and
+  removed (figure in lotus; must sit upright on a chair). Art chose Б «Эхо» («Б»): crate
+  `graphics/inner-echo`, bridge `InnerEcho.web.tsx`, `webScene: 'inner-echo'` (on this branch,
+  not on `main`). Waves from the chest draw the room in cold points, orbit at chest height and
+  on the floor with a sweep; a wave back in lights the body's inside in warm points; each «Без…»
+  pulls them (sink, grid, tremble, double); inner sweep with sparks; «здесь и сейчас» one wave
+  through both. Beats in the crate README. Тишина prototype
+  `output/prototypes/inner-echo/index.html`, key frames `kadry-tishina.jpg`; shown to Art,
+  waiting for his notes. Other 3 dark themes only after his OK on Тишина; ship only on his word.
+  Exported-app check: mounts, ready, spans the text column on 1180 wide.
 - Hero, 06, 09, 10 need his pictures (briefs in the doc). Pages 02–08 next, 2–3 directions each.
 
 ## Step 7 «Динамическая сфера» (branch `claude/step-7-dynamic-0682ec`)

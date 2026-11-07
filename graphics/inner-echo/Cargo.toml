@@ -1,5 +1,5 @@
 [package]
-name = "watcher-inner-slice"
+name = "watcher-inner-echo"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -15,7 +15,7 @@ watcher-scene-palette = { path = "../scene-palette" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.129"
 js-sys = "=0.3.106"
-web-sys = { version = "=0.3.106", features = ["HtmlCanvasElement", "WebGl2RenderingContext", "WebGlProgram", "WebGlShader", "WebGlUniformLocation", "WebGlVertexArrayObject"] }
+web-sys = { version = "=0.3.106", features = ["HtmlCanvasElement", "WebGl2RenderingContext", "WebGlProgram", "WebGlShader", "WebGlTexture", "WebGlUniformLocation", "WebGlVertexArrayObject"] }
 
 [profile.release]
 opt-level = 3

@@ -14,8 +14,8 @@ Run-Checked $cargo @('test', '--manifest-path', $manifest)
 Run-Checked $cargo @('clippy', '--manifest-path', $manifest, '--all-targets', '--', '-D', 'warnings')
 Run-Checked $cargo @('clippy', '--manifest-path', $manifest, '--target', 'wasm32-unknown-unknown', '--', '-D', 'warnings')
 Run-Checked $cargo @('build', '--manifest-path', $manifest, '--target', 'wasm32-unknown-unknown', '--release')
-$output = Join-Path $project 'output/motion/inner-slice'
+$output = Join-Path $project 'output/motion/inner-echo'
 New-Item -ItemType Directory -Path (Join-Path $output 'pkg') -Force | Out-Null
 $bindgen = Join-Path $project '.local-rust/wasm-bindgen-0.2.129/wasm-bindgen-0.2.129-x86_64-pc-windows-msvc/wasm-bindgen.exe'
-Run-Checked $bindgen @((Join-Path $PSScriptRoot 'target/wasm32-unknown-unknown/release/watcher_inner_slice.wasm'), '--target', 'web', '--out-dir', (Join-Path $output 'pkg'))
+Run-Checked $bindgen @((Join-Path $PSScriptRoot 'target/wasm32-unknown-unknown/release/watcher_inner_echo.wasm'), '--target', 'web', '--out-dir', (Join-Path $output 'pkg'))
 Run-Checked 'node' @((Join-Path $PSScriptRoot 'package.mjs'))

@@ -1,15 +1,15 @@
-/* @ts-self-types="./watcher_inner_slice.d.ts" */
+/* @ts-self-types="./watcher_inner_echo.d.ts" */
 
-export class InnerSlice {
+export class InnerEcho {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
-        InnerSliceFinalization.unregister(this);
+        InnerEchoFinalization.unregister(this);
         return ptr;
     }
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_innerslice_free(ptr, 0);
+        wasm.__wbg_innerecho_free(ptr, 0);
     }
     /**
      * @param {number} red
@@ -17,46 +17,47 @@ export class InnerSlice {
      * @param {number} blue
      */
     backdrop(red, green, blue) {
-        wasm.innerslice_backdrop(this.__wbg_ptr, red, green, blue);
+        wasm.innerecho_backdrop(this.__wbg_ptr, red, green, blue);
     }
     dispose() {
-        wasm.innerslice_dispose(this.__wbg_ptr);
+        wasm.innerecho_dispose(this.__wbg_ptr);
     }
     /**
      * @returns {number}
      */
     elapsed() {
-        const ret = wasm.innerslice_elapsed(this.__wbg_ptr);
+        const ret = wasm.innerecho_elapsed(this.__wbg_ptr);
         return ret;
     }
     /**
      * @param {number} milliseconds
      */
     frame(milliseconds) {
-        wasm.innerslice_frame(this.__wbg_ptr, milliseconds);
+        wasm.innerecho_frame(this.__wbg_ptr, milliseconds);
     }
     /**
      * @returns {number}
      */
     frame_count() {
-        const ret = wasm.innerslice_frame_count(this.__wbg_ptr);
+        const ret = wasm.innerecho_frame_count(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     gpu_error() {
-        const ret = wasm.innerslice_gpu_error(this.__wbg_ptr);
+        const ret = wasm.innerecho_gpu_error(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
-     * Nothing to load: the shader traces the whole scene.
+     * Nothing to load: the inside of the body is baked here, the shader
+     * traces the rest.
      * @param {HTMLCanvasElement} canvas
      */
     constructor(canvas) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.innerslice_new(retptr, addHeapObject(canvas));
+            wasm.innerecho_new(retptr, addHeapObject(canvas));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -64,7 +65,7 @@ export class InnerSlice {
                 throw takeObject(r1);
             }
             this.__wbg_ptr = r0;
-            InnerSliceFinalization.register(this, this.__wbg_ptr, this);
+            InnerEchoFinalization.register(this, this.__wbg_ptr, this);
             return this;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
@@ -75,47 +76,47 @@ export class InnerSlice {
      * @param {number} code
      */
     palette(code) {
-        wasm.innerslice_palette(this.__wbg_ptr, code);
+        wasm.innerecho_palette(this.__wbg_ptr, code);
     }
     /**
      * @param {boolean} value
      */
     pause(value) {
-        wasm.innerslice_pause(this.__wbg_ptr, value);
+        wasm.innerecho_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: both rings clear, the inner one
-     * open on the cut.
+     * Reduced motion holds one moment: the room and the inside both clear,
+     * both rings lit, both sweeps on.
      * @param {boolean} value
      */
     reduced(value) {
-        wasm.innerslice_reduced(this.__wbg_ptr, value);
+        wasm.innerecho_reduced(this.__wbg_ptr, value);
     }
     /**
      * @param {number} width
      * @param {number} height
      */
     resize(width, height) {
-        wasm.innerslice_resize(this.__wbg_ptr, width, height);
+        wasm.innerecho_resize(this.__wbg_ptr, width, height);
     }
     /**
      * @param {number} seconds
      */
     seek(seconds) {
-        wasm.innerslice_seek(this.__wbg_ptr, seconds);
+        wasm.innerecho_seek(this.__wbg_ptr, seconds);
     }
     /**
      * Melt the scene into the surrounding page instead of a hard frame.
      * @param {boolean} enabled
      */
     soft_edges(enabled) {
-        wasm.innerslice_soft_edges(this.__wbg_ptr, enabled);
+        wasm.innerecho_soft_edges(this.__wbg_ptr, enabled);
     }
     suspend() {
-        wasm.innerslice_suspend(this.__wbg_ptr);
+        wasm.innerecho_suspend(this.__wbg_ptr);
     }
 }
-if (Symbol.dispose) InnerSlice.prototype[Symbol.dispose] = InnerSlice.prototype.free;
+if (Symbol.dispose) InnerEcho.prototype[Symbol.dispose] = InnerEcho.prototype.free;
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -127,11 +128,17 @@ function __wbg_get_imports() {
         __wbg___wbindgen_throw_41e9ee4f547fc59a: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
+        __wbg_activeTexture_11079673eac5c921: function(arg0, arg1) {
+            getObject(arg0).activeTexture(arg1 >>> 0);
+        },
         __wbg_attachShader_9567ae57af6746d5: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
         __wbg_bindFramebuffer_378eb18ef219d37a: function(arg0, arg1, arg2) {
             getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
+        },
+        __wbg_bindTexture_3cf008f256f3ed99: function(arg0, arg1, arg2) {
+            getObject(arg0).bindTexture(arg1 >>> 0, getObject(arg2));
         },
         __wbg_bindVertexArray_f58af0a346185ec5: function(arg0, arg1) {
             getObject(arg0).bindVertexArray(getObject(arg1));
@@ -147,6 +154,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createShader(arg1 >>> 0);
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
+        __wbg_createTexture_5f2583508ebe379b: function(arg0) {
+            const ret = getObject(arg0).createTexture();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
         __wbg_createVertexArray_b223ea69dd08fcab: function(arg0) {
             const ret = getObject(arg0).createVertexArray();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -156,6 +167,9 @@ function __wbg_get_imports() {
         },
         __wbg_deleteShader_a70f6cc1918d67eb: function(arg0, arg1) {
             getObject(arg0).deleteShader(getObject(arg1));
+        },
+        __wbg_deleteTexture_9f42750adb092e4f: function(arg0, arg1) {
+            getObject(arg0).deleteTexture(getObject(arg1));
         },
         __wbg_deleteVertexArray_ca9768805d051d49: function(arg0, arg1) {
             getObject(arg0).deleteVertexArray(getObject(arg1));
@@ -225,6 +239,9 @@ function __wbg_get_imports() {
             const ret = new Object();
             return addHeapObject(ret);
         },
+        __wbg_pixelStorei_cb4e43466f5b8703: function(arg0, arg1, arg2) {
+            getObject(arg0).pixelStorei(arg1 >>> 0, arg2);
+        },
         __wbg_set_145a351398b48c65: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
             return ret;
@@ -237,6 +254,15 @@ function __wbg_get_imports() {
         },
         __wbg_shaderSource_c8812639b47d87b9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).shaderSource(getObject(arg1), getStringFromWasm0(arg2, arg3));
+        },
+        __wbg_texImage3D_5f82d40b133d8c4e: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
+            getObject(arg0).texImage3D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7, arg8 >>> 0, arg9 >>> 0, arg10 === 0 ? undefined : getArrayU8FromWasm0(arg10, arg11));
+        }, arguments); },
+        __wbg_texParameteri_7864076abcdb03e0: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).texParameteri(arg1 >>> 0, arg2 >>> 0, arg3);
+        },
+        __wbg_uniform1i_531b98c4a7177366: function(arg0, arg1, arg2) {
+            getObject(arg0).uniform1i(getObject(arg1), arg2);
         },
         __wbg_uniform3fv_055ea5ac38af4fce: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform3fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
@@ -268,13 +294,13 @@ function __wbg_get_imports() {
     };
     return {
         __proto__: null,
-        "./watcher_inner_slice_bg.js": import0,
+        "./watcher_inner_echo_bg.js": import0,
     };
 }
 
-const InnerSliceFinalization = (typeof FinalizationRegistry === 'undefined')
+const InnerEchoFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_innerslice_free(ptr, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_innerecho_free(ptr, 1));
 
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);
@@ -294,6 +320,11 @@ function dropObject(idx) {
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedDataViewMemory0 = null;
@@ -498,7 +529,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('watcher_inner_slice_bg.wasm', import.meta.url);
+        module_or_path = new URL('watcher_inner_echo_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

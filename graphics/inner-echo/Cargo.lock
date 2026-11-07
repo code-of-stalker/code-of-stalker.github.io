@@ -154,7 +154,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "watcher-inner-slice"
+name = "watcher-inner-echo"
 version = "0.1.0"
 dependencies = [
  "js-sys",

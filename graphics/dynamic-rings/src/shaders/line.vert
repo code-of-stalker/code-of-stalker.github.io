@@ -128,7 +128,10 @@ void main() {
       light = PRINT_LIGHT * fade * fade * smoothstep(0.0, 0.1, e.w);
       width = 0.85;
     }
-    light *= WORLD.z * pool(mid) * (1.0 + 0.6 * SHELLS.y);
+    float lit = WORLD.z * pool(mid) * (1.0 + 0.6 * SHELLS.y);
+    // Page 03's lantern lights the steps round it.
+    if (LAMP.w > 0.0) lit += LAMP_PRINT * LAMP.w * lampFall(length(bend(mid) - LAMP.xyz));
+    light *= lit;
   } else if (kind == 7) {
     // Where the lock's sphere of light meets the ground.
     float r2 = LOCK2.x * LOCK2.x - LOCK.y * LOCK.y;

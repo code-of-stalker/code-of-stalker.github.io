@@ -229,6 +229,31 @@ pub const DESK_LIGHT: f32 = 0.75;
 pub const VOICE_LIGHT: f32 = 1.15;
 /// The one met on page 02, of the figure's light.
 pub const OTHER_LIGHT: f32 = 0.6;
+/// Page 03's lantern: its light falls to a quarter this far from it (m); its flame is
+/// this big (m), which softens the shadows' edges; ground it meets edge on
+/// keeps this share of it; the air round it glows within about
+/// `LAMP_MIST` m. What it gives the ground, the floor's dots, the prints,
+/// the glass and its glint, the figures, the motes, the air; its flame and
+/// the glow round it.
+pub const LAMP_REACH: f32 = 3.6;
+pub const LAMP_SIZE: f32 = 0.05;
+pub const LAMP_FLAT: f32 = 0.45;
+pub const LAMP_MIST: f32 = 0.8;
+pub const LAMP_GROUND: f32 = 1.0;
+pub const LAMP_FLOOR: f32 = 1.6;
+pub const LAMP_PRINT: f32 = 1.2;
+pub const LAMP_GLASS: f32 = 1.5;
+pub const LAMP_GLINT: f32 = 1.5;
+pub const LAMP_BODY: f32 = 2.0;
+pub const LAMP_DUST: f32 = 2.0;
+pub const LAMP_AIR: f32 = 0.1;
+pub const LAMP_CORE: f32 = 5.0;
+pub const LAMP_HALO: f32 = 0.45;
+/// The limbs of the two figures that throw its shadows.
+pub const CASTERS: usize = 22;
+/// A figure that stands still repeats no walk; the floor's pattern still
+/// needs a span to repeat over.
+pub const STILL_SPAN: f32 = 48.0 * PLANET_CELL;
 pub const TENTACLE_LIGHT: f32 = 1.4;
 pub const DEBRIS_LIGHT: f32 = 1.2;
 pub const SPIRE_LIGHT: f32 = 1.4;
@@ -363,6 +388,14 @@ pub struct Frame {
     pub mote_box: f32,
     pub track: f32,
     pub amount: f32,
+    /// Page 03's lantern: where, how lit (0 none, as on every other page);
+    /// round each figure, the figure's and then its bearer's, a ball that
+    /// holds it (centre, radius); the limbs that throw the lantern's
+    /// shadows, the figure's and then the bearer's, each from a (xyz,
+    /// radius) to b.
+    pub lamp: [f32; 4],
+    pub bounds: [[f32; 4]; 2],
+    pub casters: [[f32; 4]; 2 * CASTERS],
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
@@ -378,7 +411,9 @@ pub const SLOT_THING: usize = SLOT_META + 1;
 pub const SLOT_SEAT: usize = SLOT_THING + THINGS as usize / 2;
 pub const SLOT_VOICE: usize = SLOT_SEAT + SEATS;
 pub const SLOT_DESK: usize = SLOT_VOICE + 2 * VOICES;
-pub const SLOTS: usize = SLOT_DESK + 2 * SEATS;
+pub const SLOT_LAMP: usize = SLOT_DESK + 2 * SEATS;
+pub const SLOT_CASTER: usize = SLOT_LAMP + 3;
+pub const SLOTS: usize = SLOT_CASTER + 2 * CASTERS;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -397,7 +432,12 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
         d[s + 1] = with(r.normal, r.light);
         d[s + 2] = [r.flash, r.flow, r.form, r.scan];
     }
-    d[SLOT_WORLD] = [f.distance, f.mote_box, f.floor, f.world];
+    let repeat = if f.distance > 0.0 {
+        f.distance
+    } else {
+        STILL_SPAN
+    };
+    d[SLOT_WORLD] = [repeat, f.mote_box, f.floor, f.world];
     d[SLOT_WORLD + 1] = f.lock;
     d[SLOT_WORLD + 2] = [
         f.lock_radius,
@@ -437,6 +477,12 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     for (k, desk) in f.desks.iter().enumerate() {
         d[SLOT_DESK + 2 * k] = [desk[0], desk[1], desk[2], desk[3]];
         d[SLOT_DESK + 2 * k + 1] = [desk[4], desk[5], 0.0, 0.0];
+    }
+    d[SLOT_LAMP] = f.lamp;
+    d[SLOT_LAMP + 1] = f.bounds[0];
+    d[SLOT_LAMP + 2] = f.bounds[1];
+    for (k, c) in f.casters.iter().enumerate() {
+        d[SLOT_CASTER + k] = *c;
     }
     d
 }
@@ -552,17 +598,19 @@ pub fn engrave(look: &Look, page: [f32; 3], dark: [f32; 3]) -> [f32; 3] {
 mod tests {
     use super::*;
     use crate::body::SEAT_BACK;
-    use crate::math::v3;
+    use crate::math::{v3, V3};
     use crate::story::{
         crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, LIFE_DOWN, LIFE_LOOP, LIFE_UP, TALK,
         VOICE_LIFE,
     };
+    use std::f32::consts::{PI, TAU};
 
-    fn chapters() -> [Story; 3] {
+    fn chapters() -> [Story; 4] {
         [
             Story::new(Chapter::Hero),
             Story::new(Chapter::Arrive),
             Story::new(Chapter::Life),
+            Story::new(Chapter::Night),
         ]
     }
 
@@ -872,9 +920,12 @@ mod tests {
                 assert!(r.light > m - 0.01, "{:?}", story.chapter);
             }
             assert!(f.filled > most[3] - 0.01, "{:?}", story.chapter);
-            // Page 02 stills on the talk; the others on the walk.
+            // Page 02 stills on the talk, page 03 on the lantern going round;
+            // the others on the walk.
             if story.chapter == Chapter::Life {
                 assert!(f.other_light > 0.99 && f.voices.iter().any(|v| v[7] > 0.1));
+            } else if story.chapter == Chapter::Night {
+                assert!(f.lamp[3] > 0.99 && f.other_light > 0.99);
             } else {
                 assert!(f.amount > 0.99, "{:?}", story.chapter);
             }
@@ -1081,6 +1132,53 @@ mod tests {
         let start = story.compose(1.0);
         assert!(start.eye.z < start.sphere.z - 1.0 && start.eye.x > 1.5);
         assert!(walking.eye.y > 1.8 && walking.eye.z > walking.sphere.z + 2.2);
+    }
+
+    #[test]
+    fn on_page_three_a_lantern_goes_round_the_glass() {
+        let story = Story::new(Chapter::Night);
+        let l = story.loop_seconds;
+        // Out at the loop's ends, lit through its middle.
+        for t in [0.0, 0.5, l - 2.0, l - 1e-3] {
+            let f = story.compose(t);
+            assert!(f.lamp[3] <= 0.0 && f.other_light <= 0.0, "{t}");
+        }
+        let (mut least, mut most, mut eye) = (f32::MAX, 0.0f32, f32::MAX);
+        let mut around = 0.0;
+        let mut previous: Option<V3> = None;
+        let mut t = 0.0;
+        while t < l {
+            let f = story.compose(t);
+            eye = eye.min(f.eye.y - f.sphere.y);
+            if f.lamp[3] > 0.0 {
+                // The lantern and the passer-by stay out of the glass, and
+                // every step it leaves lies outside it.
+                let lamp = v3(f.lamp[0], f.lamp[1], f.lamp[2]);
+                least = least.min((lamp - f.sphere).length());
+                most = most.max(f.lamp[3]);
+                for p in f.prints.iter().filter(|p| p[3] < PRINT_FADE) {
+                    let off = (p[0] - f.sphere.x).hypot(p[1] - f.sphere.z);
+                    assert!(off > 1.5, "{t}: a step {off} from the glass");
+                }
+                // It goes once round the glass, the way it faces: left, so
+                // counterclockwise from above, coming and going on the way.
+                let d = lamp - f.sphere;
+                if let Some(before) = previous {
+                    let turn = d.x.atan2(d.z) - before.x.atan2(before.z);
+                    around += (turn + 3.0 * PI).rem_euclid(TAU) - PI;
+                }
+                previous = Some(d);
+            }
+            t += 0.05;
+        }
+        assert!(least > SPHERE_RADIUS + 0.3, "{least}");
+        assert!(most > 0.99, "{most}");
+        assert!(around > TAU && around < TAU + PI, "{around}");
+        // Overhead all the while.
+        assert!(eye > 7.0, "{eye}");
+        // Lit, it lights the figure from the side it walks on.
+        let f = story.compose(story.chapter.still());
+        assert!(f.lamp[3] > 0.99 && f.bounds.iter().all(|b| b[3] > 0.5));
     }
 
     #[test]

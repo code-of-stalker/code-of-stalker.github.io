@@ -108,10 +108,13 @@ void main() {
   float facing = dot(n, toEye);
   float rim = 1.0 - abs(facing);
   light *= mix(0.4, 1.0, rim * rim) * (facing > 0.0 ? 1.0 : 0.5);
+  float base = light;
   float w = loopPhase();
-  light *= mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
+  float grain = mix(0.35, 1.0, rand(seed + 3u)) * (0.6 + 0.4 * sin(w * pace(seed + 4u, 3.0) + TAU * rand(seed + 5u)));
+  light *= grain;
   // Fine bands of the hologram drifting up the body.
-  light *= 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
+  float bands = 0.8 + 0.35 * smoothstep(0.55, 1.0, sin(p.y * TAU / 0.045 - 2.0 * w));
+  light *= bands;
   // On each full in-breath a beat runs down from the scanner, at the top
   // of the head, through the body.
   float since = LOCK2.w;
@@ -133,6 +136,15 @@ void main() {
   float r = length(q - RN(0).xyz * along) - RC(0).w;
   lift += 1.4 * RN(0).w * exp(-(along * along + r * r) / (0.12 * 0.12));
   light *= other ? 1.0 : 1.0 + lift + WAVE_GAIN * lockWave(p) + 0.25 * SHELLS.y;
+  // Page 03's lantern lights the skin that faces it, where no limb is
+  // between.
+  if (LAMP.w > 0.0) {
+    vec3 toLamp = LAMP.xyz - p;
+    float facingLamp = max(dot(n, normalize(toLamp)), 0.0);
+    if (facingLamp > 0.0) {
+      light += base * grain * bands * LAMP_BODY * facingLamp * lampOn(p + n * 0.02, 0.06);
+    }
+  }
   // Its own size in metres, but never finer than a pixel's worth.
   float s0 = max(max(BODY_DOT / v.z * VIEW.y * 0.5 * VIEW.w, BODY_SIZE * VIEW.w), 0.65);
   // In the scanner's cut the points swell into a line, as wide close up

@@ -134,6 +134,32 @@ export async function decryptMessage(key: CryptoKey, chatId: string, iv: string,
   return plain.text;
 }
 
+/** What a voice message row says about its audio; the audio itself is sealed apart. */
+export type VoiceMeta = { durationMs: number; waveform: number[]; mimeType: string };
+const AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/aac', 'audio/wav'];
+
+export async function encryptVoice(key: CryptoKey, chatId: string, meta: VoiceMeta, audio: Bytes) {
+  const waveform = meta.waveform.slice(0, 120).map(level => Math.round(Math.max(0, Math.min(1, level)) * 100) / 100);
+  // Named fields only: a caller's object may carry the audio itself.
+  const voice: VoiceMeta = { durationMs: Math.max(0, Math.round(meta.durationMs)), waveform, mimeType: meta.mimeType };
+  const sealed = await seal(key, encoder.encode(JSON.stringify({ v: 1, voice })), `message|${chatId}`);
+  const media = await seal(key, audio, `voice|${chatId}`);
+  return { iv: sealed.iv, body: sealed.data, mediaIv: media.iv, mediaBody: media.data };
+}
+
+export async function decryptVoice(key: CryptoKey, chatId: string, iv: string, body: string): Promise<VoiceMeta> {
+  const plain = JSON.parse(decoder.decode(await unseal(key, { iv, data: body }, `message|${chatId}`))) as { voice?: Partial<VoiceMeta> };
+  const voice = plain.voice;
+  const base = typeof voice?.mimeType === 'string' ? voice.mimeType.split(';')[0].trim().toLowerCase() : '';
+  if (!voice || typeof voice.durationMs !== 'number' || !Number.isFinite(voice.durationMs) || voice.durationMs < 0 || !AUDIO_TYPES.includes(base)
+    || !Array.isArray(voice.waveform) || voice.waveform.length > 120 || voice.waveform.some(level => typeof level !== 'number' || !(level >= 0 && level <= 1))) {
+    throw new Error('Malformed voice message');
+  }
+  return { durationMs: voice.durationMs, waveform: voice.waveform, mimeType: voice.mimeType! };
+}
+
+export const decryptAudio = (key: CryptoKey, chatId: string, iv: string, body: string) => unseal(key, { iv, data: body }, `voice|${chatId}`);
+
 // ------------------------------------------------------------ PIN
 
 export async function pinSecret(pin: string, salt: Bytes): Promise<Bytes> {

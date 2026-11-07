@@ -10,7 +10,10 @@ import { DiaryGlass } from './DiaryGlass';
 import { DiaryIcon } from './DiaryIcons';
 import type { DiaryVoice } from './useDiaryVoice';
 
-export function DiaryRecordButton({ voice, size, disabled }: { voice: DiaryVoice; size: number; disabled: boolean }) {
+/** What the button reads from a voice hook; the Intensive chat drives it with its own. */
+export type RecordButtonVoice = Pick<DiaryVoice, 'recorder' | 'capturing' | 'locked' | 'lockProgress' | 'lock' | 'saving' | 'review' | 'begin' | 'move' | 'end' | 'cancelGesture' | 'activate'>;
+
+export function DiaryRecordButton({ voice, size, disabled }: { voice: RecordButtonVoice; size: number; disabled: boolean }) {
   const colors = useThemeColors(), { settings } = useProduct();
   const recording = voice.recorder.phase === 'recording';
   return <View testID="diary-record-button" style={{ width: size, height: size, flexShrink: 0, zIndex: 5 }}>

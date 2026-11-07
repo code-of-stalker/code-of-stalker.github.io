@@ -10,7 +10,7 @@ import { ProductButton, ProductText } from '../../product/ui';
 import type { TotpEnrollment } from '../backend';
 import type { DemoPersona } from '../demoBackend';
 import { Avatar, GlassField, Hero, ListGroup, ListItem, Plate } from './chrome';
-import { Note } from './parts';
+import { Note, useFormal } from './parts';
 
 export function Welcome({ personas, onCreate, onRestore, onPersona, busy }: {
   personas: DemoPersona[] | null; onCreate: () => void; onRestore: () => void; onPersona: (persona: DemoPersona) => void; busy: boolean;
@@ -94,9 +94,11 @@ export function NameStep({ busy, error, onSubmit }: { busy: boolean; error: stri
 /** `notice` replaces the line about the PIN where this sign-in stays on the page only. */
 export function RestoreStep({ busy, error, onSubmit, notice }: { busy: boolean; error: string; onSubmit: (text: string) => void; notice?: string }) {
   const styles = useThemeStyles(createStyles);
+  const formal = useFormal();
   const [text, setText] = useState('');
   return <View style={styles.stack}>
-    <Hero glyph="key" title="ВХОД ПО 12 СЛОВАМ" lines={[notice ?? 'Введи 12 слов через пробел или строку из 32 знаков. Слова останутся только на этом устройстве, под PIN.']} tight />
+    <Hero glyph="key" title="ВХОД ПО 12 СЛОВАМ" lines={[notice ?? (formal ? 'Введите 12 слов через пробел или строку из 32 знаков. Слова останутся только на этом устройстве, под PIN.'
+      : 'Введи 12 слов через пробел или строку из 32 знаков. Слова останутся только на этом устройстве, под PIN.')]} tight />
     <GlassField label="12 СЛОВ ИЛИ СТРОКА" value={text} multiline autoFocus autoCapitalize="none" autoComplete="off" onChangeText={setText} />
     {error ? <Note tone="error">{error}</Note> : null}
     <ProductButton label={busy ? 'ИЩУ АККАУНТ…' : 'ВОЙТИ'} onPress={() => onSubmit(text)} disabled={busy || !text.trim()} />
@@ -125,14 +127,17 @@ export function TotpEnroll({ enrollment, required, busy, error, onVerify, onSkip
 }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
+  const formal = useFormal();
   return <View style={styles.stack}>
     <Hero glyph="shield" title="КОДЫ ИЗ ПРИЛОЖЕНИЯ" tight lines={[required
-      ? 'У тебя есть права проводника или админа, поэтому вход защищён вторым ключом: кодом с телефона.'
+      ? formal ? 'У вас есть права главного админа, поэтому вход защищён вторым ключом: кодом с телефона.'
+        : 'У тебя есть права проводника или админа, поэтому вход защищён вторым ключом: кодом с телефона.'
       : 'Второй ключ: при входе, кроме PIN, нужен будет код с телефона.']} />
     <ListGroup>
-      <ListItem avatar={<StepNumber value={1} />} title="Поставь приложение" detail="Google Authenticator, Aegis или 2FAS" />
-      <ListItem avatar={<StepNumber value={2} />} title="Добавь ключ" detail="Наведи камеру на квадрат или введи ключ вручную" />
-      <ListItem avatar={<StepNumber value={3} />} title="Введи 6 цифр" detail="Их покажет приложение" last />
+      <ListItem avatar={<StepNumber value={1} />} title={formal ? 'Поставьте приложение' : 'Поставь приложение'} detail="Google Authenticator, Aegis или 2FAS" />
+      <ListItem avatar={<StepNumber value={2} />} title={formal ? 'Добавьте ключ' : 'Добавь ключ'}
+        detail={formal ? 'Наведите камеру на квадрат или введите ключ вручную' : 'Наведи камеру на квадрат или введи ключ вручную'} />
+      <ListItem avatar={<StepNumber value={3} />} title={formal ? 'Введите 6 цифр' : 'Введи 6 цифр'} detail="Их покажет приложение" last />
     </ListGroup>
     {enrollment ? <>
       <View style={styles.qrWrap}>
@@ -150,8 +155,10 @@ export function TotpEnroll({ enrollment, required, busy, error, onVerify, onSkip
 
 export function TotpVerify({ busy, error, onVerify }: { busy: boolean; error: string; onVerify: (code: string) => void }) {
   const styles = useThemeStyles(createStyles);
+  const formal = useFormal();
   return <View style={styles.stack}>
-    <Hero glyph="shield" title="КОД ИЗ ПРИЛОЖЕНИЯ" lines={['Открой приложение с кодами и введи 6 цифр для «Code Of Stalker».']} tight />
+    <Hero glyph="shield" title="КОД ИЗ ПРИЛОЖЕНИЯ" lines={[formal ? 'Откройте приложение с кодами и введите 6 цифр для «Code Of Stalker».'
+      : 'Открой приложение с кодами и введи 6 цифр для «Code Of Stalker».']} tight />
     <CodeField busy={busy} error={error} label="ВОЙТИ" onSubmit={onVerify} />
   </View>;
 }

@@ -39,7 +39,7 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
     let alive = true;
     session.directory().then(
       list => { if (alive) { setDirectory(list); setError(''); } },
-      problem => { if (alive) setError(problemText(problem, 'Не удалось загрузить список людей.')); });
+      problem => { if (alive) setError(problemText(problem, 'Не удалось загрузить список людей.', true)); });
     return () => { alive = false; };
   }, [session, version]);
 
@@ -65,7 +65,7 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
     {directory.length >= SEARCH_FROM ? <GlassField value={query} onChangeText={setQuery} placeholder="Имя или код" accessibilityLabel="Поиск по имени или коду"
       autoCapitalize="none" returnKeyType="search" right={<Glyph name="search" size={18} color={colors.muted} />} /> : null}
     <ListGroup caption={needle ? 'ПОИСК ПО ВСЕМ' : undefined}
-      footer={!needle && group === 'waiting' && list.length ? 'Новые аккаунты. Открой человека и назначь ему проводника.' : undefined}>
+      footer={!needle && group === 'waiting' && list.length ? 'Новые аккаунты. Откройте человека и назначьте ему проводника.' : undefined}>
       {list.length ? list.map((entry, index) => <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={44} accent={isStaff(entry)} />}
         title={entry.name} detail={describe(entry, byId)} onPress={() => setSelected(entry.userId)} last={index === list.length - 1} />)
         : <ListItem glyph="people" title={needle ? 'Никого не нашлось' : 'Здесь пока никого'} last />}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -16,16 +16,22 @@ export const placeLabels: Record<Place, string> = {
   walker: 'ИДУЩИЙ', guide: 'ПРОВОДНИК', admin: 'АДМИН ПРОВОДНИКА', main: 'ГЛАВНЫЙ АДМИН',
 };
 
+const FormalContext = createContext(false);
+/** The admin page speaks to the main admin with «Вы»; the rest of the Intensive keeps «ты». */
+export const FormalTone = FormalContext.Provider;
+export const useFormal = () => useContext(FormalContext);
+
 /** A plain Russian sentence for any failure; details stay in the console. */
-export function problemText(problem: unknown, fallback = 'Что-то пошло не так. Попробуй ещё раз.') {
+export function problemText(problem: unknown, fallback?: string, formal = false) {
+  const offline = formal ? 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' : 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
   if (problem instanceof BackendError) {
-    if (problem.code === 'network') return 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
-    if (problem.code === 'rate-limit') return 'Слишком много попыток. Подожди несколько минут.';
-    if (problem.code === 'denied') return 'Нет доступа. Возможно, права изменились: войди заново.';
+    if (problem.code === 'network') return offline;
+    if (problem.code === 'rate-limit') return formal ? 'Слишком много попыток. Подождите несколько минут.' : 'Слишком много попыток. Подожди несколько минут.';
+    if (problem.code === 'denied') return formal ? 'Нет доступа. Возможно, права изменились: войдите заново.' : 'Нет доступа. Возможно, права изменились: войди заново.';
   }
-  if (problem instanceof Error && /Failed to fetch|NetworkError|Load failed/i.test(problem.message)) return 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
+  if (problem instanceof Error && /Failed to fetch|NetworkError|Load failed/i.test(problem.message)) return offline;
   console.warn('[intensive]', problem);
-  return fallback;
+  return fallback ?? (formal ? 'Что-то пошло не так. Попробуйте ещё раз.' : 'Что-то пошло не так. Попробуй ещё раз.');
 }
 
 export function formatTime(iso: string) {

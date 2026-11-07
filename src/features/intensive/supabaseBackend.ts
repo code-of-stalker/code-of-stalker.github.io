@@ -15,11 +15,13 @@ function fail(error: { message?: string; code?: string; status?: number } | null
   throw new BackendError('unknown', message);
 }
 
+const optional = (value: unknown) => value == null ? null : String(value);
 const message = (row: Raw): MessageRow => ({
   id: Number(row.id), chatId: String(row.chat_id), senderId: String(row.sender_id), senderRole: row.sender_role as Place,
-  keyVersion: Number(row.key_version), iv: String(row.iv), body: String(row.body), createdAt: String(row.created_at),
+  kind: row.kind === 'voice' ? 'voice' : 'text',
+  keyVersion: Number(row.key_version), iv: optional(row.iv), body: optional(row.body), createdAt: String(row.created_at),
+  editedAt: optional(row.edited_at), deletedAt: optional(row.deleted_at),
 });
-const optional = (value: unknown) => value == null ? null : String(value);
 
 function connect(config: Config, store: AuthStore): Backend {
   const client: SupabaseClient = createClient(config.url, config.publishableKey, {
@@ -120,7 +122,7 @@ function connect(config: Config, store: AuthStore): Backend {
         guideId: optional(row.guide_id), guideName: optional(row.guide_name),
         adminId: optional(row.admin_id), adminName: optional(row.admin_name),
         myRole: row.my_role as Place, lastMessageId: row.last_message_id == null ? null : Number(row.last_message_id),
-        lastMessageAt: optional(row.last_message_at),
+        lastMessageAt: optional(row.last_message_at), lastEditedAt: optional(row.last_edited_at),
       }));
     },
     async members(chatId) {
@@ -148,9 +150,15 @@ function connect(config: Config, store: AuthStore): Backend {
       if (error) fail(error);
     },
     async messages(chatId, afterId) {
-      let query = client.from('messages').select('*').eq('chat_id', chatId).order('id', { ascending: true }).limit(1000);
+      let query = client.from('messages').select('*').eq('chat_id', chatId).is('deleted_at', null).order('id', { ascending: true }).limit(1000);
       if (afterId !== undefined) query = query.gt('id', afterId);
       const { data, error } = await query;
+      if (error) fail(error);
+      return data.map(message);
+    },
+    async changes(chatId, since) {
+      const { data, error } = await client.from('messages').select('*').eq('chat_id', chatId)
+        .or(`edited_at.gt."${since}",deleted_at.gt."${since}"`).order('id', { ascending: true }).limit(1000);
       if (error) fail(error);
       return data.map(message);
     },
@@ -159,9 +167,26 @@ function connect(config: Config, store: AuthStore): Backend {
       if (error) fail(error);
       return message(data);
     },
+    async sendVoice(chatId, keyVersion, iv, body, audioIv, audioBody) {
+      return message(await rpc<Raw>('send_voice', { chat: chatId, version: keyVersion, sealed_iv: iv, sealed_body: body, audio_iv: audioIv, audio_body: audioBody }));
+    },
+    async media(messageId) {
+      const { data, error } = await client.from('message_media').select('iv, body').eq('message_id', messageId).maybeSingle();
+      if (error) fail(error);
+      return data ? { iv: String(data.iv), body: String(data.body) } : null;
+    },
+    async edit(messageId, keyVersion, iv, body) {
+      return message(await rpc<Raw>('edit_message', { message: messageId, version: keyVersion, sealed_iv: iv, sealed_body: body }));
+    },
+    async remove(messageId) {
+      return message(await rpc<Raw>('delete_message', { message: messageId }));
+    },
     watch(chatId, onRow, onDown) {
       const channel = client.channel(`intensive-chat-${chatId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+          payload => onRow(message(payload.new as Raw)))
+        // Edits and deletes arrive as updates; nothing is ever deleted outright.
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
           payload => onRow(message(payload.new as Raw)))
         .subscribe(state => { if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED') onDown(); });
       return () => { void client.removeChannel(channel); };

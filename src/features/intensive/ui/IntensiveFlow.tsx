@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 
-import { useProductSpacing } from '../../product/layout';
+import { useProductLayout, useProductSpacing } from '../../product/layout';
 import { MatrixBackdrop } from '../../product/motion/MatrixBackdrop';
 import { useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
@@ -21,7 +21,7 @@ import { AdminPanel } from './AdminPanel';
 import { ChatList, ChatView } from './ChatView';
 import { ConfirmSheet, GlassIconButton, Plate } from './chrome';
 import { ConfirmWords, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
-import { Header, Note, PinPad, problemText, Tabs } from './parts';
+import { FormalTone, Header, Note, PinPad, problemText, Tabs } from './parts';
 
 /** Locks the account when the page stays hidden this long. */
 const LOCK_AFTER_MS = 5 * 60_000;
@@ -48,7 +48,7 @@ const isWeakPin = (pin: string) => /^(\d)\1{5}$/.test(pin) || '0123456789'.inclu
 export type FlowMode = 'app' | 'console';
 
 function initialStep(factory: BackendFactory | null, mode: FlowMode): Step {
-  if (Platform.OS !== 'web') return { kind: 'unavailable', title: 'ОТКРОЙ НА САЙТЕ', lines: ['Интенсив пока работает только на сайте code-of-stalker.github.io.'] };
+  if (Platform.OS !== 'web') return { kind: 'unavailable', title: mode === 'console' ? 'ОТКРОЙТЕ НА САЙТЕ' : 'ОТКРОЙ НА САЙТЕ', lines: ['Интенсив пока работает только на сайте code-of-stalker.github.io.'] };
   if (!factory) return { kind: 'unavailable', title: 'ИНТЕНСИВ ГОТОВИТСЯ', lines: ['Этот уровень пока готовится. Сейчас доступен базовый путь наблюдения.'] };
   if (!globalThis.crypto?.subtle) return { kind: 'unavailable', title: 'НУЖЕН ДРУГОЙ БРАУЗЕР', lines: ['Для шифрования нужен современный браузер и защищённое соединение (https).'] };
   if (hasDevice()) return { kind: 'unlock' };
@@ -57,7 +57,10 @@ function initialStep(factory: BackendFactory | null, mode: FlowMode): Step {
 
 export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mode?: FlowMode }) {
   const adminPage = mode === 'console';
+  // The admin page addresses the main admin with «Вы»: `say(informal, formal)`.
+  const say = (informal: string, formal: string) => adminPage ? formal : informal;
   const styles = useThemeStyles(createStyles);
+  const wide = useProductLayout().columns === 2;
   const { settings } = useProduct();
   const focused = useIsFocused();
   const [factory] = useState(intensiveFactory);
@@ -75,9 +78,9 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   const run = useCallback(async (work: () => Promise<void>, fallback?: string) => {
     setBusy(true); setError('');
     try { await work(); }
-    catch (problem) { setError(problemText(problem, fallback)); }
+    catch (problem) { setError(problemText(problem, fallback, adminPage)); }
     finally { setBusy(false); }
-  }, []);
+  }, [adminPage]);
 
   useEffect(() => {
     if (!factory?.demo) return;
@@ -105,8 +108,9 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     go({ kind: 'totp-enroll', required, enrollment: null, back });
     s.enrollTotp()
       .then(enrollment => setStep(current => current.kind === 'totp-enroll' ? { ...current, enrollment } : current))
-      .catch(problem => setError(problemText(problem, 'Не удалось подготовить ключ. Попробуй ещё раз.')));
-  }, [go]);
+      .catch(problem => setError(adminPage ? problemText(problem, 'Не удалось подготовить ключ. Попробуйте ещё раз.', true)
+        : problemText(problem, 'Не удалось подготовить ключ. Попробуй ещё раз.')));
+  }, [adminPage, go]);
 
   /** A closed door: the session leaves memory and only the reason stays on screen. */
   const deny = useCallback((title: string, lines: string[]) => {
@@ -117,8 +121,8 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   const enter = useCallback((s: IntensiveSession) => {
     sessionRef.current = s; setSession(s);
     const status = s.status!;
-    if (status.blocked) return deny('ДОСТУП ЗАКРЫТ', ['Главный админ закрыл этому аккаунту доступ к Интенсиву. Переписка сохранена.', `Код аккаунта: ${shortCode(s.id)}. Назови его главному админу, если это ошибка.`]);
-    if (adminPage && !status.mainAdmin) return deny('ТОЛЬКО ДЛЯ ГЛАВНОГО АДМИНА', ['Эта страница управляет Интенсивом: людьми, проводниками и доступом. Твой аккаунт её не открывает.']);
+    if (status.blocked) return deny('ДОСТУП ЗАКРЫТ', ['Главный админ закрыл этому аккаунту доступ к Интенсиву. Переписка сохранена.', `Код аккаунта: ${shortCode(s.id)}. ${adminPage ? 'Назовите' : 'Назови'} его главному админу, если это ошибка.`]);
+    if (adminPage && !status.mainAdmin) return deny('ТОЛЬКО ДЛЯ ГЛАВНОГО АДМИНА', ['Эта страница управляет Интенсивом: людьми, проводниками и доступом. Ваш аккаунт её не открывает.']);
     if (!status.hasProfile) return go({ kind: 'name' });
     if (!s.sealed && !skipSeal.current) return go({ kind: 'pin' });
     if (status.needsTotp && !status.hasTotp) return enroll(s, true, 'home');
@@ -135,7 +139,8 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     try { await session!.verifyTotp(code, factorId); }
     catch (problem) {
       if (!(problem instanceof BackendError && problem.code === 'invalid')) throw problem;
-      setError('Код не подошёл. Проверь, что время на телефоне ставится автоматически, и введи свежий код.');
+      setError(say('Код не подошёл. Проверь, что время на телефоне ставится автоматически, и введи свежий код.',
+        'Код не подошёл. Проверьте, что время на телефоне ставится автоматически, и введите свежий код.'));
       return;
     }
     after();
@@ -179,13 +184,13 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     case 'restore':
       subtitle = adminPage ? 'АДМИНКА · ВХОД' : 'ВХОД ПО СЛОВАМ';
       if (!adminPage) back = () => go({ kind: 'welcome' });
-      body = <RestoreStep notice={step.notice ?? (adminPage ? 'На этом устройстве нет сохранённого аккаунта. Войди по 12 словам главного админа: вход действует, пока открыта эта страница. Чтобы входить по PIN, задай его в Интенсиве.' : undefined)}
+      body = <RestoreStep notice={step.notice ?? (adminPage ? 'На этом устройстве нет сохранённого аккаунта. Войдите по 12 словам главного админа: вход действует, пока открыта эта страница. Чтобы входить по PIN, задайте его в Интенсиве.' : undefined)}
         busy={busy} error={error} onSubmit={text => {
         const entropy = parseSecret(text);
-        if (!entropy) { setError('Не похоже на 12 слов или строку из 32 знаков. Проверь написание.'); return; }
+        if (!entropy) { setError(say('Не похоже на 12 слов или строку из 32 знаков. Проверь написание.', 'Не похоже на 12 слов или строку из 32 знаков. Проверьте написание.')); return; }
         void run(async () => {
           const s = await IntensiveSession.restore(factory!, entropy);
-          if (!s) { setError('Аккаунт с этими словами не найден. Проверь слова или создай новый аккаунт.'); return; }
+          if (!s) { setError(say('Аккаунт с этими словами не найден. Проверь слова или создай новый аккаунт.', 'Аккаунт с этими словами не найден. Проверьте слова.')); return; }
           enter(s);
         });
       }} />;
@@ -217,16 +222,16 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     }
     case 'unlock':
       body = <View style={styles.stack}>
-        <PinPad title="ВВЕДИ PIN" detail={adminPage ? 'PIN этого устройства из Интенсива. Потом нужен код из приложения-аутентификатора.' : undefined}
+        <PinPad title={say('ВВЕДИ PIN', 'ВВЕДИТЕ PIN')} detail={adminPage ? 'PIN этого устройства из Интенсива. Потом нужен код из приложения-аутентификатора.' : undefined}
           busy={busy} error={error} onComplete={pin => { void run(async () => {
           // The admin page signs in on its own, so the app tab keeps its session.
           const result = await IntensiveSession.unlock(factory!, pin, { fresh: adminPage });
           if (result.status === 'ok') { enter(result.session); return; }
           if (result.status === 'wrong') { setError(`Неверный PIN. Осталось попыток: ${result.left}.`); return; }
-          leave('После 5 неверных PIN аккаунт убран с этого устройства. Войди снова по 12 словам.');
-        }, 'Не удалось открыть. Проверь интернет: попытка не засчитана.'); }} />
-        <ProductButton label="ЗАБЫЛ PIN" kind="ghost" onPress={() => go({ kind: 'unlock', forgot: true })} disabled={busy} />
-        <ConfirmSheet open={!!step.forgot} title="ЗАБЫЛ PIN?" confirmLabel="ВОЙТИ ПО СЛОВАМ"
+          leave(say('После 5 неверных PIN аккаунт убран с этого устройства. Войди снова по 12 словам.', 'После 5 неверных PIN аккаунт убран с этого устройства. Войдите снова по 12 словам.'));
+        }, say('Не удалось открыть. Проверь интернет: попытка не засчитана.', 'Не удалось открыть. Проверьте интернет: попытка не засчитана.')); }} />
+        <ProductButton label={say('ЗАБЫЛ PIN', 'ЗАБЫЛИ PIN?')} kind="ghost" onPress={() => go({ kind: 'unlock', forgot: true })} disabled={busy} />
+        <ConfirmSheet open={!!step.forgot} title={say('ЗАБЫЛ PIN?', 'ЗАБЫЛИ PIN?')} confirmLabel="ВОЙТИ ПО СЛОВАМ"
           text="Без PIN аккаунт открывается только по 12 словам. Убрать его с этого устройства и войти по словам?"
           onConfirm={() => { wipeDevice(); go({ kind: 'restore' }); }} onClose={() => go({ kind: 'unlock' })} />
       </View>;
@@ -287,11 +292,15 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   const backdrop = <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: .32 }]}>
     <MatrixBackdrop active={focused} reducedMotion={settings.reducedMotion} />
   </View>;
-  return <ProductScreen scroll={!bare} headerStyle={{ paddingTop: 16 }} background={backdrop} layout={adminPage && step.kind === 'home' ? 'wide' : 'column'}
-    contentStyle={bare ? styles.bare : styles.content}
-    header={bare ? undefined : <Header subtitle={subtitle} onBack={back} action={action} />}>
-    <View style={bare ? styles.fillBody : styles.body}>{body}</View>
-  </ProductScreen>;
+  // On a wide screen the admin console is a workspace: its list and card scroll on their own.
+  const workspace = adminPage && step.kind === 'home' && wide;
+  return <FormalTone value={adminPage}>
+    <ProductScreen scroll={!bare && !workspace} headerStyle={{ paddingTop: 16 }} background={backdrop} layout={adminPage && step.kind === 'home' ? 'wide' : 'column'}
+      contentStyle={bare ? styles.bare : workspace ? styles.workspace : styles.content}
+      header={bare ? undefined : <Header subtitle={subtitle} onBack={back} action={action} />}>
+      <View style={bare || workspace ? styles.fillBody : styles.body}>{body}</View>
+    </ProductScreen>
+  </FormalTone>;
 }
 
 function WalkerHome({ session, account, onExit, onRecheck }: { session: IntensiveSession; account: ReactNode; onExit: () => void; onRecheck: () => void }) {
@@ -344,6 +353,7 @@ function StaffChats({ session, onOpen }: { session: IntensiveSession; onOpen: (c
 
 const createStyles = () => StyleSheet.create({
   content: { paddingTop: 24, paddingBottom: 32 },
+  workspace: { paddingTop: 20, paddingBottom: 24 },
   bare: { padding: 0, paddingTop: 0, paddingBottom: 0 },
   waiting: { gap: 24 },
   body: { gap: 16 },

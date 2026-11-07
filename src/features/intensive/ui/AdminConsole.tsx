@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-native';
 
 import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
+import { DiaryGlass } from '../../product/diary/DiaryGlass';
 import { useProductLayout } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
+import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
@@ -15,24 +17,37 @@ import { ProductButton, ProductText } from '../../product/ui';
 import type { DirectoryEntry } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
+import type { GlyphName } from './chrome';
 import { Avatar, GlassField, Glyph, ListGroup, ListItem, useContour } from './chrome';
 import { formatTime, Note, problemText, Tabs } from './parts';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
 type Tab = 'walkers' | 'team';
-type Filter = 'all' | 'waiting' | 'unguided' | 'blocked';
+type FilterId = 'all' | 'waiting' | 'unguided' | 'blocked' | 'guides' | 'admins';
+type Filter = { id: FilterId; label: string; test: (entry: DirectoryEntry) => boolean; alert?: boolean };
 type Move = { phase: 'pick' } | { phase: 'moving'; done: number; total: number } | { phase: 'done'; text: string; failed: boolean };
+type Tone = 'text' | 'muted' | 'accent' | 'error';
+/** React Native Web reports hover to Pressable styles; the native types only know `pressed`. */
+type Pointer = PressableStateCallbackType & { hovered?: boolean };
 
 const REFRESH_MS = 30_000;
-// The prompt plate's contour from the diary, with an opaque fill so the table reads over the backdrop.
+const QUEUE_SIZE = 5;
+// The prompt plate's contour from the diary, with an opaque fill so the panes read over the backdrop.
 const TABLE_CONTOUR = 'M275.947 .125L287.875 12.0527V63.875H12.0527L.125 51.9473V.125Z';
 
-const filters: { id: Filter; label: string; test: (entry: DirectoryEntry) => boolean }[] = [
-  { id: 'all', label: 'ВСЕ', test: () => true },
-  { id: 'waiting', label: 'ЖДУТ ОТВЕТА', test: entry => !!entry.waitingSince && !entry.blocked },
-  { id: 'unguided', label: 'БЕЗ ПРОВОДНИКА', test: entry => !entry.guideId && !entry.blocked },
-  { id: 'blocked', label: 'ДОСТУП ЗАКРЫТ', test: entry => entry.blocked },
-];
+const filterSets: Record<Tab, Filter[]> = {
+  walkers: [
+    { id: 'all', label: 'ВСЕ', test: () => true },
+    { id: 'waiting', label: 'ЖДУТ ОТВЕТА', test: entry => !!entry.waitingSince && !entry.blocked, alert: true },
+    { id: 'unguided', label: 'БЕЗ ПРОВОДНИКА', test: entry => !entry.guideId && !entry.blocked, alert: true },
+    { id: 'blocked', label: 'ДОСТУП ЗАКРЫТ', test: entry => entry.blocked },
+  ],
+  team: [
+    { id: 'all', label: 'ВСЯ КОМАНДА', test: () => true },
+    { id: 'guides', label: 'ПРОВОДНИКИ', test: entry => entry.roles.includes('guide') },
+    { id: 'admins', label: 'АДМИНЫ', test: entry => entry.mainAdmin || entry.roles.includes('admin') },
+  ],
+};
 
 /** Who needs Yana first: the longest wait, then new people without a guide, then recent chats. */
 function walkerOrder(a: DirectoryEntry, b: DirectoryEntry) {
@@ -43,6 +58,14 @@ function walkerOrder(a: DirectoryEntry, b: DirectoryEntry) {
   if (rank(a) === 1) return a.createdAt.localeCompare(b.createdAt);
   if (rank(a) === 2) return (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '');
   return a.name.localeCompare(b.name, 'ru');
+}
+
+/** One state per walker, the one Yana acts on: a closed account cannot be answered, so its wait does not count. */
+function walkerState(entry: DirectoryEntry, now: number): { label: string; tone: Tone; glyph?: GlyphName; notable: boolean } {
+  if (entry.blocked) return { label: 'ДОСТУП ЗАКРЫТ', tone: 'error', glyph: 'lock', notable: true };
+  if (entry.waitingSince) return { label: `ЖДЁТ ${waitedFor(entry.waitingSince, now)}`, tone: 'accent', glyph: 'clock', notable: true };
+  if (!entry.guideId) return { label: 'НУЖЕН ПРОВОДНИК', tone: 'accent', glyph: 'person', notable: true };
+  return { label: entry.lastMessageAt ? 'НА СВЯЗИ' : 'НЕТ СООБЩЕНИЙ', tone: 'muted', notable: false };
 }
 
 function useTableFrame() {
@@ -56,7 +79,7 @@ function useTableFrame() {
   }, [colors]);
 }
 
-/** A framed block: the diary contour fitted to its content, corners kept whole. */
+/** A framed pane: the diary contour fitted to its content, corners kept whole. */
 function Framed({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const frame = useTableFrame();
   return <View style={[{ position: 'relative' }, style]}>
@@ -71,25 +94,59 @@ function Framed({ children, style }: { children: ReactNode; style?: StyleProp<Vi
  */
 function CheckBox({ checked, label, onPress, mixed = false }: { checked: boolean; label: string; onPress: () => void; mixed?: boolean }) {
   const colors = useThemeColors();
-  const source = useContour(44, 42, checked || mixed ? 'pressed' : 'plain');
+  const source = useContour(44, 42, checked || mixed ? 'pressed' : 'accent');
   return <Pressable accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: mixed ? 'mixed' : checked }} onPress={onPress} hitSlop={10}
-    style={({ pressed }) => [{ width: 22, height: 21, alignItems: 'center', justifyContent: 'center' }, pressed && { opacity: .7 }]}>
+    style={({ pressed }) => [{ width: 24, height: 23, alignItems: 'center', justifyContent: 'center' }, pressed && { opacity: .7 }]}>
     <Image pointerEvents="none" source={source} style={StyleSheet.absoluteFill} contentFit="contain" />
     {checked ? <Glyph name="check" size={14} /> : mixed ? <View style={{ width: 8, height: 1, backgroundColor: colors.accent }} /> : null}
   </Pressable>;
 }
 
-function Cell({ children, flex, tone = 'text', align = 'left', lines = 1 }: { children: ReactNode; flex: number; tone?: 'text' | 'muted' | 'accent' | 'error'; align?: 'left' | 'right'; lines?: number }) {
+/** A filter as the diary's filter choices: glass under a hairline, the accent line when chosen. */
+function Chip({ label, count, on, alert = false, onPress }: { label: string; count: number; on: boolean; alert?: boolean; onPress: () => void }) {
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  return <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${label}: ${count}`} onPress={onPress}
+    style={(state: Pointer) => [styles.chip, (on || state.hovered) && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
+    <DiaryGlass /><PanelBorder color={on ? colors.accent : colors.border} />
+    <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={on ? colors.text : colors.muted} style={styles.chipText}>{label}</ProductText>
+    <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={alert && count ? colors.accent : on ? colors.text : colors.faint} style={styles.chipText}>{String(count)}</ProductText>
+  </Pressable>;
+}
+
+function Cell({ children, flex, tone = 'text', align = 'left', title = false, detail }: {
+  children: ReactNode; flex: number; tone?: Tone; align?: 'left' | 'right'; title?: boolean; detail?: string;
+}) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const color = tone === 'accent' ? colors.accent : tone === 'error' ? colors.error : tone === 'muted' ? colors.muted : colors.text;
   return <View style={[styles.cell, { flex }]}>
-    <ProductText numberOfLines={lines} maxFontSize={13} style={[styles.cellText, { color, textAlign: align }]}>{children}</ProductText>
+    <ProductText variant={title ? 'title' : 'body'} numberOfLines={1} maxFontSize={title ? 15 : 12}
+      style={[title ? styles.cellTitle : styles.cellText, { color, textAlign: align }]}>{children}</ProductText>
+    {detail ? <ProductText numberOfLines={1} maxFontSize={11} style={[styles.cellDetail, { textAlign: align }]}>{detail}</ProductText> : null}
   </View>;
 }
 
-function HeadCell({ children, flex, align = 'left' }: { children: ReactNode; flex: number; align?: 'left' | 'right' }) {
+function StateCell({ label, tone, glyph, flex }: { label: string; tone: Tone; glyph?: GlyphName; flex?: number }) {
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  const color = tone === 'accent' ? colors.accent : tone === 'error' ? colors.error : tone === 'muted' ? colors.faint : colors.text;
+  return <View style={[styles.state, flex !== undefined ? { flex } : styles.stateFit]}>
+    {glyph ? <Glyph name={glyph} size={14} color={color} /> : null}
+    <ProductText numberOfLines={1} maxFontSize={12} style={[styles.stateText, { color }]}>{label}</ProductText>
+  </View>;
+}
+
+function HeadCell({ children, flex, align = 'left' }: { children?: ReactNode; flex: number; align?: 'left' | 'right' }) {
   const styles = useThemeStyles(createStyles);
-  return <View style={[styles.cell, { flex }]}><ProductText numberOfLines={1} maxFontSize={10} style={[styles.headText, { textAlign: align }]}>{children}</ProductText></View>;
+  return <View style={[styles.cell, { flex }]}><ProductText numberOfLines={1} maxFontSize={11} style={[styles.headText, { textAlign: align }]}>{children}</ProductText></View>;
+}
+
+/** A table row: a hover tint on the web, the chosen one marked with the accent line on its left. */
+function Row({ on, hovered, last, children, style }: { on: boolean; hovered: boolean; last: boolean; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  return <View style={[styles.row, !last && styles.rowLine, style]}>
+    {on || hovered ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.subtle, opacity: on ? 1 : .55 }]} /> : null}
+    {on ? <View pointerEvents="none" style={styles.rowMark} /> : null}
+    {children}
+  </View>;
 }
 
 export function AdminConsole({ session, onOpenChat }: { session: IntensiveSession; onOpenChat: (chatId: string) => void }) {
@@ -97,25 +154,25 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   const styles = useThemeStyles(createStyles);
   const { settings } = useProduct();
   const wide = useProductLayout().columns === 2;
-  // Below 1200 px the side card narrows and the admin column leaves the table (the card shows it).
   const roomy = useWindowDimensions().width >= 1200;
   const [directory, setDirectory] = useState<DirectoryEntry[] | null>(null);
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('walkers');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<FilterId>('all');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [move, setMove] = useState<Move | null>(null);
 
-  const [version, setVersion] = useState(0);
+  const [version, setVersion] = useState(0), [loadedVersion, setLoadedVersion] = useState(-1);
   const load = () => setVersion(current => current + 1);
   useEffect(() => {
     let alive = true;
     session.directory().then(
-      list => { if (alive) { setDirectory(list); setLoadedAt(Date.now()); setError(''); } },
-      problem => { if (alive) setError(problemText(problem, 'Не удалось загрузить список людей.')); });
+      list => { if (alive) { setDirectory(list); setLoadedAt(Date.now()); setError(''); setLoadedVersion(version); } },
+      problem => { if (alive) { setError(problemText(problem, 'Не удалось загрузить список людей.', true)); setLoadedVersion(version); } });
     return () => { alive = false; };
   }, [session, version]);
   // Waiting times and new messages stay current while the page is open.
@@ -128,21 +185,24 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Note center>Загружаю людей…</Note>}</View>;
 
   const walkers = directory.filter(entry => !isStaff(entry)).sort(walkerOrder);
-  const team = directory.filter(isStaff);
+  const team = directory.filter(isStaff).sort((a, b) => Number(b.mainAdmin) - Number(a.mainAdmin) || a.name.localeCompare(b.name, 'ru'));
   const guides = team.filter(entry => entry.roles.includes('guide') && !entry.blocked);
   const guideLoad = (guideId: string) => {
     const own = walkers.filter(entry => entry.guideId === guideId && !entry.blocked);
     return { walkers: own.length, waiting: own.filter(entry => entry.waitingSince).length };
   };
-  const counts = Object.fromEntries(filters.map(item => [item.id, walkers.filter(item.test).length])) as Record<Filter, number>;
+  const base = tab === 'walkers' ? walkers : team;
+  const filters = filterSets[tab];
+  const counts = Object.fromEntries(filters.map(item => [item.id, base.filter(item.test).length])) as Record<FilterId, number>;
   const needle = plain(query.trim());
   const matches = (entry: DirectoryEntry) => !needle || plain(entry.name).includes(needle) || plain(shortCode(entry.userId)).includes(needle);
-  const activeFilter = filters.find(item => item.id === filter)!;
-  const rows = tab === 'walkers' ? walkers.filter(entry => activeFilter.test(entry) && matches(entry)) : team.filter(matches);
+  const activeFilter = filters.find(item => item.id === filter) ?? filters[0];
+  const rows = base.filter(entry => activeFilter.test(entry) && matches(entry));
   const person = selected ? byId.get(selected) : undefined;
   const pickedRows = [...picked].map(id => byId.get(id)).filter((entry): entry is DirectoryEntry => !!entry);
   const allPicked = tab === 'walkers' && rows.length > 0 && rows.every(entry => picked.has(entry.userId));
   const somePicked = tab === 'walkers' && rows.some(entry => picked.has(entry.userId));
+  const refreshing = loadedVersion < version;
 
   const togglePick = (userId: string) => setPicked(current => {
     const next = new Set(current);
@@ -150,11 +210,14 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     return next;
   });
   const pickAll = () => setPicked(allPicked ? new Set() : new Set(rows.map(entry => entry.userId)));
-  const changeView = (nextTab: Tab, nextFilter: Filter = 'all') => {
-    if (nextTab !== tab) setSelected(null);
+  const changeView = (nextTab: Tab, nextFilter: FilterId = 'all') => {
     setTab(nextTab); setFilter(nextFilter); setPicked(new Set());
   };
   const open = (userId: string) => setSelected(current => wide && current === userId ? null : userId);
+  const hover = (userId: string) => ({
+    onHoverIn: () => setHovered(userId),
+    onHoverOut: () => setHovered(current => current === userId ? null : current),
+  });
 
   async function moveTo(guide: DirectoryEntry) {
     const targets = pickedRows.filter(entry => entry.guideId !== guide.userId);
@@ -162,13 +225,13 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     setMove({ phase: 'moving', done: 0, total: targets.length });
     for (const [index, walker] of targets.entries()) {
       try { await session.assignGuide(walker.userId, guide.userId); }
-      catch (problem) { failed.push(walker); problemText(problem); }
+      catch (problem) { failed.push(walker); problemText(problem, undefined, true); }
       setMove({ phase: 'moving', done: index + 1, total: targets.length });
     }
     // Whoever did not move stays picked, so one more press retries just them.
     setPicked(new Set(failed.map(entry => entry.userId)));
     setMove(failed.length
-      ? { phase: 'done', failed: true, text: `Не получилось перевести: ${failed.map(entry => entry.name).join(', ')}. Проверь интернет и попробуй ещё раз.` }
+      ? { phase: 'done', failed: true, text: `Не получилось перевести: ${failed.map(entry => entry.name).join(', ')}. Проверьте интернет и попробуйте ещё раз.` }
       : { phase: 'done', failed: false, text: `Готово. Проводник ${guide.name} ведёт выбранных идущих (${pickedRows.length}) и видит их переписку.` });
     load();
   }
@@ -177,111 +240,112 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     onBack={wide ? undefined : () => setSelected(null)} /> : null;
   if (card && !wide) return card;
 
-  const waitingLongest = walkers.find(entry => entry.waitingSince && !entry.blocked);
-  const summary = <View style={styles.stack}>
-    <ListGroup caption="СВОДКА">
-      <ListItem glyph="clock" title="Ждут ответа" onPress={() => changeView('walkers', 'waiting')}
-        detail={waitingLongest ? `ДОЛЬШЕ ВСЕХ: ${waitingLongest.name}, ${waitedFor(waitingLongest.waitingSince!, loadedAt)}` : 'ВСЕМ ОТВЕТИЛИ'}
-        right={<ProductText variant="title" style={styles.count} color={counts.waiting ? colors.accent : colors.muted}>{counts.waiting}</ProductText>} />
-      <ListItem glyph="person" title="Без проводника" onPress={() => changeView('walkers', 'unguided')} detail="НОВЫЕ АККАУНТЫ И ТЕ, У КОГО СНЯЛИ ПРОВОДНИКА"
-        right={<ProductText variant="title" style={styles.count} color={counts.unguided ? colors.accent : colors.muted}>{counts.unguided}</ProductText>} />
-      <ListItem glyph="people" title="Команда" onPress={() => changeView('team')}
-        detail={`ПРОВОДНИКОВ ${team.filter(entry => entry.roles.includes('guide')).length} · АДМИНОВ ${team.filter(entry => entry.roles.includes('admin')).length}`}
-        right={<ProductText variant="title" style={styles.count} color={colors.muted}>{team.length}</ProductText>} />
-      <ListItem glyph="lock" title="Доступ закрыт" onPress={() => changeView('walkers', 'blocked')} detail="ПЕРЕПИСКА СОХРАНЕНА, ПИСАТЬ НЕЛЬЗЯ" last
-        right={<ProductText variant="title" style={styles.count} color={colors.muted}>{directory.filter(entry => entry.blocked).length}</ProductText>} />
-    </ListGroup>
-    <Note>Выбери человека в таблице: назначь проводника, дай права или закрой доступ. Отметь несколько идущих, чтобы перевести их к другому проводнику разом.</Note>
-  </View>;
+  // ------------------------------------------------------------- rows
 
   const walkerRow = (entry: DirectoryEntry, index: number) => {
     const guide = entry.guideId ? byId.get(entry.guideId) : undefined;
     const admin = guide?.adminId ? byId.get(guide.adminId) : undefined;
-    const on = selected === entry.userId;
-    const last = index === rows.length - 1;
-    return <View key={entry.userId} style={[styles.row, !last && styles.rowLine, on && { backgroundColor: colors.subtle }]}>
+    const state = walkerState(entry, loadedAt);
+    const time = entry.lastMessageAt ? formatTime(entry.lastMessageAt) : '';
+    return <Row key={entry.userId} on={selected === entry.userId} hovered={hovered === entry.userId} last={index === rows.length - 1}>
       <View style={styles.checkCell}><CheckBox checked={picked.has(entry.userId)} label={`Выбрать: ${entry.name}`} onPress={() => togglePick(entry.userId)} /></View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)}
+      <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)} {...hover(entry.userId)}
         style={({ pressed }) => [styles.rowBody, pressed && { opacity: .7 }]}>
-        <View style={[styles.nameCell, { flex: wide ? 2.2 : 1 }]}>
-          <Avatar name={entry.name} size={wide ? 32 : 40} />
+        <View style={[styles.nameCell, { flex: wide ? 1.8 : 1 }]}>
+          <Avatar name={entry.name} size={wide ? 36 : 40} />
           <View style={styles.nameCopy}>
-            <ProductText variant="title" numberOfLines={1} style={styles.name}>{entry.name}</ProductText>
-            <ProductText numberOfLines={1} maxFontSize={11} style={[styles.code, entry.blocked && { color: colors.error }]}>
-              {entry.blocked ? wide ? 'ДОСТУП ЗАКРЫТ' : `ДОСТУП ЗАКРЫТ · ${shortCode(entry.userId)}` : wide ? `КОД ${shortCode(entry.userId)}`
-                : [guide ? `ПРОВОДНИК: ${guide.name}` : 'БЕЗ ПРОВОДНИКА', entry.lastMessageAt ? formatTime(entry.lastMessageAt) : null].filter(Boolean).join(' · ')}
-            </ProductText>
+            <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
+            {wide ? <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{`КОД ${shortCode(entry.userId)}`}</ProductText>
+              : state.notable ? <StateCell label={state.label} tone={state.tone} glyph={state.glyph} />
+                : <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{guide ? `ПРОВОДНИК: ${guide.name}` : `КОД ${shortCode(entry.userId)}`}</ProductText>}
           </View>
         </View>
         {wide ? <>
-          <Cell flex={1.3} tone={guide ? 'text' : 'accent'}>{guide?.name ?? 'НЕ НАЗНАЧЕН'}</Cell>
-          {roomy ? <Cell flex={1.3} tone="muted">{admin?.name ?? '—'}</Cell> : null}
-          {/* A closed account cannot be answered, so its wait is not Yana's to count. */}
-          <Cell flex={1.2} tone={entry.waitingSince && !entry.blocked ? 'accent' : 'muted'}>{entry.waitingSince && !entry.blocked ? waitedFor(entry.waitingSince, loadedAt) : '—'}</Cell>
-          <Cell flex={1.1} tone="muted" align="right">{entry.lastMessageAt ? formatTime(entry.lastMessageAt) : '—'}</Cell>
-        </> : entry.waitingSince && !entry.blocked
-          ? <ProductText maxFontSize={11} style={styles.badge}>{waitedFor(entry.waitingSince, loadedAt)}</ProductText> : null}
+          <Cell flex={1.4} title tone={guide ? 'text' : 'accent'} detail={guide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}>{guide?.name ?? 'Не назначен'}</Cell>
+          <StateCell flex={2} label={state.label} tone={state.tone} glyph={state.glyph} />
+          <Cell flex={.8} tone="muted" align="right">{time || '—'}</Cell>
+        </> : time && !entry.waitingSince ? <ProductText maxFontSize={11} style={styles.time}>{time}</ProductText> : null}
         <Glyph name="right" size={16} color={colors.faint} />
       </Pressable>
-    </View>;
+    </Row>;
   };
 
   const teamRow = (entry: DirectoryEntry, index: number) => {
     const isGuide = entry.roles.includes('guide');
     const admin = entry.adminId ? byId.get(entry.adminId) : undefined;
     const own = isGuide ? guideLoad(entry.userId) : null;
-    const on = selected === entry.userId;
-    const last = index === rows.length - 1;
     const places = placesOf(entry).join(' · ');
-    return <Pressable key={entry.userId} accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)}
-      style={({ pressed }) => [styles.row, styles.teamRow, !last && styles.rowLine, on && { backgroundColor: colors.subtle }, pressed && { opacity: .7 }]}>
-      <View style={[styles.nameCell, { flex: wide ? 2.2 : 1 }]}>
-        <Avatar name={entry.name} size={wide ? 32 : 40} accent />
-        <View style={styles.nameCopy}>
-          <ProductText variant="title" numberOfLines={1} style={styles.name}>{entry.name}</ProductText>
-          <ProductText numberOfLines={1} maxFontSize={11} style={[styles.code, entry.blocked && { color: colors.error }]}>
-            {entry.blocked ? `ДОСТУП ЗАКРЫТ · ${places}` : wide ? `КОД ${shortCode(entry.userId)}`
-              : [places, own ? `ИДУЩИХ ${own.walkers}` : null, own?.waiting ? `ЖДУТ ${own.waiting}` : null].filter(Boolean).join(' · ')}
-          </ProductText>
+    return <Row key={entry.userId} on={selected === entry.userId} hovered={hovered === entry.userId} last={index === rows.length - 1}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)} {...hover(entry.userId)}
+        style={({ pressed }) => [styles.rowBody, styles.teamBody, pressed && { opacity: .7 }]}>
+        <View style={[styles.nameCell, { flex: wide ? 1.8 : 1 }]}>
+          <Avatar name={entry.name} size={wide ? 36 : 40} accent />
+          <View style={styles.nameCopy}>
+            <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
+            {entry.blocked ? <StateCell label="ДОСТУП ЗАКРЫТ" tone="error" glyph="lock" />
+              : <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{wide ? `КОД ${shortCode(entry.userId)}` : places}</ProductText>}
+          </View>
         </View>
-      </View>
-      {wide ? <>
-        <Cell flex={2} tone="muted" lines={2}>{places}</Cell>
-        <Cell flex={1.3} tone="muted">{isGuide ? admin?.name ?? '—' : ''}</Cell>
-        <Cell flex={.8} align="right">{own ? own.walkers : ''}</Cell>
-        <Cell flex={.8} tone={own?.waiting ? 'accent' : 'muted'} align="right">{own ? own.waiting : ''}</Cell>
-      </> : null}
-      <Glyph name="right" size={16} color={colors.faint} />
-    </Pressable>;
+        {wide ? <>
+          <Cell flex={2} tone="muted" detail={isGuide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}>{places}</Cell>
+          <Cell flex={.8} title tone={own ? 'text' : 'muted'} align="right">{own ? own.walkers : '—'}</Cell>
+          <Cell flex={.9} title tone={own?.waiting ? 'accent' : 'muted'} align="right">{own ? own.waiting : '—'}</Cell>
+        </> : own?.waiting ? <StateCell label={`ЖДУТ ${own.waiting}`} tone="accent" glyph="clock" /> : null}
+        <Glyph name="right" size={16} color={colors.faint} />
+      </Pressable>
+    </Row>;
   };
 
-  const head = wide ? <View style={[styles.row, styles.head, tab === 'team' && styles.teamRow]}>
-    {tab === 'walkers' ? <View style={styles.checkCell}><CheckBox checked={allPicked} mixed={!allPicked && somePicked} label="Выбрать всех в таблице" onPress={pickAll} /></View> : null}
-    <View style={styles.rowBody}>
-      <HeadCell flex={2.2}>{tab === 'walkers' ? 'ИДУЩИЙ' : 'ЧЕЛОВЕК'}</HeadCell>
+  const head = wide ? <View style={[styles.row, styles.head]}>
+    {tab === 'walkers' ? <View style={styles.checkCell}><CheckBox checked={allPicked} mixed={!allPicked && somePicked} label="Выбрать всех в списке" onPress={pickAll} /></View> : null}
+    <View style={[styles.headBody, tab === 'team' && styles.teamBody]}>
+      <HeadCell flex={1.8}>{tab === 'walkers' ? 'ИДУЩИЙ' : 'ЧЕЛОВЕК'}</HeadCell>
       {tab === 'walkers' ? <>
-        <HeadCell flex={1.3}>ПРОВОДНИК</HeadCell>
-        {roomy ? <HeadCell flex={1.3}>АДМИН</HeadCell> : null}
-        <HeadCell flex={1.2}>ЖДЁТ ОТВЕТА</HeadCell>
-        <HeadCell flex={1.1} align="right">ПОСЛЕДНЕЕ</HeadCell>
+        <HeadCell flex={1.4}>ПРОВОДНИК</HeadCell>
+        <HeadCell flex={2}>СОСТОЯНИЕ</HeadCell>
+        <HeadCell flex={.8} align="right">ПОСЛЕДНЕЕ</HeadCell>
       </> : <>
         <HeadCell flex={2}>ПРАВА</HeadCell>
-        <HeadCell flex={1.3}>АДМИН</HeadCell>
         <HeadCell flex={.8} align="right">ИДУЩИХ</HeadCell>
-        <HeadCell flex={.8} align="right">ЖДУТ</HeadCell>
+        <HeadCell flex={.9} align="right">ЖДУТ ОТВЕТА</HeadCell>
       </>}
       <View style={{ width: 16 }} />
     </View>
-  </View> : tab === 'walkers' && rows.length ? <View style={[styles.row, styles.head]}>
-    <View style={styles.checkCell}><CheckBox checked={allPicked} mixed={!allPicked && somePicked} label="Выбрать всех в таблице" onPress={pickAll} /></View>
+  </View> : tab === 'walkers' && rows.length ? <View style={[styles.row, styles.head, styles.rowLine]}>
+    <View style={styles.checkCell}><CheckBox checked={allPicked} mixed={!allPicked && somePicked} label="Выбрать всех в списке" onPress={pickAll} /></View>
     <HeadCell flex={1}>{allPicked ? 'ВЫБРАНЫ ВСЕ' : 'ВЫБРАТЬ ВСЕХ'}</HeadCell>
   </View> : null;
 
-  const table = <Framed style={styles.table}>
-    {head}
-    {rows.length ? rows.map(tab === 'walkers' ? walkerRow : teamRow)
-      : <View style={styles.empty}><Note center>{needle ? 'Никого не нашлось.' : tab === 'team' ? 'В команде пока никого.' : filter === 'waiting' ? 'Все получили ответ.' : 'Здесь пока никого.'}</Note></View>}
-  </Framed>;
+  const emptyText = needle ? 'Никого не нашлось.' : tab === 'team' ? 'В команде пока никого.' : filter === 'waiting' ? 'Все получили ответ.' : 'Здесь пока никого.';
+  const tableRows = rows.length ? rows.map(tab === 'walkers' ? walkerRow : teamRow) : <View style={styles.empty}><Note center>{emptyText}</Note></View>;
+
+  // ------------------------------------------------------------- controls
+
+  const chips = <View accessibilityRole="tablist" style={styles.chips}>
+    {filters.map(item => <Chip key={item.id} label={item.label} count={counts[item.id]} on={item.id === activeFilter.id} alert={item.alert}
+      onPress={() => { setFilter(item.id); setPicked(new Set()); }} />)}
+  </View>;
+  const bulk = <View style={[styles.bulk, !wide && styles.bulkNarrow]}>
+    <DiaryGlass /><PanelBorder color={colors.accent} />
+    <ProductText variant="label" maxFontSize={13} style={styles.bulkText}>{`ВЫБРАНО ${pickedRows.length}`}</ProductText>
+    <View style={styles.bulkActions}>
+      <ProductButton label="ПЕРЕВЕСТИ К ПРОВОДНИКУ" onPress={() => setMove({ phase: 'pick' })} style={styles.bulkButton} />
+      <ProductButton label="СНЯТЬ ВЫБОР" kind="ghost" onPress={() => setPicked(new Set())} />
+    </View>
+  </View>;
+  const refresh = <Pressable accessibilityRole="button" accessibilityLabel="Обновить список" onPress={load} disabled={refreshing} hitSlop={6}
+    style={(state: Pointer) => [styles.refresh, state.hovered && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
+    <Glyph name="refresh" size={16} color={refreshing ? colors.faint : colors.accent} />
+    <ProductText numberOfLines={1} maxFontSize={11} style={styles.refreshText}>
+      {refreshing ? 'ОБНОВЛЯЮ…' : `ОБНОВЛЕНО ${formatTime(new Date(loadedAt).toISOString())}`}
+    </ProductText>
+  </Pressable>;
+  const tabs = <Tabs fit value={tab} onChange={value => { changeView(value); setSelected(null); }} options={[
+    { id: 'walkers', label: `ИДУЩИЕ ${walkers.length}` },
+    { id: 'team', label: `КОМАНДА ${team.length}` },
+  ]} />;
+  const search = <GlassField value={query} onChangeText={setQuery} placeholder="Имя или код" accessibilityLabel="Поиск по имени или коду"
+    autoCapitalize="none" returnKeyType="search" right={<Glyph name="search" size={18} color={colors.muted} />} />;
 
   const moveSheet = <BottomSheet open={move !== null} onClose={() => { if (move?.phase !== 'moving') setMove(null); }} reducedMotion={settings.reducedMotion}>
     <DiaryDesignPanel title={move?.phase === 'done' ? move.failed ? 'НЕ ВСЕ ПЕРЕВЕДЕНЫ' : 'ПЕРЕВЕДЕНЫ' : move?.phase === 'moving' ? `ПЕРЕВОЖУ: ${move.total}` : `ПЕРЕВЕСТИ: ${pickedRows.length}`} onClose={() => setMove(null)} closeDisabled={move?.phase === 'moving'}
@@ -295,49 +359,81 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
               return <ListItem key={guide.userId} avatar={<Avatar name={guide.name} size={36} accent />} title={guide.name}
                 detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
                 onPress={() => { void moveTo(guide); }} last={index === guides.length - 1} />;
-            }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дай права проводника кому-нибудь в команде" last />}
+            }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из команды" last />}
           </ListGroup>}
     </DiaryDesignPanel>
   </BottomSheet>;
 
-  return <View style={styles.stack}>
-    <View style={[styles.toolbar, wide && styles.toolbarWide]}>
-      <View style={wide ? styles.tabsWide : undefined}>
-        <Tabs fit value={tab} onChange={value => changeView(value)} options={[
-          { id: 'walkers', label: `ИДУЩИЕ ${walkers.length}` },
-          { id: 'team', label: `КОМАНДА ${team.length}` },
-        ]} />
-      </View>
-      <View style={[styles.search, wide && styles.searchWide]}>
-        <GlassField value={query} onChangeText={setQuery} placeholder="Имя или код" accessibilityLabel="Поиск по имени или коду"
-          autoCapitalize="none" returnKeyType="search" right={<Glyph name="search" size={18} color={colors.muted} />} />
-      </View>
+  // ------------------------------------------------------------- phone and narrow windows
+
+  if (!wide) return <View style={styles.stack}>
+    {tabs}
+    {search}
+    {tab === 'walkers' && pickedRows.length ? bulk : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>{chips}</ScrollView>}
+    <Framed style={styles.table}>{head}{tableRows}</Framed>
+    <View style={styles.footer}>{refresh}</View>
+    {error ? <Note tone="error">{error}</Note> : null}
+    {moveSheet}
+  </View>;
+
+  // ------------------------------------------------------------- wide: list and card side by side
+
+  const queue = walkers.filter(entry => entry.waitingSince && !entry.blocked);
+  const fresh = walkers.filter(entry => !entry.guideId && !entry.blocked);
+  const overview = <View style={styles.stack}>
+    <ListGroup caption={`ЖДУТ ОТВЕТА · ${queue.length}`}>
+      {queue.length ? queue.slice(0, QUEUE_SIZE).map((entry, index) => {
+        const guide = entry.guideId ? byId.get(entry.guideId) : undefined;
+        return <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={36} />} title={entry.name}
+          detail={`${waitedFor(entry.waitingSince!, loadedAt)} · ${guide ? `ПРОВОДНИК ${guide.name}` : 'БЕЗ ПРОВОДНИКА'}`}
+          right={<Glyph name="clock" size={16} />} onPress={() => setSelected(entry.userId)} last={index === Math.min(queue.length, QUEUE_SIZE) - 1 && queue.length <= QUEUE_SIZE} />;
+      }) : <ListItem glyph="check" title="Всем ответили" detail="СООБЩЕНИЙ БЕЗ ОТВЕТА НЕТ" last />}
+      {queue.length > QUEUE_SIZE ? <ListItem glyph="clock" tone="accent" title={`Показать всех: ${queue.length}`} onPress={() => changeView('walkers', 'waiting')} last /> : null}
+    </ListGroup>
+    {fresh.length ? <ListGroup caption={`НОВЫЕ БЕЗ ПРОВОДНИКА · ${fresh.length}`} footer="Откройте человека и назначьте ему проводника.">
+      {fresh.slice(0, QUEUE_SIZE).map((entry, index) => <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={36} />} title={entry.name}
+        detail={`КОД ${shortCode(entry.userId)} · С ${formatTime(entry.createdAt)}`} onPress={() => setSelected(entry.userId)}
+        last={index === Math.min(fresh.length, QUEUE_SIZE) - 1} />)}
+    </ListGroup> : null}
+    <ListGroup caption="ПРОВОДНИКИ">
+      {guides.length ? guides.map((guide, index) => {
+        const own = guideLoad(guide.userId);
+        return <ListItem key={guide.userId} avatar={<Avatar name={guide.name} size={36} accent />} title={guide.name}
+          detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
+          onPress={() => setSelected(guide.userId)} last={index === guides.length - 1} />;
+      }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из людей" last />}
+    </ListGroup>
+    <ProductText maxFontSize={13} style={styles.hint}>Откройте человека в списке, чтобы назначить проводника или изменить права. Отметьте нескольких идущих, чтобы перевести их разом.</ProductText>
+  </View>;
+
+  return <View style={styles.workspace}>
+    <View style={styles.toolbar}>
+      <View style={styles.tabsWide}>{tabs}</View>
+      <View style={styles.searchWide}>{search}</View>
+      {refresh}
     </View>
-    {tab === 'walkers' ? <View style={styles.filters} accessibilityRole="tablist">
-      {filters.map(item => {
-        const on = item.id === filter;
-        return <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => { setFilter(item.id); setPicked(new Set()); }}
-          style={({ pressed }) => [styles.filter, on && { borderBottomColor: colors.accent }, pressed && { opacity: .7 }]}>
-          <ProductText variant="label" numberOfLines={1} maxFontSize={13} color={on ? colors.text : colors.muted} style={styles.filterText}>
-            {`${item.label} ${counts[item.id]}`}
+    {tab === 'walkers' && pickedRows.length ? bulk : chips}
+    <View style={styles.split}>
+      <Framed style={styles.pane}>
+        {head}
+        <ScrollView style={styles.paneScroll} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {tableRows}
+        </ScrollView>
+      </Framed>
+      <Framed style={[styles.pane, styles.side, { width: roomy ? 400 : 340 }]}>
+        <View style={styles.paneHead}>
+          <ProductText variant="label" numberOfLines={1} maxFontSize={12} style={styles.paneCaption}>
+            {person ? isStaff(person) ? 'В КОМАНДЕ' : 'ИДУЩИЙ' : 'ОБЗОР'}
           </ProductText>
-        </Pressable>;
-      })}
-    </View> : null}
-    {pickedRows.length ? <Framed style={[styles.bulk, !wide && styles.bulkNarrow]}>
-      <ProductText variant="label" maxFontSize={13} style={styles.bulkText}>{`ВЫБРАНО ${pickedRows.length}`}</ProductText>
-      <View style={styles.bulkActions}>
-        <ProductButton label="ПЕРЕВЕСТИ К ПРОВОДНИКУ" onPress={() => setMove({ phase: 'pick' })} style={styles.bulkButton} />
-        <ProductButton label="СНЯТЬ ВЫБОР" kind="ghost" onPress={() => setPicked(new Set())} />
-      </View>
-    </Framed> : null}
-    {wide ? <View style={styles.split}>
-      <View style={styles.main}>{table}</View>
-      <View style={[styles.side, { width: roomy ? 380 : 320 }]}>{card ?? summary}</View>
-    </View> : table}
-    <View style={styles.footer}>
-      <View style={styles.footerNote}><Note>{`Обновлено в ${formatTime(new Date(loadedAt).toISOString())}. Список обновляется сам каждые 30 секунд.`}</Note></View>
-      <ProductButton label="ОБНОВИТЬ" kind="ghost" onPress={load} />
+          {person ? <Pressable accessibilityRole="button" accessibilityLabel="Закрыть карточку" onPress={() => setSelected(null)} hitSlop={8}
+            style={(state: Pointer) => [styles.paneClose, state.hovered && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
+            <Glyph name="close" size={18} color={colors.muted} />
+          </Pressable> : null}
+        </View>
+        <ScrollView style={styles.paneScroll} contentContainerStyle={styles.sideContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {card ?? overview}
+        </ScrollView>
+      </Framed>
     </View>
     {error ? <Note tone="error">{error}</Note> : null}
     {moveSheet}
@@ -346,39 +442,56 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
 
 const createStyles = (colors: ProductColors) => StyleSheet.create({
   stack: { gap: 20 },
-  toolbar: { gap: 16 },
-  toolbarWide: { flexDirection: 'row', alignItems: 'flex-end', gap: 24 },
-  tabsWide: { flexShrink: 0, minWidth: 360 },
-  search: {},
-  searchWide: { flex: 1, maxWidth: 420, marginLeft: 'auto' },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, rowGap: 4 },
-  filter: { minHeight: 36, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'transparent' },
-  filterText: { fontSize: 11, lineHeight: 16, letterSpacing: .6 },
-  bulk: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  workspace: { flex: 1, minHeight: 0, gap: 16 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  tabsWide: { flexShrink: 0, minWidth: 320 },
+  searchWide: { flex: 1, maxWidth: 380, marginLeft: 'auto' },
+  // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
+  chipScroll: { paddingRight: 4 },
+  chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  chipText: { fontSize: 10, lineHeight: 14, letterSpacing: .8 },
+  bulk: { minHeight: 48, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 16, paddingRight: 4, backgroundColor: colors.subtle },
+  bulkNarrow: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 10, paddingRight: 16 },
   bulkText: { color: colors.accent, letterSpacing: 1.2 },
   bulkActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
-  bulkNarrow: { flexDirection: 'column', alignItems: 'stretch' },
   bulkButton: { paddingHorizontal: 18 },
-  split: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
-  main: { flex: 1, minWidth: 0 },
-  side: { flexShrink: 0 },
+  refresh: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
+  refreshText: { fontSize: 9, lineHeight: 13, letterSpacing: .8, color: colors.muted },
+  split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: 20 },
+  pane: { flex: 1, minWidth: 0, minHeight: 0, padding: 4 },
+  // `flex: 0` on the web sets a zero basis that beats the width, so the side pane says it plainly.
+  side: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  paneScroll: { flex: 1, minHeight: 0 },
+  listContent: { paddingBottom: 12 },
+  paneHead: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingLeft: 16, paddingRight: 8,
+    borderBottomWidth: .25, borderBottomColor: colors.border },
+  paneCaption: { fontSize: 9, lineHeight: 13, letterSpacing: 1.6, color: colors.muted, flexShrink: 1 },
+  paneClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  sideContent: { padding: 16, paddingBottom: 24 },
   table: { paddingHorizontal: 4, paddingVertical: 4 },
-  head: { minHeight: 40 },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 8 },
-  teamRow: { gap: 10, paddingLeft: 12 },
+  head: { minHeight: 44, borderBottomWidth: .25, borderBottomColor: colors.border },
+  headBody: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 4, paddingRight: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingLeft: 4 },
   rowLine: { borderBottomWidth: .25, borderBottomColor: colors.border },
-  checkCell: { width: 36, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
-  rowBody: { flex: 1, minWidth: 0, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingLeft: 4 },
+  rowMark: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 2, backgroundColor: colors.accent },
+  checkCell: { width: 40, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  rowBody: { flex: 1, minWidth: 0, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingLeft: 4, paddingRight: 8 },
+  teamBody: { paddingLeft: 12 },
   nameCell: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  nameCopy: { flex: 1, minWidth: 0, gap: 2 },
-  name: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
-  code: { fontSize: 8, lineHeight: 12, color: colors.muted, letterSpacing: .6 },
-  cell: { minWidth: 0, paddingHorizontal: 4 },
-  cellText: { fontSize: 10, lineHeight: 15 },
-  headText: { fontSize: 8, lineHeight: 12, letterSpacing: 1.4, color: colors.muted },
-  badge: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .6 },
-  count: { fontSize: 14, lineHeight: 20, minWidth: 24, textAlign: 'right' },
-  empty: { paddingVertical: 28, paddingHorizontal: 16 },
-  footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  footerNote: { flexGrow: 1, flexShrink: 1, flexBasis: 240, minWidth: 0 },
+  nameCopy: { flex: 1, minWidth: 0, gap: 3 },
+  name: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
+  code: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },
+  time: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },
+  cell: { minWidth: 0, gap: 3 },
+  cellTitle: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
+  cellText: { fontSize: 11, lineHeight: 16, letterSpacing: .4 },
+  cellDetail: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },
+  state: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stateFit: { flexShrink: 1 },
+  stateText: { fontSize: 10, lineHeight: 14, letterSpacing: .6, flexShrink: 1 },
+  headText: { fontSize: 9, lineHeight: 13, letterSpacing: 1.4, color: colors.muted },
+  empty: { paddingVertical: 32, paddingHorizontal: 16 },
+  hint: { fontSize: 10, lineHeight: 16, color: colors.muted, paddingHorizontal: 2 },
+  footer: { flexDirection: 'row', justifyContent: 'center' },
 });

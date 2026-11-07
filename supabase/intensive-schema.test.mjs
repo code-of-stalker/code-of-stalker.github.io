@@ -237,6 +237,80 @@ describe('blocking and waiting', () => {
   });
 });
 
+describe('editing, deleting and voice', () => {
+  const sealed = () => [b64(randomBytes(12)), b64(randomBytes(40))];
+  const post = async (who, aal) => (await rows(who, aal, 'insert into public.messages (chat_id, iv, body) values ($1, $2, $3) returning id',
+    [people.chat, ...sealed()]))[0].id;
+  const edit = (who, aal, id) => rows(who, aal, 'select * from public.edit_message($1, 1, $2, $3)', [id, ...sealed()]);
+  const remove = (who, aal, id) => rows(who, aal, 'select * from public.delete_message($1)', [id]);
+  const voice = (who, aal) => rows(who, aal, 'select * from public.send_voice($1, 1, $2, $3, $4, $5)',
+    [people.chat, ...sealed(), b64(randomBytes(12)), b64(randomBytes(3000))]);
+  const entryOf = async id => (await rows(people.yana, 'aal2', 'select * from public.admin_directory()')).find(r => r.user_id === id);
+
+  it('the sender edits their own text, and the edit is marked', async () => {
+    const id = await post(people.walker, 'aal1');
+    const [changed] = await edit(people.walker, 'aal1', id);
+    assert.ok(changed.edited_at instanceof Date);
+    assert.equal(changed.sender_id, people.walker);
+    const [chat] = await rows(people.walker, 'aal1', 'select * from public.my_chats()');
+    assert.equal(Number(chat.last_message_id), Number(id));
+    assert.ok(chat.last_edited_at instanceof Date);
+  });
+  it('nobody changes another person\'s message, not even the main admin', async () => {
+    const id = await post(people.walker, 'aal1');
+    await fails(edit(people.guide, 'aal2', id), /not your message/);
+    await fails(edit(people.yana, 'aal2', id), /not your message/);
+    await fails(remove(people.yana, 'aal2', id), /not your message/);
+    await fails(rows(people.walker, 'aal1', 'update public.messages set body = $2 where id = $1', [id, b64(randomBytes(40))]), /permission denied/);
+    await fails(rows(people.walker, 'aal1', 'delete from public.messages where id = $1', [id]), /permission denied/);
+  });
+  it('a guide edits only with a TOTP session, a blocked sender not at all', async () => {
+    const own = await post(people.guide, 'aal2');
+    await fails(edit(people.guide, 'aal1', own), /not a member/);
+    const id = await post(people.walker, 'aal1');
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, true)', [people.walker]);
+    await fails(edit(people.walker, 'aal1', id), /not a member/);
+    await fails(remove(people.walker, 'aal1', id), /not a member/);
+    await rows(people.yana, 'aal2', 'select public.admin_block($1, false)', [people.walker]);
+  });
+  it('deleting wipes the content and keeps a marked row', async () => {
+    const before = await post(people.walker, 'aal1');
+    const id = await post(people.walker, 'aal1');
+    const [gone] = await remove(people.walker, 'aal1', id);
+    assert.ok(gone.deleted_at instanceof Date);
+    assert.equal(gone.iv, null);
+    assert.equal(gone.body, null);
+    await fails(edit(people.walker, 'aal1', id), /not your message/);
+    await fails(remove(people.walker, 'aal1', id), /not your message/);
+    const [chat] = await rows(people.walker, 'aal1', 'select * from public.my_chats()');
+    assert.equal(Number(chat.last_message_id), Number(before));
+  });
+  it('a deleted answer no longer counts as an answer', async () => {
+    await post(people.walker, 'aal1');
+    const answer = await post(people.guide, 'aal2');
+    assert.equal((await entryOf(people.walker)).waiting_since, null);
+    await remove(people.guide, 'aal2', answer);
+    assert.ok((await entryOf(people.walker)).waiting_since instanceof Date);
+    await post(people.guide, 'aal2');
+  });
+  it('a voice message carries its audio, readable by members only', async () => {
+    const [made] = await voice(people.walker, 'aal1');
+    assert.equal(made.kind, 'voice');
+    assert.equal(made.sender_id, people.walker);
+    assert.equal(made.sender_role, 'walker');
+    assert.equal((await rows(people.guide, 'aal2', 'select * from public.message_media where message_id = $1', [made.id])).length, 1);
+    assert.equal((await rows(people.guide, 'aal1', 'select * from public.message_media')).length, 0);
+    assert.equal((await rows(people.stranger, 'aal1', 'select * from public.message_media')).length, 0);
+    await fails(voice(people.stranger, 'aal1'), /not a member/);
+    await fails(edit(people.walker, 'aal1', made.id), /only text/);
+    await fails(rows(people.walker, 'aal1', "insert into public.messages (chat_id, kind, iv, body) values ($1, 'voice', $2, $3)", [people.chat, ...sealed()]), /permission denied/);
+    await fails(rows(people.walker, 'aal1', 'insert into public.message_media (message_id, chat_id, iv, body) values ($1, $2, $3, $4)',
+      [made.id, people.chat, ...sealed()]), /permission denied/);
+    await remove(people.walker, 'aal1', made.id);
+    assert.equal((await db.query('select count(*)::int as n from public.message_media where message_id = $1', [made.id])).rows[0].n, 0);
+  });
+});
+
 describe('device PIN', () => {
   const verifier = b64(randomBytes(32)), device = randomUUID();
   it('registers a device and returns a pepper once', async () => {

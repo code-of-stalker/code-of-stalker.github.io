@@ -4,7 +4,7 @@
  * the screens can be tried before the real project exists. Never used on the site.
  */
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, DirectoryEntry, KeyRow, Member, MessageRow, Place, StaffRole, UnlockResult } from './backend';
+import type { AuthStore, Backend, BackendFactory, DirectoryEntry, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, UnlockResult } from './backend';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
 import { newPhrase } from './phrase';
@@ -29,6 +29,7 @@ class DemoServer {
   blocked = new Set<string>();
   keys: KeyRow[] = [];
   messages: MessageRow[] = [];
+  media = new Map<number, { chatId: string; iv: string; body: string }>();
   devices = new Map<string, Device>();
   listeners = new Map<string, Set<(row: MessageRow) => void>>();
   personas: DemoPersona[] = [];
@@ -54,7 +55,7 @@ class DemoServer {
 
   /** The walker's first message after the team's last answer. */
   waitingSince(chatId: string): string | null {
-    const rows = this.messages.filter(m => m.chatId === chatId);
+    const rows = this.live(chatId);
     const answered = rows.findLastIndex(m => m.senderRole !== 'walker');
     return rows.slice(answered + 1).find(m => m.senderRole === 'walker')?.createdAt ?? null;
   }
@@ -65,11 +66,21 @@ class DemoServer {
       .map(u => ({ userId: u.id, name: u.name!, place: this.chatRole(chatId, u.id)!, publicKey: u.publicKey! }));
   }
 
-  insertMessage(chatId: string, senderId: string, keyVersion: number, iv: string, body: string): MessageRow {
-    const row: MessageRow = { id: this.nextMessage++, chatId, senderId, senderRole: this.chatRole(chatId, senderId) ?? 'walker', keyVersion, iv, body, createdAt: new Date().toISOString() };
+  live(chatId: string) { return this.messages.filter(m => m.chatId === chatId && !m.deletedAt); }
+
+  insertMessage(chatId: string, senderId: string, keyVersion: number, iv: string, body: string, kind: MessageKind = 'text'): MessageRow {
+    const row: MessageRow = {
+      id: this.nextMessage++, chatId, senderId, senderRole: this.chatRole(chatId, senderId) ?? 'walker', kind,
+      keyVersion, iv, body, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null,
+    };
     this.messages.push(row);
-    for (const listener of this.listeners.get(chatId) ?? []) setTimeout(() => listener(row), 30);
+    this.notify(row);
     return row;
+  }
+
+  notify(row: MessageRow) {
+    const copy = { ...row };
+    for (const listener of this.listeners.get(row.chatId) ?? []) setTimeout(() => listener(copy), 30);
   }
 
   private async addPerson(name: string, label: string, roles: StaffRole[], main: boolean, minutesAgo: number) {
@@ -152,6 +163,14 @@ function connect(store: AuthStore): Backend {
     if (!place || !s.allowed(userId, aal)) throw denied('not a member of this chat');
     return userId;
   };
+  /** The sender, still a member, may change or delete their own message. */
+  const own = (messageId: number) => {
+    const { userId } = me();
+    const row = s.messages.find(m => m.id === messageId);
+    if (!row || row.senderId !== userId || row.deletedAt) throw denied('not your message');
+    member(row.chatId);
+    return row;
+  };
   const mainAdmin = () => {
     const { user, aal } = me();
     if (!user.main) throw denied('main admin only');
@@ -222,13 +241,14 @@ function connect(store: AuthStore): Backend {
       const { userId, aal } = me();
       if (!s.allowed(userId, aal)) return [];
       return [...s.chats.values()].filter(chat => s.chatRole(chat.id, userId)).map(chat => {
-        const last = s.messages.filter(m => m.chatId === chat.id).at(-1);
+        const last = s.live(chat.id).at(-1);
         const adminId = chat.guideId ? s.guideAdmins.get(chat.guideId) ?? null : null;
         return {
           chatId: chat.id, walkerId: chat.walkerId, walkerName: s.users.get(chat.walkerId)?.name ?? '',
           guideId: chat.guideId, guideName: chat.guideId ? s.users.get(chat.guideId)?.name ?? null : null,
           adminId, adminName: adminId ? s.users.get(adminId)?.name ?? null : null,
           myRole: s.chatRole(chat.id, userId)!, lastMessageId: last?.id ?? null, lastMessageAt: last?.createdAt ?? null,
+          lastEditedAt: last?.editedAt ?? null,
         };
       }).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''));
     },
@@ -245,11 +265,47 @@ function connect(store: AuthStore): Backend {
       s.keys.push(...rows.map(row => ({ ...row, createdBy: userId })));
     },
     async dropOwnKey(chatId, version) { const { userId } = me(); s.keys = s.keys.filter(k => !(k.chatId === chatId && k.version === version && k.memberId === userId)); },
-    async messages(chatId, afterId) { await wait(); member(chatId); return s.messages.filter(m => m.chatId === chatId && (afterId === undefined || m.id > afterId)); },
+    async messages(chatId, afterId) { await wait(); member(chatId); return s.live(chatId).filter(m => afterId === undefined || m.id > afterId).map(m => ({ ...m })); },
+    async changes(chatId, since) {
+      await wait(60);
+      member(chatId);
+      const after = Date.parse(since);
+      return s.messages.filter(m => m.chatId === chatId && [m.editedAt, m.deletedAt].some(at => at && Date.parse(at) > after)).map(m => ({ ...m }));
+    },
+    async sendVoice(chatId, keyVersion, iv, body, audioIv, audioBody) {
+      await wait();
+      const userId = member(chatId);
+      const row = s.insertMessage(chatId, userId, keyVersion, iv, body, 'voice');
+      s.media.set(row.id, { chatId, iv: audioIv, body: audioBody });
+      return { ...row };
+    },
+    async media(messageId) {
+      await wait(60);
+      const found = s.media.get(messageId);
+      if (!found) return null;
+      member(found.chatId);
+      return { iv: found.iv, body: found.body };
+    },
+    async edit(messageId, keyVersion, iv, body) {
+      await wait();
+      const row = own(messageId);
+      if (row.kind !== 'text') throw new BackendError('invalid', 'only text can be edited');
+      Object.assign(row, { keyVersion, iv, body, editedAt: new Date().toISOString() });
+      s.notify(row);
+      return { ...row };
+    },
+    async remove(messageId) {
+      await wait();
+      const row = own(messageId);
+      s.media.delete(messageId);
+      Object.assign(row, { iv: null, body: null, deletedAt: new Date().toISOString() });
+      s.notify(row);
+      return { ...row };
+    },
     async send(chatId, keyVersion, iv, body) {
       await wait();
       const userId = member(chatId);
-      const row = s.insertMessage(chatId, userId, keyVersion, iv, body);
+      const row = { ...s.insertMessage(chatId, userId, keyVersion, iv, body) };
       const chat = s.chats.get(chatId)!;
       // A seeded guide answers the walker, so the live update can be seen.
       if (chat.walkerId === userId && chat.guideId && s.privateKeys.has(chat.guideId)) {
@@ -273,7 +329,7 @@ function connect(store: AuthStore): Backend {
           userId: u.id, name: u.name!, createdAt: u.createdAt, roles: [...u.roles].sort(), mainAdmin: u.main,
           chatId: chat?.id ?? null, guideId: chat?.guideId ?? null, adminId: s.guideAdmins.get(u.id) ?? null,
           blocked: s.blocked.has(u.id),
-          lastMessageAt: chat ? s.messages.filter(m => m.chatId === chat.id).at(-1)?.createdAt ?? null : null,
+          lastMessageAt: chat ? s.live(chat.id).at(-1)?.createdAt ?? null : null,
           waitingSince: chat ? s.waitingSince(chat.id) : null,
         };
       }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));

@@ -190,6 +190,87 @@ test('the main admin sees who waits, blocks a walker and opens access again', as
   assert.equal((await open.myChats()).length, 1);
 });
 
+test('a sender edits and deletes own messages; others see the change and nobody else can make it', async () => {
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => p.name === name).entropy);
+  const alex = await as('Алекс');
+  const [chat] = await alex.myChats();
+  await alex.chatCipher(chat.chatId);
+  const sent = await alex.send(chat.chatId, 'Слышал дождь');
+  const before = new Date(Date.parse(sent.createdAt) - 1000).toISOString();
+
+  const edited = await alex.edit(chat.chatId, sent.id, 'Слышал дождь и гром.');
+  assert.equal(edited.text, 'Слышал дождь и гром.');
+  assert.ok(edited.editedAt);
+  assert.equal(edited.createdAt, sent.createdAt);
+
+  const mira = await as('Мира');
+  await mira.verifyTotp('123456');
+  await mira.chatCipher(chat.chatId);
+  const seen = (await mira.messages(chat.chatId)).find(m => m.id === sent.id);
+  assert.equal(seen.text, 'Слышал дождь и гром.');
+  assert.equal(seen.editedAt, edited.editedAt);
+  await assert.rejects(mira.edit(chat.chatId, sent.id, 'Чужая правка'), /not your message/);
+  await assert.rejects(mira.remove(chat.chatId, sent.id), /not your message/);
+
+  const removed = await alex.remove(chat.chatId, sent.id);
+  assert.ok(removed.deletedAt);
+  assert.equal(removed.text, null);
+  assert.equal((await mira.messages(chat.chatId)).some(m => m.id === sent.id), false);
+  const changes = await mira.changes(chat.chatId, before);
+  const tomb = changes.find(m => m.id === sent.id);
+  assert.ok(tomb.deletedAt);
+  assert.equal(tomb.text, null);
+  await assert.rejects(alex.edit(chat.chatId, sent.id, 'Поздно'), /not your message/);
+});
+
+test('a voice message is sealed apart from its description and plays for every member', async () => {
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => p.name === name).entropy);
+  const alex = await as('Алекс');
+  const [chat] = await alex.myChats();
+  await alex.chatCipher(chat.chatId);
+  const audio = c.randomBytes(2048);
+  const original = audio.slice();
+  const voice = await alex.sendVoice(chat.chatId, { audio, durationMs: 4200, waveform: [0, .25, 1.4, -1, .5], mimeType: 'audio/webm;codecs=opus' });
+  assert.equal(voice.kind, 'voice');
+  assert.equal(voice.text, null);
+  assert.equal(voice.voice.durationMs, 4200);
+  assert.deepEqual(voice.voice.waveform, [0, .25, 1, 0, .5]);
+  // The row itself never holds the audio.
+  const row = (await alex.backend.messages(chat.chatId)).find(m => m.id === voice.id);
+  assert.ok(row.body.length < 400);
+
+  const mira = await as('Мира');
+  await mira.verifyTotp('123456');
+  await mira.chatCipher(chat.chatId);
+  const heard = (await mira.messages(chat.chatId)).find(m => m.id === voice.id);
+  assert.equal(heard.voice.mimeType, 'audio/webm;codecs=opus');
+  assert.deepEqual(await mira.voiceAudio(chat.chatId, heard), original);
+  await assert.rejects(mira.edit(chat.chatId, voice.id, 'текст'), /not your message/);
+  await assert.rejects(alex.edit(chat.chatId, voice.id, 'текст'), /only text/);
+
+  await alex.remove(chat.chatId, voice.id);
+  const fresh = await as('Мира');
+  await fresh.verifyTotp('123456');
+  await fresh.chatCipher(chat.chatId);
+  await assert.rejects(fresh.voiceAudio(chat.chatId, heard), /gone/);
+});
+
+test('a voice description that does not match the format is refused', async () => {
+  const key = await c.chatCipher(c.newChatKey());
+  const sealed = await c.encryptVoice(key, 'chat-a', { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' }, c.randomBytes(16));
+  assert.deepEqual(await c.decryptVoice(key, 'chat-a', sealed.iv, sealed.body), { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' });
+  await assert.rejects(c.decryptVoice(key, 'chat-b', sealed.iv, sealed.body));
+  const bad = await c.encryptVoice(key, 'chat-a', { durationMs: 1000, waveform: [.5], mimeType: 'text/html' }, c.randomBytes(16));
+  await assert.rejects(c.decryptVoice(key, 'chat-a', bad.iv, bad.body), /Malformed/);
+  const text = await c.encryptMessage(key, 'chat-a', 'привет');
+  await assert.rejects(c.decryptVoice(key, 'chat-a', text.iv, text.body), /Malformed/);
+  // Audio and description are bound to different contexts.
+  await assert.rejects(c.decryptAudio(key, 'chat-a', sealed.iv, sealed.body));
+  assert.equal((await c.decryptAudio(key, 'chat-a', sealed.mediaIv, sealed.mediaBody)).length, 16);
+});
+
 test('a fresh unlock signs in anew and leaves the device session untouched', async () => {
   storage.clear();
   const { entropy } = phrase.newPhrase();

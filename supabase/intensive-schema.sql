@@ -8,6 +8,8 @@
 -- * Every table has row level security. Direct writes are limited to a person's
 --   own profile, own key rows and own messages; roles and assignments change only
 --   through the admin_* functions, which check the main admin and a TOTP session.
+--   Editing, deleting and voice messages go through edit_message, delete_message
+--   and send_voice, which accept only the sender, still a member of the chat.
 -- * Messages and chat keys are end-to-end encrypted in the browser; the database
 --   holds only ciphertext and public keys.
 -- * Guides, admins, the main admin and anyone who enabled TOTP get no data
@@ -87,11 +89,36 @@ create table if not exists public.messages (
   -- Set by a trigger from the sender's place in the chat at the time of sending.
   sender_role text not null default 'walker' check (sender_role in ('walker', 'guide', 'admin', 'main')),
   key_version int not null default 1 check (key_version between 1 and 1000),
-  iv text not null check (char_length(iv) between 12 and 40),
-  body text not null check (char_length(body) between 20 and 24000),
-  created_at timestamptz not null default now()
+  -- A voice message keeps its sealed audio in message_media; only send_voice() makes one.
+  kind text not null default 'text',
+  iv text check (char_length(iv) between 12 and 40),
+  body text check (char_length(body) between 20 and 24000),
+  created_at timestamptz not null default now(),
+  edited_at timestamptz,
+  -- A deleted message keeps its row without content, so open chats learn of it.
+  deleted_at timestamptz
 );
+-- Upgrades the table of an earlier version of this file.
+alter table public.messages add column if not exists kind text not null default 'text';
+alter table public.messages add column if not exists edited_at timestamptz;
+alter table public.messages add column if not exists deleted_at timestamptz;
+alter table public.messages alter column iv drop not null, alter column body drop not null;
+alter table public.messages drop constraint if exists messages_kind_check,
+  add constraint messages_kind_check check (kind in ('text', 'voice'));
+alter table public.messages drop constraint if exists messages_content_check,
+  add constraint messages_content_check check (
+    (deleted_at is null and iv is not null and body is not null)
+    or (deleted_at is not null and iv is null and body is null));
 create index if not exists messages_chat_id_idx on public.messages (chat_id, id);
+
+-- The sealed audio of a voice message, apart from the row, so chat loads and live
+-- events stay light. About 1 MB of audio at most (3 minutes of voice).
+create table if not exists public.message_media (
+  message_id bigint primary key references public.messages (id) on delete cascade,
+  chat_id uuid not null references public.chats (id) on delete cascade,
+  iv text not null check (char_length(iv) between 12 and 40),
+  body text not null check (char_length(body) between 20 and 1500000)
+);
 
 -- Devices that sealed the phrase under a PIN. Reached only through the
 -- functions below; no policy lets anyone read it.
@@ -120,6 +147,7 @@ alter table public.guide_admins enable row level security;
 alter table public.chats enable row level security;
 alter table public.chat_keys enable row level security;
 alter table public.messages enable row level security;
+alter table public.message_media enable row level security;
 alter table public.devices enable row level security;
 alter table public.blocked_accounts enable row level security;
 
@@ -213,7 +241,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['profiles', 'identity_keys', 'main_admins', 'staff_roles',
-    'guide_admins', 'chats', 'chat_keys', 'messages', 'devices', 'blocked_accounts'] loop
+    'guide_admins', 'chats', 'chat_keys', 'messages', 'message_media', 'devices', 'blocked_accounts'] loop
     execute format('drop policy if exists mfa_required on public.%I', t);
     execute format('create policy mfa_required on public.%I as restrictive for all to authenticated
       using (private.mfa_ok()) with check (private.mfa_ok())', t);
@@ -278,6 +306,10 @@ drop policy if exists messages_send on public.messages;
 create policy messages_send on public.messages for insert to authenticated
   with check (sender_id = auth.uid() and private.chat_role(chat_id, auth.uid()) is not null);
 
+drop policy if exists message_media_read on public.message_media;
+create policy message_media_read on public.message_media for select to authenticated
+  using (private.chat_role(chat_id, auth.uid()) is not null);
+
 -- The sender, role and time come from the server, not from the client.
 create or replace function private.stamp_message()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -285,6 +317,8 @@ begin
   new.sender_id := auth.uid();
   new.sender_role := coalesce(private.chat_role(new.chat_id, auth.uid()), 'walker');
   new.created_at := now();
+  new.edited_at := null;
+  new.deleted_at := null;
   return new;
 end;
 $$;
@@ -307,14 +341,15 @@ create trigger stamp_chat_key before insert on public.chat_keys
 -- ---------------------------------------------------------------- grants
 
 revoke all on public.profiles, public.identity_keys, public.main_admins, public.staff_roles,
-  public.guide_admins, public.chats, public.chat_keys, public.messages, public.devices,
-  public.blocked_accounts
+  public.guide_admins, public.chats, public.chat_keys, public.messages, public.message_media,
+  public.devices, public.blocked_accounts
   from anon, authenticated, public;
 grant select, insert (id, name, public_key), update (name) on public.profiles to authenticated;
 grant select, insert (user_id, iv, wrapped_private_key) on public.identity_keys to authenticated;
 grant select on public.main_admins, public.staff_roles, public.guide_admins, public.chats to authenticated;
 grant select, delete, insert (chat_id, version, member_id, ephemeral_key, iv, wrapped_key) on public.chat_keys to authenticated;
 grant select, insert (chat_id, key_version, iv, body) on public.messages to authenticated;
+grant select on public.message_media to authenticated;
 
 -- ---------------------------------------------------------------- functions (RPC)
 
@@ -386,22 +421,26 @@ returns void language sql volatile security definer set search_path = '' as $$
   delete from public.devices d where d.id = device and d.user_id = auth.uid();
 $$;
 
--- The chats this person belongs to, newest activity first.
-create or replace function public.my_chats()
+-- The chats this person belongs to, newest activity first. Dropped first, as its
+-- columns grew.
+drop function if exists public.my_chats();
+create function public.my_chats()
 returns table (chat_id uuid, walker_id uuid, walker_name text, guide_id uuid, guide_name text,
-  admin_id uuid, admin_name text, my_role text, last_message_id bigint, last_message_at timestamptz)
+  admin_id uuid, admin_name text, my_role text, last_message_id bigint, last_message_at timestamptz,
+  last_edited_at timestamptz)
 language plpgsql stable security definer set search_path = '' as $$
 begin
   if auth.uid() is null or not private.mfa_ok() or private.is_blocked(auth.uid()) then return; end if;
   return query
     select c.id, c.walker_id, w.name, c.guide_id, g.name, ga.admin_id, a.name,
-      private.chat_role(c.id, auth.uid()), m.id, m.created_at
+      private.chat_role(c.id, auth.uid()), m.id, m.created_at, m.edited_at
     from public.chats c
     join public.profiles w on w.id = c.walker_id
     left join public.profiles g on g.id = c.guide_id
     left join public.guide_admins ga on ga.guide_id = c.guide_id
     left join public.profiles a on a.id = ga.admin_id
-    left join lateral (select x.id, x.created_at from public.messages x where x.chat_id = c.id order by x.id desc limit 1) m on true
+    left join lateral (select x.id, x.created_at, x.edited_at from public.messages x
+      where x.chat_id = c.id and x.deleted_at is null order by x.id desc limit 1) m on true
     where private.chat_role(c.id, auth.uid()) is not null
     order by coalesce(m.created_at, c.created_at) desc;
 end;
@@ -441,10 +480,11 @@ begin
       private.is_main_admin(p.id), c.id, c.guide_id,
       (select ga.admin_id from public.guide_admins ga where ga.guide_id = p.id),
       private.is_blocked(p.id),
-      (select max(m.created_at) from public.messages m where m.chat_id = c.id),
+      (select max(m.created_at) from public.messages m where m.chat_id = c.id and m.deleted_at is null),
       (select min(m.created_at) from public.messages m
-        where m.chat_id = c.id and m.sender_role = 'walker'
-          and m.id > coalesce((select max(s.id) from public.messages s where s.chat_id = c.id and s.sender_role <> 'walker'), 0))
+        where m.chat_id = c.id and m.sender_role = 'walker' and m.deleted_at is null
+          and m.id > coalesce((select max(s.id) from public.messages s
+            where s.chat_id = c.id and s.sender_role <> 'walker' and s.deleted_at is null), 0))
     from public.profiles p
     left join public.chats c on c.walker_id = p.id
     order by p.created_at desc;
@@ -529,6 +569,58 @@ begin
 end;
 $$;
 
+-- A voice message: the sealed description as a message row, the sealed audio beside it.
+create or replace function public.send_voice(chat uuid, version int, sealed_iv text, sealed_body text, audio_iv text, audio_body text)
+returns public.messages language plpgsql volatile security definer set search_path = '' as $$
+declare made public.messages;
+begin
+  perform private.require_member(chat);
+  insert into public.messages (chat_id, key_version, kind, iv, body)
+    values (chat, version, 'voice', sealed_iv, sealed_body) returning * into made;
+  insert into public.message_media (message_id, chat_id, iv, body) values (made.id, chat, audio_iv, audio_body);
+  return made;
+end;
+$$;
+
+-- The sender, still a member of the chat, may change or delete their own message.
+create or replace function private.own_message(message bigint)
+returns public.messages language plpgsql volatile security definer set search_path = '' as $$
+declare found_row public.messages;
+begin
+  select * into found_row from public.messages m where m.id = message for update;
+  if not found or found_row.sender_id is distinct from auth.uid() or found_row.deleted_at is not null then
+    raise exception 'not your message' using errcode = '42501';
+  end if;
+  perform private.require_member(found_row.chat_id);
+  return found_row;
+end;
+$$;
+
+create or replace function public.edit_message(message bigint, version int, sealed_iv text, sealed_body text)
+returns public.messages language plpgsql volatile security definer set search_path = '' as $$
+declare changed public.messages;
+begin
+  if (private.own_message(message)).kind <> 'text' then
+    raise exception 'only text can be edited' using errcode = '22023';
+  end if;
+  update public.messages m set key_version = version, iv = sealed_iv, body = sealed_body, edited_at = now()
+    where m.id = message returning * into changed;
+  return changed;
+end;
+$$;
+
+create or replace function public.delete_message(message bigint)
+returns public.messages language plpgsql volatile security definer set search_path = '' as $$
+declare changed public.messages;
+begin
+  perform private.own_message(message);
+  delete from public.message_media mm where mm.message_id = message;
+  update public.messages m set iv = null, body = null, deleted_at = now()
+    where m.id = message returning * into changed;
+  return changed;
+end;
+$$;
+
 -- A daily request keeps the free project awake.
 create or replace function public.ping()
 returns int language sql stable set search_path = '' as $$ select 1; $$;
@@ -537,7 +629,8 @@ revoke all on function public.my_status(), public.register_device(uuid, text),
   public.unlock_device(uuid, text), public.forget_device(uuid), public.my_chats(),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
   public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
-  public.admin_block(uuid, boolean), public.ping()
+  public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
+  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping()
   from public, anon, authenticated;
 revoke all on all functions in schema private from public, anon;
 grant execute on all functions in schema private to authenticated;
@@ -545,7 +638,8 @@ grant execute on function public.my_status(), public.register_device(uuid, text)
   public.unlock_device(uuid, text), public.forget_device(uuid), public.my_chats(),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
   public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
-  public.admin_block(uuid, boolean), public.ping()
+  public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
+  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping()
   to authenticated;
 grant execute on function public.unlock_device(uuid, text), public.ping() to anon;
 

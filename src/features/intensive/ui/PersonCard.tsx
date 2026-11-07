@@ -46,7 +46,7 @@ export function PersonCard({ session, person, directory, onChanged, onOpenChat, 
   const act = async (work: () => Promise<unknown>) => {
     setBusy(true); setError('');
     try { await work(); onChanged(); }
-    catch (problem) { setError(problemText(problem, 'Не получилось. Попробуй ещё раз.')); }
+    catch (problem) { setError(problemText(problem, 'Не получилось. Попробуйте ещё раз.', true)); }
     finally { setBusy(false); setConfirm(null); }
   };
 
@@ -84,7 +84,7 @@ export function PersonCard({ session, person, directory, onChanged, onOpenChat, 
     {guided ? <ListGroup caption="ПРОВОДНИК" footer="Переписка остаётся у идущего: новый проводник увидит всю историю, прежний теряет доступ.">
       {guides.length ? guides.map((guide, index) => pick(guide, person.guideId === guide.userId, index === guides.length - 1 && !person.guideId,
         () => { void act(() => session.assignGuide(person.userId, guide.userId)); }))
-        : <ListItem glyph="people" title={isGuide ? 'Других проводников нет' : 'Проводников пока нет'} detail="Дай права проводника кому-нибудь из людей" last={!person.guideId} />}
+        : <ListItem glyph="people" title={isGuide ? 'Других проводников нет' : 'Проводников пока нет'} detail="Дайте права проводника кому-нибудь из людей" last={!person.guideId} />}
       {person.guideId ? <ListItem glyph="exit" tone="error" title="Снять проводника" chevron={false} last
         onPress={busy ? undefined : () => { void act(() => session.assignGuide(person.userId, null)); }} /> : null}
     </ListGroup> : null}
@@ -99,7 +99,7 @@ export function PersonCard({ session, person, directory, onChanged, onOpenChat, 
     {isGuide ? <ListGroup caption="АДМИН ЭТОГО ПРОВОДНИКА">
       {admins.length ? admins.map((admin, index) => pick(admin, person.adminId === admin.userId, index === admins.length - 1 && !person.adminId,
         () => { void act(() => session.assignAdmin(person.userId, admin.userId, directory)); }))
-        : <ListItem glyph="shield" title="Админов пока нет" detail="Дай права админа проводника кому-нибудь из людей" last={!person.adminId} />}
+        : <ListItem glyph="shield" title="Админов пока нет" detail="Дайте права админа проводника кому-нибудь из людей" last={!person.adminId} />}
       {person.adminId ? <ListItem glyph="exit" tone="error" title="Снять админа" chevron={false} last
         onPress={busy ? undefined : () => { void act(() => session.assignAdmin(person.userId, null, directory)); }} /> : null}
     </ListGroup> : null}

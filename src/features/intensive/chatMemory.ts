@@ -4,7 +4,8 @@
  */
 const SEEN_KEY = 'intensive.seen.v1';
 
-type Preview = { messageId: number; senderId: string; senderRole: string; text: string | null };
+/** `editedAt` tells a stored preview from the text after an edit. */
+type Preview = { messageId: number; editedAt: string | null; senderId: string; senderRole: string; text: string | null };
 
 const drafts = new Map<string, string>();
 const previews = new Map<string, Preview>();
@@ -38,9 +39,10 @@ export function keepDraft(chatId: string, text: string) {
   if (text) drafts.set(chatId, text); else drafts.delete(chatId);
 }
 
-export const previewFor = (chatId: string, messageId: number) => {
+export const previewFor = (chatId: string, messageId: number, editedAt: string | null = null) => {
   const preview = previews.get(chatId);
-  return preview?.messageId === messageId ? preview : undefined;
+  const same = (a: string | null, b: string | null) => a === b || (!!a && !!b && Date.parse(a) === Date.parse(b));
+  return preview?.messageId === messageId && same(preview.editedAt, editedAt) ? preview : undefined;
 };
 export const keepPreview = (chatId: string, preview: Preview) => { previews.set(chatId, preview); };
 

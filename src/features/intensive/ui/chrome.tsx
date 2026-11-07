@@ -36,6 +36,11 @@ export const glyphs = {
   person: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8',
   chat: 'M4 5h16v11H9l-5 4Z',
   erase: 'M9 5h11v14H9l-6-7ZM12.5 9.5l5 5M17.5 9.5l-5 5',
+  copy: 'M9 9h11v11H9ZM15 9V4H4v11h5',
+  edit: 'M4 20h4L19 9l-4-4L4 16ZM13 7l4 4',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5',
+  close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
+  refresh: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4',
 };
 export type GlyphName = keyof typeof glyphs;
 
@@ -50,19 +55,24 @@ const ICON_CONTOUR = 'M33.4473 .125L43.875 10.5527V41.875H10.5527L.125 31.4473V.
 // Own bubbles keep the lower right corner whole, the others the lower left: the corner that points to the writer.
 const OWN_CONTOUR = 'M111.875 .125L119.875 8.125V39.875H8.125L.125 31.875V.125Z';
 const OTHER_CONTOUR = 'M8.125 .125H119.875V31.875L111.875 39.875H.125V8.125Z';
+// The next bubbles of a run keep their top corner whole, so the run reads as one block.
+const OWN_REST_CONTOUR = 'M.125 .125H119.875V39.875H8.125L.125 31.875Z';
+const OTHER_REST_CONTOUR = 'M.125 .125H119.875V31.875L111.875 39.875H.125Z';
 
 /** Authored frames for this section; PanelArtwork moves their anchors to the layout size. */
 export function useIntensiveFrames() {
   const colors = useThemeColors();
   return useMemo(() => {
     const tag = colors.accent.replace('#', '');
+    const own = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="${contour}" fill="${colors.background}" fill-opacity="0.88"/>
+<path d="${contour}" fill="url(#intensive-own-${tag})" fill-opacity="0.24" stroke="${colors.accent}" stroke-width="0.25"/>
+<defs><linearGradient id="intensive-own-${tag}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`);
+    const other = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
     return {
-      own: svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="${OWN_CONTOUR}" fill="${colors.background}" fill-opacity="0.88"/>
-<path d="${OWN_CONTOUR}" fill="url(#intensive-own-${tag})" fill-opacity="0.24" stroke="${colors.accent}" stroke-width="0.25"/>
-<defs><linearGradient id="intensive-own-${tag}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`),
-      other: svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="${OTHER_CONTOUR}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`),
+      own: own(OWN_CONTOUR), ownRest: own(OWN_REST_CONTOUR),
+      other: other(OTHER_CONTOUR), otherRest: other(OTHER_REST_CONTOUR),
       icon: svgSource(`<svg width="44" height="42" viewBox="0 0 44 42" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${ICON_CONTOUR}" stroke="${colors.accent}" stroke-width="0.25"/></svg>`),
       input: diaryArtwork('input', colors, true),

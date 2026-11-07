@@ -20,6 +20,8 @@ export type ChatSummary = {
   guideId: string | null; guideName: string | null;
   adminId: string | null; adminName: string | null;
   myRole: Place; lastMessageId: number | null; lastMessageAt: string | null;
+  /** When the last message was edited, so a stored preview knows it is stale. */
+  lastEditedAt: string | null;
 };
 
 export type Member = { userId: string; name: string; place: Place; publicKey: string };
@@ -29,9 +31,13 @@ export type KeyRow = {
   ephemeralKey: string; iv: string; wrappedKey: string; createdBy?: string;
 };
 
+export type MessageKind = 'text' | 'voice';
+
+/** A deleted message keeps its row without content (`iv` and `body` are null). */
 export type MessageRow = {
-  id: number; chatId: string; senderId: string; senderRole: Place;
-  keyVersion: number; iv: string; body: string; createdAt: string;
+  id: number; chatId: string; senderId: string; senderRole: Place; kind: MessageKind;
+  keyVersion: number; iv: string | null; body: string | null; createdAt: string;
+  editedAt: string | null; deletedAt: string | null;
 };
 
 export type DirectoryEntry = {
@@ -90,9 +96,20 @@ export interface Backend {
   /** Inserts all rows or none. */
   addKeys(rows: KeyRow[]): Promise<void>;
   dropOwnKey(chatId: string, version: number): Promise<void>;
+  /** Messages that are not deleted, oldest first. */
   messages(chatId: string, afterId?: number): Promise<MessageRow[]>;
+  /** Rows edited or deleted after `since` (a server time), deleted ones included. */
+  changes(chatId: string, since: string): Promise<MessageRow[]>;
   send(chatId: string, keyVersion: number, iv: string, body: string): Promise<MessageRow>;
-  /** Calls back on each new message; returns an unsubscribe. `onDown` reports a lost live link. */
+  /** Sender only; the sealed audio is stored beside the row. */
+  sendVoice(chatId: string, keyVersion: number, iv: string, body: string, audioIv: string, audioBody: string): Promise<MessageRow>;
+  /** The sealed audio of a voice message. */
+  media(messageId: number): Promise<{ iv: string; body: string } | null>;
+  /** Sender only, text messages only. */
+  edit(messageId: number, keyVersion: number, iv: string, body: string): Promise<MessageRow>;
+  /** Sender only; the row stays without content. */
+  remove(messageId: number): Promise<MessageRow>;
+  /** Calls back on each new, edited or deleted message; returns an unsubscribe. `onDown` reports a lost live link. */
   watch(chatId: string, onRow: (row: MessageRow) => void, onDown: () => void): () => void;
   directory(): Promise<DirectoryEntry[]>;
   setRole(userId: string, role: StaffRole, enabled: boolean): Promise<void>;

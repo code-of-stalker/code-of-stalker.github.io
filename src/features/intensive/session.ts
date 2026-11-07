@@ -1,5 +1,5 @@
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, KeyRow, Member, MessageRow, Place, StaffRole, Status, TotpEnrollment } from './backend';
+import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, TotpEnrollment } from './backend';
 import { clearChatMemory, forgetSeen } from './chatMemory';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
@@ -33,9 +33,21 @@ class MemoryStore implements AuthStore {
 
 export type DecodedMessage = {
   id: number; senderId: string; senderRole: Place; createdAt: string;
-  /** null when the message cannot be decrypted on this account. */
+  kind: MessageKind; keyVersion: number;
+  editedAt: string | null;
+  /** Set on a deleted message, which has no content and leaves the feed. */
+  deletedAt: string | null;
+  /** A text message's text; null for voice, deleted, or when it cannot be decrypted here. */
   text: string | null;
+  /** A voice message's description; its audio comes from `voiceAudio`. */
+  voice: c.VoiceMeta | null;
 };
+
+/** A recorded voice message ready to be sealed. */
+export type VoiceDraft = { audio: Bytes; durationMs: number; waveform: number[]; mimeType: string };
+
+/** Decrypted audio kept for the open session, so a replay needs no download. */
+const AUDIO_CACHE = 12;
 
 type ChatCipher = { current: number; ciphers: Map<number, CryptoKey>; raw: Bytes };
 
@@ -50,6 +62,7 @@ export class IntensiveSession {
   private identityKey: CryptoKey | null = null;
   private saving: Promise<void> = Promise.resolve();
   private readonly chatCiphers = new Map<string, ChatCipher>();
+  private readonly audio = new Map<number, Bytes>();
   status: Status | null = null;
 
   constructor(factory: BackendFactory, entropy: Bytes, store = new MemoryStore()) {
@@ -170,6 +183,8 @@ export class IntensiveSession {
     this.entropy = new Uint8Array(16);
     this.identityKey = null;
     this.chatCiphers.clear();
+    for (const bytes of this.audio.values()) bytes.fill(0);
+    this.audio.clear();
     this.device = null;
   }
 
@@ -246,22 +261,84 @@ export class IntensiveSession {
   }
 
   async decode(chatId: string, row: MessageRow): Promise<DecodedMessage> {
+    const decoded: DecodedMessage = {
+      id: row.id, senderId: row.senderId, senderRole: row.senderRole, createdAt: row.createdAt,
+      kind: row.kind, keyVersion: row.keyVersion, editedAt: row.editedAt, deletedAt: row.deletedAt, text: null, voice: null,
+    };
+    if (decoded.deletedAt) this.dropAudio(row.id);
     const cipher = this.chatCiphers.get(chatId)?.ciphers.get(row.keyVersion);
-    let text: string | null = null;
-    if (cipher) try { text = await c.decryptMessage(cipher, chatId, row.iv, row.body); } catch { text = null; }
-    return { id: row.id, senderId: row.senderId, senderRole: row.senderRole, createdAt: row.createdAt, text };
+    if (!cipher || decoded.deletedAt || row.iv === null || row.body === null) return decoded;
+    try {
+      if (row.kind === 'voice') decoded.voice = await c.decryptVoice(cipher, chatId, row.iv, row.body);
+      else decoded.text = await c.decryptMessage(cipher, chatId, row.iv, row.body);
+    } catch { /* Stays without content: shown as a message that does not open here. */ }
+    return decoded;
   }
 
+  private decodeAll(chatId: string, rows: MessageRow[]) { return Promise.all(rows.map(row => this.decode(chatId, row))); }
+
   async messages(chatId: string, afterId?: number): Promise<DecodedMessage[]> {
-    const rows = await this.backend.messages(chatId, afterId);
-    return Promise.all(rows.map(row => this.decode(chatId, row)));
+    return this.decodeAll(chatId, await this.backend.messages(chatId, afterId));
+  }
+
+  /** Messages edited or deleted after `since` (a server time). */
+  async changes(chatId: string, since: string): Promise<DecodedMessage[]> {
+    return this.decodeAll(chatId, await this.backend.changes(chatId, since));
+  }
+
+  private async currentCipher(chatId: string) {
+    const cipher = await this.chatCipher(chatId);
+    if (!cipher) throw new BackendError('denied', 'No chat key yet');
+    return { version: cipher.current, key: cipher.ciphers.get(cipher.current)! };
   }
 
   async send(chatId: string, text: string): Promise<DecodedMessage> {
-    const cipher = await this.chatCipher(chatId);
-    if (!cipher) throw new BackendError('denied', 'No chat key yet');
-    const sealed = await c.encryptMessage(cipher.ciphers.get(cipher.current)!, chatId, text);
-    return this.decode(chatId, await this.backend.send(chatId, cipher.current, sealed.iv, sealed.body));
+    const { version, key } = await this.currentCipher(chatId);
+    const sealed = await c.encryptMessage(key, chatId, text);
+    return this.decode(chatId, await this.backend.send(chatId, version, sealed.iv, sealed.body));
+  }
+
+  async edit(chatId: string, messageId: number, text: string): Promise<DecodedMessage> {
+    const { version, key } = await this.currentCipher(chatId);
+    const sealed = await c.encryptMessage(key, chatId, text);
+    return this.decode(chatId, await this.backend.edit(messageId, version, sealed.iv, sealed.body));
+  }
+
+  async remove(chatId: string, messageId: number): Promise<DecodedMessage> {
+    return this.decode(chatId, await this.backend.remove(messageId));
+  }
+
+  async sendVoice(chatId: string, draft: VoiceDraft): Promise<DecodedMessage> {
+    const { version, key } = await this.currentCipher(chatId);
+    const sealed = await c.encryptVoice(key, chatId, draft, draft.audio);
+    const row = await this.backend.sendVoice(chatId, version, sealed.iv, sealed.body, sealed.mediaIv, sealed.mediaBody);
+    this.keepAudio(row.id, draft.audio.slice());
+    return this.decode(chatId, row);
+  }
+
+  /** The decrypted audio of a voice message. */
+  async voiceAudio(chatId: string, message: DecodedMessage): Promise<Bytes> {
+    const cached = this.audio.get(message.id);
+    if (cached) { this.keepAudio(message.id, cached); return cached; }
+    await this.chatCipher(chatId);
+    const key = this.chatCiphers.get(chatId)?.ciphers.get(message.keyVersion);
+    if (!key) throw new BackendError('denied', 'No chat key for this message');
+    const sealed = await this.backend.media(message.id);
+    if (!sealed) throw new BackendError('not-found', 'Voice message is gone');
+    const bytes = await c.decryptAudio(key, chatId, sealed.iv, sealed.body);
+    this.keepAudio(message.id, bytes);
+    return bytes;
+  }
+
+  private keepAudio(messageId: number, bytes: Bytes) {
+    this.audio.delete(messageId);
+    this.audio.set(messageId, bytes);
+    while (this.audio.size > AUDIO_CACHE) this.dropAudio(this.audio.keys().next().value!);
+  }
+
+  private dropAudio(messageId: number) {
+    this.audio.get(messageId)?.fill(0);
+    this.audio.delete(messageId);
   }
 
   // ---------------------------------------------------------- main admin

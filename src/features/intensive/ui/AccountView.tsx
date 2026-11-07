@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
-import { Panel, ProductButton, ProductText } from '../../product/ui';
+import { ProductText } from '../../product/ui';
 import { phraseKey, phraseWords } from '../phrase';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
+import { ConfirmSheet, ListGroup, ListItem, ProfileHead } from './chrome';
 import { PhraseView } from './EntrySteps';
-import { Divider, Heading, Note, placeLabels } from './parts';
+import { Note, placeLabels } from './parts';
 
+/** The account as Telegram settings: a profile head, then grouped rows. */
 export function AccountView({ session, busy, error, onEnableTotp, onChangePin, onForget }: {
   session: IntensiveSession; busy: boolean; error: string;
   onEnableTotp: () => void; onChangePin: () => void; onForget: () => void;
@@ -23,42 +25,32 @@ export function AccountView({ session, busy, error, onEnableTotp, onChangePin, o
     return <PhraseView words={phraseWords(secret)} keyLine={phraseKey(secret)} title="ТВОИ 12 СЛОВ" doneLabel="СКРЫТЬ"
       intro={['Покажи их себе, только если рядом никого нет и экран не записывается.']} onDone={() => setWords(false)} />;
   }
-  const places = [status.mainAdmin ? placeLabels.main : null, ...status.roles.map(role => placeLabels[role])].filter(Boolean);
+  const places = [status.mainAdmin ? placeLabels.main : null, ...status.roles.map(role => placeLabels[role])].filter((place): place is string => !!place);
+  const staff = places.length > 0;
   return <View style={styles.stack}>
-    <Panel style={styles.panel}>
-      <ProductText variant="title" style={styles.name}>{status.name}</ProductText>
-      <ProductText variant="label" style={{ color: colors.muted }}>{`КОД ${shortCode(status.id)}${places.length ? ' · ' + places.join(' · ') : ''}`}</ProductText>
-    </Panel>
-    <Heading>12 СЛОВ</Heading>
-    <Note>По ним аккаунт открывается на любом устройстве. Храни их на бумаге, не в заметках и не в облаке.</Note>
-    <ProductButton label="ПОКАЗАТЬ 12 СЛОВ" kind="outline" onPress={() => setWords(true)} disabled={busy} />
-    <Divider />
-    <Heading>КОДЫ ИЗ ПРИЛОЖЕНИЯ</Heading>
-    {status.hasTotp
-      ? <Note>{'Включены. При входе на новом устройстве нужен будет код.'}</Note>
-      : <>
-        <Note>Необязательный второй ключ: даже со словами в аккаунт не войти без кода с твоего телефона.</Note>
-        <ProductButton label="ВКЛЮЧИТЬ" kind="outline" onPress={onEnableTotp} disabled={busy} />
-      </>}
-    <Divider />
-    <Heading>ЭТО УСТРОЙСТВО</Heading>
-    <Note>Здесь слова хранятся под PIN. После 5 неверных PIN аккаунт удаляется с устройства и возвращается только по 12 словам.</Note>
-    <ProductButton label="СМЕНИТЬ PIN" kind="outline" onPress={onChangePin} disabled={busy || !session.sealed} />
-    {forget ? <View style={styles.stack}>
-      <Note tone="text">Убрать аккаунт с этого устройства? Вернуть его можно будет только по 12 словам.</Note>
-      <View style={styles.row}>
-        <ProductButton label="УБРАТЬ" onPress={onForget} disabled={busy} style={styles.flex} />
-        <ProductButton label="ОТМЕНА" kind="outline" onPress={() => setForget(false)} disabled={busy} style={styles.flex} />
-      </View>
-    </View> : <ProductButton label="УБРАТЬ С ЭТОГО УСТРОЙСТВА" kind="ghost" onPress={() => setForget(true)} disabled={busy} />}
+    <ProfileHead name={status.name ?? ''} accent={staff} lines={[`КОД ${shortCode(status.id)}`, places.length ? places.join(' · ') : placeLabels.walker]} />
+    <ListGroup caption="КЛЮЧ ОТ АККАУНТА" footer="По 12 словам аккаунт открывается на любом устройстве. Храни их на бумаге, не в заметках и не в облаке.">
+      <ListItem glyph="words" title="Показать 12 слов" onPress={busy ? undefined : () => setWords(true)} last />
+    </ListGroup>
+    <ListGroup caption="ВХОД" footer={status.hasTotp
+      ? 'При входе на новом устройстве нужен будет код с телефона.'
+      : 'Необязательный второй ключ: даже со словами в аккаунт не войти без кода с твоего телефона.'}>
+      <ListItem glyph="shield" title="Коды из приложения" onPress={status.hasTotp || busy ? undefined : onEnableTotp}
+        right={<ProductText maxFontSize={10} style={[styles.value, { color: status.hasTotp ? colors.accent : colors.muted }]}>{status.hasTotp ? 'ВКЛЮЧЕНЫ' : 'ВЫКЛ'}</ProductText>}
+        chevron={!status.hasTotp} last />
+    </ListGroup>
+    <ListGroup caption="ЭТО УСТРОЙСТВО" footer="Здесь слова хранятся под PIN. После 5 неверных PIN аккаунт удаляется с устройства и возвращается только по 12 словам.">
+      <ListItem glyph="lock" title="Сменить PIN" onPress={busy || !session.sealed ? undefined : onChangePin} />
+      <ListItem glyph="exit" title="Убрать с этого устройства" tone="error" chevron={false} onPress={busy ? undefined : () => setForget(true)} last />
+    </ListGroup>
     {error ? <Note tone="error">{error}</Note> : null}
+    <ConfirmSheet open={forget} title="УБРАТЬ АККАУНТ?" confirmLabel="УБРАТЬ" busy={busy}
+      text="Аккаунт исчезнет с этого устройства. Вернуть его можно будет только по 12 словам."
+      onConfirm={() => { setForget(false); onForget(); }} onClose={() => setForget(false)} />
   </View>;
 }
 
 const createStyles = () => StyleSheet.create({
-  stack: { gap: 12 },
-  panel: { gap: 6 },
-  name: { fontSize: 20, lineHeight: 26 },
-  row: { flexDirection: 'row', gap: 8 },
-  flex: { flex: 1 },
+  stack: { gap: 24 },
+  value: { fontSize: 8, lineHeight: 12, letterSpacing: .8 },
 });

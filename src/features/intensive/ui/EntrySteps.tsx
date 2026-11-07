@@ -91,11 +91,12 @@ export function NameStep({ busy, error, onSubmit }: { busy: boolean; error: stri
   </View>;
 }
 
-export function RestoreStep({ busy, error, onSubmit }: { busy: boolean; error: string; onSubmit: (text: string) => void }) {
+/** `notice` replaces the line about the PIN where this sign-in stays on the page only. */
+export function RestoreStep({ busy, error, onSubmit, notice }: { busy: boolean; error: string; onSubmit: (text: string) => void; notice?: string }) {
   const styles = useThemeStyles(createStyles);
   const [text, setText] = useState('');
   return <View style={styles.stack}>
-    <Hero glyph="key" title="ВХОД ПО 12 СЛОВАМ" lines={['Введи 12 слов через пробел или строку из 32 знаков. Слова останутся только на этом устройстве, под PIN.']} tight />
+    <Hero glyph="key" title="ВХОД ПО 12 СЛОВАМ" lines={[notice ?? 'Введи 12 слов через пробел или строку из 32 знаков. Слова останутся только на этом устройстве, под PIN.']} tight />
     <GlassField label="12 СЛОВ ИЛИ СТРОКА" value={text} multiline autoFocus autoCapitalize="none" autoComplete="off" onChangeText={setText} />
     {error ? <Note tone="error">{error}</Note> : null}
     <ProductButton label={busy ? 'ИЩУ АККАУНТ…' : 'ВОЙТИ'} onPress={() => onSubmit(text)} disabled={busy || !text.trim()} />

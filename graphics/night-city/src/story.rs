@@ -16,9 +16,17 @@
 //! 46–51 s  the walls send the voice back to him («Я слышу себя»);
 //! 51–60 s  the crane rises over the street («Я ощущаю движение»);
 //! 60–64 s  the camera dives back into his eyes.
-use crate::body::{build, Body, Walk};
+//!
+//! Two others share the street: someone under an umbrella comes the other
+//! way along the shop windows (they pass him at 7 s and 39 s), and someone
+//! in a short hooded jacket waits at the kerb over a phone, its screen
+//! lighting the face, and looks up as he passes (49.3 s).
+use crate::body::{build, Body, Carry, Coat, Step, Walk, HANDS};
 use crate::math::{mix, monotone, smooth, v3, window, V3, Y};
-use crate::{Chapter, CELL, CROSS, LOOP, PUFFS, STEPS, STEP_MARKS, STEP_WIDTH, STRIDE, WALK_X};
+use crate::{
+    Chapter, CELL, CROSS, LOOP, PUFFS, REPEAT, STEPS, STEP_MARKS, STEP_WIDTH, STRIDE, WALK_X,
+};
+use std::f32::consts::PI;
 
 /// One breath: in for `INHALE` s, out for the rest of `BREATH`.
 pub const BREATH: f32 = 4.0;
@@ -33,6 +41,45 @@ pub const VOICE_LIFE: f32 = 3.2;
 /// The echo: when each shell starts back from the walls, from how far.
 pub const ECHO_AT: [f32; 3] = [46.4, 47.9, 49.4];
 pub const ECHO_FROM: f32 = 7.0;
+
+/// The passers-by, in this order.
+pub const PASSERS: usize = 2;
+pub const UMBRELLA: usize = 0;
+pub const PHONE: usize = 1;
+/// The umbrella walks the line `UMBRELLA_X`, a head shorter than him and
+/// with a quicker step: `UMBRELLA_STEPS` steps cover `REPEAT` in a loop,
+/// so it comes round with the street. Its copies pass him at
+/// `UMBRELLA_MEETS` and half a loop later.
+pub const UMBRELLA_X: f32 = -5.2;
+pub const UMBRELLA_SCALE: f32 = 0.93;
+pub const UMBRELLA_STEPS: i32 = 128;
+pub const UMBRELLA_MEETS: f32 = 7.0;
+/// The one with the phone stands at the kerb, `PHONE_X`, where he passes
+/// it at `PHONE_MEETS`, turned this far from facing him toward the road.
+pub const PHONE_X: f32 = -3.62;
+pub const PHONE_MEETS: f32 = 49.3;
+const PHONE_TURN: f32 = 0.35;
+/// It looks up from the screen as he comes by and follows him a moment
+/// (seconds from `PHONE_MEETS`).
+const PHONE_UP: [(f32, f32); 4] = [(-1.0, 0.0), (-0.3, 1.0), (0.9, 1.0), (1.8, 0.0)];
+const PHONE_FOLLOW: [(f32, f32); 4] = [(-0.6, 0.0), (0.6, 1.0), (1.1, 1.0), (2.0, 0.0)];
+/// How brightly the screen lights the face and the hands.
+pub const SCREEN_LIGHT: f32 = 0.4;
+
+/// The sphere round him (Step 7's three rings), barely there: its centre
+/// over his walk at `SPHERE_Y`, its radius. The first ring runs over its
+/// glass from the top to the ground and back, the second round his body
+/// from the feet to the head and back, both in `RING_PERIOD` and in turn;
+/// the third, a meridian, turns once in `MERIDIAN_PERIOD`. Whatever comes
+/// into it shows its code.
+pub const SPHERE_R: f32 = 1.45;
+pub const SPHERE_Y: f32 = 0.95;
+pub const RING_PERIOD: f32 = 8.0;
+pub const MERIDIAN_PERIOD: f32 = 16.0;
+/// The second ring's height range: the soles to the crown.
+const SECOND_RING: [f32; 2] = [0.04, 1.8];
+/// How plainly the rings show, from inside the sphere and from well out.
+const SPHERE_SEEN: [f32; 2] = [0.35, 1.0];
 
 /// A camera key, relative to the walker's track point (x toward the
 /// carriageway, z ahead): where the eye is, where it looks, what it keeps
@@ -350,6 +397,9 @@ pub struct Frame {
     pub focus: f32,
     pub aperture: f32,
     pub body: Body,
+    /// The passers-by, as they stand at `time` (the street repeats them
+    /// every `REPEAT`).
+    pub passers: [Body; PASSERS],
     /// The camera is inside his head: the head is not drawn.
     pub head_hidden: f32,
     pub rim: f32,
@@ -379,6 +429,11 @@ pub struct Frame {
     pub rain_centre: V3,
     /// The puddle the step lands in: x, z, radius.
     pub puddle: [f32; 3],
+    /// The sphere round him: centre, radius.
+    pub sphere: [f32; 4],
+    /// Its rings: the first's height, the second's, the third's turn
+    /// (radians), how plainly they show.
+    pub rings: [f32; 4],
 }
 
 pub struct Story {
@@ -386,6 +441,11 @@ pub struct Story {
     pub loop_seconds: f32,
     walk: Walk,
     puddle: [f32; 3],
+    umbrella: Walk,
+    /// Where the umbrella's line of copies starts along the street.
+    umbrella_from: f32,
+    phone: Walk,
+    phone_at: V3,
 }
 
 /// The step that lands in the puddle, «Шаг происходит».
@@ -400,12 +460,84 @@ impl Story {
             .next()
             .copied()
             .expect("the walk has begun by then");
+        let period = LOOP / UMBRELLA_STEPS as f32;
+        let stride = REPEAT / UMBRELLA_STEPS as f32 / UMBRELLA_SCALE;
+        let umbrella = Walk::steady(period, stride, 0.075, -8, UMBRELLA_STEPS + 8, 6.0);
+        let umbrella_from =
+            walk.track(UMBRELLA_MEETS) + UMBRELLA_SCALE * umbrella.track(UMBRELLA_MEETS);
+        // Standing: two steps long before the loop, then only its sway,
+        // which comes round with the loop.
+        let step = |side: usize, land: f32, x: f32, z: f32| Step {
+            side,
+            lift: land - 0.4,
+            land,
+            x,
+            z,
+        };
+        let phone = Walk::new(
+            [[0.12, 0.0], [-0.12, 0.05]],
+            vec![step(0, -30.0, 0.12, 0.0), step(1, -29.5, -0.12, 0.05)],
+            LOOP / 12.0,
+        );
+        let phone_at = v3(PHONE_X, 0.0, walk.track(PHONE_MEETS) + 0.15);
         Story {
             chapter,
             loop_seconds: chapter.loop_seconds(),
             walk,
             puddle: [splash.x + WALK_X, splash.z + 0.1, 0.62],
+            umbrella,
+            umbrella_from,
+            phone,
+            phone_at,
         }
+    }
+
+    /// The one under the umbrella at `t`, the hand holding it at the chest.
+    pub fn umbrella(&self, t: f32) -> Body {
+        let w = &self.umbrella;
+        let mut pose = w.pose(t, Self::breath(t + 1.1));
+        pose.carry = Carry::Umbrella;
+        pose.coat = Coat {
+            length: 0.68,
+            bulk: -0.012,
+        };
+        let probe = build(&pose);
+        let c = probe.chest_axes;
+        let grip = probe.chest + c.forward * 0.22 - c.left * 0.06 + Y * 0.1;
+        pose.hands[1] = [grip.x, grip.y, grip.z, 1.0];
+        pose.wrists[1] = 0.35;
+        let along = w.track(t);
+        let z = self.umbrella_from - UMBRELLA_SCALE * along;
+        build(&pose)
+            .moved(|_| v3(0.0, 0.0, -along))
+            .scaled(UMBRELLA_SCALE)
+            .turned(PI, v3(UMBRELLA_X, 0.0, z))
+    }
+
+    /// The one with the phone at `t`: the head bowed to the screen held
+    /// before the face, up and round to him as he passes.
+    pub fn phone(&self, t: f32) -> Body {
+        let mut pose = self.phone.pose(t, Self::breath(t + 2.3));
+        pose.carry = Carry::Phone;
+        pose.coat = Coat {
+            length: 0.26,
+            bulk: 0.028,
+        };
+        let up = monotone(&PHONE_UP, t - PHONE_MEETS);
+        pose.nod = mix(0.42, 0.06, up);
+        pose.turn = 0.6 * monotone(&PHONE_FOLLOW, t - PHONE_MEETS);
+        let probe = build(&pose);
+        let c = probe.chest_axes;
+        let hold = probe.chest + c.forward * 0.3 - c.left * 0.05 + Y * mix(0.16, 0.08, up);
+        pose.hands[1] = [hold.x, hold.y, hold.z, 1.0];
+        pose.wrists[1] = -0.15;
+        build(&pose).turned(PI - PHONE_TURN, self.phone_at)
+    }
+
+    pub fn passers(&self, t: f32) -> [Body; PASSERS] {
+        let mut all = [self.umbrella(t), self.phone(t)];
+        all.swap(0, UMBRELLA);
+        all
     }
 
     pub fn walk(&self) -> &Walk {
@@ -442,6 +574,7 @@ impl Story {
     pub fn compose(&self, t: f32) -> Frame {
         let t = t.rem_euclid(self.loop_seconds);
         let body = self.body(t);
+        let passers = self.passers(t);
         let track = self.walk.track(t);
         let base = v3(WALK_X, 0.0, track);
         let curve = |pick: fn(&Key) -> f32| -> f32 {
@@ -529,12 +662,14 @@ impl Story {
 
         let reach = monotone(&REACH, t);
         let palm = {
-            let [ax, ay, az, _] = body.cones[3 * 18];
-            let [bx, by, bz, _] = body.cones[3 * 18 + 1];
+            let [ax, ay, az, _] = body.cones[3 * HANDS[1]];
+            let [bx, by, bz, _] = body.cones[3 * HANDS[1] + 1];
             v3(ax + bx, ay + by, az + bz) * 0.5
         };
         let mid = eye.lerp(eye + forward * focus, 0.5);
         let rain_centre = v3(mid.x, mid.y.max(6.0), mid.z);
+
+        let (sphere, rings) = sphere(t, base, eye);
 
         Frame {
             time: t,
@@ -546,6 +681,7 @@ impl Story {
             focus,
             aperture,
             body,
+            passers,
             head_hidden,
             rim: monotone(&RIM, t),
             breath,
@@ -564,8 +700,31 @@ impl Story {
             steps,
             rain_centre,
             puddle: self.puddle,
+            sphere,
+            rings,
         }
     }
+}
+
+/// The sphere and its rings at `t`, round the walk's point `base`, seen
+/// from `eye`: the rings show least from inside and from near the glass.
+pub fn sphere(t: f32, base: V3, eye: V3) -> ([f32; 4], [f32; 4]) {
+    let c = base + Y * SPHERE_Y;
+    // The first ring: from near the top (polar angle 0.35) down to where
+    // the glass meets the pavement, and back.
+    let ground = (-SPHERE_Y / SPHERE_R).acos();
+    let swing = 0.5 - 0.5 * (2.0 * PI * t / RING_PERIOD).cos();
+    let first = SPHERE_Y + SPHERE_R * mix(0.35, ground - 0.02, swing).cos();
+    // The second: up while the first goes down.
+    let second = mix(SECOND_RING[0], SECOND_RING[1], 1.0 - swing);
+    let third = (2.0 * PI * t / MERIDIAN_PERIOD).rem_euclid(2.0 * PI);
+    let away = (eye - c).length();
+    let seen = mix(
+        SPHERE_SEEN[0],
+        SPHERE_SEEN[1],
+        smooth(SPHERE_R + 0.1, SPHERE_R + 0.7, away),
+    );
+    ([c.x, c.y, c.z, SPHERE_R], [first, second, third, seen])
 }
 
 /// Which lot (cell) of the street a point along it stands in. The shaders
@@ -583,6 +742,44 @@ pub fn crossing(cell: i32) -> bool {
 mod tests {
     use super::*;
     use crate::REPEAT;
+
+    #[test]
+    fn the_rings_come_round_with_the_loop() {
+        let rounds = [LOOP / RING_PERIOD, LOOP / MERIDIAN_PERIOD];
+        for r in rounds {
+            assert!((r - r.round()).abs() < 1e-4, "{r}");
+        }
+        let s = Story::new(Chapter::Fact);
+        let (a, b) = (s.compose(0.0), s.compose(LOOP - 1e-3));
+        for i in 0..3 {
+            assert!((a.rings[i] - b.rings[i]).abs() < 0.01 || i == 2, "{i}");
+        }
+        // The first ring reaches the pavement and the top's neighbourhood,
+        // the second his soles and his crown.
+        let mut low: f32 = 9.0;
+        let mut high: f32 = -9.0;
+        for k in 0..160 {
+            let f = s.compose(k as f32 * 0.05);
+            low = low.min(f.rings[0]);
+            high = high.max(f.rings[0]);
+            assert!(f.rings[1] >= SECOND_RING[0] - 1e-4 && f.rings[1] <= SECOND_RING[1] + 1e-4);
+            assert!(f.rings[3] >= SPHERE_SEEN[0] && f.rings[3] <= SPHERE_SEEN[1]);
+        }
+        assert!(low > 0.0 && low < 0.06, "{low}");
+        assert!(high > SPHERE_Y + 0.9 * SPHERE_R, "{high}");
+    }
+
+    #[test]
+    fn the_sphere_holds_him() {
+        let s = Story::new(Chapter::Fact);
+        for k in 0..64 {
+            let f = s.compose(k as f32);
+            let c = v3(f.sphere[0], f.sphere[1], f.sphere[2]);
+            for p in [f.body.head, v3(f.body.head.x, 0.0, f.body.head.z)] {
+                assert!((p - c).length() < SPHERE_R - 0.15, "{k}");
+            }
+        }
+    }
 
     #[test]
     fn the_loop_closes() {
@@ -677,6 +874,76 @@ mod tests {
             assert!(f.body.low.x > -crate::FACADE && f.body.high.x < -crate::ROAD);
             assert!(f.body.low.y > -0.01);
         }
+    }
+
+    /// How far ahead of him (along the street, either way) `z` is, folded
+    /// into one `REPEAT` as the street repeats its passers.
+    fn ahead(z: f32, of: f32) -> f32 {
+        (z - of + 0.5 * REPEAT).rem_euclid(REPEAT) - 0.5 * REPEAT
+    }
+
+    #[test]
+    fn the_passers_come_round_with_the_loop() {
+        let story = Story::new(Chapter::Fact);
+        let a = story.passers(0.0);
+        let b = story.passers(LOOP - 1e-3);
+        for (a, b) in a.iter().zip(&b) {
+            let dz = ahead(b.pelvis.z, a.pelvis.z);
+            assert!(dz.abs() < 0.01, "{dz}");
+            assert!((b.pelvis.x - a.pelvis.x).abs() < 0.01);
+            assert!((b.head.y - a.head.y).abs() < 0.01);
+            for c in 0..crate::body::PRIMITIVES {
+                let (p, q) = (a.cones[3 * c], b.cones[3 * c]);
+                assert!((p[1] - q[1]).abs() < 0.02, "cone {c}");
+                assert!((p[3] - q[3]).abs() < 1e-4, "cone {c}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_passers_keep_to_the_pavement_and_clear_of_him() {
+        let story = Story::new(Chapter::Fact);
+        for i in 0..640 {
+            let t = i as f32 * 0.1;
+            let f = story.compose(t);
+            for p in &f.passers {
+                assert!(p.low.x > -crate::FACADE && p.high.x < -crate::ROAD, "{t}");
+                assert!(p.low.y > -0.01, "{t}");
+                // Never through him: their boxes part across the street
+                // wherever they share his stretch of it.
+                if ahead(p.pelvis.z, f.body.pelvis.z).abs() < 1.0 {
+                    let apart = (p.low.x - f.body.high.x).max(f.body.low.x - p.high.x);
+                    assert!(apart > 0.0, "{t} {apart}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_passers_meet_him_when_the_story_says() {
+        let story = Story::new(Chapter::Fact);
+        for t in [UMBRELLA_MEETS, UMBRELLA_MEETS + 0.5 * LOOP] {
+            let f = story.compose(t);
+            let dz = ahead(f.passers[0].pelvis.z, f.body.pelvis.z);
+            assert!(dz.abs() < 0.3, "{t} {dz}");
+        }
+        let f = story.compose(PHONE_MEETS);
+        let dz = ahead(f.passers[1].pelvis.z, f.body.pelvis.z);
+        assert!(dz.abs() < 0.4, "{dz}");
+        // It looks down at the screen, then up at him.
+        let down = story.phone(40.0);
+        let up = story.phone(PHONE_MEETS + 0.3);
+        assert!(up.face.forward.y > down.face.forward.y + 0.2);
+        assert!(down.screen[1].length() > 0.9);
+    }
+
+    #[test]
+    fn the_phone_stands_clear_of_the_lamp_posts() {
+        let story = Story::new(Chapter::Fact);
+        let z = story.phone(0.0).pelvis.z;
+        // The walker's side has its posts halfway between the far side's.
+        let k = (z / crate::LAMP_GAP - 0.5).round();
+        assert!((z - (k + 0.5) * crate::LAMP_GAP).abs() > 1.2, "{z}");
     }
 
     #[test]

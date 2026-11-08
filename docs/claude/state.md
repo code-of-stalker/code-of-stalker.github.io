@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» (page 06 prototype) waits for Art. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» (page 06 prototype, round 2 after Art's notes) waits for Art. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -247,8 +247,12 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   drawn in parts (hits pass + 4 light passes, linked in parallel), ready in ~10 s with
   «Загружаю сцену…» meanwhile; frames identical to before. Details in the crate's README.
   Any new scene: keep each shader small, D3D11 compile time grows faster than its size.
-- Next: Art looks at the page 06 prototype in Матрица
-  (`output/prototypes/night-city/index.html`, rebuilt 2026-11-08 after the fix) and says OK
+- 2026-11-08 Art's notes on the first showing, all done on the branch (round 2): a raincoat
+  instead of the flap, cars with bodies, two passers-by (umbrella, phone), the sphere with its
+  three rings back but barely visible, code rain on the walls, and inside the sphere things
+  (pole, passer, pavement) show their code; he does not. Details in the crate's README.
+- Next: Art looks at round 2 of the page 06 prototype in Матрица
+  (`output/prototypes/night-city/index.html`, sheet `round2.jpg` beside it) and says OK
   or gives notes. After his OK: the other 3 dark themes, then the bridge + `WebScene` + page,
   then pages 07–10 as chapters. A stage-finale screen after page 10 needs Art's wording first.
 

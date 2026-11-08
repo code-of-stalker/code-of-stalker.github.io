@@ -93,6 +93,12 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - In messages, name the rings by number (первое, второе, третье кольцо). Working names confuse him: «почему ты начал вместо кольца делать корону?». (Page 05.)
 - Page 05 «Темп дня» passed in Матрица on the first showing (direction А: a day of actions, ring 3 spinning with the body's tempo). (Page 05.)
 - After page 05 the sphere world tired him («эта уже надоела»): pages 06–10 get a new scene, «что-то новое, интереснее», with a layered camera (first person → over the shoulder → pulled wide, «расхлопнуто») and «больше красивых деталей которые добавят глубины и стиля». (2026-11-08.)
+- «Ночной город», first showing: a coat flap that stuck out read as «отросток»; he wants a proper raincoat that hangs and sways with the walk. (Page 06.)
+- Cars as bare light streaks were not enough («почему только огоньки»): cars need bodies, with headlights and tail lights on them. (Page 06.)
+- One walker in an empty street is too little: he asked for two more, different people (here: one under an umbrella, one looking at a phone). (Page 06.)
+- He missed the sphere and its three rings in the new scene («кольца ты куда дел со сферой?»): they stay, but «еле заметные», so the city leads. (Page 06.)
+- The Матрица look needs code rain on the buildings and elsewhere («нехватает матричного дождя вдоль зданий»). (Page 06.)
+- His idea: whatever enters the sphere shows its code, its «матричная суть». (Page 06.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

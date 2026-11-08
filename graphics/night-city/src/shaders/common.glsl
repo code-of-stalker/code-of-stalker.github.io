@@ -37,6 +37,12 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define PUDDLE  u_d[16]  // the step's puddle: x, z, radius
 #define PUFF(i) u_d[SLOT_PUFF + (i)]  // breath cloud: centre, age (< 0 none)
 #define STEP(i) u_d[SLOT_STEP + (i)]  // footstep: x, z, seconds since, side
+#define PASS_LO(i) u_d[SLOT_PASS + 2 * (i)]      // passer i's box
+#define PASS_HI(i) u_d[SLOT_PASS + 2 * (i) + 1]
+#define SCREEN     u_d[SLOT_SCREEN]      // the phone's screen: centre, its light
+#define SCREEN_DIR u_d[SLOT_SCREEN + 1]  // the way it faces
+#define SPHERE     u_d[SLOT_SPHERE]      // the sphere round him: centre, radius
+#define RINGS      u_d[SLOT_SPHERE + 1]  // its rings: first's height, second's, third's turn, how seen
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w
@@ -204,15 +210,26 @@ float puddle(vec2 xz) {
   return max(own, smoothstep(0.56, 0.6, lows + gutter));
 }
 
-// Cars, lights only: lane 0 drives with the walker (taillights, warm),
-// lane 1 against him (headlights, cold). Car j's front in copy n.
+// The cars: lane 0 drives with the walker (we see its taillights, warm),
+// lane 1 against him (its headlights, cold). A lane's cars follow one
+// another `gap` apart; car `id` stands at z = base + gap * id (its middle)
+// and keeps its number as it drives.
 float carSpeed(int lane) {
   return (lane == 0 ? CARS_0_REPEATS : CARS_1_REPEATS) * REPEAT / LOOP;
 }
-float carZ(int lane, int j, float n) {
+void laneCars(int lane, out float x, out float dir, out float gap, out float base) {
   float count = lane == 0 ? CARS_0_COUNT : CARS_1_COUNT;
-  float off = REPEAT * (float(j) + 0.37 * float(lane)) / count;
-  return mod(carSpeed(lane) * TIME + off, REPEAT) + n * REPEAT;
+  x = lane == 0 ? -CAR_LANE : CAR_LANE;
+  dir = lane == 0 ? 1.0 : -1.0;
+  gap = REPEAT / count;
+  base = carSpeed(lane) * TIME + 0.37 * float(lane) * gap;
+}
+// Which of the lane's looks car `id` has: the same car comes round with
+// the loop.
+int carLook(int lane, float id) {
+  float count = lane == 0 ? CARS_0_COUNT : CARS_1_COUNT;
+  float laps = abs(lane == 0 ? CARS_0_REPEATS : CARS_1_REPEATS);
+  return pm(int(id), int(count * laps));
 }
 
 // The voice's shells and the echo's: centre, radius, light.

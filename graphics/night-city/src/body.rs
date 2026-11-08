@@ -1,17 +1,40 @@
-//! The figure: footsteps make a walk, the walk a pose, and the pose 19
-//! rounded cones that the body shader blends into one surface of light.
-//! Metres; the figure faces +z, its left is +x, up is +y.
+//! The figure: footsteps make a walk, the walk a pose, and the pose 23
+//! cones (rounded, or flat-ended where cloth ends) that the body shader
+//! blends into one surface of light. Metres; the figure faces +z, its left
+//! is +x, up is +y.
 use crate::math::{min_jerk, mix, monotone, rotate, smooth, softmin, v3, V3, Y};
 use std::f32::consts::{PI, TAU};
 
-pub const PRIMITIVES: usize = 19;
+pub const PRIMITIVES: usize = 23;
 /// How softly each cone melts into the ones before it, metres.
 pub const BLEND: [f32; PRIMITIVES] = [
-    0.0, 0.08, 0.07, 0.04, 0.03, // coat, torso, shoulders, neck, head
+    0.0, 0.09, 0.08, 0.07, // the coat's two skirts, torso, shoulders
+    0.04, 0.03, 0.025, // neck, head, collar
     0.05, 0.05, 0.03, 0.03, // thighs, shins
     0.025, 0.025, 0.012, 0.012, // feet, toes
-    0.05, 0.05, 0.015, 0.015, 0.012, 0.012, // upper arms, forearms, hands
+    0.05, 0.05, 0.015, 0.015, 0.012, 0.012, // upper arms, sleeves, hands
+    0.01, 0.01, // what it carries
 ];
+/// Cones by what they are, for the shader and the camera.
+pub const NECK: usize = 4;
+pub const HEAD: usize = 5;
+pub const COLLAR: usize = 6;
+pub const HANDS: [usize; 2] = [19, 20];
+pub const PROPS: [usize; 2] = [21, 22];
+/// A cone's squash keep below zero marks it flat-ended (cut square, its
+/// edge rounded this much) instead of capped by spheres.
+pub const CUT_ROUND: f32 = 0.008;
+
+/// What a figure carries in its right hand, if anything.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Carry {
+    #[default]
+    Nothing,
+    /// An open umbrella over the head.
+    Umbrella,
+    /// A phone held before the face, and a hood up.
+    Phone,
+}
 
 pub const THIGH: f32 = 0.43;
 pub const SHIN: f32 = 0.42;
@@ -408,6 +431,8 @@ impl Walk {
             nod: 0.0,
             hands: [[0.0; 4]; 2],
             wrists: [0.0; 2],
+            carry: Carry::Nothing,
+            coat: RAINCOAT,
         }
     }
 }
@@ -440,7 +465,21 @@ pub struct Pose {
     /// far the hand bends down at the wrist (radians).
     pub hands: [[f32; 4]; 2],
     pub wrists: [f32; 2],
+    pub carry: Carry,
+    pub coat: Coat,
 }
+
+/// What it wears: how far the coat's skirts reach down from the waist
+/// (metres) and how much fuller than the walker's raincoat it is.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Coat {
+    pub length: f32,
+    pub bulk: f32,
+}
+pub const RAINCOAT: Coat = Coat {
+    length: 0.6,
+    bulk: 0.0,
+};
 
 /// A body part's own left, up and forward.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -480,7 +519,7 @@ fn knee(hip: V3, ankle: V3, pole: V3) -> V3 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Body {
     /// Per cone: (end A, its radius), (end B, its radius), (squash axis,
-    /// how much of its width it keeps along it).
+    /// how much of its width it keeps along it; below zero, flat-ended).
     pub cones: [[f32; 4]; PRIMITIVES * 3],
     pub pelvis: V3,
     pub pelvic: Axes,
@@ -490,25 +529,33 @@ pub struct Body {
     /// Where its voice leaves the head, and which way the head faces.
     pub mouth: V3,
     pub face: Axes,
+    /// A phone's screen: its centre and the way it faces (zero: none).
+    pub screen: [V3; 2],
     /// The box around every cone.
     pub low: V3,
     pub high: V3,
 }
 
 impl Body {
-    /// The body with each of its points moved by `by` of where it is: the
-    /// cones' ends, its centres and its box; the axes stay.
-    pub fn moved(&self, by: impl Fn(V3) -> V3) -> Body {
+    /// The body with every point taken through `point`, every direction
+    /// through `axis` and every radius scaled by `k`; the box follows.
+    fn mapped(&self, point: impl Fn(V3) -> V3, axis: impl Fn(V3) -> V3, k: f32) -> Body {
         let mut body = *self;
-        let shift = |p: V3| p + by(p);
         let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
         for c in 0..PRIMITIVES {
             let mut r = 0.0f32;
             for j in 0..2 {
                 let [x, y, z, w] = body.cones[3 * c + j];
-                let p = shift(v3(x, y, z));
-                body.cones[3 * c + j] = [p.x, p.y, p.z, w];
-                r = r.max(w);
+                let p = point(v3(x, y, z));
+                body.cones[3 * c + j] = [p.x, p.y, p.z, w * k];
+                r = r.max(w * k);
+            }
+            let [x, y, z, keep] = body.cones[3 * c + 2];
+            let s = axis(v3(x, y, z));
+            body.cones[3 * c + 2] = [s.x, s.y, s.z, keep];
+            if r <= 0.002 * k {
+                // An empty slot inside the pelvis: not in the box.
+                continue;
             }
             let pad = v3(r, r, r);
             for j in 0..2 {
@@ -517,12 +564,39 @@ impl Body {
                 high = high.max(v3(x, y, z) + pad);
             }
         }
-        body.pelvis = shift(body.pelvis);
-        body.chest = shift(body.chest);
-        body.head = shift(body.head);
-        body.mouth = shift(body.mouth);
+        let turn = |a: Axes| Axes {
+            left: axis(a.left),
+            up: axis(a.up),
+            forward: axis(a.forward),
+        };
+        body.pelvis = point(body.pelvis);
+        body.pelvic = turn(body.pelvic);
+        body.chest = point(body.chest);
+        body.chest_axes = turn(body.chest_axes);
+        body.head = point(body.head);
+        body.mouth = point(body.mouth);
+        body.face = turn(body.face);
+        body.screen = [point(body.screen[0]), axis(body.screen[1])];
         (body.low, body.high) = (low, high);
         body
+    }
+
+    /// The body with each of its points moved by `by` of where it is: the
+    /// cones' ends, its centres and its box; the axes stay.
+    pub fn moved(&self, by: impl Fn(V3) -> V3) -> Body {
+        self.mapped(|p| p + by(p), |a| a, 1.0)
+    }
+
+    /// The body turned `angle` about the upright through the origin (to the
+    /// left, as `axes` turns), then set down at `at`.
+    pub fn turned(&self, angle: f32, at: V3) -> Body {
+        self.mapped(|p| rotate(p, Y, angle) + at, |a| rotate(a, Y, angle), 1.0)
+    }
+
+    /// The body grown by `k` about the origin: a walk built `1/k` as long
+    /// keeps its feet where they land.
+    pub fn scaled(&self, k: f32) -> Body {
+        self.mapped(|p| p * k, |a| a, k)
     }
 }
 
@@ -541,8 +615,11 @@ pub fn build(pose: &Pose) -> Body {
         low = low.min(a - pad).min(b - pad);
         high = high.max(a + pad).max(b + pad);
     };
+    // Flat-ended, squashed along `axis` to `keep` of its width.
+    let cut = |axis: V3, keep: f32| Some((axis, -keep));
     let b = pose.breath;
     let p = pose.pelvis;
+    let bulk = pose.coat.bulk;
     let pelvic = axes(pose.yaw + PELVIS_TURN * pose.turn, pose.lean, pose.roll);
     let waist = p + pelvic.up * 0.15;
     let ch = axes(
@@ -556,31 +633,6 @@ pub fn build(pose: &Pose) -> Body {
     let hd = axes(0.2 * pose.yaw + pose.turn, pose.nod, 0.0);
     let jaw = head_base + hd.up * 0.025 + hd.forward * 0.025;
     let crown = head_base + hd.up * 0.105 - hd.forward * 0.005;
-    // A coat: from the hem above the knees up to the waist.
-    cone(
-        p - pelvic.up * 0.3,
-        0.165,
-        waist,
-        0.125,
-        Some((pelvic.forward, 0.7)),
-    );
-    cone(
-        waist,
-        0.125,
-        chest + ch.up * 0.05,
-        0.14 * (1.0 + 0.025 * b),
-        Some((ch.forward, 0.66)),
-    );
-    let shoulder_line = chest + ch.up * (0.13 + 0.005 * b);
-    cone(
-        shoulder_line + ch.left * (SHOULDER - 0.01),
-        0.062,
-        shoulder_line - ch.left * (SHOULDER - 0.01),
-        0.062,
-        None,
-    );
-    cone(neck, 0.05, head_base, 0.047, None);
-    cone(jaw, 0.068, crown, 0.09, Some((hd.left, 0.84)));
     let sides = [1.0f32, -1.0];
     let hips = sides.map(|s| p + pelvic.left * (HIP * s));
     let knees = [0, 1].map(|i| {
@@ -590,6 +642,47 @@ pub fn build(pose: &Pose) -> Body {
             pelvic.forward + pelvic.left * (0.12 * sides[i]),
         )
     });
+    // The coat's skirts: a flared tube over each thigh from the waist,
+    // following it a little and cut square at the hem; the two melt into
+    // one coat that opens as he strides.
+    for i in 0..2 {
+        let top = p + pelvic.left * (0.06 * sides[i]) + pelvic.up * 0.12;
+        let thigh = (knees[i] - hips[i]).normalize();
+        let way = (thigh * 0.65 - Y * 0.35).normalize();
+        let flare = 0.04 * (pose.coat.length / RAINCOAT.length).min(1.2);
+        cone(
+            top,
+            0.115 + bulk,
+            top + way * pose.coat.length,
+            0.115 + flare + bulk,
+            cut(pelvic.left, 0.85),
+        );
+    }
+    cone(
+        waist,
+        0.125 + bulk,
+        chest + ch.up * 0.05,
+        0.14 * (1.0 + 0.025 * b) + bulk,
+        Some((ch.forward, 0.66)),
+    );
+    let shoulder_line = chest + ch.up * (0.13 + 0.005 * b);
+    cone(
+        shoulder_line + ch.left * (SHOULDER - 0.01),
+        0.064 + 0.6 * bulk,
+        shoulder_line - ch.left * (SHOULDER - 0.01),
+        0.064 + 0.6 * bulk,
+        None,
+    );
+    cone(neck, 0.05, head_base, 0.047, None);
+    cone(jaw, 0.068, crown, 0.09, Some((hd.left, 0.84)));
+    // The raised collar, higher at the back.
+    cone(
+        neck - ch.up * 0.05,
+        0.08 + 0.5 * bulk,
+        neck + ch.up * 0.045 - ch.forward * 0.02,
+        0.072 + 0.5 * bulk,
+        cut(ch.left, 1.0),
+    );
     for (hip, knee) in hips.iter().zip(&knees) {
         cone(*hip, 0.08, *knee, 0.05, None);
     }
@@ -634,14 +727,65 @@ pub fn build(pose: &Pose) -> Body {
         let palm = (ch.left - hand * ch.left.dot(hand)).normalize();
         (shoulder, elbow, wrist, wrist + hand * HAND, palm)
     });
+    let sleeve = 0.6 * bulk;
     for a in &arms {
-        cone(a.0, 0.052, a.1, 0.04, None);
+        cone(a.0, 0.056 + sleeve, a.1, 0.047 + sleeve, None);
     }
+    // Sleeves cut square at the cuff, the hand out of it.
     for a in &arms {
-        cone(a.1, 0.036, a.2, 0.026, None);
+        cone(a.1, 0.044 + sleeve, a.2, 0.041 + sleeve, cut(Y, 1.0));
     }
     for a in &arms {
         cone(a.2, 0.028, a.3, 0.02, Some((a.4, 0.55)));
+    }
+    // What the right hand carries.
+    let (_, _, wrist, tip, palm) = arms[1];
+    let grip = wrist.lerp(tip, 0.5);
+    let mut screen = [v3(0.0, 0.0, 0.0); 2];
+    match pose.carry {
+        Carry::Nothing => {}
+        Carry::Umbrella => {
+            let top = crown + Y * 0.33 + ch.forward * 0.05 - ch.left * 0.04;
+            let stick = (top - grip).normalize();
+            cone(grip - stick * 0.1, 0.009, top, 0.007, None);
+            cone(
+                top - stick * 0.2,
+                0.5,
+                top + stick * 0.02,
+                0.025,
+                cut(Y, 1.0),
+            );
+        }
+        Carry::Phone => {
+            let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
+            let at = grip + palm * 0.012;
+            let facing = (eyes - at).normalize();
+            let long = (Y - facing * Y.dot(facing)).normalize();
+            cone(
+                at - long * 0.07,
+                0.036,
+                at + long * 0.07,
+                0.036,
+                cut(facing, 0.13),
+            );
+            // The hood up round the head, the face out of its front.
+            let mid = jaw.lerp(crown, 0.5) + hd.up * 0.025;
+            cone(
+                mid - hd.forward * 0.075,
+                0.13,
+                mid + hd.forward * 0.04,
+                0.125,
+                cut(hd.left, 0.84),
+            );
+            screen = [at + facing * 0.005, facing];
+        }
+    }
+    // The rest stand empty inside the pelvis, out of the box.
+    while n < PRIMITIVES {
+        cones[3 * n] = [p.x, p.y, p.z, 0.001];
+        cones[3 * n + 1] = [p.x, p.y + 0.01, p.z, 0.001];
+        cones[3 * n + 2] = [0.0, 1.0, 0.0, 1.0];
+        n += 1;
     }
     Body {
         cones,
@@ -652,6 +796,7 @@ pub fn build(pose: &Pose) -> Body {
         head: crown,
         mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
         face: hd,
+        screen,
         low,
         high,
     }

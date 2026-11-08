@@ -11,14 +11,16 @@
 //! program for all of it took Windows' shader compiler minutes, long enough
 //! for Chrome to give up on the page; each part takes it a few seconds, and
 //! with KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{BLEND, PRIMITIVES};
+use crate::body::{BLEND, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, PRIMITIVES, PROPS};
 use crate::story::PUFF_LIFE;
+use crate::story::{PASSERS, PHONE, UMBRELLA};
 use crate::{
-    look, pack, recolor_code, Chapter, Look, Story, AIR, BLOCK, BLOOM, BLUR_MAX, BYTE_KEEP, CARS,
-    CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FRAME_ASPECT, HAZE, LAMP_GAP,
-    LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, PALM_DROPS, PUFFS, RAD_SCALE, RAIN, RAIN_BOX,
-    RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, ROAD, SHOP_LIGHT, SLOTS, SLOT_PUFF, SLOT_STEP,
-    SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, WORLD_SCALE, WORLD_WIDTH,
+    cones, look, pack, recolor_code, Chapter, Look, Story, AIR, BLOCK, BLOOM, BLUR_MAX, BYTE_KEEP,
+    CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FRAME_ASPECT, HAZE,
+    LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, PALM_DROPS, PUFFS, RAD_SCALE, RAIN, RAIN_BOX,
+    RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, ROAD, SHOP_LIGHT, SLOTS, SLOT_PASS, SLOT_PUFF,
+    SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, WORLD_SCALE,
+    WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -77,7 +79,21 @@ fn defines() -> String {
         ("SLOT_STEP", SLOT_STEP.to_string()),
         ("PUFFS", PUFFS.to_string()),
         ("STEP_MARKS", STEP_MARKS.to_string()),
+        ("SLOT_PASS", SLOT_PASS.to_string()),
+        ("SLOT_SCREEN", SLOT_SCREEN.to_string()),
+        ("SLOT_SPHERE", SLOT_SPHERE.to_string()),
+        ("PASSERS", PASSERS.to_string()),
+        ("FIGURES", FIGURES.to_string()),
+        ("FIG_UMBRELLA", (1 + UMBRELLA).to_string()),
+        ("FIG_PHONE", (1 + PHONE).to_string()),
         ("CONES", PRIMITIVES.to_string()),
+        ("CONE_NECK", NECK.to_string()),
+        ("CONE_HEAD", HEAD.to_string()),
+        ("CONE_COLLAR", COLLAR.to_string()),
+        ("CONE_HAND_L", HANDS[0].to_string()),
+        ("CONE_HAND_R", HANDS[1].to_string()),
+        ("CONE_PROP", PROPS[0].to_string()),
+        ("CUT_ROUND", f(CUT_ROUND)),
         (
             "BLENDS",
             BLEND.iter().map(|&b| f(b)).collect::<Vec<_>>().join(", "),
@@ -885,7 +901,7 @@ impl NightCity {
             0.0,
         ];
         let flat: Vec<f32> = slots.iter().flatten().copied().collect();
-        let cones: Vec<f32> = f.body.cones.iter().flatten().copied().collect();
+        let cones = cones(&f);
         let keep = if self.float { 1.0 } else { BYTE_KEEP };
         let gl = &self.gl;
         gl.bind_vertex_array(Some(&self.empty));

@@ -62,8 +62,8 @@ pub const RAIN_STREAK: f32 = 0.24;
 pub const SPLASH: u32 = 64;
 pub const PALM_DROPS: u32 = 72;
 
-/// Cars are only their lights, drawn out into streaks: per lane how many
-/// in one `REPEAT` and how many `REPEAT`s they cover in one loop.
+/// The cars: per lane how many in one `REPEAT` and how many `REPEAT`s
+/// they cover in one loop.
 pub const CAR_LANE: f32 = 1.6;
 pub const CARS: [[f32; 2]; 2] = [[2.0, 10.0], [3.0, -9.0]];
 
@@ -86,10 +86,26 @@ pub const BLOOM: f32 = 0.09;
 pub const BYTE_KEEP: f32 = 0.5;
 
 /// The uniform slots the shaders read (common.glsl names them).
-pub const SLOTS: usize = 27;
+pub const SLOTS: usize = 35;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_PUFF: usize = 17;
 pub const SLOT_STEP: usize = 19;
+/// The passers' boxes (low, high each), the phone's screen (centre and
+/// light, facing), then the sphere round him and its rings.
+pub const SLOT_PASS: usize = 27;
+pub const SLOT_SCREEN: usize = 31;
+pub const SLOT_SPHERE: usize = 33;
+/// Every figure the shaders draw: him, then the passers-by.
+pub const FIGURES: usize = 1 + story::PASSERS;
+// The slots follow one another, and the world's uniforms fit the 256
+// vectors phones give a fragment shader (WebGL2 promises 224; ANGLE keeps
+// a few of its own).
+const _: () = {
+    assert!(SLOT_STEP + STEP_MARKS <= SLOT_PASS);
+    assert!(SLOT_PASS + 2 * story::PASSERS <= SLOT_SCREEN);
+    assert!(SLOT_SPHERE + 2 <= SLOTS);
+    assert!(SLOTS + FIGURES * body::PRIMITIVES * 3 + 4 <= 250);
+};
 pub const PUFFS: usize = 2;
 pub const STEP_MARKS: usize = 8;
 
@@ -198,7 +214,24 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     for (i, p) in f.steps.iter().enumerate() {
         s[SLOT_STEP + i] = *p;
     }
+    for (i, b) in f.passers.iter().enumerate() {
+        s[SLOT_PASS + 2 * i] = v(b.low, 0.0);
+        s[SLOT_PASS + 2 * i + 1] = v(b.high, 0.0);
+    }
+    let phone = &f.passers[story::PHONE];
+    s[SLOT_SCREEN] = v(phone.screen[0], story::SCREEN_LIGHT);
+    s[SLOT_SCREEN + 1] = v(phone.screen[1], 0.0);
+    s[SLOT_SPHERE] = f.sphere;
+    s[SLOT_SPHERE + 1] = f.rings;
     s
+}
+
+/// Every figure's cones, him first, as the shaders' `u_b` reads them.
+pub fn cones(f: &Frame) -> Vec<f32> {
+    std::iter::once(&f.body)
+        .chain(&f.passers)
+        .flat_map(|b| b.cones.iter().flatten().copied())
+        .collect()
 }
 
 #[cfg(test)]
@@ -215,6 +248,7 @@ mod tests {
         assert!(near(REPEAT / LAMP_GAP, (REPEAT / LAMP_GAP).round()));
         assert!(near(REPEAT / CELL, (REPEAT / CELL).round()));
         assert!(near(REPEAT / TOWER_CELL, (REPEAT / TOWER_CELL).round()));
+        assert_eq!(story::UMBRELLA_STEPS % 2, 0);
         assert_eq!(STEPS % 2, 0, "the same foot leads again");
     }
 
@@ -228,6 +262,12 @@ mod tests {
             assert!(count >= 1.0 && near(count, count.round()));
             assert!(near(repeats, repeats.round()));
         }
+    }
+
+    #[test]
+    fn every_figure_is_sent() {
+        let f = Story::new(Chapter::Fact).compose(10.0);
+        assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
     }
 
     #[test]

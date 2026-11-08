@@ -103,7 +103,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - For page 07 he picked А «Автопилот на перекрёстке» (drama again: drop into the phone, the car, the return chain) over the calmer three-checks and shop-window reflection ideas. (Page 07, 2026-11-08.)
 - First showing of page 07: not just the drop and the return chain; the car must almost hit him, then time runs back and the right run plays (phone used with the rings kept, put away before the road, the five restored, wait for green, walk). A lesson shown as wrong take, rewind, right take. (Page 07, 2026-11-08.)
 - That round passed at once («супер продолжаем»): a tape freeze with rewind bands, then the right take, read well to him. (Page 07, 2026-11-08.)
-- For page 08 he took the recommended А «Эхо в переходе» at once (an underpass where each spoken phrase runs along the tiles and returns as an echo that lights a ring), over neon signs and a rooftop. (Page 08, 2026-11-09.)
+- For page 08 he took the recommended А «Эхо в переходе» at once (an underpass where each spoken phrase runs along the tiles and returns as an echo that lights a ring), over neon signs and a rooftop, and approved its first showing with no notes («Ок, другие темы»): the dim tiled underpass with tube lights and one flickering tube worked as built. (Page 08, 2026-11-09.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

@@ -45,6 +45,9 @@ pub const TOWER_CELL: f32 = BLOCK / 2.0;
 /// the frame at the loop's end is the frame at its start.
 pub const LOOP: f32 = 64.0;
 pub const STEPS: i32 = 120;
+/// One loop of page 07: the city's clock still covers one `LOOP` in it
+/// (story.rs, `world_time`), slowed nearly to a stop in the middle.
+pub const CHECK_LOOP: f32 = 96.0;
 pub const STRIDE: f32 = 0.68;
 pub const REPEAT: f32 = 2.0 * BLOCK;
 /// How far apart the feet land, either side of the walk's line.
@@ -86,7 +89,7 @@ pub const BLOOM: f32 = 0.09;
 pub const BYTE_KEEP: f32 = 0.5;
 
 /// The uniform slots the shaders read (common.glsl names them).
-pub const SLOTS: usize = 35;
+pub const SLOTS: usize = 38;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_PUFF: usize = 17;
 pub const SLOT_STEP: usize = 19;
@@ -95,6 +98,10 @@ pub const SLOT_STEP: usize = 19;
 pub const SLOT_PASS: usize = 27;
 pub const SLOT_SCREEN: usize = 31;
 pub const SLOT_SPHERE: usize = 33;
+/// Page 07: the frame's tunnel, the muted city, the soles' light and the
+/// support's rings; the car out of the side street; each ring's light and
+/// his own screen's.
+pub const SLOT_CHECK: usize = 35;
 /// Every figure the shaders draw: him, then the passers-by.
 pub const FIGURES: usize = 1 + story::PASSERS;
 // The slots follow one another, and the world's uniforms fit the 256
@@ -103,7 +110,8 @@ pub const FIGURES: usize = 1 + story::PASSERS;
 const _: () = {
     assert!(SLOT_STEP + STEP_MARKS <= SLOT_PASS);
     assert!(SLOT_PASS + 2 * story::PASSERS <= SLOT_SCREEN);
-    assert!(SLOT_SPHERE + 2 <= SLOTS);
+    assert!(SLOT_SPHERE + 2 <= SLOT_CHECK);
+    assert!(SLOT_CHECK + 3 <= SLOTS);
     assert!(SLOTS + FIGURES * body::PRIMITIVES * 3 + 4 <= 250);
 };
 pub const PUFFS: usize = 2;
@@ -126,22 +134,30 @@ pub const HAZE: f32 = 0.009;
 pub enum Chapter {
     /// Page 06 «Наблюдай не только смысл действия — а сам факт динамики».
     Fact,
+    /// Page 07 «Главная проверка: не потерять два первых кольца».
+    Check,
 }
 
 impl Chapter {
-    pub fn from_code(_code: u32) -> Chapter {
-        Chapter::Fact
+    pub fn from_code(code: u32) -> Chapter {
+        match code {
+            1 => Chapter::Check,
+            _ => Chapter::Fact,
+        }
     }
     pub fn loop_seconds(self) -> f32 {
         match self {
             Chapter::Fact => LOOP,
+            Chapter::Check => CHECK_LOOP,
         }
     }
-    /// Reduced motion holds this moment: over the shoulder, mid-step, the
-    /// street lit and calm.
+    /// Reduced motion holds this moment. Page 06: over the shoulder,
+    /// mid-step, the street lit and calm. Page 07: drawn back from him,
+    /// the sphere wide open and all three rings lit again.
     pub fn still(self) -> f32 {
         match self {
             Chapter::Fact => 21.0,
+            Chapter::Check => 59.0,
         }
     }
 }
@@ -223,6 +239,9 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[SLOT_SCREEN + 1] = v(phone.screen[1], 0.0);
     s[SLOT_SPHERE] = f.sphere;
     s[SLOT_SPHERE + 1] = f.rings;
+    s[SLOT_CHECK] = f.check;
+    s[SLOT_CHECK + 1] = f.cross_car;
+    s[SLOT_CHECK + 2] = f.ring_light;
     s
 }
 
@@ -266,8 +285,19 @@ mod tests {
 
     #[test]
     fn every_figure_is_sent() {
-        let f = Story::new(Chapter::Fact).compose(10.0);
-        assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
+        for chapter in [Chapter::Fact, Chapter::Check] {
+            let f = Story::new(chapter).compose(10.0);
+            assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
+        }
+    }
+
+    #[test]
+    fn every_page_has_its_chapter() {
+        assert_eq!(Chapter::from_code(0), Chapter::Fact);
+        assert_eq!(Chapter::from_code(1), Chapter::Check);
+        for chapter in [Chapter::Fact, Chapter::Check] {
+            assert!(chapter.still() < chapter.loop_seconds());
+        }
     }
 
     #[test]

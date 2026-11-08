@@ -18,7 +18,7 @@ void main() {
   w = max(w * u_out.w, 0.0);
   if (w > 0.7) w = 0.7 + 0.3 * (1.0 - exp(-(w - 0.7) / 0.3));
   vec2 v = v_uv - 0.5;
-  w *= 1.0 - 0.55 * dot(v, v);
+  w *= (1.0 - 0.55 * dot(v, v)) * tunnel(v_uv);
   w = clamp(w, 0.0, 1.0);
   if (u_out.x > 0.5) w = pow(w, 1.3) * 0.74;
   if (u_out.y > 0.5) {

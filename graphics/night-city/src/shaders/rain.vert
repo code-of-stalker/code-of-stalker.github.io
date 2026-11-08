@@ -27,7 +27,19 @@ vec2 rainLight(vec3 p, vec3 view) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  return l + shopSpill(p) + vec2(0.01, 0.008);
+  l = (l + shopSpill(p) + vec2(0.01, 0.008)) * (1.0 - 0.6 * CHECK.y);
+  if (CROSSCAR.w > 0.0) {
+    // Page 07: the drops in the side street's car's headlights, never hushed.
+    vec2 f;
+    vec3 c = crossCar(f);
+    vec3 head = vec3(f.x, 0.0, f.y);
+    vec3 d = p - c - head * 2.32 - vec3(0.0, 0.66, 0.0);
+    float along = dot(d, head);
+    float d2 = dot(d, d);
+    float phase = 0.4 + 2.0 * pow(max(dot(d * inversesqrt(d2), view), 0.0), 4.0);
+    l.x += CROSS_LIGHT * CROSSCAR.w * crossBeam(along, d - head * along) * phase / max(d2, 0.5);
+  }
+  return l;
 }
 
 void hide() {

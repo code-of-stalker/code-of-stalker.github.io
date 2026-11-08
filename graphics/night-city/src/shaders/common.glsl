@@ -43,6 +43,11 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define SCREEN_DIR u_d[SLOT_SCREEN + 1]  // the way it faces
 #define SPHERE     u_d[SLOT_SPHERE]      // the sphere round him: centre, radius
 #define RINGS      u_d[SLOT_SPHERE + 1]  // its rings: first's height, second's, third's turn, how seen
+// Page 07 (zero on page 06): the tunnel round his face, the city's hush,
+// the light at his soles, the support's circles (0..1 out, 1..2 gone).
+#define CHECK    u_d[SLOT_CHECK]
+#define CROSSCAR u_d[SLOT_CHECK + 1]  // the side street's car: x, z, heading, how seen
+#define RINGVIS  u_d[SLOT_CHECK + 2]  // how seen the first ring, the second; the third's boost; his screen
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w
@@ -230,6 +235,32 @@ int carLook(int lane, float id) {
   float count = lane == 0 ? CARS_0_COUNT : CARS_1_COUNT;
   float laps = abs(lane == 0 ? CARS_0_REPEATS : CARS_1_REPEATS);
   return pm(int(id), int(count * laps));
+}
+
+// Page 07's car out of the side street: where it stands (on the road a
+// kerb lower) and the way it faces, (sin, cos) of its heading from +z.
+vec3 crossCar(out vec2 f) {
+  f = vec2(sin(CROSSCAR.z), cos(CROSSCAR.z));
+  float x = CROSSCAR.x;
+  return vec3(x, -CURB * smoothstep(ROAD + 0.8, ROAD - 0.8, abs(x)), CROSSCAR.y);
+}
+
+// Its headlights' light, and how it pours along their beams: x along the
+// way the car faces, `off` the point's offset from the beams' axis.
+const float CROSS_LIGHT = 3.0 * CAR_LIGHT;
+float crossBeam(float along, vec3 off) {
+  return smoothstep(0.0, 0.8, along) * exp(-dot(off, off) / (0.06 + 0.1 * along * along));
+}
+
+// Page 07's narrowing: what share of the frame's light at uv (0..1) is
+// kept, a round window about his head where the eye sees it.
+float tunnel(vec2 uv) {
+  if (CHECK.x <= 0.0) return 1.0;
+  vec3 h = project(HEAD.xyz);
+  vec2 c = mix(vec2(0.5), clamp(h.xy / u_res.xy, 0.3, 0.7), smoothstep(0.4, 1.2, h.z));
+  vec2 d = (uv - c) * vec2(u_res.x / u_res.y, 1.0);
+  float r = mix(1.1, 0.14, CHECK.x);
+  return 1.0 - 0.93 * CHECK.x * smoothstep(r, r + 0.3, length(d));
 }
 
 // The voice's shells and the echo's: centre, radius, light.

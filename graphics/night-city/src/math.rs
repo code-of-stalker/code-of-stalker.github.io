@@ -93,6 +93,18 @@ pub fn window(t: f32, a: f32, b: f32, c: f32, d: f32) -> f32 {
     smooth(a, b, t) * (1.0 - smooth(c, d, t))
 }
 
+/// How much `smooth(a, b, x)` has gathered from far before `a` up to `t`:
+/// its integral (the ramp's half, then one per second after `b`).
+pub fn smooth_integral(a: f32, b: f32, t: f32) -> f32 {
+    let u = ((t - a) / (b - a)).clamp(0.0, 1.0);
+    (b - a) * (u * u * u - 0.5 * u * u * u * u) + (t - b).max(0.0)
+}
+
+/// The same of `window(t, a, b, c, d)`, for `b <= c`.
+pub fn window_integral(t: f32, a: f32, b: f32, c: f32, d: f32) -> f32 {
+    smooth_integral(a, b, t) - smooth_integral(c, d, t)
+}
+
 /// A reach with no jerk at either end: the swing of a foot.
 pub fn min_jerk(s: f32) -> f32 {
     let s = s.clamp(0.0, 1.0);

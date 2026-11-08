@@ -18,9 +18,9 @@ use crate::{
     cones, look, pack, recolor_code, Chapter, Look, Story, AIR, BLOCK, BLOOM, BLUR_MAX, BYTE_KEEP,
     CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FRAME_ASPECT, HAZE,
     LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, PALM_DROPS, PUFFS, RAD_SCALE, RAIN, RAIN_BOX,
-    RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, ROAD, SHOP_LIGHT, SLOTS, SLOT_PASS, SLOT_PUFF,
-    SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, WORLD_SCALE,
-    WORLD_WIDTH,
+    RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, ROAD, SHOP_LIGHT, SLOTS, SLOT_CHECK, SLOT_PASS,
+    SLOT_PUFF, SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL,
+    WORLD_SCALE, WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -82,6 +82,7 @@ fn defines() -> String {
         ("SLOT_PASS", SLOT_PASS.to_string()),
         ("SLOT_SCREEN", SLOT_SCREEN.to_string()),
         ("SLOT_SPHERE", SLOT_SPHERE.to_string()),
+        ("SLOT_CHECK", SLOT_CHECK.to_string()),
         ("PASSERS", PASSERS.to_string()),
         ("FIGURES", FIGURES.to_string()),
         ("FIG_UMBRELLA", (1 + UMBRELLA).to_string()),

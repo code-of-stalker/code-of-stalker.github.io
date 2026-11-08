@@ -24,7 +24,7 @@ void main() {
   float c = max(L.x * u_out.w, 0.0);
   if (c > 0.7) c = 0.7 + 0.3 * (1.0 - exp(-(c - 0.7) / 0.3));
   vec2 v = v_uv - 0.5;
-  c *= 1.0 - 0.55 * dot(v, v);
+  c *= (1.0 - 0.55 * dot(v, v)) * tunnel(v_uv);
   c += 0.014 * grain(gl_FragCoord.xy, TIME) * (0.25 + sqrt(c));
   c += (rand(uint(gl_FragCoord.x) * 7919u + uint(gl_FragCoord.y) * 104729u) - 0.5) / 255.0;
   c = clamp(c, 0.0, 1.0);

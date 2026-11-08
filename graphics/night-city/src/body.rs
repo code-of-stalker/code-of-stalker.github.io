@@ -34,6 +34,9 @@ pub enum Carry {
     Umbrella,
     /// A phone held before the face, and a hood up.
     Phone,
+    /// A phone and no hood: out of the pocket this much, 0 … 1 (it grows
+    /// from nothing in the hand as the hand brings it up).
+    Screen(f32),
 }
 
 pub const THIGH: f32 = 0.43;
@@ -438,7 +441,7 @@ impl Walk {
 }
 
 /// A foot spends this share of a step's period in the air.
-const SWING_SHARE: f32 = 0.76;
+pub const SWING_SHARE: f32 = 0.76;
 /// A pause this long (s) between two steps ends a bout of walking.
 pub const PAUSE: f32 = 1.5;
 
@@ -756,29 +759,37 @@ pub fn build(pose: &Pose) -> Body {
                 cut(Y, 1.0),
             );
         }
-        Carry::Phone => {
+        Carry::Phone | Carry::Screen(_) => {
+            let out = match pose.carry {
+                Carry::Screen(out) => smooth(0.0, 1.0, out),
+                _ => 1.0,
+            };
             let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
             let at = grip + palm * 0.012;
             let facing = (eyes - at).normalize();
             let long = (Y - facing * Y.dot(facing)).normalize();
-            cone(
-                at - long * 0.07,
-                0.036,
-                at + long * 0.07,
-                0.036,
-                cut(facing, 0.13),
-            );
-            // The hood up round the head, the face out of its front.
-            let mid = jaw.lerp(crown, 0.5) + hd.up * 0.025;
-            cone(
-                mid - hd.forward * 0.075,
-                0.13,
-                mid + hd.forward * 0.04,
-                0.125,
-                cut(hd.left, 0.84),
-            );
-            screen = [at + facing * 0.005, facing];
+            if out > 0.02 {
+                cone(
+                    at - long * (0.07 * out),
+                    0.036 * out,
+                    at + long * (0.07 * out),
+                    0.036 * out,
+                    cut(facing, 0.13),
+                );
+                screen = [at + facing * 0.005, facing];
+            }
         }
+    }
+    if pose.carry == Carry::Phone {
+        // The hood up round the head, the face out of its front.
+        let mid = jaw.lerp(crown, 0.5) + hd.up * 0.025;
+        cone(
+            mid - hd.forward * 0.075,
+            0.13,
+            mid + hd.forward * 0.04,
+            0.125,
+            cut(hd.left, 0.84),
+        );
     }
     // The rest stand empty inside the pelvis, out of the box.
     while n < PRIMITIVES {

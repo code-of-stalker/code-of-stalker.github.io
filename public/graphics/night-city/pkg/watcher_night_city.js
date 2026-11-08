@@ -65,7 +65,8 @@ export class NightCity {
     }
     /**
      * Nothing to load: the street, the walker and the rain are built on the
-     * GPU.
+     * GPU. The programs link in the background; `ready` says when the
+     * scene can draw, and frames before that draw nothing.
      * @param {HTMLCanvasElement} canvas
      */
     constructor(canvas) {
@@ -98,6 +99,26 @@ export class NightCity {
      */
     pause(value) {
         wasm.nightcity_pause(this.__wbg_ptr, value);
+    }
+    /**
+     * Whether the programs have linked and the scene draws; it never
+     * waits where the GPU can say. An error says why they did not link.
+     * @returns {boolean}
+     */
+    ready() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.nightcity_ready(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Reduced motion holds one moment: over his shoulder, mid-step.
@@ -144,6 +165,14 @@ function __wbg_get_imports() {
             const ret = typeof(obj) === 'number' ? obj : undefined;
             getDataViewMemory0().setFloat64(arg0 + 8 * 1, isLikeNone(ret) ? 0 : ret, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
+        },
+        __wbg___wbindgen_string_get_0380ccaa2f57f0d9: function(arg0, arg1) {
+            const obj = getObject(arg1);
+            const ret = typeof(obj) === 'string' ? obj : undefined;
+            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            var len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
         __wbg___wbindgen_throw_41e9ee4f547fc59a: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
@@ -236,6 +265,9 @@ function __wbg_get_imports() {
         __wbg_drawArrays_08872e02fb57b847: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
         },
+        __wbg_drawBuffers_7a58bd4729f7a1fc: function(arg0, arg1) {
+            getObject(arg0).drawBuffers(getObject(arg1));
+        },
         __wbg_enable_cb4fc19b51148c37: function(arg0, arg1) {
             getObject(arg0).enable(arg1 >>> 0);
         },
@@ -266,7 +298,7 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbg_getProgramInfoLog_3276b294d6d42fe2: function(arg0, arg1, arg2) {
             const ret = getObject(arg1).getProgramInfoLog(getObject(arg2));
-            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export2, wasm.__wbindgen_export3);
+            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             var len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
@@ -277,7 +309,7 @@ function __wbg_get_imports() {
         },
         __wbg_getShaderInfoLog_7e0cbba353ca95da: function(arg0, arg1, arg2) {
             const ret = getObject(arg1).getShaderInfoLog(getObject(arg2));
-            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export2, wasm.__wbindgen_export3);
+            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             var len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
@@ -314,6 +346,14 @@ function __wbg_get_imports() {
         __wbg_new_617a8cdb8bb1130e: function() {
             const ret = new Object();
             return addHeapObject(ret);
+        },
+        __wbg_new_ee2291f50781bf1d: function() {
+            const ret = new Array();
+            return addHeapObject(ret);
+        },
+        __wbg_push_2baf45db356cf468: function(arg0, arg1) {
+            const ret = getObject(arg0).push(getObject(arg1));
+            return ret;
         },
         __wbg_renderbufferStorageMultisample_ed16f3ef446e3bc7: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).renderbufferStorageMultisample(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
@@ -362,7 +402,12 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).width;
             return ret;
         },
-        __wbindgen_generic_0000000000000001: function(arg0, arg1) {
+        __wbindgen_generic_0000000000000001: function(arg0) {
+            // Cast intrinsic for `F64 -> Externref`.
+            const ret = arg0;
+            return addHeapObject(ret);
+        },
+        __wbindgen_generic_0000000000000002: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return addHeapObject(ret);
@@ -440,7 +485,7 @@ function handleError(f, args) {
     try {
         return f.apply(this, args);
     } catch (e) {
-        wasm.__wbindgen_export(addHeapObject(e));
+        wasm.__wbindgen_export3(addHeapObject(e));
     }
 }
 

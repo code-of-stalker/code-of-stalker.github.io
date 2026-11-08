@@ -307,13 +307,29 @@ async function start() {
   range.addEventListener('pointerup', () => { dragging = false; });
   range.addEventListener('input', () => { scene.seek(Number(range.value)); show(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) scene.suspend(); });
-  status.hidden = true;
   const tick = now => {
     scene.frame(now);
     show();
     requestAnimationFrame(tick);
   };
-  requestAnimationFrame(tick);
+  // The GPU builds the scene's programs in the background: the page keeps
+  // running and the status stays up until the scene can draw.
+  const wait = () => {
+    let done;
+    try {
+      done = scene.ready();
+    } catch (error) {
+      fail(`Сцена не запустилась: ${error && error.message ? error.message : error}`);
+      return;
+    }
+    if (!done) {
+      requestAnimationFrame(wait);
+      return;
+    }
+    status.hidden = true;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(wait);
 }
 start().catch(error => fail(`Сцена не запустилась: ${error && error.message ? error.message : error}`));
 </script>

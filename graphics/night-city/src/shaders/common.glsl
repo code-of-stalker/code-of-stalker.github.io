@@ -12,6 +12,12 @@ precision highp int;
 uniform vec4 u_d[SLOTS];
 uniform vec4 u_res;  // target width, height px; light the target keeps; what this draw is
 
+// A zero the compiler cannot see through: loops counted from it stay loops.
+// D3D's shader compiler (ANGLE on Windows) would otherwise unroll every
+// nested loop of the world shader, and linking it then outlasts the GPU's
+// watchdog, which drops the context before the first frame.
+#define ZERO min(int(u_res.x), 0)
+
 #define EYE     u_d[0]   // camera, focus distance
 #define RIGHT   u_d[1]   // right axis, loop time
 #define UP      u_d[2]   // up axis, aperture
@@ -77,7 +83,7 @@ float noiseP(vec2 p, int period) {
 // Four octaves; the base frequency has `period` cells in one REPEAT.
 float fbmP(vec2 p, int period) {
   float s = 0.0, w = 0.5;
-  for (int o = 0; o < 4; o++) {
+  for (int o = 0 + ZERO; o < 4; o++) {
     s += w * noiseP(p, period);
     p = p * 2.0 + vec2(17.3, 0.0);
     period *= 2;
@@ -149,10 +155,10 @@ float lampCone(vec3 fromHead) {
 // The lamps' light at p (cold, warm); n = 0 lights from every side.
 vec2 lampsAt(vec3 p, vec3 n, float wrap) {
   vec2 l = vec2(0.0);
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float k0 = floor(p.z / LAMP_GAP - lampOffset(s) + 0.5);
-    for (int j = -1; j <= 1; j++) {
+    for (int j = -1 + ZERO; j <= 1; j++) {
       float k = k0 + float(j);
       vec3 d = p - lampHead(s, k);
       float d2 = dot(d, d);
@@ -219,7 +225,7 @@ vec4 shell(int i, out vec3 centre) {
 // Where a shell touches the street: a thin bright line.
 float shellRings(vec3 p) {
   float l = 0.0;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0 + ZERO; i < 4; i++) {
     vec3 c;
     vec4 s = shell(i, c);
     if (s.x <= 0.0 || s.y <= 0.0) continue;

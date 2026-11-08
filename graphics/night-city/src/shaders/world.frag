@@ -4,7 +4,36 @@
 // in the air the lamps' cones in the rain, the cars' light trails, the
 // crossing lights, the steam, his breath and the shells of his voice.
 // Writes cold light, warm light, depth (z / (z + 8)) and the lens's blur.
+//
+// It is drawn in passes (browser.rs puts one PASS_ define in front): one
+// program with all of it takes D3D's shader compiler (Chrome on Windows)
+// minutes, longer than the GPU's watchdog waits, while each pass builds in
+// seconds. PASS_HITS traces the eye's ray and the wet ground's mirror ray and
+// writes what each met (four float frames); PASS_BUILDINGS, PASS_GROUND and
+// PASS_REST light their own kinds of surface from those records and PASS_AIR
+// the air, all added up in the world's frame. PASS_ALL is the whole world in
+// one program, for a GPU that cannot draw into float frames.
+#ifdef PASS_HITS
+layout(location = 0) out vec4 o0;
+layout(location = 1) out vec4 o1;
+layout(location = 2) out vec4 o2;
+layout(location = 3) out vec4 o3;
+#else
 out vec4 o;
+#endif
+#if !defined(PASS_HITS) && !defined(PASS_ALL)
+uniform highp sampler2D u_h0;
+uniform highp sampler2D u_h1;
+uniform highp sampler2D u_h2;
+uniform highp sampler2D u_h3;
+#endif
+// The walker's shadow in the lamps' light and the cars' gleam: only the
+// ground shows them.
+#if defined(PASS_ALL) || defined(PASS_GROUND)
+#define LIGHT_FULL 1
+#else
+#define LIGHT_FULL 0
+#endif
 
 uniform vec4 u_b[CONES * 3];
 const float BLEND[CONES] = float[CONES](BLENDS);
@@ -69,17 +98,25 @@ float smin(float a, float b, float k) {
 float figure(vec3 p) {
   float d = cone(0, p);
   bool noHead = FIG_LO.w > 0.5;
-  for (int c = 1; c < CONES; c++) {
+  for (int c = 1 + ZERO; c < CONES; c++) {
     if (noHead && (c == 3 || c == 4)) continue;
     d = smin(d, cone(c, p), BLEND[c]);
   }
   return d;
 }
-vec3 figureNormal(vec3 p) {
-  const vec2 k = vec2(1.0, -1.0);
+// His normal from four samples round p, taken in a loop so the compiler
+// builds figure() once here; their mean is the distance at p.
+vec3 figureNormal(vec3 p, out float d) {
   const float e = 0.0015;
-  return normalize(k.xyy * figure(p + k.xyy * e) + k.yyx * figure(p + k.yyx * e)
-                 + k.yxy * figure(p + k.yxy * e) + k.xxx * figure(p + k.xxx * e));
+  vec3 n = vec3(0.0);
+  d = 0.0;
+  for (int i = 0 + ZERO; i < 4; i++) {
+    vec3 k = vec3(float(((i + 3) >> 1) & 1), float((i >> 1) & 1), float(i & 1)) * 2.0 - 1.0;
+    float f = figure(p + k * e);
+    n += k * f;
+    d += 0.25 * f;
+  }
+  return normalize(n);
 }
 // Whether p is his skin: the head and the hands.
 bool skin(vec3 p, float d) {
@@ -158,7 +195,7 @@ bool traceRow(vec3 ro, vec3 rd, vec3 ird, int row, float s, inout Hit h) {
   int cb = int(floor((ro.z + rd.z * t1 + 0.5 * cl) / cl));
   int dir = cb >= ca ? 1 : -1;
   int n = min(abs(cb - ca), row == 0 ? 30 : 20);
-  for (int i = 0; i <= n; i++) {
+  for (int i = 0 + ZERO; i <= n; i++) {
     int c = ca + i * dir;
     vec3 lo, hi;
     if (!lot(row, s, c, lo, hi)) continue;
@@ -195,12 +232,12 @@ bool bladeSign(float s, int c, out vec4 sg) {
 
 // The lamps' poles, arms and heads near where the ray crosses their line.
 void traceLamps(vec3 ro, vec3 rd, vec3 ird, inout Hit h) {
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float tc = (s * 3.1 - ro.x) * ird.x;
     if (tc <= 0.0 || tc > h.t + 2.0) continue;
     float k0 = floor((ro.z + rd.z * tc) / LAMP_GAP - lampOffset(s) + 0.5);
-    for (int j = -1; j <= 1; j++) {
+    for (int j = -1 + ZERO; j <= 1; j++) {
       float k = k0 + float(j);
       float z = (k + lampOffset(s)) * LAMP_GAP;
       vec2 oc = ro.xz - vec2(s * LAMP_POLE, z);
@@ -244,7 +281,7 @@ void traceLamps(vec3 ro, vec3 rd, vec3 ird, inout Hit h) {
 
 // The blade signs in the band where they hang over the pavement.
 void traceSigns(vec3 ro, vec3 rd, vec3 ird, inout Hit h) {
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float ta = (s * (FACADE - 1.1) - ro.x) * ird.x;
     float tb = (s * (FACADE - 0.12) - ro.x) * ird.x;
@@ -253,7 +290,7 @@ void traceSigns(vec3 ro, vec3 rd, vec3 ird, inout Hit h) {
     int ca = cellOf(ro.z + rd.z * t0), cb = cellOf(ro.z + rd.z * t1);
     int dir = cb >= ca ? 1 : -1;
     int n = min(abs(cb - ca), 6);
-    for (int i = 0; i <= n; i++) {
+    for (int i = 0 + ZERO; i <= n; i++) {
       int c = ca + i * dir;
       vec4 sg;
       if (!bladeSign(s, c, sg)) continue;
@@ -277,7 +314,7 @@ float traceFigure(vec3 ro, vec3 rd, vec3 ird, float tmax) {
   float t = max(b.x, 0.12);
   float end = min(b.y, tmax);
   if (t >= end) return -1.0;
-  for (int i = 0; i < 72; i++) {
+  for (int i = 0 + ZERO; i < 72; i++) {
     float d = figure(ro + rd * t);
     if (d < 0.0008 * t + 0.0004) return t;
     t += d * 0.9;
@@ -286,7 +323,7 @@ float traceFigure(vec3 ro, vec3 rd, vec3 ird, float tmax) {
   return -1.0;
 }
 
-Hit trace(vec3 ro, vec3 rd, bool walker) {
+Hit noHit() {
   Hit h;
   h.t = 1e4;
   h.kind = SKY;
@@ -297,6 +334,11 @@ Hit trace(vec3 ro, vec3 rd, bool walker) {
   h.lo = vec3(0.0);
   h.hi = vec3(0.0);
   h.info = vec4(0.0);
+  return h;
+}
+
+Hit trace(vec3 ro, vec3 rd, bool walker) {
+  Hit h = noHit();
   vec3 ird = safeInverse(rd);
   if (rd.y < 0.0) {
     float t = -ro.y * ird.y;
@@ -319,7 +361,7 @@ Hit trace(vec3 ro, vec3 rd, bool walker) {
     }
   }
   float s = rd.x >= 0.0 ? 1.0 : -1.0;
-  for (int row = 0; row < 3; row++) {
+  for (int row = 0 + ZERO; row < 3; row++) {
     if (traceRow(ro, rd, ird, row, s, h)) break;
   }
   traceLamps(ro, rd, ird, h);
@@ -344,7 +386,7 @@ float walkerShadow(vec3 p, vec3 lamp) {
   if (b.x >= b.y || b.y <= 0.0) return 1.0;
   float t = max(b.x, 0.02);
   float res = 1.0;
-  for (int i = 0; i < 28; i++) {
+  for (int i = 0 + ZERO; i < 28; i++) {
     float e = figure(p + d * t);
     res = min(res, 10.0 * e / t);
     if (res < 0.02) return 0.0;
@@ -354,22 +396,26 @@ float walkerShadow(vec3 p, vec3 lamp) {
   return smoothstep(0.0, 1.0, res);
 }
 
-// The lamps' light at p with his shadow in it.
-vec2 lampsShadowed(vec3 p, vec3 n) {
+// The lamps' light at p (cold, warm); n = 0 lights from every side. With
+// `shadowed` the walker's shadow falls in it near him.
+vec2 lamps(vec3 p, vec3 n, float wrap, bool shadowed) {
   vec3 centre = 0.5 * (FIG_LO.xyz + FIG_HI.xyz);
-  if (length(p.xz - centre.xz) > 9.0) return lampsAt(p, n, 0.0);
+  shadowed = shadowed && length(p.xz - centre.xz) <= 9.0;
   vec2 l = vec2(0.0);
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float k0 = floor(p.z / LAMP_GAP - lampOffset(s) + 0.5);
-    for (int j = -1; j <= 1; j++) {
+    for (int j = -1 + ZERO; j <= 1; j++) {
       float k = k0 + float(j);
       vec3 c = lampHead(s, k);
       vec3 d = p - c;
       float d2 = dot(d, d);
-      float lambert = clamp(dot(n, -d) * inversesqrt(d2), 0.0, 1.0);
+      float lambert = 1.0;
+      if (dot(n, n) > 0.0) lambert = clamp((dot(n, -d) * inversesqrt(d2) + wrap) / (1.0 + wrap), 0.0, 1.0);
       float i = LAMP_LIGHT * lampFlicker(s, k) * lampCone(d) * lambert / max(d2, 0.25);
-      if (i > 0.002) i *= walkerShadow(p + n * 0.01, c);
+#if LIGHT_FULL
+      if (shadowed && i > 0.002) i *= walkerShadow(p + n * 0.01, c);
+#endif
       if (side == 0) l.x += i; else l.y += i;
     }
   }
@@ -380,10 +426,10 @@ vec2 lampsShadowed(vec3 p, vec3 n) {
 vec2 lampsGleam(vec3 p, vec3 n, vec3 v, float a2) {
   vec2 l = vec2(0.0);
   float nv = max(dot(n, v), 0.05);
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float k0 = floor(p.z / LAMP_GAP - lampOffset(s) + 0.5);
-    for (int j = -2; j <= 2; j++) {
+    for (int j = -2 + ZERO; j <= 2; j++) {
       float k = k0 + float(j);
       vec3 c = lampHead(s, k);
       vec3 d = c - p;
@@ -407,11 +453,11 @@ vec2 carsGleam(vec3 p, vec3 n, vec3 v, float a2) {
   vec2 l = vec2(0.0);
   float nv = max(dot(n, v), 0.05);
   float nc = floor(p.z / REPEAT);
-  for (int lane = 0; lane < 2; lane++) {
+  for (int lane = 0 + ZERO; lane < 2; lane++) {
     int count = int(lane == 0 ? CARS_0_COUNT : CARS_1_COUNT);
     float x = lane == 0 ? -CAR_LANE : CAR_LANE;
-    for (int m = -1; m <= 1; m++) {
-      for (int j = 0; j < 3; j++) {
+    for (int m = -1 + ZERO; m <= 1; m++) {
+      for (int j = 0 + ZERO; j < 3; j++) {
         if (j >= count) break;
         float z = carZ(lane, j, nc + float(m));
         if (abs(z - p.z) > 30.0) continue;
@@ -434,6 +480,61 @@ vec2 carsGleam(vec3 p, vec3 n, vec3 v, float a2) {
 }
 
 // ---- surfaces ----
+
+// What a surface makes of the light at p: its own glow, how much of the
+// lamps' (and its extra) light it gives back, the lamps' and the cars'
+// gleam in it, its share of the voice's rings and the shade of his feet.
+// Every surface fills one and lightOf() lights it, so the shader compiler
+// builds each light once: D3D's compiler (Chrome on Windows) takes minutes
+// over a shader that calls them from every surface.
+struct Mat {
+  vec2 L;
+  float albedo;
+  vec3 n;
+  float wrap;
+  bool shadowed;
+  vec2 extra;
+  float gleam;
+  float cars;
+  vec3 gn;
+  float a2;
+  float rings;
+  float mul;
+};
+Mat emits(vec2 L) {
+  Mat m;
+  m.L = L;
+  m.albedo = 0.0;
+  m.n = vec3(0.0);
+  m.wrap = 0.0;
+  m.shadowed = false;
+  m.extra = vec2(0.0);
+  m.gleam = 0.0;
+  m.cars = 0.0;
+  m.gn = vec3(0.0, 1.0, 0.0);
+  m.a2 = 0.1;
+  m.rings = 0.0;
+  m.mul = 1.0;
+  return m;
+}
+Mat matte(float albedo, vec3 n, float wrap, vec2 extra) {
+  Mat m = emits(vec2(0.0));
+  m.albedo = albedo;
+  m.n = n;
+  m.wrap = wrap;
+  m.extra = extra;
+  return m;
+}
+vec2 lightOf(Mat m, vec3 p, vec3 v) {
+  vec2 L = m.L;
+  if (m.albedo > 0.0) L += m.albedo * (lamps(p, m.n, m.wrap, m.shadowed) + m.extra);
+  if (m.gleam > 0.0) L += m.gleam * lampsGleam(p, m.gn, v, m.a2);
+#if LIGHT_FULL
+  if (m.cars > 0.0) L += m.cars * carsGleam(p, m.gn, v, m.a2);
+#endif
+  if (m.rings > 0.0) L.x += m.rings * shellRings(p);
+  return L * m.mul;
+}
 
 // A line of the model's drawing at distance e (m) from it, about a pixel wide.
 float edgeLine(float e, float w) {
@@ -505,26 +606,25 @@ float stutter(int id) {
   return 1.0 - step(hash2(id, epoch, 21u), 0.3 * CITY.x);
 }
 
-vec2 building(vec3 p, vec3 n, vec3 rd, float t, Hit h) {
+Mat building(vec3 p, vec3 n, vec3 rd, float t, Hit h) {
   float pxm = pixelAt(t);
   int row = h.row;
   int k = row == 2 ? pm(h.c, 4) : pm(h.c, 10);
   uint sd = (h.s > 0.0 ? 1u : 2u) + uint(row) * 8u;
   float lw = max(0.012, 1.1 * pxm);
   float lineLight = row == 0 ? 0.16 : (row == 1 ? 0.11 : 0.085);
-  vec2 lamps = lampsAt(p, n, 0.25);
-  vec2 L = 0.05 * (lamps + vec2(0.02, 0.015));
-  L.x += 0.45 * shellRings(p);
+  Mat m = matte(0.05, n, 0.25, vec2(0.02, 0.015));
+  m.rings = 0.45;
   if (n.y > 0.5) {
     vec2 e = min(p.xz - h.lo.xz, h.hi.xz - p.xz);
-    L.x += lineLight * edgeLine(min(e.x, e.y), lw);
+    m.L.x += lineLight * edgeLine(min(e.x, e.y), lw);
     if (row == 2) {
       // The tower's beacon, slow and warm.
       float d = length(p.xz - 0.5 * (h.lo.xz + h.hi.xz));
       float blink = step(fract(TIME / 2.0 + hash1(k, 120u + sd)), 0.18);
-      L.y += 6.0 * blink * smoothstep(0.7 + pxm, 0.4, d);
+      m.L.y += 6.0 * blink * smoothstep(0.7 + pxm, 0.4, d);
     }
-    return L;
+    return m;
   }
   bool front = abs(n.x) > 0.5;
   vec3 ua = front ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
@@ -534,37 +634,52 @@ vec2 building(vec3 p, vec3 n, vec3 rd, float t, Hit h) {
   float top = h.hi.y;
   // The model's edges: the lot's corners, its roof line and its foot.
   float e = min(min(u, W - u), min(v, top - v));
-  L.x += lineLight * edgeLine(e, lw);
+  m.L.x += lineLight * edgeLine(e, lw);
   vec3 dl = vec3(dot(rd, ua), rd.y, dot(rd, -n));
   bool street = row == 0 && front;
   float base = street ? 4.2 : 1.0;
-  if (street && v < base) {
+  bool shopFloor = street && v < base;
+  // The room the eye meets behind the glass, the shop's or a flat's: asked
+  // for below and looked into once.
+  bool seeRoom = false;
+  vec3 at = vec3(0.0), size = vec3(1.0);
+  uint salt = 0u;
+  bool glass = false;
+  float F = 0.0;
+  float fh = row == 2 ? 3.6 : 3.3;
+  float floorIx = 0.0, bay = 0.0;
+  bool inside = false;
+  int wk = 0;
+  float detail = 0.0;
+  if (shopFloor) {
     // The shop: lit glass with the room behind it, its sign above.
-    vec3 sh = shop(h.s, h.c);
     float canopy = edgeLine(abs(v - 3.5), lw);
-    L.x += 0.22 * canopy;
-    bool glass = v > 0.35 && v < 3.4 && u > 0.5 && u < W - 0.5;
+    m.L.x += 0.22 * canopy;
+    glass = v > 0.35 && v < 3.4 && u > 0.5 && u < W - 0.5;
     // The window's frame: mullions every 1.8 m, a transom at 2.7 m.
     float mull = abs(fract((u - 0.5) / 1.8 + 0.5) - 0.5) * 1.8;
     float frame_ = min(mull, abs(v - 2.7));
     if (glass && frame_ < 0.035) {
       // Dark metal with a thin wet edge.
-      L.x += 0.05 * edgeLine(0.035 - frame_, lw) + 0.003;
-      L += 0.25 * lampsGleam(p, n, -rd, 0.04);
+      m.L.x += 0.05 * edgeLine(0.035 - frame_, lw) + 0.003;
+      m.gleam = 0.25;
+      m.gn = n;
+      m.a2 = 0.04;
+      glass = false;
     } else if (glass) {
-      vec3 v_ = -rd;
       // Glass: the steeper the look, the more of the room; along the street
       // it turns into a mirror of the lamps and the wet street.
-      float cosv = clamp(dot(n, v_), 0.0, 1.0);
-      float F = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
-      float r = room(vec3(u - 0.5, v - 0.35, 0.0), dl, vec3(W - 1.0, 3.05, 5.0), true, 200u + uint(k) + sd * 16u);
-      float i = SHOP_LIGHT * sh.x * r * (1.0 - F);
-      // Rain runs down the glass in streaks.
-      float run = noiseP(vec2(u * 9.0, v * 0.8 + TIME * 0.6 * hash1(int(u * 9.0), 7u)), 4096);
-      float wet = 0.85 + 0.3 * smoothstep(0.55, 0.9, run);
-      if (sh.y > 0.5) L.y += i * wet; else L.x += i * wet;
-      L += F * (0.6 * lampsGleam(p, n, v_, 0.0025) + vec2(0.012, 0.01));
-      L.x += 0.004;
+      float cosv = clamp(dot(n, -rd), 0.0, 1.0);
+      F = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
+      seeRoom = true;
+      at = vec3(u - 0.5, v - 0.35, 0.0);
+      size = vec3(W - 1.0, 3.05, 5.0);
+      salt = 200u + uint(k) + sd * 16u;
+      m.gleam = 0.6 * F;
+      m.gn = n;
+      m.a2 = 0.0025;
+      m.L += F * vec2(0.012, 0.01);
+      m.L.x += 0.004;
     }
     if (v > 3.62 && v < 4.12 && u > 1.0 && u < W - 1.0 && hash1(k, 130u + sd) > 0.35) {
       float gw = 0.42;
@@ -573,29 +688,46 @@ vec2 building(vec3 p, vec3 n, vec3 rd, float t, Hit h) {
       float far = smoothstep(0.03, 0.012, pxm);
       f = mix(0.18, f, far);
       float i = 1.6 * f * stutter(k * 2 + int(sd));
-      if (hash1(k, 150u + sd) > 0.5) L.y += i; else L.x += i;
+      if (hash1(k, 150u + sd) > 0.5) m.L.y += i; else m.L.x += i;
     }
-    return L;
+  } else {
+    // The floors above: windows, some lit, the room behind each.
+    float fy = (v - base) / fh;
+    floorIx = floor(fy);
+    float bw0 = row == 0 ? 2.04 : (row == 1 ? 1.8 : 1.5);
+    float nb = max(1.0, floor(W / bw0));
+    float bw = W / nb;
+    float bx = u / bw;
+    bay = floor(bx);
+    vec2 f = vec2(fract(bx), fract(fy));
+    m.L.x += 0.03 * edgeLine(abs(fract(fy + 0.5) - 0.5) * fh, lw);
+    if (v > top - 0.9) return m;
+    inside = f.x > 0.16 && f.x < 0.84 && f.y > 0.2 && f.y < 0.82;
+    int face = front ? 0 : 1;
+    wk = k * 7 + face + 3 * int(sd);
+    seeRoom = inside;
+    at = vec3((f.x - 0.16) * bw, (f.y - 0.2) * fh, 0.0);
+    size = vec3(bw * 0.68, fh * 0.62, 3.5);
+    salt = uint(wk) * 31u + uint(floorIx);
+    // Far away a window is less than a few pixels: its average.
+    detail = smoothstep(1.5, 4.0, bw / pxm);
   }
-  // The floors above: windows, some lit, the room behind each.
-  float fh = row == 2 ? 3.6 : 3.3;
-  float fy = (v - base) / fh;
-  float floorIx = floor(fy);
-  float bw0 = row == 0 ? 2.04 : (row == 1 ? 1.8 : 1.5);
-  float nb = max(1.0, floor(W / bw0));
-  float bw = W / nb;
-  float bx = u / bw;
-  float bay = floor(bx);
-  vec2 f = vec2(fract(bx), fract(fy));
-  L.x += 0.03 * edgeLine(abs(fract(fy + 0.5) - 0.5) * fh, lw);
-  if (v > top - 0.9) return L;
-  bool inside = f.x > 0.16 && f.x < 0.84 && f.y > 0.2 && f.y < 0.82;
-  int face = front ? 0 : 1;
-  int wk = k * 7 + face + 3 * int(sd);
+  float r = seeRoom ? room(at, dl, size, glass, salt) : 0.0;
+  if (shopFloor) {
+    if (glass) {
+      vec3 sh = shop(h.s, h.c);
+      float i = SHOP_LIGHT * sh.x * r * (1.0 - F);
+      // Rain runs down the glass in streaks.
+      float run = noiseP(vec2(u * 9.0, v * 0.8 + TIME * 0.6 * hash1(int(u * 9.0), 7u)), 4096);
+      float wet = 0.85 + 0.3 * smoothstep(0.55, 0.9, run);
+      if (sh.y > 0.5) m.L.y += i * wet; else m.L.x += i * wet;
+    }
+    return m;
+  }
   float litShare = 0.16 + 0.38 * hash1(k, 100u + sd);
   int slow = pm(int(floor(TIME / 16.0)), 4);
-  float lit = step(hash3(wk, int(floorIx), int(bay), 7u), litShare);
-  if (hash3(wk, int(floorIx), int(bay), 8u) < 0.1) lit = step(0.5, hash3(wk, int(floorIx), int(bay) + 97 * slow, 9u));
+  float lit_ = step(hash3(wk, int(floorIx), int(bay), 7u), litShare);
+  if (hash3(wk, int(floorIx), int(bay), 8u) < 0.1) lit_ = step(0.5, hash3(wk, int(floorIx), int(bay) + 97 * slow, 9u));
   // The restless street: pairs of windows open like eyes.
   int epoch = pm(int(floor(TIME)), int(LOOP));
   float tick = fract(TIME);
@@ -603,22 +735,18 @@ vec2 building(vec3 p, vec3 n, vec3 rd, float t, Hit h) {
              * smoothstep(0.0, 0.12, tick) * smoothstep(1.0, 0.75, tick);
   float warm = step(0.35, hash3(wk, int(floorIx), int(bay), 11u));
   float bright = 0.22 + 0.4 * hash3(wk, int(floorIx), int(bay), 12u);
-  // Far away a window is less than a few pixels: its average.
-  float detail = smoothstep(1.5, 4.0, bw / pxm);
-  float r = inside ? room(vec3((f.x - 0.16) * bw, (f.y - 0.2) * fh, 0.0), dl,
-                          vec3(bw * 0.68, fh * 0.62, 3.5), false, uint(wk) * 31u + uint(floorIx)) : 0.0;
   float mean = 0.24 * (litShare * 0.55 + 0.1 * eyes);
-  float win = mix(mean, float(inside) * (lit * bright * r + eyes * 1.3 * r), detail);
+  float win = mix(mean, float(inside) * (lit_ * bright * r + eyes * 1.3 * r), detail);
   float glassDark = mix(0.0, float(inside) * 0.006, detail);
   float shareWarm = mix(0.65, warm, detail);
-  L.y += win * shareWarm * (1.0 - eyes * detail);
-  L.x += win * (1.0 - shareWarm * (1.0 - eyes * detail)) + glassDark;
-  return L;
+  m.L.y += win * shareWarm * (1.0 - eyes * detail);
+  m.L.x += win * (1.0 - shareWarm * (1.0 - eyes * detail)) + glassDark;
+  return m;
 }
 
 // The ground's paint and stone at p: its albedo, how wet it is (out), the
 // normal its water shows (out), and the lines of light it carries.
-vec2 ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) {
+Mat ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) {
   float pxm = pixelAt(t);
   float ax = abs(p.x);
   int c = cellOf(p.z);
@@ -673,11 +801,15 @@ vec2 ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) 
   albedo *= mix(0.75, 0.35, wet);
 
   // The water's surface: a slow wobble, the rain's rings, the steps' rings.
-  vec2 dn = (vec2(noiseP(p.xz * (980.0 / REPEAT), 980), noiseP(p.xz * (980.0 / REPEAT) + 7.3, 980)) - 0.5)
-          * mix(0.08, 0.006, wet);
+  vec2 dn = vec2(0.0);
+  for (int i = 0 + ZERO; i < 2; i++) {
+    float nz = noiseP(p.xz * (980.0 / REPEAT) + 7.3 * float(i), 980);
+    if (i == 0) dn.x = nz; else dn.y = nz;
+  }
+  dn = (dn - 0.5) * mix(0.08, 0.006, wet);
   vec2 lightRings = vec2(0.0);
   if (full) {
-    for (int layer = 0; layer < 2; layer++) {
+    for (int layer = 0 + ZERO; layer < 2; layer++) {
       vec2 g = p.xz / (REPEAT / 160.0) + float(layer) * 0.5;
       ivec2 ci = ivec2(floor(g));
       int cz = pm(ci.y, 160);
@@ -689,7 +821,7 @@ vec2 ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) 
       float wave = sin((d - r) * 70.0) * exp(-pow((d - r) / 0.022, 2.0)) * (1.0 - ph) * (1.0 - ph);
       dn += rel / max(d, 1e-4) * wave * 0.3 * (0.35 + 0.65 * wet);
     }
-    for (int i = 0; i < STEP_MARKS; i++) {
+    for (int i = 0 + ZERO; i < STEP_MARKS; i++) {
       vec4 s = STEP(i);
       if (s.z > 2.4) continue;
       vec2 rel = p.xz - s.xy;
@@ -705,40 +837,41 @@ vec2 ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) 
     }
   }
   nw = normalize(vec3(dn.x, 1.0, dn.y));
-  vec3 n = vec3(0.0, 1.0, 0.0);
-  vec2 lamps = full ? lampsShadowed(p, n) : lampsAt(p, n, 0.0);
-  vec2 L = albedo * (lamps + shopSpill(p) + vec2(0.006, 0.005));
+  Mat m = matte(albedo, vec3(0.0, 1.0, 0.0), 0.0, shopSpill(p) + vec2(0.006, 0.005));
+  m.shadowed = full;
   if (full) {
-    vec3 v = -rd;
-    float a2 = mix(0.09, 0.012, wet);
-    L += (1.0 - 0.6 * wet) * (lampsGleam(p, nw, v, a2) + carsGleam(p, nw, v, a2));
-    L += lightRings;
-    L.x += 0.45 * shellRings(p);
+    m.gleam = 1.0 - 0.6 * wet;
+    m.cars = m.gleam;
+    m.gn = nw;
+    m.a2 = mix(0.09, 0.012, wet);
+    m.L = lightRings;
+    m.rings = 0.45;
     // Where his feet stand the ground is in his shade.
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0 + ZERO; i < 2; i++) {
       vec2 rel = p.xz - STEP(i).xy;
-      L *= 1.0 - 0.45 * exp(-dot(rel, rel) / 0.03);
+      m.mul *= 1.0 - 0.45 * exp(-dot(rel, rel) / 0.03);
     }
   }
-  return L;
+  return m;
 }
 
-vec2 figureLight(vec3 p, vec3 rd) {
-  float d = figure(p);
-  vec3 n = figureNormal(p);
+Mat figureMat(vec3 p, vec3 rd) {
+  float d;
+  vec3 n = figureNormal(p, d);
   vec3 v = -rd;
   bool sk = skin(p, d);
   vec3 sh = shop(-1.0, cellOf(p.z));
   float fromShops = SHOP_LIGHT * 0.45 * sh.x * clamp(-n.x * 0.8 + 0.2, 0.0, 1.0);
   vec2 shops = sh.y > 0.5 ? vec2(0.0, fromShops) : vec2(fromShops, 0.0);
-  float albedo = sk ? 0.2 : 0.06;
-  vec2 L = albedo * (lampsAt(p, n, 0.3) + shops + vec2(0.012, 0.01));
+  Mat m = matte(sk ? 0.2 : 0.06, n, 0.3, shops + vec2(0.012, 0.01));
   float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * FIG_HI.w;
-  L += rim * vec2(0.2 * smoothstep(-0.3, 0.6, -n.x) + 0.05, 0.22 * smoothstep(-0.3, 0.6, n.x) + 0.04);
+  m.L = rim * vec2(0.2 * smoothstep(-0.3, 0.6, -n.x) + 0.05, 0.22 * smoothstep(-0.3, 0.6, n.x) + 0.04);
   // The wet coat's sheen.
-  L += 0.35 * lampsGleam(p, n, v, sk ? 0.25 : 0.12);
-  L.x += 0.5 * shellRings(p);
-  return L;
+  m.gleam = 0.35;
+  m.gn = n;
+  m.a2 = sk ? 0.25 : 0.12;
+  m.rings = 0.5;
+  return m;
 }
 
 vec2 signLight(vec3 p, float t, Hit h) {
@@ -761,27 +894,41 @@ vec2 signLight(vec3 p, float t, Hit h) {
   return sg.w > 0.5 ? vec2(0.12 * i, i) : vec2(i, 0.08 * i);
 }
 
-vec2 surface(Hit h, vec3 ro, vec3 rd, float pathT) {
+vec2 sky(vec3 ro, vec3 rd);
+
+// What the ray from ro met, other than a building or the ground, makes of
+// the light.
+Mat rest(Hit h, vec3 ro, vec3 rd, float pathT) {
   vec3 p = ro + rd * h.t;
-  if (h.kind == BUILDING) return building(p, h.n, rd, pathT, h);
-  if (h.kind == FIGURE) return figureLight(p, rd);
-  if (h.kind == SIGN) return signLight(p, pathT, h);
-  if (h.kind == GROUND) {
-    float m;
-    vec3 nw;
-    return ground(p, rd, pathT, false, m, nw);
-  }
-  if (h.kind == KERB) return 0.12 * (lampsAt(p, h.n, 0.2) + vec2(0.01));
+  if (h.kind == SKY) return emits(sky(ro, rd));
+  if (h.kind == FIGURE) return figureMat(p, rd);
+  if (h.kind == SIGN) return emits(signLight(p, pathT, h));
+  if (h.kind == KERB) return matte(0.12, h.n, 0.2, vec2(0.01));
   if (h.kind == POLE) {
-    vec3 v = -rd;
-    return 0.04 * (lampsAt(p, h.n, 0.3) + vec2(0.02, 0.015)) + 0.3 * lampsGleam(p, h.n, v, 0.08);
+    Mat m = matte(0.04, h.n, 0.3, vec2(0.02, 0.015));
+    m.gleam = 0.3;
+    m.gn = h.n;
+    m.a2 = 0.08;
+    return m;
   }
   if (h.kind == HEAD_LAMP) {
     float s = h.info.x;
-    float glow = h.n.y < -0.5 ? 0.5 * LAMP_LIGHT * lampFlicker(s, h.info.y) : 0.03;
-    return s > 0.0 ? vec2(glow, 0.0) : vec2(0.0, glow);
+    float on = h.n.y < -0.5 ? 0.5 * LAMP_LIGHT * lampFlicker(s, h.info.y) : 0.03;
+    return emits(s > 0.0 ? vec2(on, 0.0) : vec2(0.0, on));
   }
-  return vec2(0.0);
+  return emits(vec2(0.0));
+}
+
+// What the ray from ro met makes of the light. `full` is the eye's own look
+// at the ground (its ripples, his shadow, the gleams); the mirror's look
+// takes the plain ground. A ground hit also gives its mirror and water.
+Mat material(Hit h, vec3 ro, vec3 rd, float pathT, bool full, out float mirror, out vec3 nw) {
+  mirror = 0.0;
+  nw = vec3(0.0, 1.0, 0.0);
+  vec3 p = ro + rd * h.t;
+  if (h.kind == GROUND) return ground(p, rd, pathT, full, mirror, nw);
+  if (h.kind == BUILDING) return building(p, h.n, rd, pathT, h);
+  return rest(h, ro, rd, pathT);
 }
 
 // ---- the sky and the air ----
@@ -811,10 +958,10 @@ float glare(vec3 ro, vec3 rd, vec3 c, float T) {
 vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
   vec2 L = vec2(0.0);
   // The lamps' light poured through the rain, and their glare.
-  for (int side = 0; side < 2; side++) {
+  for (int side = 0 + ZERO; side < 2; side++) {
     float s = side == 0 ? 1.0 : -1.0;
     float k0 = floor(ro.z / LAMP_GAP - lampOffset(s));
-    for (int j = -3; j <= 10; j++) {
+    for (int j = -3 + ZERO; j <= 10; j++) {
       float k = k0 + float(j);
       vec3 c = lampHead(s, k);
       vec3 oc = c - ro;
@@ -825,7 +972,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
       float acc = 0.0;
       if (t1 > t0) {
         float dt = (t1 - t0) / 6.0;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0 + ZERO; i < 6; i++) {
           float tt = t0 + (float(i) + jitter) * dt;
           vec3 d = ro + rd * tt - c;
           acc += lampCone(d) / (dot(d, d) + 0.6);
@@ -840,12 +987,12 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
   }
   // The cars: their lamps drawn out by their speed.
   float nc = floor(ro.z / REPEAT);
-  for (int lane = 0; lane < 2; lane++) {
+  for (int lane = 0 + ZERO; lane < 2; lane++) {
     int count = int(lane == 0 ? CARS_0_COUNT : CARS_1_COUNT);
     float x = lane == 0 ? -CAR_LANE : CAR_LANE;
     float dz = lane == 0 ? 1.0 : -1.0;
-    for (int m = -1; m <= 2; m++) {
-      for (int j = 0; j < 3; j++) {
+    for (int m = -1 + ZERO; m <= 2; m++) {
+      for (int j = 0 + ZERO; j < 3; j++) {
         if (j >= count) break;
         float z = carZ(lane, j, nc + float(m));
         vec3 cc = vec3(x, 0.65, z);
@@ -853,7 +1000,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
         float b = dot(oc, rd);
         if (b < 0.0 || b > T + 3.0) continue;
         if (dot(oc, oc) - b * b > 0.02 * b * b + 4.0) continue;
-        for (int side = 0; side < 2; side++) {
+        for (int side = 0 + ZERO; side < 2; side++) {
           vec3 a = cc + vec3(side == 0 ? -0.72 : 0.72, 0.0, 0.0);
           vec3 e = a - vec3(0.0, 0.0, dz * 2.8);
           // Closest points of the ray and the trail.
@@ -876,10 +1023,10 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
   // The crossing lights: the walkers' at the corners, the cars' over the road.
   int c0 = cellOf(ro.z);
   int first = c0 - pm(c0 - CROSS, 5) - 5;
-  for (int m = 0; m < 4; m++) {
+  for (int m = 0 + ZERO; m < 4; m++) {
     int c = first + 5 * m;
     float z0 = float(c) * CELL - 0.5 * CELL, z1 = z0 + CELL;
-    for (int corner = 0; corner < 4; corner++) {
+    for (int corner = 0 + ZERO; corner < 4; corner++) {
       float sx = corner < 2 ? 1.0 : -1.0;
       float z = (corner % 2 == 0) ? z0 - 0.3 : z1 + 0.3;
       vec3 stop = vec3(sx * (ROAD + 0.3), 2.62, z);
@@ -894,7 +1041,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
   }
   // The steam over the manholes, lit by what is near.
   float kb = floor(ro.z / BLOCK);
-  for (int m = -1; m <= 3; m++) {
+  for (int m = -1 + ZERO; m <= 3; m++) {
     vec3 c = vec3(1.3, -CURB, (kb + float(m)) * BLOCK + 27.0);
     vec2 oc = ro.xz - c.xz;
     float a = dot(rd.xz, rd.xz), b = dot(oc, rd.xz), cc = dot(oc, oc) - 2.4 * 2.4;
@@ -909,7 +1056,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
     float down = mix(1.0, 0.15, smoothstep(0.35, 0.85, -rd.y));
     float ph = fract(TIME / 4.0);
     float w1 = 1.0 - abs(2.0 * ph - 1.0);
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0 + ZERO; i < 7; i++) {
       float tq = t0 + (float(i) + jitter) * dt;
       vec3 q = ro + rd * tq;
       float y = q.y - c.y;
@@ -917,9 +1064,13 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
       float r = length(q.xz - c.xz);
       float w = 0.3 + 0.2 * y;
       vec3 sp = q * 1.4;
-      float n1 = noise3(sp - vec3(0.0, fract(ph + 0.5) * 5.0, 0.0) + 19.7);
-      float n2 = noise3(sp - vec3(0.0, ph * 5.0, 0.0));
-      float nf = mix(n1, n2, w1);
+      // Two drifting noises crossfaded (one loop: one noise3 to build).
+      float nf = 0.0;
+      for (int l = 0 + ZERO; l < 2; l++) {
+        float shift = l == 0 ? fract(ph + 0.5) : ph;
+        float nl = noise3(sp - vec3(0.0, shift * 5.0, 0.0) + (l == 0 ? 19.7 : 0.0));
+        nf += nl * (l == 0 ? 1.0 - w1 : w1);
+      }
       float dens = exp(-(r / w) * (r / w)) * smoothstep(7.0, 2.0, y) * smoothstep(0.0, 0.3, y)
                  * smoothstep(0.3, 0.75, nf + 0.15)
                  // A crane passing over it does not fly through the cloud.
@@ -931,7 +1082,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
     }
   }
   // His breath in the cold air.
-  for (int i = 0; i < PUFFS; i++) {
+  for (int i = 0 + ZERO; i < PUFFS; i++) {
     vec4 pf = PUFF(i);
     if (pf.w < 0.0) continue;
     float age = pf.w / PUFF_LIFE;
@@ -944,7 +1095,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
     float t0 = max(-b - sq, 0.0), t1 = min(-b + sq, T);
     if (t1 <= t0) continue;
     float dens = 0.0;
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0 + ZERO; k < 3; k++) {
       vec3 q = ro + rd * mix(t0, t1, (float(k) + 0.5) / 3.0);
       float fall = 1.0 - length(q - pf.xyz) / r;
       dens += max(fall, 0.0) * smoothstep(0.25, 0.75, noise3(q * 16.0 + vec3(0.0, -pf.w * 0.6, 0.0) + float(i) * 7.1));
@@ -955,7 +1106,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
     L += lit * dens / 3.0 * (t1 - t0) * fade * 6.0;
   }
   // The voice's shells and the echo's, thin as soap.
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0 + ZERO; i < 4; i++) {
     vec3 c;
     vec4 s = shell(i, c);
     if (s.x <= 0.0 || s.y <= 0.0) continue;
@@ -964,7 +1115,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
     float disc = b * b - (dot(oc, oc) - s.x * s.x);
     if (disc <= 0.0) continue;
     float sq = sqrt(disc);
-    for (int k = 0; k < 2; k++) {
+    for (int k = 0 + ZERO; k < 2; k++) {
       float t = k == 0 ? -b - sq : -b + sq;
       if (t <= 0.05 || t > T) continue;
       vec3 nrm = (ro + rd * t - c) / s.x;
@@ -976,41 +1127,180 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
   return L;
 }
 
-void main() {
+// ---- the passes ----
+
+vec3 eyeRay() {
   vec2 ndc = gl_FragCoord.xy / u_res.xy * 2.0 - 1.0;
-  vec3 ro = EYE.xyz;
-  vec3 rd = normalize(FWD.xyz + RIGHT.xyz * (ndc.x / VIEW.x) + UP.xyz * (ndc.y / VIEW.y));
-  float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-  Hit h = trace(ro, rd, true);
-  vec2 L;
-  float far = h.t;
-  if (h.kind == SKY) {
-    L = sky(ro, rd);
-    far = 140.0;
-  } else if (h.kind == GROUND) {
-    vec3 p = ro + rd * h.t;
+  return normalize(FWD.xyz + RIGHT.xyz * (ndc.x / VIEW.x) + UP.xyz * (ndc.y / VIEW.y));
+}
+float frameJitter() {
+  return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+}
+// How much of a hit's light the haze leaves on the way to the eye.
+float hazeLeft(Hit h) {
+  return exp(-HAZE * (h.kind == SKY ? 140.0 : h.t));
+}
+// The world's frame from the light and the eye's own hit: its depth and the
+// lens's blur.
+vec4 worldPixel(vec2 L, Hit first) {
+  float z = (first.kind == SKY ? 1e4 : first.t) * dot(eyeRay(), FWD.xyz);
+  float blur = min(blurAt(z), BLUR_MAX) / BLUR_MAX;
+  return vec4(max(L, 0.0) * u_res.z, z / (z + 8.0), blur);
+}
+// A hit from its record (t, kind | row << 3 | far side << 5, its lot's cell
+// or its lamp's index, ...) and its normal. A building's box and a sign's
+// plane are not in it: the pass that lights them finds them again.
+Hit fromRecord(vec4 a, vec3 n) {
+  Hit h = noHit();
+  int code = int(a.y + 0.5);
+  h.t = a.x;
+  h.kind = code & 7;
+  h.row = (code >> 3) & 3;
+  h.s = (code & 32) != 0 ? 1.0 : -1.0;
+  h.c = int(floor(a.z + 0.5));
+  h.n = n;
+  h.info = vec4(h.s, a.z, 0.0, 0.0);
+  return h;
+}
+
+#if defined(PASS_HITS)
+vec4 recordOf(Hit h, float extra) {
+  bool lamp = h.kind == POLE || h.kind == HEAD_LAMP;
+  float s = lamp ? h.info.x : h.s;
+  int code = h.kind + 8 * h.row + (s > 0.0 ? 32 : 0);
+  return vec4(h.t, float(code), lamp ? h.info.y : float(h.c), extra);
+}
+
+// The eye's ray and, where it meets the ground, the wet street's mirror ray
+// (one loop, so the compiler builds trace() once). Records: the eye's hit
+// with how much the mirror carries; its normal, or on the ground the mirror
+// ray's way; the mirror's hit; its normal.
+void main() {
+  vec3 o_ = EYE.xyz, d = eyeRay();
+  Hit first = noHit(), second = noHit();
+  float w = 0.0;
+  vec3 r = vec3(0.0, 1.0, 0.0);
+  for (int b = 0 + ZERO; b < 2; b++) {
+    Hit h = trace(o_, d, true);
+    if (b == 0) first = h; else second = h;
+    if (b > 0 || h.kind != GROUND) break;
+    vec3 p = o_ + d * h.t;
     float mirror;
     vec3 nw;
-    L = ground(p, rd, h.t, true, mirror, nw);
-    // The wet street's mirror.
-    vec3 r = reflect(rd, nw);
+    ground(p, d, h.t, true, mirror, nw);
+    r = reflect(d, nw);
     r.y = max(r.y, 0.02);
     r = normalize(r);
-    vec3 rp = p + vec3(0.0, 0.003, 0.0);
-    Hit hr = trace(rp, r, true);
-    vec2 R = hr.kind == SKY ? sky(rp, r) : surface(hr, rp, r, h.t + hr.t);
-    float tr = hr.kind == SKY ? 140.0 : hr.t;
-    float fr = exp(-HAZE * tr);
-    R = R * fr + HAZE_LIGHT * (1.0 - fr);
-    float F = 0.02 + 0.98 * pow(1.0 - max(dot(-rd, nw), 0.0), 5.0);
-    L += R * max(F, 0.05) * mirror;
-  } else {
-    L = surface(h, ro, rd, h.t);
+    float F = 0.02 + 0.98 * pow(1.0 - max(dot(-d, nw), 0.0), 5.0);
+    w = exp(-HAZE * h.t) * max(F, 0.05) * mirror;
+    o_ = p + vec3(0.0, 0.003, 0.0);
+    d = r;
   }
-  float f = exp(-HAZE * far);
-  L = L * f + HAZE_LIGHT * (1.0 - f);
-  L += air(ro, rd, h.t, jitter);
-  float z = (h.kind == SKY ? 1e4 : h.t) * dot(rd, FWD.xyz);
-  float blur = min(blurAt(z), BLUR_MAX) / BLUR_MAX;
-  o = vec4(max(L, 0.0) * u_res.z, z / (z + 8.0), blur);
+  o0 = recordOf(first, w);
+  o1 = vec4(first.kind == GROUND ? r : first.n, 0.0);
+  o2 = recordOf(second, 0.0);
+  o3 = vec4(second.n, 0.0);
 }
+
+#elif defined(PASS_ALL)
+void main() {
+  vec3 ro = EYE.xyz;
+  vec3 rd = eyeRay();
+  // The eye's look, then where it meets the wet ground the street's mirror:
+  // one loop, so the compiler builds trace() and the surfaces once.
+  vec3 o_ = ro, d = rd;
+  vec2 L = vec2(0.0);
+  float w = 1.0, pathT = 0.0;
+  Hit first = noHit();
+  for (int b = 0 + ZERO; b < 2; b++) {
+    Hit h = trace(o_, d, true);
+    if (b == 0) first = h;
+    pathT += h.t;
+    vec3 p = o_ + d * h.t;
+    float mirror;
+    vec3 nw;
+    Mat m = material(h, o_, d, pathT, b == 0, mirror, nw);
+    float fr = hazeLeft(h);
+    L += w * (lightOf(m, p, -d) * fr + HAZE_LIGHT * (1.0 - fr));
+    if (b > 0 || h.kind != GROUND) break;
+    vec3 r = reflect(d, nw);
+    r.y = max(r.y, 0.02);
+    r = normalize(r);
+    float F = 0.02 + 0.98 * pow(1.0 - max(dot(-d, nw), 0.0), 5.0);
+    w = fr * max(F, 0.05) * mirror;
+    o_ = p + vec3(0.0, 0.003, 0.0);
+    d = r;
+  }
+  L += air(ro, rd, first.t, frameJitter());
+  o = worldPixel(L, first);
+}
+
+#else
+// The eye's ray (b = 0) or the mirror's (b = 1) from the records: where it
+// starts, its way, how much of the pixel it carries, the path's length and
+// what it met. False when there is no mirror ray.
+bool bounce(int b, out vec3 o_, out vec3 d, out float w, out float pathT, out Hit h) {
+  ivec2 px = ivec2(gl_FragCoord.xy);
+  vec4 a = texelFetch(u_h0, px, 0);
+  vec4 n = texelFetch(u_h1, px, 0);
+  vec3 rd = eyeRay();
+  if (b == 0) {
+    o_ = EYE.xyz;
+    d = rd;
+    w = 1.0;
+    pathT = a.x;
+    h = fromRecord(a, n.xyz);
+    return true;
+  }
+  vec4 a1 = texelFetch(u_h2, px, 0);
+  h = fromRecord(a1, texelFetch(u_h3, px, 0).xyz);
+  o_ = EYE.xyz + rd * a.x + vec3(0.0, 0.003, 0.0);
+  d = n.xyz;
+  w = a.w;
+  pathT = a.x + a1.x;
+  return w > 0.0;
+}
+
+#if defined(PASS_AIR)
+void main() {
+  float T = texelFetch(u_h0, ivec2(gl_FragCoord.xy), 0).x;
+  o = vec4(max(air(EYE.xyz, eyeRay(), T, frameJitter()), 0.0) * u_res.z, 0.0, 0.0);
+}
+
+#else
+void main() {
+  vec2 L = vec2(0.0);
+  Hit first = noHit();
+  for (int b = 0 + ZERO; b < 2; b++) {
+    vec3 o_, d;
+    float w, pathT;
+    Hit h;
+    if (!bounce(b, o_, d, w, pathT, h)) break;
+    if (b == 0) first = h;
+    vec3 p = o_ + d * h.t;
+    float fr = hazeLeft(h);
+#if defined(PASS_BUILDINGS)
+    if (h.kind != BUILDING) continue;
+    lot(h.row, h.s, h.c, h.lo, h.hi);
+    L += w * lightOf(building(p, h.n, d, pathT, h), p, -d) * fr;
+#elif defined(PASS_GROUND)
+    if (h.kind != GROUND) continue;
+    float mirror;
+    vec3 nw;
+    L += w * lightOf(ground(p, d, pathT, b == 0, mirror, nw), p, -d) * fr;
+#else
+    // The rest, and the haze over every hit.
+    L += w * HAZE_LIGHT * (1.0 - fr);
+    if (h.kind == BUILDING || h.kind == GROUND) continue;
+    if (h.kind == SIGN) bladeSign(h.s, h.c, h.info);
+    L += w * lightOf(rest(h, o_, d, pathT), p, -d) * fr;
+#endif
+  }
+#if defined(PASS_REST)
+  o = worldPixel(L, first);
+#else
+  o = vec4(max(L, 0.0) * u_res.z, 0.0, 0.0);
+#endif
+}
+#endif
+#endif

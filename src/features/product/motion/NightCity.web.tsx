@@ -27,12 +27,13 @@ export type NightCityProps = ArtProps & {
   fallback?: ReactNode;
 };
 
-/** The street's chapters, one per page: 0 page 06 «Фазы шага». */
-export type NightScene = Extract<WebScene, 'night-fact'>;
-export const isNightScene = (scene: WebScene | undefined): scene is NightScene => scene === 'night-fact';
-const chapters: Record<NightScene, number> = { 'night-fact': 0 };
-const names: Record<NightScene, string> = { 'night-fact': 'Фазы шага · Шаг 7' };
+/** The street's chapters, one per page: 0 page 06 «Фазы шага», 1 page 07 «Автопилот». */
+export type NightScene = Extract<WebScene, 'night-fact' | 'night-check'>;
+export const isNightScene = (scene: WebScene | undefined): scene is NightScene => scene === 'night-fact' || scene === 'night-check';
+const chapters: Record<NightScene, number> = { 'night-fact': 0, 'night-check': 1 };
+const names: Record<NightScene, string> = { 'night-fact': 'Фазы шага · Шаг 7', 'night-check': 'Автопилот · Шаг 7' };
 const labels: Record<NightScene, string> = {
+  'night-check': 'Ночь, дождь, перекрёсток. Сначала ошибка: человек в плаще уходит в телефон, кольца вокруг него гаснут одно за другим, и он шагает с бордюра на красный; машина из переулка тормозит в ладони от него. Кадр замирает, и время отматывается назад, как плёнка. Потом правильный проход: тот же путь с телефоном, но кольца горят; перед дорогой он убирает телефон, чувствует стопы и опору, делает долгий выдох, камера раскрывается над кварталом, он ждёт зелёного и переходит дорогу.',
   'night-fact': 'Ночь, дождь, мокрая улица. Человек в плаще идёт по тротуару мимо витрин и фонарей, по дороге едут машины, навстречу проходит человек под зонтом, у бордюра стоит человек с телефоном. По стенам домов бежит зелёный код. Вокруг идущего еле видна стеклянная сфера с тремя кольцами, и всё, что в неё попадает, проявляет свой код. Камера сначала смотрит его глазами, потом выходит за плечо, к лицу, к земле и поднимается краном над кварталом. Шаг, дыхание, поднятая рука, голос, шаг в лужу и эхо отмечаются светом.',
 };
 

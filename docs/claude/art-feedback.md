@@ -102,6 +102,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Round 2 with all six notes done passed at once («Супер!»), and he wanted the same scene on the home card when Step 7 is open: a liked page scene can become the step's home card. (Page 06, 2026-11-08.)
 - For page 07 he picked А «Автопилот на перекрёстке» (drama again: drop into the phone, the car, the return chain) over the calmer three-checks and shop-window reflection ideas. (Page 07, 2026-11-08.)
 - First showing of page 07: not just the drop and the return chain; the car must almost hit him, then time runs back and the right run plays (phone used with the rings kept, put away before the road, the five restored, wait for green, walk). A lesson shown as wrong take, rewind, right take. (Page 07, 2026-11-08.)
+- That round passed at once («супер продолжаем»): a tape freeze with rewind bands, then the right take, read well to him. (Page 07, 2026-11-08.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

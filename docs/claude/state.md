@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»); page 07 «Автопилот» in work on `claude/step-7-dynamic-0682ec` (Art's notes: a near miss, time rewinds, the right run). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»); page 07 «Автопилот» approved («супер продолжаем»), checked in the 4 dark themes and wired on `claude/step-7-dynamic-0682ec`, not on `main`; page 08 directions wait for Art. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -266,8 +266,23 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   Right take: phone out with rings 1–2 lit, away before the kerb, стопы → опора → дыхание →
   расхлопнутость → пространство, the car passes and turns, green, he walks. Second showing in
   Матрица sent 2026-11-08 (`output/prototypes/night-city/page07.jpg`, prototype chip «страница 07»
-  or `?page=1`); waits for Art's notes. Not wired in the app yet (needs `night-check` WebScene).
-- Next: Art's notes on page 07, other themes after his OK, wire `night-check`; then 08–10 the same way (2–3 directions each). A
+  or `?page=1`). Art approved it 2026-11-08 («супер продолжаем», relayed by the parent session).
+  Тишина, Искра, Астрал checked, no color change (sheet `output/prototypes/night-city/page07-temy.jpg`).
+  Wired on the branch (9fb606b): `WebScene` `night-check` → chapter 1 on `dynamic-check`.
+  Production export checked at 1440 and 390 wide: ready, 60 fps, gpu-error 0, no console errors.
+  NOT on `main`: a big animation, ship only on Art's own «пушим» for it.
+- Page 08 «Используй свой голос (как настройку трех колец)»: three directions offered to Art
+  2026-11-08, all in the night city, waiting for his choice. А «Эхо в переходе» (recommended):
+  he goes down into a tiled underpass and speaks aloud; each phrase runs along the tiles as a
+  ring of light and comes back as an echo that fixes one thing (the sphere, ring 1 with the
+  city's sounds from the exits, ring 2 inside him, ring 3 with his steps, the stairs up, three
+  echoes in one chord, «Я Есть» out into the open street); symmetric tunnel camera, low, then
+  up the stairs and a crane. Б «Неон отвечает»: each phrase lights a dead neon sign on his way
+  with its words, the signs stay lit; tracking at shop height, then a pull back along seven lit
+  signs. В «Крыша»: on a rooftop in the rain, each phrase goes out over the roofs as a wave and
+  tunes a ring as big as the city; wide behind him, long lens across the city, orbit. Not the
+  Step 5 voice look (sand plate, string, dome).
+- Next: Art's choice for page 08, then build it as a night-city chapter; 09–10 the same way. A
   stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

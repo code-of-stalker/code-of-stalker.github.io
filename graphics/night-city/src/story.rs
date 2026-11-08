@@ -22,24 +22,26 @@
 //! in a short hooded jacket waits at the kerb over a phone, its screen
 //! lighting the face, and looks up as he passes (49.3 s).
 //!
-//! Page 07 «Главная проверка» (96 s of his time over the city's 64):
-//! 0–7 s     over the shoulder: the phone comes out, the head goes down;
-//! 7–13 s    the outer world goes quiet: the first ring goes out and the
-//!           city's clock slows nearly to a halt (the rain hangs, the code
-//!           stops, the cars stand);
-//! 13–19 s   before his face: the second ring goes out;
-//! 19–31 s   the view narrows to a tunnel at his face, only the third ring
-//!           spins, hard; he walks onto the crossing on red;
-//! 30–32 s   a car out of the side street floods him with its headlights
-//!           and brakes; he stops and looks up;
-//! 38–42 s   «стопы»: light at his soles;
-//! 43–47 s   «опора»: the pavement lights in rings from his feet;
-//! 48–53 s   «дыхание»: one long breath, a big cloud;
-//! 53–60 s   «расхлопнутость»: the sphere opens wide, the rings light
-//!           again, the city's clock runs again;
-//! 58–90 s   «пространство»: the crane over the quarter, he walks on and
-//!           the car turns behind him into the traffic;
-//! 90–96 s   back down over his shoulder.
+//! Page 07 «Главная проверка» (126.9 s): a tape played twice, the wrong
+//! take, its rewind and the right take; the city's clock covers one LOOP.
+//! 0–5.5 s     over the shoulder: the phone comes out, the head goes down;
+//! 5.5–10.5 s  the first ring goes out, the city's clock slows nearly to a
+//!             halt (the rain hangs, the code stops, the cars stand);
+//! 10.5–14.5 s before his face: the second ring goes out;
+//! 14.5–25.2 s the view narrows to his face, only the third ring spins;
+//!             he walks off the kerb on red into the side street;
+//! 25.2–26.6 s its car is upon him, the tape stops a hand short of him;
+//! 26.6–31.9 s the tape stands, then runs back to 1 s;
+//! 31.9–47.5 s the right take: the same walk with the phone, the rings
+//!             lit, glances up at the street;
+//! 47.5–52.2 s the phone goes away, he stops at the kerb;
+//! 52.2–55.4 s «стопы»: light at his soles;
+//! 55.4–59.4 s «опора»: rings from his feet; the car turns past him;
+//! 59.6–64.5 s «дыхание»: one long breath, a big cloud;
+//! 64.5–71 s   «расхлопнутость»: the sphere opens wide;
+//! 71–83 s     «пространство»: drawn back and up, he waits for green;
+//! 83–120 s    green, he walks on under the crane;
+//! 120–126.9 s back down over his shoulder.
 use crate::body::{build, Body, Carry, Coat, Step, Walk, HANDS, SWING_SHARE};
 use crate::math::{mix, monotone, smooth, smooth_integral, v3, window, window_integral, V3, Y};
 use crate::{
@@ -407,20 +409,118 @@ const REACH: [(f32, f32); 4] = [(29.3, 0.0), (31.0, 1.0), (33.6, 1.0), (35.2, 0.
 /// A curve that stays at nothing.
 const NONE: [(f32, f32); 1] = [(0.0, 0.0)];
 
-/// Page 07: the city's clock runs at `STILL_RATE` between the middle two
-/// of `STILL` (eased over the spans either side) and fast enough the rest
-/// of the time to make up `LOOP` in `CHECK_LOOP`.
-const STILL: [f32; 4] = [8.0, 13.0, 53.0, 60.0];
+/// Page 07 is a tape played twice. The wrong take: he goes into the
+/// phone, the rings go out one by one, the city goes still, and he walks
+/// on red into the side street's lane, where at `TAKE_END` its car is
+/// upon him. The tape stands `FREEZE`, then runs back to `REWIND_TO` by
+/// `RIGHT_FROM`, and the right take plays: the same walk and the same
+/// car, but he keeps the rings lit over the phone, puts it away before
+/// the kerb, comes back into feeling there and crosses on green.
+pub const TAKE_END: f32 = 26.6;
+pub const FREEZE: f32 = 0.8;
+pub const REWIND_TO: f32 = 1.0;
+pub const RIGHT_FROM: f32 = 31.9;
+/// The right take's script runs this far ahead of his own clock: its
+/// `RIGHT_FROM` is the wrong take's `REWIND_TO`.
+const RIGHT_SHIFT: f32 = RIGHT_FROM - REWIND_TO;
+/// His own clock covers this much in a lap (the right take's end), the
+/// city's `LOOP`.
+const OWN_LOOP: f32 = CHECK_LOOP - RIGHT_SHIFT;
+const CITY_RATE: f32 = LOOP / OWN_LOOP;
+/// While he is lost in the phone the city's clock slows to `STILL_RATE`
+/// between the middle two of `HUSH`, eased over the spans either side.
+const HUSH: [f32; 4] = [5.5, 9.5, 25.2, 26.0];
 const STILL_RATE: f32 = 0.05;
-/// His walk on page 07: from `CHECK_FROM` he steps on to step
-/// `CHECK_LAST`, on the crossing, brings his feet together and stands;
-/// the walk takes up again from step `CHECK_ON` of the next lap.
-const CHECK_FROM: f32 = 19.56;
-const CHECK_LAST: i32 = 58;
-const CHECK_ON: i32 = -61;
-/// The passers meet him at these moments of his time.
+
+/// Where page 07's tape is: which take, and the moment of its script.
+/// Page 06 has one take, its script time the loop's.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Reel {
+    pub right: bool,
+    pub at: f32,
+}
+
+impl Reel {
+    /// His own clock: both takes start from the same moment of his walk.
+    pub fn own(self) -> f32 {
+        if self.right {
+            self.at - RIGHT_SHIFT
+        } else {
+            self.at
+        }
+    }
+
+    /// Page 07's city clock within the lap.
+    fn city(self) -> f32 {
+        CITY_RATE
+            * if self.right {
+                self.own()
+            } else {
+                held(self.at)
+            }
+    }
+}
+
+/// The tape at `t` of the loop: page 07 stands at `TAKE_END`, then runs
+/// back to `REWIND_TO`, fast in the middle and slow at either end.
+pub fn reel(chapter: Chapter, t: f32) -> Reel {
+    let check = chapter == Chapter::Check;
+    let right = check && t >= RIGHT_FROM;
+    let at = if check && t > TAKE_END && !right {
+        TAKE_END - (TAKE_END - REWIND_TO) * smooth(TAKE_END + FREEZE, RIGHT_FROM, t)
+    } else {
+        t
+    };
+    Reel { right, at }
+}
+
+/// The moment of the take `right` that his own clock's `own` belongs to
+/// (before `REWIND_TO` the two takes are one).
+fn reel_of(chapter: Chapter, own: f32, right: bool) -> Reel {
+    if chapter == Chapter::Check && right && own >= REWIND_TO {
+        Reel {
+            right: true,
+            at: own + RIGHT_SHIFT,
+        }
+    } else {
+        Reel {
+            right: false,
+            at: own,
+        }
+    }
+}
+
+/// The city's clock at `t` of the loop's: on page 07 it nearly stops
+/// while he is lost, runs back with the tape, and covers `LOOP` in each
+/// lap, as the street, the rain and the code need.
+pub fn world_time(chapter: Chapter, t: f32) -> f32 {
+    match chapter {
+        Chapter::Fact => t,
+        Chapter::Check => {
+            let laps = (t / CHECK_LOOP).floor();
+            LOOP * laps + reel(chapter, t - laps * CHECK_LOOP).city()
+        }
+    }
+}
+
+/// The wrong take's slowed time, before scaling.
+fn held(t: f32) -> f32 {
+    let [a, b, c, d] = HUSH;
+    t - (1.0 - STILL_RATE) * window_integral(t, a, b, c, d)
+}
+
+/// His walk on page 07, from `CHECK_FROM` (step 0's spot). In the wrong
+/// take he walks on to step `WRONG_LAST`, into the side street's lane,
+/// and brings his feet together there; in the right one he stops at
+/// step `RIGHT_LAST`, short of the side street, and walks on from the
+/// next step a lap on.
+const CHECK_FROM: f32 = 26.36;
+const WRONG_LAST: i32 = 48;
+const RIGHT_LAST: i32 = 38;
+/// The passers meet him at these moments of the tape (the umbrella in
+/// both takes).
 const CHECK_UMBRELLA_MEETS: f32 = 4.0;
-const CHECK_PHONE_MEETS: f32 = 72.0;
+const CHECK_PHONE_MEETS: f32 = 98.0;
 /// The rings show this much more plainly on page 07, which is about them.
 const CHECK_RINGS: f32 = 2.0;
 /// How brightly his own screen lights his face.
@@ -436,22 +536,26 @@ const SHOULDER: Key = key(
     0.006,
     0.0,
 );
+/// Closer over the shoulder, at the screen.
+const AT_SCREEN: Key = key(
+    0.0,
+    [-0.66, 1.74, -1.12],
+    [0.1, 1.32, 2.6],
+    [-0.05, 1.42, 0.35],
+    1.85,
+    0.007,
+    0.0,
+);
 
-const CHECK_SHOTS: [Key; 22] = [
+const CHECK_SHOTS: [Key; 31] = [
+    // The wrong take.
     SHOULDER,
-    key(
-        6.0,
-        [-0.66, 1.74, -1.12],
-        [0.1, 1.32, 2.6],
-        [-0.05, 1.42, 0.35],
-        1.85,
-        0.007,
-        0.0,
-    ),
+    at(1.0, SHOULDER),
+    at(4.5, AT_SCREEN),
     // Ahead of him by the shop windows, looking back: the street goes
-    // quiet round him.
+    // still round him.
     key(
-        8.8,
+        6.8,
         [-1.1, 1.5, 1.6],
         [0.6, 1.2, -0.6],
         [0.0, 1.35, 0.1],
@@ -460,7 +564,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        13.0,
+        10.0,
         [-1.2, 1.45, 1.8],
         [0.65, 1.2, -0.5],
         [0.0, 1.35, 0.1],
@@ -470,7 +574,7 @@ const CHECK_SHOTS: [Key; 22] = [
     ),
     // Before his face, over the phone, closing in.
     key(
-        16.2,
+        12.8,
         [0.05, 1.5, 1.1],
         [0.0, 1.52, 0.1],
         [0.0, 1.56, 0.12],
@@ -479,7 +583,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        20.6,
+        16.5,
         [0.08, 1.52, 0.97],
         [0.0, 1.52, 0.1],
         [0.0, 1.56, 0.12],
@@ -488,7 +592,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        23.4,
+        19.5,
         [0.1, 1.55, 0.86],
         [0.0, 1.54, 0.1],
         [0.0, 1.57, 0.12],
@@ -497,7 +601,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        29.4,
+        23.6,
         [0.14, 1.57, 0.8],
         [0.0, 1.54, 0.1],
         [0.0, 1.57, 0.12],
@@ -505,85 +609,147 @@ const CHECK_SHOTS: [Key; 22] = [
         0.01,
         0.0,
     ),
-    // From the carriageway side: the headlights behind him.
+    // From the road past the corner: him on the right, the car rushing in
+    // from the left and stopping a hand from him.
     key(
-        31.2,
-        [1.5, 1.5, 0.3],
-        [-1.0, 1.35, 0.05],
-        [0.0, 1.5, 0.05],
+        25.6,
+        [1.2, 1.35, 2.6],
+        [-1.6, 1.0, -0.3],
+        [-0.4, 1.1, 0.0],
         2.0,
         0.008,
         0.0,
     ),
     key(
-        37.4,
-        [1.35, 1.48, 0.28],
-        [-1.0, 1.36, 0.05],
-        [0.0, 1.5, 0.05],
-        2.15,
+        TAKE_END,
+        [1.1, 1.32, 2.45],
+        [-1.6, 1.0, -0.3],
+        [-0.4, 1.1, 0.0],
+        2.1,
         0.008,
+        0.0,
+    ),
+    // The right take, from the same shoulder.
+    at(RIGHT_FROM, SHOULDER),
+    at(35.4, AT_SCREEN),
+    // Ahead by the shop windows: he looks up from the phone, round him.
+    key(
+        39.0,
+        [-1.1, 1.6, 2.3],
+        [0.5, 1.15, -0.5],
+        [0.0, 1.3, 0.1],
+        1.5,
+        0.006,
+        0.0,
+    ),
+    key(
+        43.5,
+        [-1.2, 1.55, 2.5],
+        [0.55, 1.15, -0.45],
+        [0.0, 1.3, 0.1],
+        1.5,
+        0.006,
+        0.0,
+    ),
+    // From the carriageway side as he puts the phone away.
+    key(
+        46.5,
+        [1.9, 1.45, 0.7],
+        [-1.0, 1.2, 0.0],
+        [0.0, 1.35, 0.05],
+        1.8,
+        0.007,
+        0.0,
+    ),
+    key(
+        49.0,
+        [1.8, 1.5, 0.3],
+        [-1.0, 1.25, 0.05],
+        [0.0, 1.35, 0.05],
+        1.9,
+        0.007,
+        0.0,
+    ),
+    // Behind him as he comes to the kerb.
+    key(
+        51.0,
+        [-0.75, 1.8, -1.5],
+        [0.3, 1.2, 5.0],
+        [0.0, 1.3, 2.0],
+        1.7,
+        0.006,
         0.0,
     ),
     // Down at his feet: «стопы».
     key(
-        39.6,
-        [0.9, 0.28, 0.95],
+        53.0,
+        [-0.85, 0.32, -1.0],
+        [0.05, 0.12, 0.3],
         [0.0, 0.1, 0.0],
-        [0.0, 0.08, 0.05],
+        2.1,
+        0.012,
+        0.0,
+    ),
+    key(
+        55.4,
+        [-0.8, 0.3, -0.95],
+        [0.05, 0.12, 0.3],
+        [0.0, 0.1, 0.0],
+        2.1,
+        0.012,
+        0.0,
+    ),
+    // Behind and over him: «опора», and the car goes by before him.
+    key(
+        57.0,
+        [-0.9, 2.3, -2.6],
+        [0.35, 0.4, 3.5],
+        [0.0, 0.4, 1.5],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    key(
+        59.4,
+        [-0.95, 2.45, -2.75],
+        [0.35, 0.35, 3.5],
+        [0.0, 0.4, 1.5],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    // Round behind him to his left, wide of his head.
+    key(
+        60.2,
+        [1.6, 2.1, -1.2],
+        [-0.4, 1.1, 1.0],
+        [0.0, 1.3, 0.5],
+        1.9,
+        0.007,
+        0.0,
+    ),
+    // Before him, a little to his left: «дыхание», the cloud between.
+    key(
+        61.0,
+        [1.0, 1.62, 1.3],
+        [-0.7, 1.52, 0.15],
+        [0.0, 1.62, 0.3],
         2.2,
-        0.012,
-        0.0,
-    ),
-    key(
-        42.6,
-        [0.8, 0.26, 0.85],
-        [0.0, 0.1, 0.0],
-        [0.0, 0.08, 0.05],
-        2.3,
-        0.012,
-        0.0,
-    ),
-    // Over the pavement round him: «опора».
-    key(
-        44.8,
-        [1.6, 1.5, 2.3],
-        [-0.2, 0.0, -0.3],
-        [0.0, 0.3, 0.0],
-        1.75,
-        0.007,
-        0.0,
-    ),
-    key(
-        47.6,
-        [1.75, 1.7, 2.5],
-        [-0.2, 0.0, -0.3],
-        [0.0, 0.3, 0.0],
-        1.7,
-        0.007,
-        0.0,
-    ),
-    // His profile: «дыхание».
-    key(
-        49.2,
-        [1.2, 1.62, 0.65],
-        [-1.0, 1.58, 0.25],
-        [0.0, 1.62, 0.2],
-        2.3,
         0.009,
         0.0,
     ),
     key(
-        52.6,
-        [1.15, 1.62, 0.72],
-        [-1.0, 1.58, 0.3],
-        [0.0, 1.62, 0.2],
-        2.3,
+        64.2,
+        [0.95, 1.62, 1.35],
+        [-0.7, 1.52, 0.2],
+        [0.0, 1.62, 0.3],
+        2.2,
         0.009,
         0.0,
     ),
     // Drawn back and up as the sphere opens: «расхлопнутость».
     key(
-        58.6,
+        70.5,
         [5.0, 5.0, -7.0],
         [-0.3, 0.8, 1.0],
         [0.0, 1.0, 0.0],
@@ -591,9 +757,9 @@ const CHECK_SHOTS: [Key; 22] = [
         0.005,
         0.0,
     ),
-    // The crane over the quarter: «пространство».
+    // The crane over the quarter: «пространство»; green, he walks on.
     key(
-        64.0,
+        77.0,
         [3.0, 11.0, -8.0],
         [0.5, 0.6, 5.0],
         [0.0, 0.8, 0.0],
@@ -602,7 +768,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        80.0,
+        95.0,
         [4.5, 22.0, -13.0],
         [1.0, 0.0, 9.0],
         [0.0, 0.8, 0.0],
@@ -611,7 +777,7 @@ const CHECK_SHOTS: [Key; 22] = [
         0.0,
     ),
     key(
-        90.0,
+        112.0,
         [-0.9, 3.2, -3.5],
         [0.2, 1.2, 4.0],
         [0.0, 1.3, 0.2],
@@ -619,131 +785,172 @@ const CHECK_SHOTS: [Key; 22] = [
         0.005,
         0.0,
     ),
-    at(94.0, SHOULDER),
+    at(120.0, SHOULDER),
     at(CHECK_LOOP, SHOULDER),
 ];
-const CHECK_TURN: [(f32, f32); 14] = [
+/// Page 07's curves run on the script's time: the wrong take's up to
+/// `TAKE_END`, the right take's from `RIGHT_FROM` (nothing reads between).
+/// The head: in the wrong take up to the car at the last moment; in the
+/// right one a glance at the street over the phone, and at the kerb right
+/// to the car coming and left after it as it turns.
+const CHECK_TURN: [(f32, f32); 16] = [
     (0.0, 0.0),
-    (29.7, 0.0),
-    (30.7, -0.7),
-    (37.2, -0.65),
-    (38.8, -0.1),
-    (47.6, -0.05),
-    (48.8, 0.0),
-    (64.5, 0.0),
-    (66.8, 0.35),
-    (69.0, 0.35),
-    (71.6, -0.3),
-    (74.0, -0.3),
-    (76.6, 0.0),
+    (25.4, 0.0),
+    (26.2, -0.6),
+    (TAKE_END, -0.6),
+    (RIGHT_FROM, 0.0),
+    (41.0, 0.0),
+    (41.8, 0.3),
+    (43.0, 0.3),
+    (43.8, 0.0),
+    (56.0, 0.0),
+    (56.8, -0.45),
+    (57.6, -0.45),
+    (58.9, 0.3),
+    (59.7, 0.3),
+    (60.5, 0.0),
     (CHECK_LOOP, 0.0),
 ];
-const CHECK_NOD: [(f32, f32); 16] = [
+/// In the wrong take bowed to the screen until the car; in the right one
+/// up from it now and then, down to his feet at «стопы», a little up at
+/// «расхлопнутость».
+const CHECK_NOD: [(f32, f32); 30] = [
     (0.0, 0.05),
     (1.6, 0.05),
     (3.4, 0.42),
-    (29.8, 0.42),
-    (30.7, -0.08),
-    (37.4, -0.05),
-    (39.0, 0.4),
-    (43.0, 0.4),
-    (44.6, 0.25),
-    (47.6, 0.25),
-    (48.8, 0.0),
-    (54.0, 0.0),
-    (57.0, -0.12),
-    (62.0, -0.12),
-    (64.0, 0.0),
+    (25.4, 0.42),
+    (26.2, -0.08),
+    (TAKE_END, -0.08),
+    (RIGHT_FROM, 0.05),
+    (32.5, 0.05),
+    (34.3, 0.42),
+    (37.4, 0.42),
+    (38.2, 0.1),
+    (39.2, 0.1),
+    (40.0, 0.42),
+    (41.0, 0.42),
+    (41.8, 0.1),
+    (43.0, 0.1),
+    (43.8, 0.42),
+    (47.4, 0.42),
+    (49.2, 0.05),
+    (52.2, 0.05),
+    (53.0, 0.38),
+    (55.0, 0.38),
+    (55.8, 0.05),
+    (64.5, 0.0),
+    (66.0, -0.12),
+    (71.0, -0.12),
+    (72.5, 0.0),
+    (118.0, 0.0),
+    (120.0, 0.05),
     (CHECK_LOOP, 0.05),
 ];
-/// Red for him from before he reaches the crossing until he is back.
-const CHECK_RED: [(f32, f32); 1] = [(19.8, 60.2)];
-const CHECK_PRINTS: [(f32, f32); 8] = [
+/// Red for him as he nears the side street, in both takes, and in the
+/// right one until he walks on.
+const CHECK_RED: [(f32, f32); 2] = [(17.0, 30.0), (47.9, 83.0)];
+const CHECK_PRINTS: [(f32, f32); 10] = [
     (0.0, 0.35),
-    (12.0, 0.35),
-    (15.0, 0.0),
-    (58.0, 0.0),
-    (62.0, 1.0),
-    (84.0, 1.0),
-    (90.0, 0.35),
+    (8.0, 0.35),
+    (11.0, 0.0),
+    (TAKE_END, 0.0),
+    (RIGHT_FROM, 0.35),
+    (83.7, 0.35),
+    (85.7, 1.0),
+    (108.0, 1.0),
+    (116.0, 0.35),
     (CHECK_LOOP, 0.35),
 ];
 const CHECK_RIM: [(f32, f32); 10] = [
     (0.0, 1.0),
-    (14.0, 1.0),
-    (19.0, 0.4),
-    (31.6, 0.4),
-    (38.0, 0.8),
-    (53.0, 1.0),
-    (58.0, 1.6),
-    (66.0, 1.6),
-    (72.0, 1.0),
+    (10.0, 1.0),
+    (15.0, 0.4),
+    (TAKE_END, 0.4),
+    (RIGHT_FROM, 1.0),
+    (64.5, 1.0),
+    (70.0, 1.6),
+    (84.0, 1.6),
+    (92.0, 1.0),
     (CHECK_LOOP, 1.0),
 ];
-/// His phone: out of the pocket, 0 … 1 in his hand before him.
-const CHECK_PHONE: [(f32, f32); 4] = [(1.5, 0.0), (3.5, 1.0), (33.5, 1.0), (35.5, 0.0)];
+/// His phone: out of the pocket, 0 … 1 in his hand before him; in the
+/// right take back in the pocket before the kerb.
+const CHECK_PHONE: [(f32, f32); 9] = [
+    (1.5, 0.0),
+    (3.5, 1.0),
+    (TAKE_END, 1.0),
+    (RIGHT_FROM, 0.0),
+    (32.4, 0.0),
+    (34.4, 1.0),
+    (47.5, 1.0),
+    (49.5, 0.0),
+    (CHECK_LOOP, 0.0),
+];
 /// How thick his breath clouds are: thin while he is lost, one long
 /// breath at «дыхание».
-const CHECK_BREATH: [(f32, f32); 8] = [
+const CHECK_BREATH: [(f32, f32); 10] = [
     (0.0, 0.35),
-    (9.0, 0.35),
-    (16.0, 0.12),
-    (46.0, 0.12),
-    (48.8, 1.8),
-    (52.6, 1.8),
-    (55.5, 0.35),
+    (5.5, 0.35),
+    (12.0, 0.12),
+    (TAKE_END, 0.12),
+    (RIGHT_FROM, 0.35),
+    (59.6, 0.35),
+    (60.6, 1.8),
+    (64.4, 1.8),
+    (66.5, 0.35),
     (CHECK_LOOP, 0.35),
 ];
 /// The sphere's radius: wide open at «расхлопнутость».
 const CHECK_SPHERE: [(f32, f32); 6] = [
     (0.0, SPHERE_R),
-    (53.6, SPHERE_R),
-    (59.6, 8.0),
-    (74.0, 8.0),
-    (84.0, SPHERE_R),
+    (64.8, SPHERE_R),
+    (71.0, 8.0),
+    (92.0, 8.0),
+    (104.0, SPHERE_R),
     (CHECK_LOOP, SPHERE_R),
 ];
 /// «Опора»: its rings spread from his feet (0 … 1), then fade (1 … 2).
 const SUPPORT: [(f32, f32); 6] = [
     (0.0, 0.0),
-    (42.8, 0.0),
-    (46.8, 1.0),
-    (55.0, 1.0),
-    (61.0, 2.0),
+    (55.4, 0.0),
+    (59.4, 1.0),
+    (66.0, 1.0),
+    (72.0, 2.0),
     (CHECK_LOOP, 2.0),
 ];
 
-/// The side street's car on page 07: up the cross street's near lane
-/// (z = `CAR_SIDE_Z`) toward the main street at `CAR_RUSH` m/s, braking
-/// evenly over `CAR_BRAKE` to stand with its middle at x = `CAR_STOP`,
-/// its nose short of the crossing. When he has walked on it creeps out
-/// at `CAR_CRAWL` m/s, turns right on a `CAR_TURN` m arc from x =
-/// `CAR_TURN_X` into lane 0, and from the middle of the turn takes
-/// `CAR_PULL` s to reach the traffic's pace. `CAR_SEEN`: it comes out of
-/// the dark and goes back into it.
+/// The side street's car runs up its near lane (z = `CAR_SIDE_Z`) toward
+/// the main street at `CAR_RUSH` m/s. In the wrong take its driver sees
+/// him at `CAR_SEES` and brakes at `CAR_BRAKES` m/s², too late: the tape
+/// stops with its middle at x = `CAR_FROZEN`, its nose a hand from him.
+/// `CAR_SEEN`: its lights come out of the dark.
 pub const CAR_SIDE_Z: f32 = 7.25 * CELL;
-pub const CAR_STOP: f32 = -8.35;
 const CAR_RUSH: f32 = 12.0;
-const CAR_BRAKE: [f32; 2] = [30.2, 31.6];
-const CAR_SEEN: [f32; 4] = [26.0, 27.2, 84.0, 88.0];
-/// Once he has stopped the driver dips the headlights to `CAR_DIP` of
-/// their light until the car moves off.
-const CAR_DIPPED: [f32; 4] = [33.5, 36.5, 63.5, 66.0];
-const CAR_DIP: f32 = 0.35;
+const CAR_SEES: f32 = 25.7;
+const CAR_BRAKES: f32 = 8.0;
+const CAR_FROZEN: f32 = -7.4;
+const CAR_SEES_X: f32 = {
+    let u = TAKE_END - CAR_SEES;
+    CAR_FROZEN - CAR_RUSH * u + 0.5 * CAR_BRAKES * u * u
+};
+const CAR_SEEN: [f32; 2] = [21.0, 22.2];
+/// In the right take it is the same car and he is not on the road: it
+/// slows at `CAR_SLOWS` m/s² to `CAR_CRAWL` for the turn into lane 0 (a
+/// `CAR_TURN` m arc from x = `CAR_TURN_X`), which it reaches at the
+/// moment in `CAR_TURNS` that keeps it clear of the traffic (58.0 is the
+/// wrong take's car to the moment), and from the middle of the turn
+/// takes `CAR_PULL` s to reach the traffic's pace.
+const CAR_SLOWS: f32 = 4.0;
+const CAR_CRAWL: f32 = 4.5;
 const CAR_TURN: f32 = 3.5;
-const CAR_TURN_X: f32 = -5.1;
-const CAR_CRAWL: f32 = 6.0;
-const CAR_START: f32 = 1.2;
+const CAR_TURN_X: f32 = -CAR_LANE - CAR_TURN;
 const CAR_PULL: f32 = 2.2;
-/// When it may set off, and how long the search for the gap in the
-/// traffic looks ahead.
-const CAR_GO: [f32; 2] = [65.5, 70.0];
-const CAR_AHEAD: f32 = 23.0;
+const CAR_TURNS: [f32; 2] = [57.0, 59.0];
 /// A car's half length and half width (the shaders draw it so).
 pub const CAR_HALF: [f32; 2] = [2.45, 0.92];
 
 /// One page's loop: its camera and the curves its walker and street
-/// follow.
+/// follow, on the script's time.
 #[derive(Clone, Copy)]
 struct Script {
     shots: &'static [Key],
@@ -781,28 +988,8 @@ const CHECK: Script = Script {
     phone: &CHECK_PHONE,
 };
 
-/// The city's clock at `t` of his: on page 07 it nearly stops while he is
-/// lost in the phone and makes up for it when he comes back, `LOOP` of it
-/// in each of his loops, as the street, the rain and the code need.
-pub fn world_time(chapter: Chapter, t: f32) -> f32 {
-    match chapter {
-        Chapter::Fact => t,
-        Chapter::Check => {
-            let laps = (t / CHECK_LOOP).floor();
-            let s = t - laps * CHECK_LOOP;
-            LOOP * (laps + held(s) / held(CHECK_LOOP))
-        }
-    }
-}
-
-/// Page 07's slowed time from the start of the loop, before scaling.
-fn held(t: f32) -> f32 {
-    let [a, b, c, d] = STILL;
-    t - (1.0 - STILL_RATE) * window_integral(t, a, b, c, d)
-}
-
-/// Page 07's walk (see `CHECK_FROM`).
-fn check_walk() -> Walk {
+/// Page 07's two walks (see `CHECK_FROM`): the wrong take's, the right's.
+fn check_walks() -> [Walk; 2] {
     let period = LOOP / STEPS as f32;
     let step = |k: i32, land: f32, z: f32| {
         let side = k.rem_euclid(2) as usize;
@@ -815,16 +1002,29 @@ fn check_walk() -> Walk {
         }
     };
     let along = |k: i32| CHECK_FROM + k as f32 * STRIDE;
-    let mut steps: Vec<Step> = (-8..=CHECK_LAST)
-        .map(|k| step(k, k as f32 * period, along(k)))
-        .collect();
-    // The feet together on the crossing.
-    let last = CHECK_LAST + 1;
-    steps.push(step(last, last as f32 * period, along(CHECK_LAST)));
-    steps
-        .extend((CHECK_ON..=8).map(|k| step(k, k as f32 * period + CHECK_LOOP, along(k) + REPEAT)));
+    // A take's steps up to `last`, `shift` on along the tape, then the
+    // feet together.
+    let take = |last: i32, shift: f32| -> Vec<Step> {
+        let mut steps: Vec<Step> = (-8..=last)
+            .map(|k| step(k, k as f32 * period + shift, along(k)))
+            .collect();
+        steps.push(step(
+            last + 1,
+            (last + 1) as f32 * period + shift,
+            along(last),
+        ));
+        steps
+    };
+    let mut right = take(RIGHT_LAST, RIGHT_SHIFT);
+    right.extend(
+        (RIGHT_LAST + 1 - STEPS..=8)
+            .map(|k| step(k, k as f32 * period + CHECK_LOOP, along(k) + REPEAT)),
+    );
     let start = [[STEP_WIDTH, along(-10)], [-STEP_WIDTH, along(-9)]];
-    Walk::new(start, steps, 7.0)
+    [
+        Walk::new(start, take(WRONG_LAST, 0.0), 7.0),
+        Walk::new(start, right, 7.0),
+    ]
 }
 
 /// A rectangle on the street: its middle (x, z), its heading (radians
@@ -870,39 +1070,48 @@ pub fn apart(a: Rect, b: Rect) -> f32 {
         .fold(f32::MIN, f32::max)
 }
 
-/// The side street's car at `t` if it sets off at `go` and joins the
-/// traffic at `fast` m/s: its middle x, z and heading.
-fn car_at(t: f32, go: f32, fast: f32) -> [f32; 3] {
-    let [a, b] = CAR_BRAKE;
-    let brake = b - a;
-    if t < go {
-        // Up the side street at speed, then braking evenly to a stand.
-        let left = if t < a {
-            0.5 * CAR_RUSH * brake + CAR_RUSH * (a - t)
-        } else {
-            let s = (b - t).max(0.0);
-            0.5 * CAR_RUSH / brake * s * s
-        };
-        return [CAR_STOP - left, CAR_SIDE_Z, 0.5 * PI];
+/// The wrong take's car: its middle's x at `s`.
+fn car_rushes(s: f32) -> f32 {
+    let u = (s - CAR_SEES).min(CAR_RUSH / CAR_BRAKES);
+    if u < 0.0 {
+        CAR_SEES_X + CAR_RUSH * u
+    } else {
+        CAR_SEES_X + CAR_RUSH * u - 0.5 * CAR_BRAKES * u * u
     }
-    let straight = CAR_TURN_X - CAR_STOP;
+}
+
+/// How far the right take's car has come past the start of its turn at
+/// `s` (below zero, short of it), if it reaches the turn at `turn` and
+/// joins the traffic at `fast` m/s.
+fn car_run(s: f32, turn: f32, fast: f32) -> f32 {
+    let slow = (CAR_RUSH - CAR_CRAWL) / CAR_SLOWS;
+    let left = turn - s;
+    if left > slow {
+        -(0.5 * (CAR_RUSH + CAR_CRAWL) * slow + CAR_RUSH * (left - slow))
+    } else if left > 0.0 {
+        -(CAR_CRAWL * left + 0.5 * CAR_SLOWS * left * left)
+    } else {
+        // Up to speed from the middle of the turn.
+        let pull = turn + 0.25 * PI * CAR_TURN / CAR_CRAWL;
+        CAR_CRAWL * (s - turn) + (fast - CAR_CRAWL) * smooth_integral(pull, pull + CAR_PULL, s)
+    }
+}
+
+/// The right take's car `d` past the start of its turn: its middle x, z
+/// and heading.
+fn car_path(d: f32) -> [f32; 3] {
     let arc = 0.5 * PI * CAR_TURN;
-    // Off at a crawl, then up to speed from the middle of the turn.
-    let moving = 0.5 * CAR_CRAWL * CAR_START;
-    let pull = go + CAR_START + (straight + 0.5 * arc - moving) / CAR_CRAWL;
-    let d = CAR_CRAWL * smooth_integral(go, go + CAR_START, t)
-        + (fast - CAR_CRAWL) * smooth_integral(pull, pull + CAR_PULL, t);
-    if d < straight {
-        [CAR_STOP + d, CAR_SIDE_Z, 0.5 * PI]
-    } else if d < straight + arc {
-        let a = (d - straight) / CAR_TURN;
+    if d < 0.0 {
+        [CAR_TURN_X + d, CAR_SIDE_Z, 0.5 * PI]
+    } else if d < arc {
+        let a = d / CAR_TURN;
         [
             CAR_TURN_X + CAR_TURN * a.sin(),
             CAR_SIDE_Z + CAR_TURN * (1.0 - a.cos()),
             0.5 * PI - a,
         ]
     } else {
-        [-CAR_LANE, CAR_SIDE_Z + CAR_TURN + d - straight - arc, 0.0]
+        [-CAR_LANE, CAR_SIDE_Z + CAR_TURN + d - arc, 0.0]
     }
 }
 
@@ -987,13 +1196,17 @@ pub struct Frame {
     /// How much each ring shows (the third above 1 spins hard), and how
     /// brightly his own phone lights his face.
     pub ring_light: [f32; 4],
+    /// Page 07's tape: the loop's clock, how much the picture is a tape's
+    /// (0.35 standing, 1 rewinding), and the flash as it stops.
+    pub tape: [f32; 3],
 }
 
 pub struct Story {
     pub chapter: Chapter,
     pub loop_seconds: f32,
     script: Script,
-    walk: Walk,
+    /// His walk in the wrong take (page 06's only one) and in the right.
+    walks: [Walk; 2],
     puddle: [f32; 3],
     umbrella: Walk,
     /// Where the umbrella's line of copies starts along the street.
@@ -1002,9 +1215,9 @@ pub struct Story {
     phone_at: V3,
     /// When (the city's time) the one with the phone looks up at him.
     phone_meets: f32,
-    /// Page 07: when the side street's car sets off, and how fast it then
-    /// joins the traffic.
-    car_go: f32,
+    /// Page 07's right take: when the side street's car reaches its turn,
+    /// and how fast it then joins the traffic.
+    car_turn: f32,
     car_fast: f32,
 }
 
@@ -1022,14 +1235,23 @@ impl Story {
             .next()
             .copied()
             .expect("the walk has begun by then");
-        let (script, walk, umbrella_meets, phone_meets) = match chapter {
-            Chapter::Fact => (FACT, steady, UMBRELLA_MEETS, PHONE_MEETS),
-            Chapter::Check => (CHECK, check_walk(), CHECK_UMBRELLA_MEETS, CHECK_PHONE_MEETS),
+        let (script, walks, umbrella_meets, phone_meets) = match chapter {
+            Chapter::Fact => (FACT, [steady.clone(), steady], UMBRELLA_MEETS, PHONE_MEETS),
+            Chapter::Check => (
+                CHECK,
+                check_walks(),
+                CHECK_UMBRELLA_MEETS,
+                CHECK_PHONE_MEETS,
+            ),
+        };
+        let track = |t: f32| {
+            let r = reel(chapter, t);
+            walks[usize::from(r.right)].track(r.at)
         };
         let period = LOOP / UMBRELLA_STEPS as f32;
         let stride = REPEAT / UMBRELLA_STEPS as f32 / UMBRELLA_SCALE;
         let umbrella = Walk::steady(period, stride, 0.075, -8, UMBRELLA_STEPS + 8, 6.0);
-        let umbrella_from = walk.track(umbrella_meets)
+        let umbrella_from = track(umbrella_meets)
             + UMBRELLA_SCALE * umbrella.track(world_time(chapter, umbrella_meets));
         // Standing: two steps long before the loop, then only its sway,
         // which comes round with the loop.
@@ -1045,75 +1267,88 @@ impl Story {
             vec![step(0, -30.0, 0.12, 0.0), step(1, -29.5, -0.12, 0.05)],
             LOOP / 12.0,
         );
-        let phone_at = v3(PHONE_X, 0.0, walk.track(phone_meets) + 0.15);
+        let phone_at = v3(PHONE_X, 0.0, track(phone_meets) + 0.15);
         let mut story = Story {
             chapter,
             loop_seconds: chapter.loop_seconds(),
             script,
-            walk,
+            walks,
             puddle: [splash.x + WALK_X, splash.z + 0.1, 0.62],
             umbrella,
             umbrella_from,
             phone,
             phone_at,
             phone_meets: world_time(chapter, phone_meets),
-            car_go: 0.0,
-            car_fast: CARS[0][1] * REPEAT / held(CHECK_LOOP),
+            car_turn: 0.0,
+            car_fast: CARS[0][1] * REPEAT / LOOP * CITY_RATE,
         };
         if chapter == Chapter::Check {
-            story.car_go = story.find_gap();
+            story.car_turn = story.find_turn();
         }
         story
     }
 
-    /// When the side street's car sets off: the moment in `CAR_GO` that
-    /// keeps it widest of him, the passers and lane 0's cars.
-    fn find_gap(&self) -> f32 {
+    /// When the right take's car reaches its turn: the moment in
+    /// `CAR_TURNS` that keeps it widest of him, the passers and lane 0's
+    /// cars.
+    fn find_turn(&self) -> f32 {
         let dt = 0.1;
-        let from = CAR_GO[0];
-        let samples = ((CAR_GO[1] + CAR_AHEAD - from) / dt) as usize;
-        // Who else is on the street at each moment, whenever the car goes.
-        let others: Vec<(f32, Vec<Rect>)> = (0..=samples)
+        let [from, to] = CAR_TURNS;
+        let (before, after) = (2.5, 12.0);
+        let samples = ((to - from + before + after) / dt) as usize;
+        // Who else is on the street at each moment, whenever the car comes.
+        let others: Vec<(f32, f32, Vec<Rect>)> = (0..=samples)
             .map(|i| {
-                let t = from + i as f32 * dt;
+                let t = from - before + i as f32 * dt;
                 let world = world_time(self.chapter, t);
                 let mut near = vec![Rect::of(&self.body(t))];
                 near.extend(self.passers(world).iter().map(Rect::of));
-                (t, near)
+                (t, world, near)
             })
             .collect();
         let mut best = (f32::MIN, from);
-        let mut go = from;
-        while go <= CAR_GO[1] {
+        let mut turn = from;
+        while turn <= to + 1e-4 {
             let mut worst = f32::MAX;
-            for (t, near) in others
+            for (t, world, near) in others
                 .iter()
-                .filter(|(t, _)| *t >= go && *t <= go + CAR_AHEAD)
+                .filter(|(t, _, _)| *t >= turn - before && *t <= turn + after)
             {
-                let car = car_rect(car_at(*t, go, self.car_fast));
-                let lane = lane_car(world_time(self.chapter, *t), car.c[1]);
+                let car = car_rect(car_path(car_run(*t, turn, self.car_fast)));
+                let lane = lane_car(*world, car.c[1]);
                 for r in near.iter().chain(std::iter::once(&lane)) {
                     worst = worst.min(apart(car, *r));
                 }
             }
             if worst > best.0 {
-                best = (worst, go);
+                best = (worst, turn);
             }
-            go += 0.05;
+            turn += 0.05;
         }
         best.1
     }
 
-    /// The side street's car at `t` (page 07; nowhere on page 06).
+    /// The side street's car at `t` of the loop (page 07; nowhere on page
+    /// 06): its middle x, z, heading and how much it is there.
     pub fn cross_car(&self, t: f32) -> [f32; 4] {
         if self.chapter != Chapter::Check {
             return [0.0; 4];
         }
-        let [a, b, c, d] = CAR_SEEN;
-        let [e, f, g, h] = CAR_DIPPED;
-        let [x, z, yaw] = car_at(t, self.car_go, self.car_fast);
-        let lights = 1.0 - (1.0 - CAR_DIP) * window(t, e, f, g, h);
-        [x, z, yaw, window(t, a, b, c, d) * lights]
+        let r = reel(self.chapter, t);
+        let s = r.at;
+        if r.right {
+            let turn = self.car_turn;
+            let [x, z, yaw] = car_path(car_run(s, turn, self.car_fast));
+            [
+                x,
+                z,
+                yaw,
+                window(s, turn - 7.0, turn - 5.8, turn + 9.0, turn + 12.0),
+            ]
+        } else {
+            let [a, b] = CAR_SEEN;
+            [car_rushes(s), CAR_SIDE_Z, 0.5 * PI, smooth(a, b, s)]
+        }
     }
 
     /// The one under the umbrella at `t`, the hand holding it at the chest.
@@ -1164,8 +1399,13 @@ impl Story {
         all
     }
 
+    /// His walk (page 07: the wrong take's).
     pub fn walk(&self) -> &Walk {
-        &self.walk
+        &self.walks[0]
+    }
+
+    fn walk_of(&self, r: Reel) -> &Walk {
+        &self.walks[usize::from(r.right)]
     }
 
     /// The breath: 0 out … 1 in.
@@ -1178,21 +1418,27 @@ impl Story {
         }
     }
 
-    /// How thick his breath clouds are at `t`.
-    fn breath_depth(&self, t: f32) -> f32 {
+    /// How thick his breath clouds are at the script's `at`.
+    fn breath_depth(&self, at: f32) -> f32 {
         match self.chapter {
-            Chapter::Fact => 0.35 + 0.65 * window(t, 23.6, 24.8, 28.8, 29.8),
-            Chapter::Check => monotone(&CHECK_BREATH, t),
+            Chapter::Fact => 0.35 + 0.65 * window(at, 23.6, 24.8, 28.8, 29.8),
+            Chapter::Check => monotone(&CHECK_BREATH, at),
         }
     }
 
-    /// The figure at `t`, standing on the pavement.
+    /// The figure at `t` of the loop, standing on the pavement.
     pub fn body(&self, t: f32) -> Body {
+        self.figure(reel(self.chapter, t))
+    }
+
+    /// The figure at the tape's `r`.
+    fn figure(&self, r: Reel) -> Body {
         let s = &self.script;
-        let mut pose = self.walk.pose(t, Self::breath(t));
-        pose.turn = monotone(s.turn, t);
-        pose.nod = monotone(s.nod, t);
-        let reach = monotone(s.reach, t);
+        let at = r.at;
+        let mut pose = self.walk_of(r).pose(at, Self::breath(r.own()));
+        pose.turn = monotone(s.turn, at);
+        pose.nod = monotone(s.nod, at);
+        let reach = monotone(s.reach, at);
         if reach > 0.0 {
             // Palm up in front of the chest, a little to the right.
             let probe = build(&pose);
@@ -1201,7 +1447,7 @@ impl Story {
             pose.hands[1] = [target.x, target.y, target.z, reach];
             pose.wrists[1] = -0.25 * reach;
         }
-        let out = monotone(s.phone, t);
+        let out = monotone(s.phone, at);
         if out > 0.0 {
             // The phone before the chest, the face bowed over it.
             pose.carry = Carry::Screen(out);
@@ -1218,76 +1464,81 @@ impl Story {
         let t = t.rem_euclid(self.loop_seconds);
         let check = self.chapter == Chapter::Check;
         let script = self.script;
+        let r = reel(self.chapter, t);
+        let (at, own) = (r.at, r.own());
         let time = world_time(self.chapter, t);
-        let body = self.body(t);
+        let body = self.figure(r);
         let passers = self.passers(time);
-        let track = self.walk.track(t);
+        let walk = self.walk_of(r);
+        let track = walk.track(at);
         let base = v3(WALK_X, 0.0, track);
         let curve = |pick: fn(&Key) -> f32| -> f32 {
             let keys: Vec<(f32, f32)> = script.shots.iter().map(|k| (k.at, pick(k))).collect();
-            monotone(&keys, t)
+            monotone(&keys, at)
         };
         let keyed =
             |pick: [fn(&Key) -> f32; 3]| base + v3(curve(pick[0]), curve(pick[1]), curve(pick[2]));
         let eye_k = keyed([|k| k.eye[0], |k| k.eye[1], |k| k.eye[2]]);
         let look_k = keyed([|k| k.look[0], |k| k.look[1], |k| k.look[2]]);
         let focus_k = keyed([|k| k.focus[0], |k| k.focus[1], |k| k.focus[2]]);
-        let own = curve(|k| k.own).clamp(0.0, 1.0);
+        let own_eyes = curve(|k| k.own).clamp(0.0, 1.0);
         let lens = curve(|k| k.lens);
         let aperture = curve(|k| k.aperture);
         // His own eyes: just in front of the head, along the face.
         let face = body.face;
         let eye_own = body.mouth + face.up * 0.085 + face.forward * 0.01;
-        let eye = eye_k.lerp(eye_own, own);
+        let eye = eye_k.lerp(eye_own, own_eyes);
         let dir_k = (look_k - eye_k).normalize();
-        let forward = dir_k.lerp(face.forward, own).normalize();
+        let forward = dir_k.lerp(face.forward, own_eyes).normalize();
         let right = forward.cross(Y).normalize();
         let up = right.cross(forward);
         let focus_far = (focus_k - eye).length().max(0.3);
-        let focus = mix(focus_far, 6.0, own);
+        let focus = mix(focus_far, 6.0, own_eyes);
         let head_centre = body.head - face.up * 0.08;
         let head_hidden = f32::from((eye - head_centre).length() < 0.3);
 
+        // The breath clouds go by his own clock, so the tape takes them
+        // back into his mouth as it rewinds.
         let breath_at = |k: i32| INHALE + BREATH * k as f32;
-        let newest = ((t - INHALE) / BREATH).floor() as i32;
+        let newest = ((own - INHALE) / BREATH).floor() as i32;
         let mut puffs = [[0.0, 0.0, 0.0, -1.0]; PUFFS];
         for (i, p) in puffs.iter_mut().enumerate() {
-            let k = newest - i as i32;
-            let age = t - breath_at(k);
+            let born = breath_at(newest - i as i32);
+            let age = own - born;
             if (0.0..PUFF_LIFE).contains(&age) {
-                let at = breath_at(k);
-                let from = self.body(at);
+                let then = reel_of(self.chapter, born, r.right);
+                let from = self.figure(then);
                 // Out of the mouth ahead at walking pace and a little more,
                 // slowed by the air: he walks on through it.
                 let tau = 0.6;
-                let speed = STRIDE / (LOOP / STEPS as f32) * self.walk.amount(at)
-                    + 0.6 * self.breath_depth(at).max(1.0);
+                let speed = STRIDE / (LOOP / STEPS as f32) * self.walk_of(then).amount(then.at)
+                    + 0.6 * self.breath_depth(then.at).max(1.0);
                 let c = from.mouth
                     + from.face.forward * (0.08 + speed * tau * (1.0 - (-age / tau).exp()))
                     + Y * (0.05 * age - 0.04);
                 *p = [c.x, c.y, c.z, age];
             }
         }
-        let breath = self.breath_depth(t);
+        let breath = self.breath_depth(at);
 
         // The voice and its echo are page 06's.
         let mut voice = [-1.0, -1.0, 0.0, 0.0];
         let mut voice_from = [eye, eye];
         let mut n = 0;
-        for &at in VOICE_AT.iter().rev() {
-            let age = t - at;
+        for &from in VOICE_AT.iter().rev() {
+            let age = at - from;
             if !check && n < 2 && (0.0..VOICE_LIFE).contains(&age) {
                 // The two newest shells, newest first.
                 voice[n] = 0.12 + VOICE_SPEED * age;
                 voice[2 + n] = smooth(0.0, 0.15, age) * (1.0 - age / VOICE_LIFE).powf(1.5);
-                voice_from[n] = self.body(at).mouth;
+                voice_from[n] = self.body(from).mouth;
                 n += 1;
             }
         }
         let mut echo = [-1.0, 0.0, -1.0, 0.0];
         let mut n = 0;
-        for &at in ECHO_AT.iter().rev() {
-            let age = t - at;
+        for &from in ECHO_AT.iter().rev() {
+            let age = at - from;
             let life = ECHO_FROM / VOICE_SPEED;
             if !check && n < 2 && (0.0..life).contains(&age) {
                 echo[2 * n] = ECHO_FROM - VOICE_SPEED * age;
@@ -1298,7 +1549,7 @@ impl Story {
         let walls = if check {
             0.0
         } else {
-            window(t, 35.6, 36.2, 50.8, 51.6)
+            window(at, 35.6, 36.2, 50.8, 51.6)
         };
 
         let lap = self.loop_seconds;
@@ -1306,16 +1557,16 @@ impl Story {
             .stop
             .iter()
             .map(|&(a, b)| {
-                window(t, a, a + 0.15, b, b + 0.15).max(window(t + lap, a, a + 0.15, b, b + 0.15))
+                window(at, a, a + 0.15, b, b + 0.15).max(window(at + lap, a, a + 0.15, b, b + 0.15))
             })
             .fold(0.0, f32::max);
 
         let mut steps = [[0.0, 0.0, 99.0, 0.0]; STEP_MARKS];
-        for (slot, s) in steps.iter_mut().zip(self.walk.landings(t)) {
-            *slot = [s.x + WALK_X, s.z, t - s.land, s.side as f32];
+        for (slot, s) in steps.iter_mut().zip(walk.landings(at)) {
+            *slot = [s.x + WALK_X, s.z, at - s.land, s.side as f32];
         }
 
-        let reach = monotone(script.reach, t);
+        let reach = monotone(script.reach, at);
         let palm = {
             let [ax, ay, az, _] = body.cones[3 * HANDS[1]];
             let [bx, by, bz, _] = body.cones[3 * HANDS[1] + 1];
@@ -1324,34 +1575,61 @@ impl Story {
         let mid = eye.lerp(eye + forward * focus, 0.5);
         let rain_centre = v3(mid.x, mid.y.max(6.0), mid.z);
 
-        let (radius, spin) = if check {
-            // The third ring spins up eleven whole turns while he is lost.
-            (
-                monotone(&CHECK_SPHERE, t),
-                window_integral(t, 19.5, 22.0, 30.5, 33.0),
-            )
-        } else {
-            (SPHERE_R, 0.0)
+        let (radius, spin) = match (check, r.right) {
+            (false, _) => (SPHERE_R, 0.0),
+            // The third ring spins up ten whole turns while he is lost.
+            (true, false) => (monotone(&CHECK_SPHERE, at), smooth_integral(15.0, 17.5, at)),
+            (true, true) => (monotone(&CHECK_SPHERE, at), 0.0),
         };
-        let (sphere, mut rings) = sphere(t, base, eye, radius, spin);
-        let (beats, ring_light) = if check {
+        let (sphere, mut rings) = sphere(own, base, eye, radius, spin);
+        let screen = HIS_SCREEN * monotone(script.phone, at);
+        let (beats, ring_light) = match (check, r.right) {
+            (false, _) => ([0.0; 4], [1.0, 1.0, 1.0, 0.0]),
+            (true, false) => {
+                // Lost: the view narrows to his face, the city goes still,
+                // the first ring goes out, then the second.
+                let [a, b, c, d] = HUSH;
+                (
+                    [
+                        0.85 * window(at, 14.5, 18.5, 24.4, 25.2),
+                        window(at, a, b, c, d),
+                        0.0,
+                        0.0,
+                    ],
+                    [
+                        1.0 - smooth(5.5, 8.5, at),
+                        1.0 - smooth(10.5, 13.5, at),
+                        1.0 + 0.8 * smooth(15.0, 17.5, at),
+                        screen,
+                    ],
+                )
+            }
+            // All three rings lit; at the kerb the light at his soles and
+            // the support's circles.
+            (true, true) => (
+                [
+                    0.0,
+                    0.0,
+                    window(at, 52.2, 53.5, 64.0, 70.0),
+                    monotone(&SUPPORT, at),
+                ],
+                [1.0, 1.0, 1.0, screen],
+            ),
+        };
+        if check {
             rings[3] *= CHECK_RINGS;
-            (
-                [
-                    0.85 * window(t, 18.5, 23.0, 30.6, 31.6),
-                    window(t, 7.5, 12.5, 53.5, 58.5),
-                    window(t, 38.2, 39.8, 55.0, 61.0),
-                    monotone(&SUPPORT, t),
-                ],
-                [
-                    1.0 - window(t, 7.5, 11.0, 54.0, 55.5),
-                    1.0 - window(t, 14.5, 18.0, 56.0, 57.5),
-                    1.0 + 0.8 * window(t, 20.0, 22.0, 30.5, 33.0),
-                    HIS_SCREEN * monotone(script.phone, t),
-                ],
-            )
+        }
+        let tape = if check {
+            let (stop, back) = (TAKE_END, TAKE_END + FREEZE);
+            let (off, gone) = (RIGHT_FROM - 0.3, RIGHT_FROM + 0.2);
+            [
+                t,
+                0.35 * window(t, stop - 0.03, stop, off, gone)
+                    + 0.65 * window(t, back - 0.1, back + 0.25, off, gone),
+                window(t, stop - 0.08, stop, stop, stop + 0.6),
+            ]
         } else {
-            ([0.0; 4], [1.0, 1.0, 1.0, 0.0])
+            [t, 0.0, 0.0]
         };
 
         Frame {
@@ -1366,7 +1644,7 @@ impl Story {
             body,
             passers,
             head_hidden,
-            rim: monotone(script.rim, t),
+            rim: monotone(script.rim, at),
             breath,
             puffs,
             voice_from,
@@ -1374,9 +1652,9 @@ impl Story {
             walls,
             echo,
             track,
-            agitation: monotone(script.agitation, t),
+            agitation: monotone(script.agitation, at),
             signal,
-            prints: monotone(script.prints, t),
+            prints: monotone(script.prints, at),
             crane: smooth(3.0, 14.0, eye.y),
             palm,
             palm_rain: reach,
@@ -1388,6 +1666,7 @@ impl Story {
             check: beats,
             cross_car: self.cross_car(t),
             ring_light,
+            tape,
         }
     }
 }
@@ -1437,7 +1716,12 @@ mod tests {
         for chapter in CHAPTERS {
             let s = Story::new(chapter);
             let l = s.loop_seconds;
-            for r in [l / RING_PERIOD, l / MERIDIAN_PERIOD] {
+            // The rings go by his own clock, which covers this in a lap.
+            let own = match chapter {
+                Chapter::Fact => LOOP,
+                Chapter::Check => OWN_LOOP,
+            };
+            for r in [own / RING_PERIOD, own / MERIDIAN_PERIOD] {
                 assert!((r - r.round()).abs() < 1e-4, "{r}");
             }
             let (a, b) = (s.compose(0.0), s.compose(l - 1e-3));
@@ -1502,6 +1786,8 @@ mod tests {
                 assert!((b.ring_light[i] - a.ring_light[i]).abs() < 0.01);
             }
             assert!(a.cross_car[3] == 0.0 && b.cross_car[3] < 1e-3);
+            assert!(a.tape[1] == 0.0 && b.tape[1] == 0.0);
+            assert!(a.tape[2] == 0.0 && b.tape[2] == 0.0);
         }
     }
 
@@ -1515,8 +1801,12 @@ mod tests {
             for i in 1..(story.loop_seconds * 100.0) as i32 {
                 let f = story.compose(i as f32 * 0.01);
                 let jump = (f.eye - previous.eye).length();
-                // At most the crane's dive, under 20 m/s.
-                assert!(jump < 0.2, "{chapter:?} {} {jump}", f.time);
+                // At most the crane's dive, under 20 m/s; the rewind runs
+                // the tape back at up to 8.5 times.
+                let t = i as f32 * 0.01;
+                let rewind = chapter == Chapter::Check && t > TAKE_END + FREEZE && t < RIGHT_FROM;
+                let (most, least) = if rewind { (0.4, 0.97) } else { (0.2, 0.995) };
+                assert!(jump < most, "{chapter:?} {t} {jump}");
                 // His head never fills the lens: close to the camera it is
                 // hidden or well off the view's axis.
                 let to_head = f.body.head - f.eye;
@@ -1526,7 +1816,7 @@ mod tests {
                     "{chapter:?} {} the head before the lens",
                     i as f32 * 0.01
                 );
-                assert!(f.forward.dot(previous.forward) > 0.995, "{chapter:?} {i}");
+                assert!(f.forward.dot(previous.forward) > least, "{chapter:?} {t}");
                 previous = f;
             }
         }
@@ -1552,7 +1842,7 @@ mod tests {
         assert_eq!(story.compose(21.0).head_hidden, 0.0);
         assert_eq!(story.compose(55.0).head_hidden, 0.0);
         let check = Story::new(Chapter::Check);
-        for i in 0..96 {
+        for i in 0..CHECK_LOOP as i32 {
             assert_eq!(check.compose(i as f32).head_hidden, 0.0, "{i}");
         }
     }
@@ -1664,7 +1954,7 @@ mod tests {
             ),
             (
                 Chapter::Check,
-                vec![CHECK_UMBRELLA_MEETS],
+                vec![CHECK_UMBRELLA_MEETS, CHECK_UMBRELLA_MEETS + RIGHT_SHIFT],
                 CHECK_PHONE_MEETS,
             ),
         ];
@@ -1730,92 +2020,122 @@ mod tests {
     }
 
     #[test]
-    fn the_city_clock_slows_and_makes_up_the_loop() {
+    fn the_tape_stops_and_runs_back() {
+        let story = Story::new(Chapter::Check);
+        // It stands at the take's end.
+        for t in [TAKE_END + 0.01, TAKE_END + 0.5 * FREEZE, TAKE_END + FREEZE] {
+            let r = reel(Chapter::Check, t);
+            assert_eq!(
+                r,
+                Reel {
+                    right: false,
+                    at: TAKE_END
+                },
+                "{t}"
+            );
+        }
+        // The right take starts on the picture the rewind ends on.
+        let back = story.compose(RIGHT_FROM - 1e-4);
+        for f in [story.compose(REWIND_TO), back] {
+            let g = story.compose(RIGHT_FROM);
+            assert!((f.eye - g.eye).length() < 0.01, "{:?} {:?}", f.eye, g.eye);
+            assert!(f.forward.dot(g.forward) > 0.9999);
+            assert!((f.body.head - g.body.head).length() < 0.01);
+            assert!((f.time - g.time).abs() < 0.01);
+            for i in 0..4 {
+                assert!((f.rings[i] - g.rings[i]).abs() < 0.01, "ring {i}");
+                assert!((f.check[i] - g.check[i]).abs() < 1e-3, "check {i}");
+                assert!(
+                    (f.ring_light[i] - g.ring_light[i]).abs() < 1e-3,
+                    "light {i}"
+                );
+            }
+            assert!(f.cross_car[3] < 1e-3 && g.cross_car[3] < 1e-3);
+        }
+        // The city's clock runs on, stands with the tape and runs back with
+        // it; it hardly moves while he is lost.
         let w = |t: f32| world_time(Chapter::Check, t);
         assert!(w(0.0).abs() < 1e-5);
         assert!((w(CHECK_LOOP - 1e-4) - LOOP).abs() < 0.01);
         assert!((w(CHECK_LOOP + 1.0) - LOOP - w(1.0)).abs() < 0.01);
         let mut last = w(0.0);
-        for i in 1..960 {
+        for i in 1..(CHECK_LOOP * 10.0) as i32 {
             let t = i as f32 * 0.1;
             let now = w(t);
-            assert!(now > last, "{t}");
             let rate = (now - last) / 0.1;
-            if (14.0..52.0).contains(&t) {
-                assert!(rate < 0.1, "{t} {rate}");
+            if t < TAKE_END - 0.05 || t > RIGHT_FROM + 0.15 {
+                assert!(rate > 0.0, "{t} {rate}");
+            } else if t > TAKE_END + 0.15 && t < TAKE_END + FREEZE - 0.05 {
+                assert!(rate.abs() < 1e-4, "{t} {rate}");
+            } else if t > TAKE_END + FREEZE + 0.15 && t < RIGHT_FROM - 0.05 {
+                assert!(rate < 0.0, "{t} {rate}");
             }
-            if !(6.0..62.0).contains(&t) {
-                assert!(rate > 1.0, "{t} {rate}");
+            if (10.0..25.0).contains(&t) {
+                assert!(rate < 0.1, "{t} {rate}");
             }
             last = now;
         }
         assert_eq!(world_time(Chapter::Fact, 17.0), 17.0);
+        // The picture turns to tape as it stops, more as it runs back, and
+        // flashes at the stop.
+        let tape = |t: f32| story.compose(t).tape;
+        assert!(tape(TAKE_END - 0.5)[1] < 1e-3);
+        assert!((tape(TAKE_END + 0.4)[1] - 0.35).abs() < 0.01);
+        assert!(tape(29.5)[1] > 0.99);
+        assert!(tape(RIGHT_FROM + 0.5)[1] < 1e-3);
+        assert!(tape(TAKE_END)[2] > 0.99);
+        assert!(tape(TAKE_END - 0.1)[2] < 0.01 && tape(TAKE_END + 0.7)[2] < 0.01);
     }
 
     #[test]
-    fn he_stops_on_the_crossing_and_walks_on() {
+    fn the_wrong_take_ends_a_hand_from_the_car() {
         let story = Story::new(Chapter::Check);
-        for t in [35.0, 45.0, 60.0] {
-            assert!(story.walk().amount(t) < 1e-3, "{t}");
-            let z = story.walk().track(t);
-            assert!(crossing(cell(z)), "{t} {z}");
-        }
-        assert!(story.walk().amount(20.0) > 0.99 && story.walk().amount(70.0) > 0.99);
-        // He comes up to the crossing on red, and it turns back after.
-        assert!(story.compose(27.0).signal > 0.99);
-        assert!(story.compose(70.0).signal < 0.01);
-        // The phone is out while he is lost, gone when he comes back.
-        let lost = story.compose(20.0);
-        assert!(lost.body.screen[1].length() > 0.9 && lost.ring_light[3] > 0.3);
-        assert!(story.compose(40.0).body.screen[1].length() < 1e-3);
-    }
-
-    #[test]
-    fn the_rings_go_out_and_come_back() {
-        let story = Story::new(Chapter::Check);
-        let calm = story.compose(4.0).ring_light;
-        assert!(calm[0] > 0.99 && calm[1] > 0.99 && (calm[2] - 1.0).abs() < 0.01);
-        // The first goes out before the second.
-        let half = story.compose(16.0).ring_light;
-        assert!(half[0] < 0.01 && half[1] > 0.2, "{half:?}");
-        let lost = story.compose(26.0).ring_light;
+        let f = story.compose(TAKE_END);
+        let [x, z, yaw, on] = f.cross_car;
+        assert!(on > 0.99 && (yaw - 0.5 * PI).abs() < 1e-4);
+        let gap = apart(car_rect([x, z, yaw]), Rect::of(&f.body));
+        assert!(gap > 0.1 && gap < 0.5, "{gap}");
+        // He stands in its lane, off the kerb on red.
+        assert_eq!(cell(f.body.pelvis.z), 7);
         assert!(
-            lost[0] < 0.01 && lost[1] < 0.01 && lost[2] > 1.7,
-            "{lost:?}"
+            (f.body.pelvis.z - CAR_SIDE_Z).abs() < CAR_HALF[1],
+            "{}",
+            f.body.pelvis.z
         );
-        let back = story.compose(62.0);
-        assert!(back.ring_light[0] > 0.99 && back.ring_light[1] > 0.99);
-        assert!(back.sphere[3] > 7.0);
-        assert!(back.check[1] < 0.01);
-        // The third spins hard while he is lost: a turn in about a second.
-        let a = story.compose(26.0).rings[2];
-        let b = story.compose(26.25).rings[2];
+        assert!(story.compose(25.0).signal > 0.99);
+        // Lost: the first two rings out, only the third, over the phone.
+        let lost = story.compose(20.0);
+        let l = lost.ring_light;
+        assert!(l[0] < 0.01 && l[1] < 0.01 && l[2] > 1.7, "{l:?}");
+        assert!(lost.body.screen[1].length() > 0.9 && l[3] > 0.3);
+        // The first goes out before the second.
+        let half = story.compose(9.5).ring_light;
+        assert!(half[0] < 0.01 && half[1] > 0.5, "{half:?}");
+        // The third spins hard: a turn in about a second.
+        let a = story.compose(20.0).rings[2];
+        let b = story.compose(20.25).rings[2];
         let turn = (b - a).rem_euclid(2.0 * PI);
         assert!(turn > 1.2, "{turn}");
+        // At the last moment he looks round at it.
+        assert!(f.body.face.forward.x < -0.3, "{:?}", f.body.face.forward);
+        // Its lights come out of the dark only far up the side street.
+        assert!(story.compose(CAR_SEEN[0]).cross_car[3] < 1e-3);
+        assert!(story.compose(CAR_SEEN[1]).cross_car[0] < -50.0);
     }
 
     #[test]
-    fn the_car_stops_short_of_him_and_never_touches_him() {
+    fn the_right_take_keeps_the_rings_and_waits_for_green() {
         let story = Story::new(Chapter::Check);
-        let stood = story.compose(40.0);
-        let [x, z, yaw, on] = stood.cross_car;
-        assert!(
-            (on - CAR_DIP).abs() < 1e-3
-                && (x - CAR_STOP).abs() < 1e-3
-                && (yaw - 0.5 * PI).abs() < 1e-4
-        );
-        // Full beam when it stops, dipped while it waits, full as it goes.
-        assert!(story.compose(32.0).cross_car[3] > 0.99);
-        assert!(story.car_go > CAR_DIPPED[3] - 0.5);
-        // Its nose short of the zebra (|x| 3.55 … 5.65), in front of him.
-        assert!(x + CAR_HALF[0] < -5.7);
-        assert!((z - stood.body.pelvis.z).abs() < CAR_HALF[1]);
-        // Its lights flood him only once it is close.
-        assert!(story.compose(29.0).cross_car[0] < CAR_STOP - 10.0);
         let mut nearest = f32::MAX;
-        for i in 0..1920 {
-            let t = i as f32 * 0.05;
+        for i in 0..((CHECK_LOOP - RIGHT_FROM) * 20.0) as i32 {
+            let t = RIGHT_FROM + i as f32 * 0.05;
             let f = story.compose(t);
+            let l = f.ring_light;
+            assert!(
+                l[0] > 0.99 && l[1] > 0.99 && (l[2] - 1.0).abs() < 1e-3,
+                "{t}"
+            );
+            assert!(f.check[0] < 1e-3 && f.check[1] < 1e-3, "{t}");
             let [x, z, yaw, on] = f.cross_car;
             if on <= 0.0 {
                 continue;
@@ -1827,26 +2147,35 @@ mod tests {
             }
             assert!(apart(car, lane_car(f.time, z)) > 2.0, "{t} lane");
         }
-        assert!(nearest > 0.9, "{nearest}");
-        assert!(nearest < 1.8, "{nearest}");
-    }
-
-    #[test]
-    fn the_car_turns_into_the_traffic() {
-        let story = Story::new(Chapter::Check);
-        assert!((CAR_GO[0]..=CAR_GO[1]).contains(&story.car_go));
-        let [x, _, yaw, on] = story.compose(80.0).cross_car;
+        assert!(nearest > 3.0, "{nearest}");
+        // The phone out over the walk, away before the kerb.
+        let out = story.compose(40.0);
+        assert!(out.body.screen[1].length() > 0.9 && out.ring_light[3] > 0.3);
+        assert!(story.compose(50.0).body.screen[1].length() < 1e-3);
+        // He stands at the kerb through the five, on red, and walks on
+        // green.
+        let right = &story.walks[1];
+        for t in [53.0, 60.0, 80.0] {
+            assert!(right.amount(t) < 1e-3, "{t}");
+            let f = story.compose(t);
+            assert!(f.body.high.z < 53.04, "{t} {}", f.body.high.z);
+            assert!(f.signal > 0.99, "{t}");
+        }
+        assert!(story.compose(90.0).signal < 0.01 && right.amount(90.0) > 0.99);
+        // The car turns into the traffic and drives off at its pace.
+        let turn = story.car_turn;
+        assert!((CAR_TURNS[0]..=CAR_TURNS[1]).contains(&turn), "{turn}");
+        let [x, _, yaw, on] = story.cross_car(turn + 4.0);
         assert!((x + CAR_LANE).abs() < 1e-4 && yaw.abs() < 1e-4 && on > 0.99);
-        // It drives off at the traffic's pace.
-        let a = story.compose(80.0).cross_car[1];
-        let b = story.compose(81.0).cross_car[1];
+        let a = story.cross_car(turn + 6.0)[1];
+        let b = story.cross_car(turn + 7.0)[1];
         let pace = CARS[0][1] * REPEAT / LOOP
-            * (world_time(Chapter::Check, 81.0) - world_time(Chapter::Check, 80.0));
+            * (world_time(Chapter::Check, turn + 7.0) - world_time(Chapter::Check, turn + 6.0));
         assert!((b - a - pace).abs() < 0.05, "{} {pace}", b - a);
         // Its heading turns smoothly, never back.
         let mut last = 0.5 * PI;
         for i in 0..400 {
-            let yaw = story.cross_car(story.car_go + i as f32 * 0.02)[2];
+            let yaw = story.cross_car(turn - 1.0 + i as f32 * 0.02)[2];
             assert!(yaw <= last + 1e-5 && last - yaw < 0.08, "{i}");
             last = yaw;
         }

@@ -48,6 +48,11 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define CHECK    u_d[SLOT_CHECK]
 #define CROSSCAR u_d[SLOT_CHECK + 1]  // the side street's car: x, z, heading, how seen
 #define RINGVIS  u_d[SLOT_CHECK + 2]  // how seen the first ring, the second; the third's boost; his screen
+// Page 07's tape: the loop's clock, how much the picture is a tape's
+// (0.35 standing, 1 running back), the flash as it stops.
+#define TAPE_T     RAINC.w
+#define TAPE_ON    PUDDLE.w
+#define TAPE_FLASH VOICE_L.w
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w
@@ -261,6 +266,32 @@ float tunnel(vec2 uv) {
   vec2 d = (uv - c) * vec2(u_res.x / u_res.y, 1.0);
   float r = mix(1.1, 0.14, CHECK.x);
   return 1.0 - 0.93 * CHECK.x * smoothstep(r, r + 0.3, length(d));
+}
+
+// The tape's bands at the frame's height y (0 … 1): one shivering low
+// while it stands, two rolling down the frame while it runs back.
+float tapeBand(float y, float c, float w) {
+  return 1.0 - smoothstep(0.0, w, abs(fract(y - c + 0.5) - 0.5));
+}
+float tapeBands(float y) {
+  float run = smoothstep(0.45, 0.9, TAPE_ON);
+  float b = (1.0 - run) * tapeBand(y, 0.07 + 0.004 * sin(53.0 * TAPE_T), 0.035);
+  float c = fract(-0.85 * TAPE_T);
+  return max(b, run * max(tapeBand(y, c, 0.05), tapeBand(y, c + 0.43, 0.025)));
+}
+// Where the tape shows the frame's point uv: its rows torn sideways, most
+// in the bands, and the picture jumping a little while it runs back.
+vec2 tapeUv(vec2 uv) {
+  if (TAPE_ON <= 0.0) return uv;
+  int tick = int(TAPE_T * 30.0);
+  float n = hash2(int(uv.y * u_res.y * 0.5), tick, 7u) - 0.5;
+  uv.x += TAPE_ON * (0.0025 * n + tapeBands(uv.y) * (0.035 + 0.04 * n));
+  uv.y += 0.006 * smoothstep(0.45, 0.9, TAPE_ON) * (hash1(tick / 3, 11u) - 0.5);
+  return uv;
+}
+// The tape's scanlines at the target's row y px.
+float tapeLines(float y) {
+  return mix(1.0, 0.82 + 0.18 * (0.5 + 0.5 * cos(TAU * y / 3.0)), TAPE_ON);
 }
 
 // The voice's shells and the echo's: centre, radius, light.

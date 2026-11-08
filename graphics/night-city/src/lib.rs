@@ -45,9 +45,10 @@ pub const TOWER_CELL: f32 = BLOCK / 2.0;
 /// the frame at the loop's end is the frame at its start.
 pub const LOOP: f32 = 64.0;
 pub const STEPS: i32 = 120;
-/// One loop of page 07: the city's clock still covers one `LOOP` in it
-/// (story.rs, `world_time`), slowed nearly to a stop in the middle.
-pub const CHECK_LOOP: f32 = 96.0;
+/// One loop of page 07, a tape played twice (story.rs, `reel`): the wrong
+/// take, its rewind and the right take, over which the city's clock
+/// covers one `LOOP`.
+pub const CHECK_LOOP: f32 = 126.9;
 pub const STRIDE: f32 = 0.68;
 pub const REPEAT: f32 = 2.0 * BLOCK;
 /// How far apart the feet land, either side of the walk's line.
@@ -152,12 +153,12 @@ impl Chapter {
         }
     }
     /// Reduced motion holds this moment. Page 06: over the shoulder,
-    /// mid-step, the street lit and calm. Page 07: drawn back from him,
-    /// the sphere wide open and all three rings lit again.
+    /// mid-step, the street lit and calm. Page 07: the right take, drawn
+    /// back from him at the kerb, the sphere wide open, all three rings lit.
     pub fn still(self) -> f32 {
         match self {
             Chapter::Fact => 21.0,
-            Chapter::Check => 59.0,
+            Chapter::Check => 71.0,
         }
     }
 }
@@ -217,13 +218,13 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[7] = v(f.body.mouth, f.breath);
     s[8] = v(f.voice_from[0], f.voice[0]);
     s[9] = v(f.voice_from[1], f.voice[1]);
-    s[10] = [f.voice[2], f.voice[3], f.walls, 0.0];
+    s[10] = [f.voice[2], f.voice[3], f.walls, f.tape[2]];
     s[11] = f.echo;
     s[12] = v(f.body.head, f.track);
     s[13] = [f.agitation, f.signal, f.prints, f.crane];
     s[14] = v(f.palm, f.palm_rain);
-    s[15] = v(f.rain_centre, 0.0);
-    s[16] = [f.puddle[0], f.puddle[1], f.puddle[2], 0.0];
+    s[15] = v(f.rain_centre, f.tape[0]);
+    s[16] = [f.puddle[0], f.puddle[1], f.puddle[2], f.tape[1]];
     for (i, p) in f.puffs.iter().enumerate() {
         s[SLOT_PUFF + i] = *p;
     }

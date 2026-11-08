@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» (page 06 prototype) waits for Art. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -235,11 +235,17 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   On the call his own voice returns from the glass, the caller's comes from far. Art approved
   Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
   `output/shots/page05-themes.jpg`) and in a production export (ready, gpu-error 0).
-- Next: pages 06–10 get a NEW scene (new crate, not `dynamic-rings`: Art is tired of the
-  sphere world), one chapter per page, layered camera (first person → over the shoulder →
-  wide), rich detail for depth. Three directions drafted 2026-11-08 in the shared notes
-  `step-7-pages-06-10-directions.md`; Art picks one in the morning. A stage-finale screen
-  after page 10 needs Art's wording first.
+- Pages 06–10 get a NEW scene (Art is tired of the sphere world). Art chose direction А
+  «Ночной город» 2026-11-08: new crate `graphics/night-city` (on the branch, not wired into
+  the app). A walker on a wet night street in the rain: lamps, shops with lit rooms behind the
+  glass, signs, puddles, steam, car light trails, towers; camera in levels (his eyes → over
+  the shoulder → beside the face → low → crane). Cold light goes through the theme recolor,
+  warm light (sodium lamps, warm shops, tail lights) is added after it in `Look.warm`.
+  Page 06 «Фазы шага» (chapter Fact, 64 s loop) is built; beats in the crate's `README.txt`.
+- Next: Art looks at the page 06 prototype in Матрица
+  (`output/prototypes/night-city/index.html`, key frames sent 2026-11-08) and says OK or
+  gives notes. After his OK: the other 3 dark themes, then the bridge + `WebScene` + page,
+  then pages 07–10 as chapters. A stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

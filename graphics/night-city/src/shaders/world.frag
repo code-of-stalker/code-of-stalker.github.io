@@ -47,6 +47,9 @@ const float BLEND[CONES] = float[CONES](BLENDS);
 #define SIGN 6
 #define FIGURE 7
 #define CAR 8
+// Page 08's underpass; its row says the part: 0 the floor, 1 a wall or a
+// riser, 2 the ceiling, 3 the stone over the street or (c = 1) a rail.
+#define UNDER 9
 
 // The haze's own light: the city's glow in the rain.
 const vec2 HAZE_LIGHT = vec2(0.010, 0.014);
@@ -482,10 +485,140 @@ Hit noHit() {
   return h;
 }
 
+// ---- page 08's underpass (its plan is in common.glsl) ----
+
+const float PARAPET = 0.9;
+const float PARAPET_W = 0.14;
+const float RAIL_R = 0.022;
+
+void underHit(inout Hit h, float t, int part, vec3 n, int c) {
+  h.t = t;
+  h.kind = UNDER;
+  h.row = part;
+  h.n = n;
+  h.c = c;
+}
+// Where the ray first meets the capsule from a to b, r thick (Inigo
+// Quilez's), or -1.
+float capsule(vec3 ro, vec3 rd, vec3 a, vec3 b, float r) {
+  vec3 ba = b - a, oa = ro - a;
+  float baba = dot(ba, ba), bard = dot(ba, rd), baoa = dot(ba, oa);
+  float k2 = baba - bard * bard;
+  float k1 = baba * dot(oa, rd) - baoa * bard;
+  float k0 = baba * dot(oa, oa) - baoa * baoa - r * r * baba;
+  float h = k1 * k1 - k2 * k0;
+  if (h < 0.0) return -1.0;
+  float t = (-k1 - sqrt(h)) / k2;
+  float y = baoa + t * bard;
+  if (y > 0.0 && y < baba) return t;
+  vec3 oc = y <= 0.0 ? oa : ro - b;
+  float b1 = dot(rd, oc);
+  float c1 = dot(oc, oc) - r * r;
+  h = b1 * b1 - c1;
+  return h > 0.0 ? -b1 - sqrt(h) : -1.0;
+}
+// Stone box i (< 6) round the openings of the copy at z0: the parapets
+// along each opening's sides and the slab's edge with the parapet on it.
+void underStone(int i, float z0, out vec3 lo, out vec3 hi) {
+  int end = i / 3;
+  int part = i - 3 * end;
+  float za = end == 0 ? z0 : z0 + UNDER_LEN - OPEN;
+  if (part == 2) {
+    float e = end == 0 ? za + OPEN : za - PARAPET_W;
+    lo = vec3(UNDER_X0 - PARAPET_W, -SLAB, e);
+    hi = vec3(UNDER_X1 + PARAPET_W, PARAPET, e + PARAPET_W);
+    return;
+  }
+  float x = part == 0 ? UNDER_X0 - PARAPET_W : UNDER_X1;
+  lo = vec3(x, -CURB, za);
+  hi = vec3(x + PARAPET_W, PARAPET, za + OPEN);
+}
+// Rail k (< 4) of the copy at z0: along wall X0 (even k) or X1, down the
+// first flight (k < 2) or up the second, RAIL_H over the treads' line.
+void underRail(int k, float z0, out vec3 a, out vec3 b) {
+  float x = (k & 1) == 0 ? UNDER_X0 + RAIL_IN : UNDER_X1 - RAIL_IN;
+  float slope = RISE / TREAD;
+  float top = RAIL_H - slope * 0.5 * TREAD, bottom = top - slope * FLIGHT;
+  a = vec3(x, top, z0);
+  b = vec3(x, bottom, z0 + FLIGHT);
+  if (k >= 2) {
+    a = vec3(x, bottom, z0 + UNDER_LEN - FLIGHT);
+    b = vec3(x, top, z0 + UNDER_LEN);
+  }
+}
+// What of the underpass the ray meets before h, which holds the ground's
+// hit: where that falls in an opening the ray goes on down into it.
+void traceUnder(vec3 ro, vec3 rd, vec3 ird, inout Hit h) {
+  float t = -1.0;
+  if (underInside(ro)) {
+    t = 0.0;
+  } else if (h.kind == GROUND) {
+    vec3 p = ro + rd * h.t;
+    float u = underAlong(p.z);
+    if (p.x > UNDER_X0 && p.x < UNDER_X1 && u >= 0.0 && u < UNDER_LEN && !underRoofed(u)) {
+      t = h.t;
+      h = noHit();
+    }
+  }
+  if (t >= 0.0) {
+    // Inside: from cell to cell along it (the treads, the floor), each
+    // with its level and its roof (the slab, or the sky in the openings).
+    float z0 = ro.z + rd.z * t;
+    z0 -= underAlong(z0);
+    float dir = ird.z > 0.0 ? 1.0 : -1.0;
+    float tw = ((ird.x > 0.0 ? UNDER_X1 : UNDER_X0) - ro.x) * ird.x;
+    for (int i = 0 + ZERO; i < 40; i++) {
+      float u = ro.z + rd.z * t - z0;
+      float ua, ub;
+      float lv = underCell(u + 1e-3 * dir, ua, ub);
+      float roof = underRoofed(0.5 * (ua + ub)) ? -SLAB : 0.0;
+      float nb = dir > 0.0 ? ub : ua;
+      float tz = (z0 + nb - ro.z) * ird.z;
+      float tf = ird.y < 0.0 ? (lv - ro.y) * ird.y : 1e9;
+      float tc = ird.y > 0.0 ? (roof - ro.y) * ird.y : 1e9;
+      float tm = min(min(tz, tw), min(tf, tc));
+      if (tm >= h.t) break;
+      if (tm == tf) { underHit(h, tf, 0, vec3(0.0, 1.0, 0.0), 0); break; }
+      if (tm == tc) {
+        if (roof < 0.0) underHit(h, tc, 2, vec3(0.0, -1.0, 0.0), 0);
+        break;
+      }
+      if (tm == tw) { underHit(h, tw, 1, vec3(-sign(rd.x), 0.0, 0.0), 0); break; }
+      // On into the next cell, unless its riser or the slab's edge stands
+      // in the way.
+      float y = ro.y + rd.y * tz;
+      float va, vb;
+      float next = nb + 1e-3 * dir;
+      if (y < underCell(next, va, vb)) { underHit(h, tz, 1, vec3(0.0, 0.0, -dir), 0); break; }
+      if (y > (underRoofed(next) ? -SLAB : 0.0)) { underHit(h, tz, 3, vec3(0.0, 0.0, -dir), 0); break; }
+      t = tz;
+    }
+  }
+  // Its stone and its rails, in the two copies before the ray.
+  float z1 = UNDER_Z + REPEAT * floor((ro.z - UNDER_Z) / REPEAT);
+  float z2 = z1 + (rd.z >= 0.0 ? REPEAT : -REPEAT);
+  for (int i = 0 + ZERO; i < 12; i++) {
+    vec3 lo, hi;
+    underStone(i - 6 * (i / 6), i < 6 ? z1 : z2, lo, hi);
+    vec2 b = slab(ro, ird, lo, hi);
+    if (b.x < b.y && b.x > 0.0 && b.x < h.t) underHit(h, b.x, 3, slabNormal(ro, rd, ird, lo, hi), 0);
+  }
+  for (int i = 0 + ZERO; i < 8; i++) {
+    vec3 a, b;
+    underRail(i & 3, i < 4 ? z1 : z2, a, b);
+    float tr = capsule(ro, rd, a, b, RAIL_R);
+    if (tr > 0.0 && tr < h.t) {
+      vec3 p = ro + rd * tr - a, ba = b - a;
+      underHit(h, tr, 3, normalize(p - ba * clamp(dot(p, ba) / dot(ba, ba), 0.0, 1.0)), 1);
+    }
+  }
+}
+
 Hit trace(vec3 ro, vec3 rd, bool walker) {
   Hit h = noHit();
   vec3 ird = safeInverse(rd);
-  if (rd.y < 0.0) {
+  // In the underpass the street's ground is over the eye.
+  if (rd.y < 0.0 && !underInside(ro)) {
     float t = -ro.y * ird.y;
     vec3 p = ro + rd * t;
     if (abs(p.x) >= ROAD) {
@@ -505,6 +638,7 @@ Hit trace(vec3 ro, vec3 rd, bool walker) {
       }
     }
   }
+  if (UNDERPASS) traceUnder(ro, rd, ird, h);
   float s = rd.x >= 0.0 ? 1.0 : -1.0;
   for (int row = 0 + ZERO; row < 3; row++) {
     if (traceRow(ro, rd, ird, row, s, h)) break;
@@ -559,7 +693,7 @@ vec2 lamps(vec3 p, vec3 n, float wrap, bool shadowed) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  return l;
+  return l * streetShare(p + 0.01 * n) + tubesAt(p, n, wrap);
 }
 
 // The lamps' gleam in a wet surface (GGX), cold and warm.
@@ -585,7 +719,35 @@ vec2 lampsGleam(vec3 p, vec3 n, vec3 v, float a2) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  return l;
+  return l * streetShare(p + 0.01 * n);
+}
+
+// Page 08: the underpass's tubes in its glazed tiles (GGX), from the point
+// of each tube nearest the mirrored look.
+float tubesGleam(vec3 p, vec3 n, vec3 v, float a2) {
+  p += 0.02 * n;
+  if (!underInside(p)) return 0.0;
+  float u = underAlong(p.z);
+  float k0 = tubeNear(u);
+  float nv = max(dot(n, v), 0.05);
+  vec3 r = reflect(-v, n);
+  float l = 0.0;
+  for (int j = -2 + ZERO; j <= 2; j++) {
+    float k = k0 + float(j);
+    if (k < 0.0 || k > TUBES - 1.0) continue;
+    vec3 c = tubeAt(p.z - u, k);
+    vec3 w = p - c;
+    float s = clamp((w.z - r.z * dot(r, w)) / max(1.0 - r.z * r.z, 1e-3), -TUBE_HALF, TUBE_HALF);
+    vec3 d = c + vec3(0.0, 0.0, s) - p;
+    float d2 = dot(d, d);
+    vec3 ld = d * inversesqrt(d2);
+    vec3 hv = normalize(ld + v);
+    float nh = max(dot(n, hv), 0.0);
+    float q = nh * nh * (a2 - 1.0) + 1.0;
+    float F = 0.04 + 0.96 * pow(1.0 - max(dot(hv, v), 0.0), 5.0);
+    l += tubeFlicker(k) * step(0.0, dot(n, ld)) * a2 / (PI * q * q) * F / (4.0 * nv) / max(d2, 0.3);
+  }
+  return TUBE_LIGHT * l;
 }
 
 // The cars' lamps in the wet road and their light on it: the headlights
@@ -1074,7 +1236,8 @@ Mat ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) {
     }
     for (int i = 0 + ZERO; i < STEP_MARKS; i++) {
       vec4 s = STEP(i);
-      if (s.z > 2.4) continue;
+      // Page 08: a step down in the underpass rings on its own floor.
+      if (s.z > 2.4 || underFoot(s.xy)) continue;
       vec2 rel = p.xz - s.xy;
       float d = length(rel);
       float r = 0.1 + 0.55 * s.z;
@@ -1118,7 +1281,7 @@ Mat ground(vec3 p, vec3 rd, float t, bool full, out float mirror, out vec3 nw) {
     // in the car's.
     for (int i = 0 + ZERO; i < 2; i++) {
       vec2 rel = p.xz - STEP(i).xy;
-      m.mul *= 1.0 - 0.45 * exp(-dot(rel, rel) / 0.03);
+      if (!underFoot(STEP(i).xy)) m.mul *= 1.0 - 0.45 * exp(-dot(rel, rel) / 0.03);
       float x, dir, gap, base;
       laneCars(i, x, dir, gap, base);
       vec2 under = abs(vec2(p.x - x, p.z - base - gap * floor((p.z - base) / gap + 0.5)));
@@ -1267,6 +1430,140 @@ vec2 signLight(vec3 p, float t, Hit h) {
   return sg.w > 0.5 ? vec2(0.12 * i, i) : vec2(i, 0.08 * i);
 }
 
+// ---- page 08's underpass: its stone, its tiles, its tubes ----
+
+const float TUBE_GLOW = 4.0;
+const float TILE = 0.15;
+const float LINE_LIGHT = 0.16;
+// Where each phrase left his mouth: its line of code in the tiles reaches
+// VOICE_REACH from there.
+const vec3 VOICE_LINE[7] = vec3[7](VOICE_LINES);
+
+// How much its floor mirrors at p, and the normal its water shows: wet
+// down the open stairs, in pools along the floor under the slab.
+float underWater(vec3 p, out vec3 nw) {
+  float u = underAlong(p.z);
+  vec2 g = vec2(p.x, u);
+  float open = smoothstep(1.5, -0.5, min(u, UNDER_LEN - u) - OPEN);
+  float wet = max(open, 0.8 * smoothstep(0.55, 0.68, noiseP(g * 1.3, 4096)));
+  vec2 dn = (vec2(noiseP(g * 11.0, 4096), noiseP(g * 11.0 + 7.3, 4096)) - 0.5) * mix(0.06, 0.008, wet);
+  nw = normalize(vec3(dn.x, 1.0, dn.y));
+  return mix(0.3, 0.92, wet);
+}
+
+Mat underMat(Hit h, vec3 p, vec3 rd, float t) {
+  float pxm = pixelAt(t);
+  float aa = 0.6 * pxm + 0.002;
+  float u = underAlong(p.z);
+  vec3 n = h.n;
+  if (h.row == 3) {
+    // The stone over the street, and the rails' wet steel.
+    bool rail = h.c == 1;
+    Mat m = matte(rail ? 0.06 : 0.11, n, 0.2, vec2(0.012, 0.01));
+    m.gleam = rail ? 0.7 : 0.15;
+    m.gn = n;
+    m.a2 = rail ? 0.02 : 0.1;
+    m.rings = 0.5;
+    m.essence = 0.25;
+    return m;
+  }
+  float ua, ub;
+  float lv = underCell(clamp(u, 0.0, UNDER_LEN - 1e-3), ua, ub);
+  if (h.row == 2) {
+    // The ceiling: plaster in panels, the tubes along its middle.
+    float k = tubeNear(u);
+    vec2 e = abs(p.xz - tubeAt(p.z - u, k).xz);
+    float tube = smoothstep(0.035 + aa, 0.035 - aa, e.x) * smoothstep(TUBE_HALF + aa, TUBE_HALF - aa, e.y);
+    float housing = smoothstep(0.08 + aa, 0.08 - aa, e.x) * smoothstep(TUBE_HALF + 0.05 + aa, TUBE_HALF + 0.05 - aa, e.y);
+    float joint = smoothstep(aa + 0.006, 0.0, abs(fract(u / 1.2 + 0.5) - 0.5) * 1.2);
+    float halo = exp(-length(max(e - vec2(0.0, TUBE_HALF), 0.0)) / 0.35);
+    Mat m = matte(mix(0.14, 0.05, max(joint, housing)), n, 0.0, vec2(TUBE_LIGHT * (0.06 + 0.25 * halo), 0.0));
+    m.L = vec2(tubeFlicker(k) * (TUBE_GLOW * tube + 0.05 * halo), 0.0);
+    m.essence = 0.25;
+    return m;
+  }
+  if (abs(n.z) > 0.5) {
+    // A riser: dark stone.
+    Mat m = matte(0.06, n, 0.2, vec2(0.004, 0.003));
+    m.rings = 0.7;
+    m.essence = 0.25;
+    return m;
+  }
+  if (h.row == 1) {
+    // A wall: pale glazed tiles in rows up from the floor under the slab,
+    // a dark skirting at the foot, and the lines of code the phrases left.
+    int side = n.x > 0.0 ? 0 : 1;
+    vec2 g = vec2(u, p.y + UNDER_DEPTH) / TILE;
+    vec2 cell = floor(g), f = fract(g);
+    vec2 q = abs(f - 0.5) * TILE;
+    float grout = smoothstep(0.005 + aa, 0.002, 0.5 * TILE - max(q.x, q.y));
+    float skirt = smoothstep(lv + 0.3 + aa, lv + 0.3 - aa, p.y);
+    float shade = hash2(int(cell.x), int(cell.y) + 97 * side, 61u);
+    float albedo = mix(0.26, 0.34, shade);
+    albedo = mix(albedo, 0.035, max(grout, skirt));
+    vec3 gn = normalize(n + vec3(0.0, 0.05 * (hash2(int(cell.x), int(cell.y), 63u) - 0.5), 0.05 * (shade - 0.5)));
+    Mat m = matte(albedo, n, 0.1, vec2(0.006, 0.004));
+    m.gleam = 0.5 * (1.0 - skirt);
+    m.gn = gn;
+    m.a2 = 0.006;
+    m.L.x += 0.5 * (1.0 - max(grout, skirt)) * tubesGleam(p, gn, -rd, 0.006);
+    float li = (cell.y - 4.0) * 0.5;
+    if (li >= 0.0 && li == floor(li) && li < CROSSCAR.x) {
+      int i = int(li);
+      bool live = li == CROSSCAR.x - 1.0 && VOICE_A.w > 0.0;
+      float reach = live ? VOICE_A.w : VOICE_REACH;
+      float d = length(p - VOICE_LINE[i]);
+      float gl = glyph(vec2(f.x * 1.4 - 0.2, f.y * 1.2 - 0.1), i + 8 * side, int(cell.x), 600u);
+      float dots = TILE / 7.0;
+      gl = mix(0.3, gl, smoothstep(dots * 1.5, dots * 0.6, pxm));
+      float front = live ? 2.5 * sline(d - reach, 0.35) : 0.0;
+      m.L.x += LINE_LIGHT * CROSSCAR.y * gl * smoothstep(reach, reach - 0.6, d) * (1.0 + front);
+    }
+    m.rings = 0.7;
+    m.essence = 0.25;
+    return m;
+  }
+  // The floor: granite slabs on the flat, a pale strip along each tread's
+  // nosing, the steps' rings of light.
+  bool down = u < FLIGHT, up = u >= FLIGHT + FLAT;
+  vec2 g = vec2(p.x - UNDER_X0, u) / 0.4;
+  vec2 q = abs(fract(g) - 0.5) * 0.4;
+  float joint = (down || up) ? 0.0 : smoothstep(0.004 + aa, 0.0, 0.2 - max(q.x, q.y));
+  float albedo = 0.15 + 0.05 * hash2(int(floor(g.x)), int(floor(g.y)), 62u);
+  float nose = down ? ub - u : (up ? u - ua : 1.0);
+  albedo = mix(albedo, 0.32, smoothstep(0.05 + aa, 0.05 - aa, nose));
+  albedo = mix(albedo, 0.03, joint);
+  vec3 nw;
+  float mirror = underWater(p, nw);
+  float wet = (mirror - 0.3) / 0.62;
+  albedo *= mix(0.85, 0.5, wet);
+  vec2 rings = vec2(0.0);
+  float mul = 1.0;
+  for (int i = 0 + ZERO; i < STEP_MARKS; i++) {
+    vec4 s = STEP(i);
+    if (s.z > 2.4 || !underFoot(s.xy)) continue;
+    vec2 rel = p.xz - s.xy;
+    float d = length(rel);
+    float r = 0.1 + 0.55 * s.z;
+    float fade = (1.0 - s.z / 2.4) * (1.0 - s.z / 2.4);
+    float ring = exp(-pow((d - r) / 0.022, 2.0)) * fade;
+    float print = exp(-dot(rel / vec2(0.06, 0.13), rel / vec2(0.06, 0.13))) * exp(-s.z / 2.5);
+    rings.x += CITY.z * (0.5 * ring * (0.35 + 0.65 * wet) + 0.22 * print);
+    if (i < 2) mul *= 1.0 - 0.45 * exp(-dot(rel, rel) / 0.03);
+  }
+  Mat m = matte(albedo, vec3(0.0, 1.0, 0.0), 0.0, vec2(0.004, 0.003));
+  m.L = rings;
+  m.gleam = 1.0 - 0.6 * wet;
+  m.gn = nw;
+  m.a2 = mix(0.09, 0.012, wet);
+  // The tubes' long gleam down the wet floor.
+  m.L.x += 0.6 * m.gleam * tubesGleam(p, nw, -rd, m.a2);
+  m.rings = 0.7;
+  m.mul = mul;
+  m.essence = 0.25;
+  return m;
+}
+
 vec2 sky(vec3 ro, vec3 rd);
 
 // What the ray from ro met, other than a building or the ground, makes of
@@ -1274,6 +1571,7 @@ vec2 sky(vec3 ro, vec3 rd);
 Mat rest(Hit h, vec3 ro, vec3 rd, float pathT) {
   vec3 p = ro + rd * h.t;
   if (h.kind == SKY) return emits(sky(ro, rd));
+  if (h.kind == UNDER) return underMat(h, p, rd, pathT);
   if (h.kind == FIGURE) return figureMat(h, p, rd);
   if (h.kind == CAR) return carMat(h, p, rd);
   if (h.kind == SIGN) return emits(signLight(p, pathT, h));
@@ -1302,7 +1600,13 @@ Mat material(Hit h, vec3 ro, vec3 rd, float pathT, bool full, out float mirror, 
   vec3 p = ro + rd * h.t;
   if (h.kind == GROUND) return ground(p, rd, pathT, full, mirror, nw);
   if (h.kind == BUILDING) return building(p, h.n, rd, pathT, h);
+  if (h.kind == UNDER && h.row == 0) mirror = underWater(p, nw);
   return rest(h, ro, rd, pathT);
+}
+// Whether a hit's surface mirrors the street: the wet ground, the
+// underpass's floor.
+bool mirrors(Hit h) {
+  return h.kind == GROUND || (h.kind == UNDER && h.row == 0);
 }
 
 // ---- the sky and the air ----
@@ -1347,7 +1651,8 @@ float sphereAir(vec3 ro, vec3 rd, float T) {
       float t = k == 0 ? -b - sq : -b + sq;
       if (t <= 0.05 || t > T) continue;
       vec3 q = ro + rd * t;
-      if (q.y < 0.0) continue;
+      // Cut at his floor (the street, or the underpass's steps on page 08).
+      if (q.y < SPHERE.y - SPHERE_Y) continue;
       vec3 nr = (q - C) / R;
       float w = max(0.006, 1.2 * pixelAt(t));
       float glass = 0.002 / max(abs(dot(rd, nr)), 0.15);
@@ -1411,7 +1716,7 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
         for (int i = 0 + ZERO; i < 6; i++) {
           float tt = t0 + (float(i) + jitter) * dt;
           vec3 d = ro + rd * tt - c;
-          acc += lampCone(d) / (dot(d, d) + 0.6);
+          acc += lampCone(d) / (dot(d, d) + 0.6) * streetShare(ro + rd * tt);
         }
         acc *= dt;
       }
@@ -1419,6 +1724,15 @@ vec2 air(vec3 ro, vec3 rd, float T, float jitter) {
       float i = LAMP_LIGHT * lampFlicker(s, k) * (AIR * acc * exp(-HAZE * max(b, 0.0))
                 + 0.5 * below * glare(ro, rd, c - vec3(0.0, 0.06, 0.0), T));
       if (side == 0) L.x += i; else L.y += i;
+    }
+  }
+  if (UNDERPASS) {
+    // Page 08: the underpass's tubes, two glints along each.
+    float z0 = ro.z - underAlong(ro.z);
+    for (int k = 0 + ZERO; k < int(TUBES); k++) {
+      vec3 c = tubeAt(z0, float(k));
+      float g = glare(ro, rd, c - vec3(0.0, 0.0, 0.35), T) + glare(ro, rd, c + vec3(0.0, 0.0, 0.35), T);
+      L.x += 0.5 * tubeFlicker(float(k)) * g;
     }
   }
   // The cars' lamps: their glare where the eye stands before them.
@@ -1644,11 +1958,12 @@ void main() {
   for (int b = 0 + ZERO; b < 2; b++) {
     Hit h = trace(o_, d, true);
     if (b == 0) first = h; else second = h;
-    if (b > 0 || h.kind != GROUND) break;
+    if (b > 0 || !mirrors(h)) break;
     vec3 p = o_ + d * h.t;
     float mirror;
     vec3 nw;
-    ground(p, d, h.t, true, mirror, nw);
+    if (h.kind == GROUND) ground(p, d, h.t, true, mirror, nw);
+    else mirror = underWater(p, nw);
     r = reflect(d, nw);
     r.y = max(r.y, 0.02);
     r = normalize(r);
@@ -1658,7 +1973,7 @@ void main() {
     d = r;
   }
   o0 = recordOf(first, w);
-  o1 = vec4(first.kind == GROUND ? r : first.n, 0.0);
+  o1 = vec4(mirrors(first) ? r : first.n, 0.0);
   o2 = recordOf(second, 0.0);
   o3 = vec4(second.n, 0.0);
 }
@@ -1683,7 +1998,7 @@ void main() {
     Mat m = material(h, o_, d, pathT, b == 0, mirror, nw);
     float fr = hazeLeft(h);
     L += w * (lightOf(m, p, -d) * fr + HAZE_LIGHT * (1.0 - fr));
-    if (b > 0 || h.kind != GROUND) break;
+    if (b > 0 || !mirrors(h)) break;
     vec3 r = reflect(d, nw);
     r.y = max(r.y, 0.02);
     r = normalize(r);

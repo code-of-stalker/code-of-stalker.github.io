@@ -161,12 +161,12 @@ fn foot_at(heel: V3, yaw: f32, pitch: f32) -> Foot {
     }
 }
 
-/// The foot standing at (`x`, `z`), `since` seconds after it landed and
-/// `until` seconds before it lifts: rocking flat off its heel, then up onto
-/// its ball.
-fn standing(x: f32, z: f32, yaw: f32, since: f32, until: f32) -> Foot {
+/// The foot standing at (`x`, `y`, `z`), `since` seconds after it landed
+/// and `until` seconds before it lifts: rocking flat off its heel, then up
+/// onto its ball.
+fn standing(x: f32, y: f32, z: f32, yaw: f32, since: f32, until: f32) -> Foot {
     let flat = v3(yaw.sin(), 0.0, yaw.cos());
-    let ground = v3(x, 0.0, z);
+    let ground = v3(x, y, z);
     if until < HEEL_OFF {
         let off = smooth(0.0, 1.0, 1.0 - until / HEEL_OFF);
         let pitch = -LIFT * off;
@@ -208,6 +208,15 @@ pub struct Walk {
     sway: f32,
     /// When it rises from a seat and sits down again, in time order.
     rests: Vec<Rest>,
+    /// The ground's height along z where the feet stand (a stair's
+    /// treads), and the smooth line the pelvis rides over it.
+    floor: fn(f32) -> f32,
+    ramp: fn(f32) -> f32,
+}
+
+/// Level ground.
+fn level(_: f32) -> f32 {
+    0.0
 }
 
 impl Walk {
@@ -232,17 +241,23 @@ impl Walk {
             let bout = &steps[from..to];
             let first = bout[0];
             let last = bout[bout.len() - 1];
+            // The weight shifts and sways about the middle of the feet.
+            let m = mean(place, 0);
             pelvis_z.push((first.lift - 0.15, mean(place, 1) + AHEAD));
-            pelvis_x.push((first.lift - 0.6, mean(place, 0)));
-            pelvis_x.push((first.lift - 0.02, SHIFT * place[1 - first.side][0]));
+            pelvis_x.push((first.lift - 0.6, m));
+            pelvis_x.push((
+                first.lift - 0.02,
+                m + SHIFT * (place[1 - first.side][0] - m),
+            ));
             for (i, s) in bout.iter().enumerate() {
                 place[s.side] = [s.x, s.z];
+                let m = mean(place, 0);
                 if i + 1 == bout.len() {
                     pelvis_z.push((s.land + 0.3, mean(place, 1) + AHEAD));
-                    pelvis_x.push((s.land + 0.45, mean(place, 0)));
+                    pelvis_x.push((s.land + 0.45, m));
                 } else {
                     pelvis_z.push((s.land, mean(place, 1) + AHEAD));
-                    pelvis_x.push((s.land + 0.25, SWAY * s.x));
+                    pelvis_x.push((s.land + 0.25, m + SWAY * (s.x - m)));
                 }
             }
             let before_last = bout[bout.len().saturating_sub(2)];
@@ -263,7 +278,17 @@ impl Walk {
             pelvis_x,
             sway,
             rests: Vec::new(),
+            floor: level,
+            ramp: level,
         }
+    }
+
+    /// The same walk over ground whose height along z is `floor` (where
+    /// the feet stand) and `ramp` (the smooth line the pelvis rides).
+    pub fn on_ground(mut self, floor: fn(f32) -> f32, ramp: fn(f32) -> f32) -> Walk {
+        self.floor = floor;
+        self.ramp = ramp;
+        self
     }
 
     /// The same walk, rising from a seat and sitting down at `rests`; seated
@@ -343,20 +368,35 @@ impl Walk {
             }
         };
         let next_lift = |j: usize| plants.get(j).map_or(f32::INFINITY, |p| p.lift - t);
+        let floor = self.floor;
         if begun == 0 {
             let [x, z] = place(0);
-            return standing(x, z, yaw, f32::INFINITY, next_lift(0));
+            return standing(x, floor(z), z, yaw, f32::INFINITY, next_lift(0));
         }
         let p = plants[begun - 1];
         if t >= p.land {
-            return standing(p.x, p.z, yaw, t - p.land, next_lift(begun));
+            return standing(p.x, floor(p.z), p.z, yaw, t - p.land, next_lift(begun));
         }
         let s = ((t - p.lift) / (p.land - p.lift)).clamp(0.0, 1.0);
         let [x, z] = place(begun - 1);
-        let from = standing(x, z, yaw, f32::INFINITY, 0.0);
-        let to = standing(p.x, p.z, yaw, 0.0, f32::INFINITY);
+        let from = standing(x, floor(z), z, yaw, f32::INFINITY, 0.0);
+        let to = standing(p.x, floor(p.z), p.z, yaw, 0.0, f32::INFINITY);
         let rise = (PI * s).sin();
-        let heel = from.heel.lerp(to.heel, min_jerk(s)) + Y * (CLEARANCE * rise);
+        let mut heel = from.heel.lerp(to.heel, min_jerk(s)) + Y * (CLEARANCE * rise);
+        let (below, above) = (floor(z), floor(p.z));
+        let climb = above - below;
+        if climb.abs() > 1e-4 {
+            // On a stair the foot rises early to clear the nosing going up,
+            // and keeps clear of it going down before it drops; the heel's
+            // own rocking goes as on the flat.
+            let share = if climb > 0.0 {
+                smooth(0.0, 0.6, s)
+            } else {
+                smooth(0.35, 1.0, s)
+            };
+            let rocking = mix(from.heel.y - below, to.heel.y - above, min_jerk(s));
+            heel.y = below + climb * share + rocking + (CLEARANCE + 0.3 * climb.abs()) * rise;
+        }
         Foot {
             support: smooth(0.6, 1.0, s),
             swing: rise,
@@ -387,7 +427,8 @@ impl Walk {
             }
             _ => 0.5,
         };
-        let mut y = mix(STAND, WALK, amount) - BOB * amount * (0.5 + 0.5 * (TAU * phase).cos());
+        let mut y = mix(STAND, WALK, amount) - BOB * amount * (0.5 + 0.5 * (TAU * phase).cos())
+            + (self.ramp)(z);
         let yaw = (-TURN * (feet[0].ankle.z - feet[1].ankle.z) / 0.62).clamp(-0.12, 0.12);
         // The legs must reach the feet that carry the body.
         let reach = (THIGH + SHIN) * 0.997;

@@ -149,6 +149,100 @@ float groundAt(float x) {
   return abs(x) < ROAD ? -CURB : 0.0;
 }
 
+// Page 08 (CROSSCAR.w < 0): the underpass under the walker's pavement
+// (lib.rs), between the walls UNDER_X0 and UNDER_X1, one every REPEAT.
+#define UNDERPASS (CROSSCAR.w < 0.0)
+// How far along its underpass z lies, from the top of the down flight.
+float underAlong(float z) {
+  float u = mod(z - UNDER_Z, REPEAT);
+  return u < 0.5 * REPEAT ? u : u - REPEAT;
+}
+// The floor's cell round u (a tread, the flat, or the street beyond): its
+// ends along the underpass and its level.
+float underCell(float u, out float ua, out float ub) {
+  if (u < 0.0) { ua = -1e4; ub = 0.0; return 0.0; }
+  if (u >= UNDER_LEN) { ua = UNDER_LEN; ub = 1e4; return 0.0; }
+  if (u < FLIGHT) {
+    float k = floor(u / TREAD);
+    ua = k * TREAD;
+    ub = ua + TREAD;
+    return -(k + 1.0) * RISE;
+  }
+  if (u < FLIGHT + FLAT) { ua = FLIGHT; ub = FLIGHT + FLAT; return -UNDER_DEPTH; }
+  float i = floor((u - FLIGHT - FLAT) / TREAD);
+  ua = FLIGHT + FLAT + i * TREAD;
+  ub = ua + TREAD;
+  return -(RISERS - 1.0 - i) * RISE;
+}
+// Whether the slab roofs it at u (else the sky shows: its openings).
+bool underRoofed(float u) {
+  return u >= OPEN && u < UNDER_LEN - OPEN;
+}
+// Whether p is inside it, between its walls under the street.
+bool underInside(vec3 p) {
+  float u = underAlong(p.z);
+  return UNDERPASS && p.y < 0.0 && p.x > UNDER_X0 && p.x < UNDER_X1 && u >= 0.0 && u < UNDER_LEN;
+}
+// Whether a step at xz lands in it (on its stairs or its floor).
+bool underFoot(vec2 xz) {
+  float u = underAlong(xz.y);
+  return UNDERPASS && xz.x > UNDER_X0 && xz.x < UNDER_X1 && u >= 0.0 && u < UNDER_LEN;
+}
+// The floor's level at xz: the stairs and the floor in it, the street's
+// ground elsewhere.
+float floorAt(vec2 xz) {
+  if (!underFoot(xz)) return groundAt(xz.x);
+  float ua, ub;
+  return underCell(underAlong(xz.y), ua, ub);
+}
+// How much of the street's light reaches p: all of it over the street and
+// down the openings, none under the slab. Pass p a little out along its
+// surface's normal: the kerb's face shares a plane with the wall behind it.
+float streetShare(vec3 p) {
+  if (!underInside(p)) return 1.0;
+  float u = underAlong(p.z);
+  return smoothstep(0.5, -0.6, min(u - OPEN, UNDER_LEN - OPEN - u));
+}
+// Its fluorescent tubes along the ceiling's middle under the slab, from
+// the foot of the down flight to the foot of the up one; one stutters.
+const float TUBES = 10.0;
+const float TUBE_GAP = 2.0;
+const float TUBE_HALF = 0.6;
+const float TUBE_LIGHT = 1.0;
+vec3 tubeAt(float z0, float k) {
+  return vec3(0.5 * (UNDER_X0 + UNDER_X1), -SLAB - 0.05, z0 + FLIGHT + TUBE_GAP * k);
+}
+float tubeNear(float u) {
+  return clamp(floor((u - FLIGHT) / TUBE_GAP + 0.5), 0.0, TUBES - 1.0);
+}
+float tubeFlicker(float k) {
+  if (k != 6.0) return 1.0;
+  int epoch = pm(int(floor(TIME * 12.0)), int(LOOP * 12.0));
+  return 1.0 - 0.75 * step(rand(uint(epoch) * 2654435761u + 9u), 0.1);
+}
+// The tubes' light at p (cold); n = 0 lights from every side. They light
+// only downward: nothing over the slab.
+vec2 tubesAt(vec3 p, vec3 n, float wrap) {
+  // Lifted off the surface: the walls stand right on the underpass's edge.
+  p += 0.02 * n;
+  if (!underInside(p)) return vec2(0.0);
+  float u = underAlong(p.z);
+  float k0 = tubeNear(u);
+  float l = 0.0;
+  for (int j = -1 + ZERO; j <= 1; j++) {
+    float k = k0 + float(j);
+    if (k < 0.0 || k > TUBES - 1.0) continue;
+    vec3 d = p - tubeAt(p.z - u, k);
+    d.z -= clamp(d.z, -TUBE_HALF, TUBE_HALF);
+    float d2 = dot(d, d) + 0.02;
+    float id = inversesqrt(d2);
+    float lambert = 1.0;
+    if (dot(n, n) > 0.0) lambert = clamp((dot(n, -d) * id + wrap) / (1.0 + wrap), 0.0, 1.0);
+    l += tubeFlicker(k) * lambert * smoothstep(0.15, -0.25, d.y * id) / max(d2, 0.3);
+  }
+  return vec2(TUBE_LIGHT * l, 0.0);
+}
+
 // Street lamp k on side s (+1 the far side, cold LED; -1 the walker's,
 // warm sodium, halfway between): its head.
 float lampOffset(float s) {
@@ -184,7 +278,7 @@ vec2 lampsAt(vec3 p, vec3 n, float wrap) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  return l;
+  return l * streetShare(p + 0.01 * n) + tubesAt(p, n, wrap);
 }
 
 // A lot of row 1 (the street's own buildings) on side s: whether its shop

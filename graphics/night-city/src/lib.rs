@@ -49,10 +49,76 @@ pub const STEPS: i32 = 120;
 /// take, its rewind and the right take, over which the city's clock
 /// covers one `LOOP`.
 pub const CHECK_LOOP: f32 = 126.9;
+/// One loop of page 08: down into the underpass, through it, up and on
+/// into the street; he covers `REPEAT` and the city's clock two `LOOP`s.
+pub const VOICE_LOOP: f32 = 104.0;
 pub const STRIDE: f32 = 0.68;
 pub const REPEAT: f32 = 2.0 * BLOCK;
 /// How far apart the feet land, either side of the walk's line.
 pub const STEP_WIDTH: f32 = 0.085;
+
+/// Page 08's underpass, one under each block's first cross street (one
+/// every `REPEAT`), along the walker's pavement between the walls
+/// `UNDER_X`. Its down flight starts at `UNDER_Z`: `RISERS` steps of
+/// `RISE` over treads `TREAD` deep, then the flat floor `FLAT` long and
+/// the up flight. The slab over it is `SLAB` thick and leaves `OPEN` open
+/// over each flight, a whole number of treads.
+pub const UNDER_X: [f32; 2] = [-5.4, -3.2];
+pub const UNDER_Z: f32 = 1.88;
+pub const RISERS: i32 = 18;
+pub const RISE: f32 = 0.17;
+pub const TREAD: f32 = 0.32;
+pub const FLAT: f32 = 18.0;
+pub const SLAB: f32 = 0.42;
+pub const OPEN: f32 = 14.0 * TREAD;
+/// A flight's length, the floor's depth and the underpass's whole length.
+pub const FLIGHT: f32 = (RISERS - 1) as f32 * TREAD;
+pub const UNDER_DEPTH: f32 = RISERS as f32 * RISE;
+pub const UNDER_LEN: f32 = 2.0 * FLIGHT + FLAT;
+
+/// How far along its underpass z lies, from the top of the down flight,
+/// within half a `REPEAT` either way.
+pub fn under_along(z: f32) -> f32 {
+    let u = (z - UNDER_Z).rem_euclid(REPEAT);
+    if u < 0.5 * REPEAT {
+        u
+    } else {
+        u - REPEAT
+    }
+}
+
+/// The underpass's floor under (x, z): its treads and its flat; 0 beyond
+/// it (the pavement's level).
+pub fn under_floor(x: f32, z: f32) -> f32 {
+    let u = under_along(z);
+    if x <= UNDER_X[0] || x >= UNDER_X[1] || !(0.0..UNDER_LEN).contains(&u) {
+        0.0
+    } else if u < FLIGHT {
+        -((u / TREAD).floor() + 1.0) * RISE
+    } else if u < FLIGHT + FLAT {
+        -UNDER_DEPTH
+    } else {
+        -((RISERS - 1) as f32 - ((u - FLIGHT - FLAT) / TREAD).floor()) * RISE
+    }
+}
+
+/// The line over the treads' middles, its corners rounded: how high the
+/// walker's pelvis and the camera ride along the underpass.
+pub fn under_ramp(z: f32) -> f32 {
+    let u = under_along(z);
+    let w = 0.3;
+    let soft = |x: f32| x.max(0.0) + w * (-x.abs() / w).exp().ln_1p();
+    let slope = RISE / TREAD;
+    let (top, bottom) = (-0.5 * TREAD, UNDER_DEPTH / slope - 0.5 * TREAD);
+    let up = FLIGHT + FLAT - 0.5 * TREAD;
+    slope * (soft(u - up) - soft(u - up - UNDER_DEPTH / slope) - soft(u - top) + soft(u - bottom))
+}
+
+/// Whether the sky shows over the underpass at z (its two openings).
+pub fn under_open(z: f32) -> bool {
+    let u = under_along(z);
+    (0.0..OPEN).contains(&u) || (UNDER_LEN - OPEN..UNDER_LEN).contains(&u)
+}
 
 /// The rain: drops in a box that travels with the camera, wrapping round
 /// it; the fall and the box are chosen so the drops are where they were
@@ -137,12 +203,15 @@ pub enum Chapter {
     Fact,
     /// Page 07 «Главная проверка: не потерять два первых кольца».
     Check,
+    /// Page 08 «Используй свой голос (как настройку трех колец)».
+    Voice,
 }
 
 impl Chapter {
     pub fn from_code(code: u32) -> Chapter {
         match code {
             1 => Chapter::Check,
+            2 => Chapter::Voice,
             _ => Chapter::Fact,
         }
     }
@@ -150,15 +219,19 @@ impl Chapter {
         match self {
             Chapter::Fact => LOOP,
             Chapter::Check => CHECK_LOOP,
+            Chapter::Voice => VOICE_LOOP,
         }
     }
     /// Reduced motion holds this moment. Page 06: over the shoulder,
     /// mid-step, the street lit and calm. Page 07: the right take, drawn
     /// back from him at the kerb, the sphere wide open, all three rings lit.
+    /// Page 08: in the underpass, the echo gone into him, the lines of code
+    /// on the tiles.
     pub fn still(self) -> f32 {
         match self {
             Chapter::Fact => 21.0,
             Chapter::Check => 71.0,
+            Chapter::Voice => 33.0,
         }
     }
 }
@@ -286,7 +359,7 @@ mod tests {
 
     #[test]
     fn every_figure_is_sent() {
-        for chapter in [Chapter::Fact, Chapter::Check] {
+        for chapter in [Chapter::Fact, Chapter::Check, Chapter::Voice] {
             let f = Story::new(chapter).compose(10.0);
             assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
         }
@@ -296,9 +369,39 @@ mod tests {
     fn every_page_has_its_chapter() {
         assert_eq!(Chapter::from_code(0), Chapter::Fact);
         assert_eq!(Chapter::from_code(1), Chapter::Check);
-        for chapter in [Chapter::Fact, Chapter::Check] {
+        assert_eq!(Chapter::from_code(2), Chapter::Voice);
+        for chapter in [Chapter::Fact, Chapter::Check, Chapter::Voice] {
             assert!(chapter.still() < chapter.loop_seconds());
         }
+    }
+
+    #[test]
+    fn the_underpass_fits_its_street() {
+        // It comes round with the street, its openings end on a tread's
+        // edge and the ramp rides over the treads.
+        const { assert!(UNDER_Z + UNDER_LEN < REPEAT) };
+        assert!(near(OPEN / TREAD, (OPEN / TREAD).round()));
+        assert!(near(under_floor(WALK_X, UNDER_Z + 0.5 * TREAD), -RISE));
+        assert!(near(
+            under_floor(WALK_X, UNDER_Z + FLIGHT + 1.0),
+            -UNDER_DEPTH
+        ));
+        assert!(near(under_floor(WALK_X, UNDER_Z + UNDER_LEN - 0.1), -RISE));
+        assert!(near(under_floor(WALK_X, UNDER_Z - 0.1), 0.0));
+        assert!(near(under_floor(-6.0, UNDER_Z + 9.0), 0.0));
+        let mut last = under_ramp(UNDER_Z - 6.0);
+        let mut z = UNDER_Z - 6.0;
+        while z < UNDER_Z + UNDER_LEN + 6.0 {
+            let floor = under_floor(WALK_X, z);
+            let ramp = under_ramp(z);
+            assert!((ramp - floor).abs() < 0.25, "{z}: {ramp} over {floor}");
+            assert!((ramp - last).abs() < 0.01, "{z}");
+            last = ramp;
+            z += 0.01;
+        }
+        assert!(near(under_ramp(UNDER_Z + REPEAT - 6.0), 0.0));
+        assert!(under_open(UNDER_Z + 1.0) && !under_open(UNDER_Z + 10.0));
+        assert!(under_open(UNDER_Z + UNDER_LEN - 1.0) && !under_open(UNDER_Z + UNDER_LEN + 1.0));
     }
 
     #[test]

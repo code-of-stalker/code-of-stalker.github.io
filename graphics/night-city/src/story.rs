@@ -42,11 +42,27 @@
 //! 71–83 s     «пространство»: drawn back and up, he waits for green;
 //! 83–120 s    green, he walks on under the crane;
 //! 120–126.9 s back down over his shoulder.
+//!
+//! Page 08 «Используй свой голос» (104 s): down into the tiled underpass
+//! under the cross street; each phrase runs along the tiles as a shell
+//! and comes back as an echo that fixes one thing.
+//! 0–14 s     down the stairs, his steps ring («Проговори вслух»);
+//! 15.5 s     «Я Здесь»: the sphere sharpens;
+//! 22 s       «Я Слышу внешнее»: the echo comes back, the first ring lights;
+//! 29 s       «Я Ощущаю внутреннее»: the echo goes into him, the second;
+//! 36 s       «Я Двигаюсь»: he walks on, the third turns with his pace;
+//! 49.6 s     «Я Действую»: up the far stairs, his hand on the rail;
+//! 59.4 s     «Я Осознаю три кольца»: three echoes meet him as one chord;
+//! 67 s       «Я Есть»: out into the open street, the rain, the crane;
+//!            the tiles keep a line of code from each phrase («Голос не
+//!            объясняет. Он фиксирует.»);
+//! 96–104 s   down behind him to the next stairs.
 use crate::body::{build, Body, Carry, Coat, Step, Walk, HANDS, SWING_SHARE};
 use crate::math::{mix, monotone, smooth, smooth_integral, v3, window, window_integral, V3, Y};
 use crate::{
-    Chapter, CARS, CAR_LANE, CELL, CHECK_LOOP, CROSS, LOOP, PUFFS, REPEAT, STEPS, STEP_MARKS,
-    STEP_WIDTH, STRIDE, WALK_X,
+    under_along, under_ramp, Chapter, CARS, CAR_LANE, CELL, CHECK_LOOP, CROSS, FLAT, FLIGHT, LOOP,
+    PUFFS, REPEAT, RISE, RISERS, STEPS, STEP_MARKS, STEP_WIDTH, STRIDE, TREAD, UNDER_LEN, UNDER_Z,
+    VOICE_LOOP, WALK_X,
 };
 use std::f32::consts::PI;
 
@@ -500,6 +516,9 @@ pub fn world_time(chapter: Chapter, t: f32) -> f32 {
             let laps = (t / CHECK_LOOP).floor();
             LOOP * laps + reel(chapter, t - laps * CHECK_LOOP).city()
         }
+        // Page 08's lap carries him a whole REPEAT, which the street's
+        // clock covers in two of its loops.
+        Chapter::Voice => t * 2.0 * LOOP / VOICE_LOOP,
     }
 }
 
@@ -1027,6 +1046,496 @@ fn check_walks() -> [Walk; 2] {
     ]
 }
 
+/// Page 08: when each phrase leaves his mouth (see the top of the file),
+/// when each one's echo starts back onto his head, from how far.
+const VOICE_PHRASES: [f32; 7] = [15.5, 22.0, 29.0, 36.0, 49.6, 59.4, 67.0];
+const VOICE_ECHOES: [f32; 5] = [17.5, 24.0, 31.0, 38.0, 51.6];
+const VOICE_ECHO_FROM: f32 = 9.0;
+/// «Я Осознаю три кольца»: three echoes start back at once from these
+/// radii and meet at him together `CHORD_LIFE` later.
+const CHORD_AT: f32 = 60.6;
+const CHORD_FROM: [f32; 3] = [9.0, 7.6, 6.2];
+const CHORD_LIFE: f32 = 2.0;
+/// When each ring lights, and when all three dim again for the next lap.
+const VOICE_RINGS: [[f32; 2]; 3] = [[25.0, 27.0], [32.0, 34.0], [37.0, 40.0]];
+const VOICE_DIM: [f32; 2] = [96.0, 102.0];
+/// How faint the rings are before their phrase.
+const RING_DARK: f32 = 0.12;
+/// The third ring turns this many times over a lap's `REPEAT`: with his
+/// pace, standing still when he stands.
+const VOICE_TURNS: f32 = 30.0;
+/// The underpass's rails: one along each wall of each flight, `RAIL_IN`
+/// off the wall, `RAIL_H` over the treads' line.
+pub const RAIL_IN: f32 = 0.1;
+pub const RAIL_H: f32 = 0.92;
+/// How far toward the right wall (−x) he walks along the floor, so the
+/// right hand finds the rail on the climb.
+const VOICE_DRIFT: f32 = -0.6;
+const VOICE_UMBRELLA_MEETS: f32 = 84.0;
+const VOICE_PHONE_MEETS: f32 = 95.0;
+
+/// How far a shell of the voice reaches before it fades.
+pub const VOICE_REACH: f32 = 0.12 + VOICE_SPEED * VOICE_LIFE;
+
+/// Page 08: where each phrase left his mouth. Each leaves a line of code in
+/// the tiles as far as its shell reached.
+pub fn voice_lines() -> [V3; 7] {
+    let story = Story::new(Chapter::Voice);
+    VOICE_PHRASES.map(|at| story.body(at).mouth)
+}
+
+/// How far toward the rail his walk has drifted at `t` of the lap.
+fn voice_drift(t: f32) -> f32 {
+    VOICE_DRIFT * (smooth(41.0, 48.0, t) - smooth(66.2, 70.0, t))
+}
+
+/// The rail's height over z: the line through the treads' middles raised
+/// by `RAIL_H`, level beyond the flights' ends.
+pub fn rail_height(z: f32) -> f32 {
+    let u = under_along(z);
+    let u = u.min(UNDER_LEN - u).clamp(0.0, FLIGHT);
+    RAIL_H - RISE / TREAD * (u + 0.5 * TREAD)
+}
+
+/// Where the feet stand along z: the treads and the floor.
+fn voice_floor(z: f32) -> f32 {
+    crate::under_floor(WALK_X, z)
+}
+
+/// Page 08's walk: down the treads one at a time, two steps onto the floor,
+/// feet together; standing through three phrases; along the floor drifting
+/// toward the rail and up the far flight, feet together at the top;
+/// standing, then out along the street to the next stairs, a lap on.
+fn voice_walk() -> Walk {
+    // (landing, z, the step's own period) for one lap.
+    let mut lap: Vec<(f32, f32, f32)> = Vec::new();
+    let flights = RISERS - 1;
+    for k in 0..flights {
+        lap.push((0.7 * (k + 1) as f32, UNDER_Z + TREAD * k as f32 + 0.09, 0.7));
+    }
+    lap.extend([(12.6, 7.75, 0.7), (13.3, 8.42, 0.7), (14.0, 8.42, 0.7)]);
+    for i in 1..=25 {
+        lap.push((36.5 + (i - 1) as f32 * 0.54, 8.42 + 0.666 * i as f32, 0.54));
+    }
+    let up = UNDER_Z + FLIGHT + FLAT;
+    for j in 0..flights {
+        lap.push((
+            49.46 + 0.6 * (j + 1) as f32,
+            up + TREAD * j as f32 + 0.09,
+            0.6,
+        ));
+    }
+    let top = 31.55;
+    lap.extend([(60.26, 31.0, 0.6), (60.86, top, 0.6), (61.46, top, 0.6)]);
+    // Out to where the next lap's first tread follows (its z 1.63 + REPEAT
+    // at its time 0).
+    let out = 79;
+    let period = (VOICE_LOOP - 66.5) / (out - 1) as f32;
+    let stride = (1.63 + REPEAT - top) / out as f32;
+    for j in 1..=out {
+        lap.push((
+            66.5 + (j - 1) as f32 * period,
+            top + stride * j as f32,
+            period,
+        ));
+    }
+    assert_eq!(lap.len() % 2, 0, "the same foot leads each lap");
+    let n = lap.len() as i32;
+    let steps: Vec<Step> = (-1..=1)
+        .flat_map(|l: i32| {
+            lap.iter().enumerate().map(move |(i, &(land, z, period))| {
+                let side = i % 2;
+                let width = if side == 0 { STEP_WIDTH } else { -STEP_WIDTH };
+                let shift = l as f32;
+                Step {
+                    side,
+                    lift: land - SWING_SHARE * period + shift * VOICE_LOOP,
+                    land: land + shift * VOICE_LOOP,
+                    x: width + voice_drift(land),
+                    z: z + shift * REPEAT,
+                }
+            })
+        })
+        .collect();
+    debug_assert_eq!(steps.len() as i32, 3 * n);
+    // The feet stand where the lap before the first one left them.
+    let before = 1.63 - REPEAT;
+    let start = [[STEP_WIDTH, before - stride], [-STEP_WIDTH, before]];
+    Walk::new(start, steps, 7.0).on_ground(voice_floor, under_ramp)
+}
+
+/// Page 08's camera, relative to his track point and to the underpass's
+/// floor line under each point (see `compose`).
+const VOICE_OPENING: Key = key(
+    0.0,
+    [0.0, 1.55, -2.4],
+    [0.0, 0.9, 4.0],
+    [0.0, 1.0, 0.1],
+    1.6,
+    0.006,
+    0.0,
+);
+const VOICE_SHOTS: [Key; 28] = [
+    // Behind him and above, down the stairs into the tubes' light.
+    VOICE_OPENING,
+    key(
+        8.4,
+        [0.0, 1.45, -2.3],
+        [0.0, 0.9, 4.0],
+        [0.0, 1.0, 0.1],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    // Down to his heels: each step rings on the treads.
+    key(
+        9.8,
+        [0.0, 0.6, -2.0],
+        [0.0, 1.0, 5.0],
+        [0.0, 0.9, 0.0],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    // Beside him as he stops on the floor.
+    key(
+        13.5,
+        [0.8, 0.7, 0.6],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        1.65,
+        0.007,
+        0.0,
+    ),
+    // «Я Здесь»: low before him, up at him; the sphere sharpens.
+    key(
+        15.0,
+        [0.0, 0.35, 3.2],
+        [0.0, 1.15, 0.0],
+        [0.0, 1.2, 0.0],
+        1.7,
+        0.007,
+        0.0,
+    ),
+    key(
+        20.3,
+        [0.0, 0.4, 2.6],
+        [0.0, 1.15, 0.0],
+        [0.0, 1.2, 0.0],
+        1.7,
+        0.007,
+        0.0,
+    ),
+    // «Я Слышу внешнее»: round his left to behind him, down the tunnel to
+    // its far exit, where the city's sound comes in.
+    key(
+        22.0,
+        [0.9, 0.6, 0.3],
+        [0.0, 1.1, 2.0],
+        [0.0, 1.2, 0.0],
+        1.65,
+        0.007,
+        0.0,
+    ),
+    key(
+        23.8,
+        [0.0, 0.45, -3.0],
+        [0.0, 1.3, 8.0],
+        [0.0, 1.2, 0.0],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    key(
+        27.4,
+        [0.05, 0.5, -2.9],
+        [0.0, 1.3, 8.0],
+        [0.0, 1.2, 0.0],
+        1.6,
+        0.006,
+        0.0,
+    ),
+    // «Я Ощущаю внутреннее»: close at his chest, the echo goes into him.
+    key(
+        29.0,
+        [0.95, 1.0, 0.0],
+        [0.0, 1.3, 0.3],
+        [0.0, 1.3, 0.0],
+        1.9,
+        0.008,
+        0.0,
+    ),
+    key(
+        30.2,
+        [0.7, 1.35, 1.5],
+        [-0.05, 1.35, 0.0],
+        [0.0, 1.35, 0.0],
+        2.2,
+        0.009,
+        0.0,
+    ),
+    key(
+        34.5,
+        [0.6, 1.4, 1.2],
+        [-0.05, 1.35, 0.0],
+        [0.0, 1.35, 0.0],
+        2.2,
+        0.009,
+        0.0,
+    ),
+    // «Я Двигаюсь»: low before him as he walks; the third ring turns.
+    key(
+        36.4,
+        [0.0, 0.5, 3.0],
+        [-0.2, 1.0, 0.0],
+        [-0.1, 1.0, 0.0],
+        1.7,
+        0.007,
+        0.0,
+    ),
+    key(
+        43.6,
+        [0.0, 0.5, 3.0],
+        [-0.2, 1.0, 0.0],
+        [-0.3, 1.0, 0.0],
+        1.7,
+        0.007,
+        0.0,
+    ),
+    // Beside his steps as he drifts to the rail's side.
+    key(
+        45.4,
+        [0.9, 0.55, 0.3],
+        [-0.4, 0.8, 0.4],
+        [-0.5, 0.8, 0.0],
+        1.8,
+        0.007,
+        0.0,
+    ),
+    key(
+        48.4,
+        [0.95, 0.9, 0.0],
+        [-0.45, 0.9, 0.4],
+        [-0.6, 0.9, 0.0],
+        1.8,
+        0.007,
+        0.0,
+    ),
+    // «Я Действую»: behind him up the flight, his hand on the rail.
+    key(
+        50.6,
+        [0.15, 1.0, -2.3],
+        [-0.4, 1.8, 4.0],
+        [-0.6, 1.2, 0.3],
+        1.75,
+        0.007,
+        0.0,
+    ),
+    // Past him, then back down at him climbing.
+    key(
+        54.6,
+        [0.5, 0.7, 2.2],
+        [-0.6, 1.1, 0.0],
+        [-0.6, 1.1, 0.0],
+        1.9,
+        0.008,
+        0.0,
+    ),
+    key(
+        58.4,
+        [0.5, 0.75, 2.2],
+        [-0.6, 1.1, 0.0],
+        [-0.6, 1.1, 0.0],
+        1.9,
+        0.008,
+        0.0,
+    ),
+    // «Я Осознаю три кольца»: before him at the top; the echoes meet.
+    key(
+        61.0,
+        [0.3, 0.9, 2.6],
+        [-0.5, 1.25, 0.0],
+        [-0.5, 1.2, 0.0],
+        1.9,
+        0.008,
+        0.0,
+    ),
+    key(
+        65.5,
+        [0.3, 0.95, 2.5],
+        [-0.5, 1.25, 0.0],
+        [-0.5, 1.2, 0.0],
+        1.9,
+        0.008,
+        0.0,
+    ),
+    // «Я Есть»: up behind him into the open street and the rain.
+    key(
+        68.4,
+        [1.2, 2.2, -2.5],
+        [-0.3, 1.3, 3.0],
+        [0.0, 1.1, 0.0],
+        1.7,
+        0.006,
+        0.0,
+    ),
+    // The crane: the wide city.
+    key(
+        74.0,
+        [2.5, 5.0, -6.0],
+        [-0.5, 1.0, 6.0],
+        [0.0, 1.0, 0.0],
+        1.7,
+        0.005,
+        0.0,
+    ),
+    key(
+        82.0,
+        [4.0, 11.0, -9.0],
+        [-0.5, 0.0, 10.0],
+        [0.0, 0.9, 0.0],
+        1.65,
+        0.004,
+        0.0,
+    ),
+    key(
+        90.0,
+        [3.0, 12.0, -4.0],
+        [-0.5, 0.0, 14.0],
+        [0.0, 0.9, 0.0],
+        1.65,
+        0.004,
+        0.0,
+    ),
+    // Down behind him to the next stairs.
+    key(
+        100.6,
+        [0.4, 2.2, -3.2],
+        [0.0, 1.2, 4.0],
+        [0.0, 1.0, 0.0],
+        1.6,
+        0.005,
+        0.0,
+    ),
+    at(103.0, VOICE_OPENING),
+    at(VOICE_LOOP, VOICE_OPENING),
+];
+
+const VOICE_TURN: [(f32, f32); 16] = [
+    (0.0, 0.0),
+    (23.5, 0.0),
+    (24.3, 0.25),
+    (25.3, -0.25),
+    (26.2, 0.0),
+    (49.2, 0.0),
+    (50.2, -0.15),
+    (60.0, -0.15),
+    (61.0, 0.0),
+    (70.5, 0.0),
+    (72.0, 0.35),
+    (80.0, -0.3),
+    (88.0, 0.2),
+    (94.0, 0.0),
+    (100.0, 0.0),
+    (VOICE_LOOP, 0.0),
+];
+const VOICE_NOD: [(f32, f32); 15] = [
+    (0.0, 0.25),
+    (12.0, 0.25),
+    (13.6, -0.05),
+    (28.6, -0.05),
+    (29.6, 0.15),
+    (34.6, 0.15),
+    (35.6, 0.05),
+    (49.0, 0.05),
+    (50.0, -0.12),
+    (60.0, -0.12),
+    (61.0, -0.05),
+    (100.5, -0.05),
+    (102.0, 0.25),
+    (103.0, 0.25),
+    (VOICE_LOOP, 0.25),
+];
+/// Stop underground; green by the time he reaches the next cross street.
+const VOICE_RED: [(f32, f32); 1] = [(24.0, 70.0)];
+const VOICE_PRINTS: [(f32, f32); 7] = [
+    (0.0, 0.8),
+    (14.0, 0.8),
+    (36.0, 1.0),
+    (66.0, 1.0),
+    (70.0, 0.5),
+    (100.0, 0.5),
+    (VOICE_LOOP, 0.8),
+];
+const VOICE_RIM: [(f32, f32); 1] = [(0.0, 1.2)];
+
+const VOICE: Script = Script {
+    shots: &VOICE_SHOTS,
+    turn: &VOICE_TURN,
+    nod: &VOICE_NOD,
+    agitation: &NONE,
+    stop: &VOICE_RED,
+    prints: &VOICE_PRINTS,
+    rim: &VOICE_RIM,
+    reach: &NONE,
+    phone: &NONE,
+};
+
+/// How far under the street the camera follows him at the script's `at`:
+/// 1 while he is below, 0 out in the street.
+fn voice_sink(at: f32) -> f32 {
+    1.0 - smooth(60.0, 64.0, at) + smooth(96.0, 102.0, at)
+}
+
+/// The shell of the newest phrase alive at `at` (when it left, its age).
+fn voice_phrase(at: f32) -> Option<(f32, f32)> {
+    VOICE_PHRASES
+        .iter()
+        .rev()
+        .map(|&from| (from, at - from))
+        .find(|&(_, age)| (0.0..VOICE_LIFE).contains(&age))
+}
+
+/// The echo coming back onto him at `at`: its radius, how bright.
+fn voice_echo(at: f32) -> Option<(f32, f32)> {
+    let life = VOICE_ECHO_FROM / VOICE_SPEED;
+    VOICE_ECHOES
+        .iter()
+        .rev()
+        .map(|&from| at - from)
+        .find(|age| (0.0..life).contains(age))
+        .map(|age| {
+            (
+                VOICE_ECHO_FROM - VOICE_SPEED * age,
+                smooth(0.0, 0.4, age) * (0.4 + 0.6 * age / life),
+            )
+        })
+}
+
+/// The chord at `at`: the three echoes' radii and how bright they are.
+fn voice_chord(at: f32) -> Option<([f32; 3], f32)> {
+    let age = at - CHORD_AT;
+    (0.0..CHORD_LIFE).contains(&age).then(|| {
+        let k = age / CHORD_LIFE;
+        (
+            CHORD_FROM.map(|r| r * (1.0 - k)),
+            smooth(0.0, 0.4, age) * (0.4 + 0.6 * k),
+        )
+    })
+}
+
+/// How much each ring is lit at `at`: faint before its phrase.
+fn voice_rings(at: f32) -> [f32; 4] {
+    let dim = smooth(VOICE_DIM[0], VOICE_DIM[1], at);
+    let lit = |[a, b]: [f32; 2]| RING_DARK + (1.0 - RING_DARK) * (smooth(a, b, at) - dim).max(0.0);
+    [
+        lit(VOICE_RINGS[0]),
+        lit(VOICE_RINGS[1]),
+        lit(VOICE_RINGS[2]),
+        0.0,
+    ]
+}
+
 /// A rectangle on the street: its middle (x, z), its heading (radians
 /// from +z toward +x), its half length along the heading and half width.
 #[derive(Clone, Copy, Debug)]
@@ -1219,6 +1728,9 @@ pub struct Story {
     /// and how fast it then joins the traffic.
     car_turn: f32,
     car_fast: f32,
+    /// Which pavement the passers keep to: 1 his, −1 the far one (page
+    /// 08, where he comes up out of the underpass onto his own).
+    side: f32,
 }
 
 /// The step that lands in the puddle, «Шаг происходит».
@@ -1243,6 +1755,15 @@ impl Story {
                 CHECK_UMBRELLA_MEETS,
                 CHECK_PHONE_MEETS,
             ),
+            Chapter::Voice => {
+                let walk = voice_walk();
+                (
+                    VOICE,
+                    [walk.clone(), walk],
+                    VOICE_UMBRELLA_MEETS,
+                    VOICE_PHONE_MEETS,
+                )
+            }
         };
         let track = |t: f32| {
             let r = reel(chapter, t);
@@ -1250,7 +1771,10 @@ impl Story {
         };
         let period = LOOP / UMBRELLA_STEPS as f32;
         let stride = REPEAT / UMBRELLA_STEPS as f32 / UMBRELLA_SCALE;
-        let umbrella = Walk::steady(period, stride, 0.075, -8, UMBRELLA_STEPS + 8, 6.0);
+        // The street's clock runs two loops in page 08's lap.
+        let laps = if chapter == Chapter::Voice { 2 } else { 1 };
+        let umbrella = Walk::steady(period, stride, 0.075, -8, laps * UMBRELLA_STEPS + 8, 6.0);
+        let side = if chapter == Chapter::Voice { -1.0 } else { 1.0 };
         let umbrella_from = track(umbrella_meets)
             + UMBRELLA_SCALE * umbrella.track(world_time(chapter, umbrella_meets));
         // Standing: two steps long before the loop, then only its sway,
@@ -1267,7 +1791,7 @@ impl Story {
             vec![step(0, -30.0, 0.12, 0.0), step(1, -29.5, -0.12, 0.05)],
             LOOP / 12.0,
         );
-        let phone_at = v3(PHONE_X, 0.0, track(phone_meets) + 0.15);
+        let phone_at = v3(side * PHONE_X, 0.0, track(phone_meets) + 0.15);
         let mut story = Story {
             chapter,
             loop_seconds: chapter.loop_seconds(),
@@ -1281,6 +1805,7 @@ impl Story {
             phone_meets: world_time(chapter, phone_meets),
             car_turn: 0.0,
             car_fast: CARS[0][1] * REPEAT / LOOP * CITY_RATE,
+            side,
         };
         if chapter == Chapter::Check {
             story.car_turn = story.find_turn();
@@ -1331,8 +1856,17 @@ impl Story {
     /// The side street's car at `t` of the loop (page 07; nowhere on page
     /// 06): its middle x, z, heading and how much it is there.
     pub fn cross_car(&self, t: f32) -> [f32; 4] {
-        if self.chapter != Chapter::Check {
-            return [0.0; 4];
+        match self.chapter {
+            Chapter::Fact => return [0.0; 4],
+            // Page 08 has no such car; the slot says how many lines of
+            // code the phrases have left in the tiles and how bright they
+            // are, and −1 marks the page.
+            Chapter::Voice => {
+                let at = t.rem_euclid(self.loop_seconds);
+                let lines = VOICE_PHRASES.iter().filter(|&&p| p <= at).count();
+                return [lines as f32, 1.0 - smooth(92.0, 100.0, at), 0.0, -1.0];
+            }
+            Chapter::Check => {}
         }
         let r = reel(self.chapter, t);
         let s = r.at;
@@ -1370,7 +1904,7 @@ impl Story {
         build(&pose)
             .moved(|_| v3(0.0, 0.0, -along))
             .scaled(UMBRELLA_SCALE)
-            .turned(PI, v3(UMBRELLA_X, 0.0, z))
+            .turned(PI, v3(self.side * UMBRELLA_X, 0.0, z))
     }
 
     /// The one with the phone at `t`: the head bowed to the screen held
@@ -1390,7 +1924,7 @@ impl Story {
         let hold = probe.chest + c.forward * 0.3 - c.left * 0.05 + Y * mix(0.16, 0.08, up);
         pose.hands[1] = [hold.x, hold.y, hold.z, 1.0];
         pose.wrists[1] = -0.15;
-        build(&pose).turned(PI - PHONE_TURN, self.phone_at)
+        build(&pose).turned(PI - self.side * PHONE_TURN, self.phone_at)
     }
 
     pub fn passers(&self, t: f32) -> [Body; PASSERS] {
@@ -1423,6 +1957,7 @@ impl Story {
         match self.chapter {
             Chapter::Fact => 0.35 + 0.65 * window(at, 23.6, 24.8, 28.8, 29.8),
             Chapter::Check => monotone(&CHECK_BREATH, at),
+            Chapter::Voice => 0.3,
         }
     }
 
@@ -1457,6 +1992,18 @@ impl Story {
             pose.hands[1] = [hold.x, hold.y, hold.z, out];
             pose.wrists[1] = -0.15 * out;
         }
+        if self.chapter == Chapter::Voice {
+            // «Я Действую»: up the far flight, the right hand on the rail
+            // a little ahead of the chest.
+            let grip = window(at, 49.6, 50.4, 60.0, 60.8);
+            if grip > 0.0 {
+                let probe = build(&pose);
+                let z = probe.chest.z + 0.18;
+                let x = crate::UNDER_X[0] + RAIL_IN - WALK_X;
+                pose.hands[1] = [x, rail_height(z) + 0.035, z, grip];
+                pose.wrists[1] = 0.2 * grip;
+            }
+        }
         build(&pose).moved(|_| v3(WALK_X, 0.0, 0.0))
     }
 
@@ -1476,8 +2023,18 @@ impl Story {
             let keys: Vec<(f32, f32)> = script.shots.iter().map(|k| (k.at, pick(k))).collect();
             monotone(&keys, at)
         };
-        let keyed =
-            |pick: [fn(&Key) -> f32; 3]| base + v3(curve(pick[0]), curve(pick[1]), curve(pick[2]));
+        // Page 08: under the street the keys ride the underpass's floor
+        // line under each point.
+        let voice_page = self.chapter == Chapter::Voice;
+        let sink = if voice_page { voice_sink(at) } else { 0.0 };
+        let keyed = |pick: [fn(&Key) -> f32; 3]| {
+            let p = base + v3(curve(pick[0]), curve(pick[1]), curve(pick[2]));
+            if voice_page {
+                p + Y * (under_ramp(p.z) * sink)
+            } else {
+                p
+            }
+        };
         let eye_k = keyed([|k| k.eye[0], |k| k.eye[1], |k| k.eye[2]]);
         let look_k = keyed([|k| k.look[0], |k| k.look[1], |k| k.look[2]]);
         let focus_k = keyed([|k| k.focus[0], |k| k.focus[1], |k| k.focus[2]]);
@@ -1521,13 +2078,14 @@ impl Story {
         }
         let breath = self.breath_depth(at);
 
-        // The voice and its echo are page 06's.
+        // The voice and its echo: page 06's, and page 08's phrases.
+        let fact = self.chapter == Chapter::Fact;
         let mut voice = [-1.0, -1.0, 0.0, 0.0];
         let mut voice_from = [eye, eye];
         let mut n = 0;
         for &from in VOICE_AT.iter().rev() {
             let age = at - from;
-            if !check && n < 2 && (0.0..VOICE_LIFE).contains(&age) {
+            if fact && n < 2 && (0.0..VOICE_LIFE).contains(&age) {
                 // The two newest shells, newest first.
                 voice[n] = 0.12 + VOICE_SPEED * age;
                 voice[2 + n] = smooth(0.0, 0.15, age) * (1.0 - age / VOICE_LIFE).powf(1.5);
@@ -1540,16 +2098,36 @@ impl Story {
         for &from in ECHO_AT.iter().rev() {
             let age = at - from;
             let life = ECHO_FROM / VOICE_SPEED;
-            if !check && n < 2 && (0.0..life).contains(&age) {
+            if fact && n < 2 && (0.0..life).contains(&age) {
                 echo[2 * n] = ECHO_FROM - VOICE_SPEED * age;
                 echo[2 * n + 1] = smooth(0.0, 0.4, age) * (0.4 + 0.6 * age / life);
                 n += 1;
             }
         }
-        let walls = if check {
-            0.0
-        } else {
-            window(at, 35.6, 36.2, 50.8, 51.6)
+        if voice_page {
+            if let Some((from, age)) = voice_phrase(at) {
+                voice[0] = 0.12 + VOICE_SPEED * age;
+                voice[2] = smooth(0.0, 0.15, age) * (1.0 - age / VOICE_LIFE).powf(1.5);
+                voice_from[0] = self.body(from).mouth;
+            }
+            if let Some((radius, light)) = voice_echo(at) {
+                echo[0] = radius;
+                echo[1] = light;
+            }
+            // The chord: three echoes at once, the third in the voice's
+            // second shell, round his head.
+            if let Some(([a, b, c], light)) = voice_chord(at) {
+                echo = [a, light, b, light];
+                voice[1] = c;
+                voice[3] = light;
+                voice_from[1] = body.head;
+            }
+        }
+        let walls = match self.chapter {
+            Chapter::Fact => window(at, 35.6, 36.2, 50.8, 51.6),
+            Chapter::Check => 0.0,
+            // The tiles ring with the voice while he is under the street.
+            Chapter::Voice => window(at, 14.5, 15.3, 72.0, 76.0),
         };
 
         let lap = self.loop_seconds;
@@ -1573,7 +2151,10 @@ impl Story {
             v3(ax + bx, ay + by, az + bz) * 0.5
         };
         let mid = eye.lerp(eye + forward * focus, 0.5);
-        let rain_centre = v3(mid.x, mid.y.max(6.0), mid.z);
+        // Page 08: low enough that the drops fall into the underpass's
+        // openings.
+        let rain_floor = if voice_page { 4.6 } else { 6.0 };
+        let rain_centre = v3(mid.x, mid.y.max(rain_floor), mid.z);
 
         let (radius, spin) = match (check, r.right) {
             (false, _) => (SPHERE_R, 0.0),
@@ -1581,9 +2162,23 @@ impl Story {
             (true, false) => (monotone(&CHECK_SPHERE, at), smooth_integral(15.0, 17.5, at)),
             (true, true) => (monotone(&CHECK_SPHERE, at), 0.0),
         };
-        let (sphere, mut rings) = sphere(own, base, eye, radius, spin);
+        let held = if voice_page {
+            v3(WALK_X + voice_drift(at), under_ramp(track), track)
+        } else {
+            base
+        };
+        let (sphere, mut rings) = sphere(own, held, eye, radius, spin);
+        if voice_page {
+            // The third ring turns with his pace; the sphere sharpens at
+            // «Я Здесь» and flares as the chord meets him.
+            rings[2] = (2.0 * PI * VOICE_TURNS * track / REPEAT).rem_euclid(2.0 * PI);
+            let sharp = smooth(18.5, 20.5, at) - smooth(VOICE_DIM[0], VOICE_DIM[1], at);
+            let flare = window(at, 62.2, 62.6, 62.8, 64.0);
+            rings[3] *= mix(0.5, 1.0, sharp) * (1.0 + 1.2 * flare);
+        }
         let screen = HIS_SCREEN * monotone(script.phone, at);
         let (beats, ring_light) = match (check, r.right) {
+            (false, _) if voice_page => ([0.0; 4], voice_rings(at)),
             (false, _) => ([0.0; 4], [1.0, 1.0, 1.0, 0.0]),
             (true, false) => {
                 // Lost: the view narrows to his face, the city goes still,
@@ -1680,9 +2275,9 @@ pub fn sphere(t: f32, base: V3, eye: V3, radius: f32, spin: f32) -> ([f32; 4], [
     // the glass meets the pavement, and back.
     let ground = (-SPHERE_Y / radius).acos();
     let swing = 0.5 - 0.5 * (2.0 * PI * t / RING_PERIOD).cos();
-    let first = SPHERE_Y + radius * mix(0.35, ground - 0.02, swing).cos();
+    let first = base.y + SPHERE_Y + radius * mix(0.35, ground - 0.02, swing).cos();
     // The second: up while the first goes down.
-    let second = mix(SECOND_RING[0], SECOND_RING[1], 1.0 - swing);
+    let second = base.y + mix(SECOND_RING[0], SECOND_RING[1], 1.0 - swing);
     let third = (2.0 * PI * (t / MERIDIAN_PERIOD + spin)).rem_euclid(2.0 * PI);
     let away = (eye - c).length();
     let seen = mix(
@@ -1709,7 +2304,7 @@ mod tests {
     use super::*;
     use crate::REPEAT;
 
-    const CHAPTERS: [Chapter; 2] = [Chapter::Fact, Chapter::Check];
+    const CHAPTERS: [Chapter; 3] = [Chapter::Fact, Chapter::Check, Chapter::Voice];
 
     #[test]
     fn the_rings_come_round_with_the_loop() {
@@ -1720,10 +2315,12 @@ mod tests {
             let own = match chapter {
                 Chapter::Fact => LOOP,
                 Chapter::Check => OWN_LOOP,
+                Chapter::Voice => VOICE_LOOP,
             };
-            for r in [own / RING_PERIOD, own / MERIDIAN_PERIOD] {
-                assert!((r - r.round()).abs() < 1e-4, "{r}");
-            }
+            assert!((own / RING_PERIOD - (own / RING_PERIOD).round()).abs() < 1e-4);
+            // Page 08's third ring turns with his pace instead.
+            let meridian = own / MERIDIAN_PERIOD;
+            assert!(chapter == Chapter::Voice || (meridian - meridian.round()).abs() < 1e-4);
             let (a, b) = (s.compose(0.0), s.compose(l - 1e-3));
             for i in [0, 1, 3] {
                 assert!((a.rings[i] - b.rings[i]).abs() < 0.01, "{chapter:?} {i}");
@@ -1754,7 +2351,8 @@ mod tests {
             for k in 0..s.loop_seconds as i32 {
                 let f = s.compose(k as f32);
                 let c = v3(f.sphere[0], f.sphere[1], f.sphere[2]);
-                for p in [f.body.head, v3(f.body.head.x, 0.0, f.body.head.z)] {
+                let ground = f.sphere[1] - SPHERE_Y;
+                for p in [f.body.head, v3(f.body.head.x, ground, f.body.head.z)] {
                     assert!((p - c).length() < f.sphere[3] - 0.15, "{chapter:?} {k}");
                 }
             }
@@ -1777,7 +2375,9 @@ mod tests {
             assert!(b.forward.dot(a.forward) > 0.999);
             assert!((b.agitation - a.agitation).abs() < 0.01);
             assert!((b.signal - a.signal).abs() < 0.01);
-            assert!((b.time - LOOP - a.time).abs() < 0.01, "{chapter:?}");
+            // Page 08's lap runs the street's clock twice round.
+            let laps = if chapter == Chapter::Voice { 2.0 } else { 1.0 };
+            assert!((b.time - laps * LOOP - a.time).abs() < 0.01, "{chapter:?}");
             for i in 0..4 {
                 // The support's rings: 0 before they spread, 2 once faded.
                 let wrap = if i == 3 { 2.0 } else { f32::MAX };
@@ -1785,7 +2385,13 @@ mod tests {
                 assert!(d.min(wrap - d) < 0.01, "{chapter:?} {i}");
                 assert!((b.ring_light[i] - a.ring_light[i]).abs() < 0.01);
             }
-            assert!(a.cross_car[3] == 0.0 && b.cross_car[3] < 1e-3);
+            if chapter == Chapter::Voice {
+                // The tiles' code: none yet at the start, all faded at the end.
+                assert!(a.cross_car[3] == -1.0 && b.cross_car[3] == -1.0);
+                assert!(a.cross_car[0] == 0.0 && b.cross_car[1] < 1e-3);
+            } else {
+                assert!(a.cross_car[3] == 0.0 && b.cross_car[3] < 1e-3);
+            }
             assert!(a.tape[1] == 0.0 && b.tape[1] == 0.0);
             assert!(a.tape[2] == 0.0 && b.tape[2] == 0.0);
         }
@@ -1828,9 +2434,26 @@ mod tests {
             let story = Story::new(chapter);
             for i in 0..(story.loop_seconds * 10.0) as i32 {
                 let f = story.compose(i as f32 * 0.1);
-                assert!(f.eye.y > 0.12, "{chapter:?} {i} {}", f.eye.y);
-                assert!(f.eye.x.abs() < 5.6, "{chapter:?} {i}");
+                let e = f.eye;
+                assert!(e.x.abs() < 5.6, "{chapter:?} {i}");
                 assert!(f.focus > 0.25);
+                if chapter != Chapter::Voice {
+                    assert!(e.y > 0.12, "{chapter:?} {i} {}", e.y);
+                    continue;
+                }
+                // Page 08: over the treads and the floor, between the walls
+                // when below the street, under the slab where it is roofed.
+                let floor = crate::under_floor(e.x, e.z);
+                assert!(e.y > floor + 0.12, "{i} {e:?}");
+                let [w0, w1] = crate::UNDER_X;
+                let between = e.x > w0 + 0.1 && e.x < w1 - 0.1;
+                if e.y < 0.0 {
+                    assert!(between, "{i} {e:?}");
+                }
+                let u = under_along(e.z);
+                if between && (0.0..UNDER_LEN).contains(&u) && !crate::under_open(e.z) {
+                    assert!(e.y < -crate::SLAB - 0.1, "{i} {e:?}");
+                }
             }
         }
     }
@@ -1841,9 +2464,11 @@ mod tests {
         assert_eq!(story.compose(6.0).head_hidden, 1.0);
         assert_eq!(story.compose(21.0).head_hidden, 0.0);
         assert_eq!(story.compose(55.0).head_hidden, 0.0);
-        let check = Story::new(Chapter::Check);
-        for i in 0..CHECK_LOOP as i32 {
-            assert_eq!(check.compose(i as f32).head_hidden, 0.0, "{i}");
+        for chapter in [Chapter::Check, Chapter::Voice] {
+            let story = Story::new(chapter);
+            for i in 0..story.loop_seconds as i32 {
+                assert_eq!(story.compose(i as f32).head_hidden, 0.0, "{chapter:?} {i}");
+            }
         }
     }
 
@@ -1884,11 +2509,21 @@ mod tests {
             let story = Story::new(chapter);
             for i in 0..story.loop_seconds as i32 {
                 let f = story.compose(i as f32);
+                let b = &f.body;
                 assert!(
-                    f.body.low.x > -crate::FACADE && f.body.high.x < -crate::ROAD,
+                    b.low.x > -crate::FACADE && b.high.x < -crate::ROAD,
                     "{chapter:?} {i}"
                 );
-                assert!(f.body.low.y > -0.01);
+                if chapter != Chapter::Voice {
+                    assert!(b.low.y > -0.01);
+                    continue;
+                }
+                // Page 08: down in the underpass, between its walls.
+                assert!(b.low.y > -crate::UNDER_DEPTH - 0.01, "{i}");
+                if b.low.y < -0.05 {
+                    let [w0, w1] = crate::UNDER_X;
+                    assert!(b.low.x > w0 && b.high.x < w1, "{i} {:?}", (b.low, b.high));
+                }
             }
         }
     }
@@ -1928,8 +2563,14 @@ mod tests {
                 let t = i as f32 * 0.1;
                 let f = story.compose(t);
                 for p in &f.passers {
+                    // Page 08's keep to the far pavement.
+                    let (low, high) = if chapter == Chapter::Voice {
+                        (-p.high.x, -p.low.x)
+                    } else {
+                        (p.low.x, p.high.x)
+                    };
                     assert!(
-                        p.low.x > -crate::FACADE && p.high.x < -crate::ROAD,
+                        low > -crate::FACADE && high < -crate::ROAD,
                         "{chapter:?} {t}"
                     );
                     assert!(p.low.y > -0.01, "{t}");
@@ -1957,6 +2598,11 @@ mod tests {
                 vec![CHECK_UMBRELLA_MEETS, CHECK_UMBRELLA_MEETS + RIGHT_SHIFT],
                 CHECK_PHONE_MEETS,
             ),
+            (
+                Chapter::Voice,
+                vec![VOICE_UMBRELLA_MEETS],
+                VOICE_PHONE_MEETS,
+            ),
         ];
         for (chapter, umbrella, phone) in meets {
             let story = Story::new(chapter);
@@ -1982,9 +2628,10 @@ mod tests {
             let story = Story::new(chapter);
             let z = story.phone(0.0).pelvis.z;
             // The walker's side has its posts halfway between the far side's.
-            let k = (z / crate::LAMP_GAP - 0.5).round();
+            let half = if chapter == Chapter::Voice { 0.0 } else { 0.5 };
+            let k = (z / crate::LAMP_GAP - half).round();
             assert!(
-                (z - (k + 0.5) * crate::LAMP_GAP).abs() > 1.2,
+                (z - (k + half) * crate::LAMP_GAP).abs() > 1.2,
                 "{chapter:?} {z}"
             );
             assert!(!crossing(cell(z)), "{chapter:?} {z}");
@@ -2178,6 +2825,85 @@ mod tests {
             let yaw = story.cross_car(turn - 1.0 + i as f32 * 0.02)[2];
             assert!(yaw <= last + 1e-5 && last - yaw < 0.08, "{i}");
             last = yaw;
+        }
+    }
+
+    #[test]
+    fn each_phrase_goes_out_and_its_echo_fixes_a_ring() {
+        let story = Story::new(Chapter::Voice);
+        // Silent on the stairs, then a shell for each phrase.
+        assert!(story.compose(14.0).voice[0] < 0.0);
+        for &p in &VOICE_PHRASES {
+            let f = story.compose(p + 0.5);
+            assert!(f.voice[0] > 0.0 && f.voice[2] > 0.0, "{p}");
+        }
+        // Each echo comes back onto his head.
+        for &e in &VOICE_ECHOES {
+            let f = story.compose(e + 1.0);
+            assert!(f.echo[0] > 0.0 && f.echo[0] < VOICE_ECHO_FROM, "{e}");
+            assert!(story.compose(e + 2.1).echo[0] < 0.0, "{e}");
+        }
+        // The chord: three at once, all at him together.
+        let f = story.compose(CHORD_AT + 1.0);
+        assert!(f.echo[0] > f.echo[2] && f.echo[2] > f.voice[1] && f.voice[1] > 0.0);
+        let g = story.compose(CHORD_AT + CHORD_LIFE - 0.02);
+        assert!(g.echo[0] < 0.2 && g.echo[2] < 0.2 && g.voice[1] < 0.2);
+        // The rings light one by one and stay lit up to the street.
+        let l = |t: f32| story.compose(t).ring_light;
+        assert!(l(20.0).iter().take(3).all(|&x| x < 0.2), "{:?}", l(20.0));
+        assert!(l(28.0)[0] > 0.95 && l(28.0)[1] < 0.2);
+        assert!(l(35.0)[1] > 0.95 && l(35.0)[2] < 0.2);
+        assert!(l(41.0)[2] > 0.95);
+        assert!(l(80.0).iter().take(3).all(|&x| x > 0.95));
+        assert!(l(103.0).iter().take(3).all(|&x| x < 0.2));
+        // Each phrase leaves a line of code in the tiles.
+        assert_eq!(story.compose(14.0).cross_car[0], 0.0);
+        assert_eq!(story.compose(40.0).cross_car[0], 4.0);
+        assert_eq!(story.compose(80.0).cross_car[0], 7.0);
+    }
+
+    #[test]
+    fn the_third_ring_turns_with_his_pace() {
+        let story = Story::new(Chapter::Voice);
+        let turn = |a: f32, b: f32| {
+            let d = (story.compose(b).rings[2] - story.compose(a).rings[2]).rem_euclid(2.0 * PI);
+            d.min(2.0 * PI - d)
+        };
+        // Standing, it stands; walking, it turns.
+        assert!(turn(25.0, 26.0) < 1e-3);
+        assert!(turn(40.0, 40.5) > 0.3);
+    }
+
+    #[test]
+    fn his_feet_keep_to_the_treads_and_his_hand_to_the_rail() {
+        let story = Story::new(Chapter::Voice);
+        let walk = story.walk();
+        let mut on_stairs = 0;
+        for s in walk.steps() {
+            let u = under_along(s.z);
+            let from = if (0.0..FLIGHT).contains(&u) {
+                0.0
+            } else if (FLIGHT + FLAT..UNDER_LEN).contains(&u) {
+                FLIGHT + FLAT
+            } else {
+                continue;
+            };
+            let into = (u - from).rem_euclid(TREAD);
+            assert!(into > 0.05 && into < 0.15, "{} {into}", s.z);
+            on_stairs += 1;
+        }
+        assert_eq!(on_stairs, 3 * 2 * (RISERS - 1));
+        // Under the street at the bottom, out at the top.
+        let deep = story.compose(25.0).body;
+        assert!(deep.low.y < -crate::UNDER_DEPTH + 0.05, "{:?}", deep.low);
+        let out = story.compose(64.0).body;
+        assert!(out.low.y > -0.01 && out.low.y < 0.05, "{:?}", out.low);
+        // The right hand on the rail all up the flight.
+        for t in [51.0, 54.0, 57.0, 59.5] {
+            let palm = story.compose(t).palm;
+            let rail = crate::UNDER_X[0] + RAIL_IN;
+            assert!((palm.x - rail).abs() < 0.12, "{t} {palm:?}");
+            assert!((palm.y - rail_height(palm.z)).abs() < 0.15, "{t} {palm:?}");
         }
     }
 }

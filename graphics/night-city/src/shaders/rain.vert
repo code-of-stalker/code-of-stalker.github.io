@@ -27,7 +27,7 @@ vec2 rainLight(vec3 p, vec3 view) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  l = (l + shopSpill(p) + vec2(0.01, 0.008)) * (1.0 - 0.6 * CHECK.y);
+  l = (l * streetShare(p) + shopSpill(p) + vec2(0.01, 0.008)) * (1.0 - 0.6 * CHECK.y);
   if (CROSSCAR.w > 0.0) {
     // Page 07: the drops in the side street's car's headlights, never hushed.
     vec2 f;
@@ -67,7 +67,9 @@ void main() {
     vec3 p = lo + mod(r * box + vel * TIME - lo, box);
     vec3 e = min(p - lo, lo + box - p);
     light *= smoothstep(0.0, 2.0, e.x) * smoothstep(0.0, 1.5, e.y) * smoothstep(0.0, 3.0, e.z);
+    // Page 08: down the underpass's openings it falls onto the stairs.
     float floor_ = groundAt(p.x);
+    if (underFoot(p.xz) && !underRoofed(underAlong(p.z))) floor_ = floorAt(p.xz);
     if (p.y < floor_) {
       // Fallen: a splash dot for a moment where it struck.
       float since = (floor_ - p.y) / RAIN_FALL;
@@ -85,7 +87,7 @@ void main() {
     int half_ = SPLASH / 2;
     vec4 s = STEP(k / half_);
     float age = s.z;
-    float wet = puddle(s.xy);
+    float wet = underFoot(s.xy) ? 0.0 : puddle(s.xy);
     if (age > 0.6 || wet < 0.05) { hide(); return; }
     float ang = TAU * (float(k % half_) + rand(u * 7u)) / float(half_);
     float out_ = 0.6 + 0.9 * rand(u * 7u + 1u);

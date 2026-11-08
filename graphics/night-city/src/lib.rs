@@ -45,10 +45,80 @@ pub const TOWER_CELL: f32 = BLOCK / 2.0;
 /// the frame at the loop's end is the frame at its start.
 pub const LOOP: f32 = 64.0;
 pub const STEPS: i32 = 120;
+/// One loop of page 07, a tape played twice (story.rs, `reel`): the wrong
+/// take, its rewind and the right take, over which the city's clock
+/// covers one `LOOP`.
+pub const CHECK_LOOP: f32 = 126.9;
+/// One loop of page 08: down into the underpass, through it, up and on
+/// into the street; he covers `REPEAT` and the city's clock two `LOOP`s.
+pub const VOICE_LOOP: f32 = 104.0;
 pub const STRIDE: f32 = 0.68;
 pub const REPEAT: f32 = 2.0 * BLOCK;
 /// How far apart the feet land, either side of the walk's line.
 pub const STEP_WIDTH: f32 = 0.085;
+
+/// Page 08's underpass, one under each block's first cross street (one
+/// every `REPEAT`), along the walker's pavement between the walls
+/// `UNDER_X`. Its down flight starts at `UNDER_Z`: `RISERS` steps of
+/// `RISE` over treads `TREAD` deep, then the flat floor `FLAT` long and
+/// the up flight. The slab over it is `SLAB` thick and leaves `OPEN` open
+/// over each flight, a whole number of treads.
+pub const UNDER_X: [f32; 2] = [-5.4, -3.2];
+pub const UNDER_Z: f32 = 1.88;
+pub const RISERS: i32 = 18;
+pub const RISE: f32 = 0.17;
+pub const TREAD: f32 = 0.32;
+pub const FLAT: f32 = 18.0;
+pub const SLAB: f32 = 0.42;
+pub const OPEN: f32 = 14.0 * TREAD;
+/// A flight's length, the floor's depth and the underpass's whole length.
+pub const FLIGHT: f32 = (RISERS - 1) as f32 * TREAD;
+pub const UNDER_DEPTH: f32 = RISERS as f32 * RISE;
+pub const UNDER_LEN: f32 = 2.0 * FLIGHT + FLAT;
+
+/// How far along its underpass z lies, from the top of the down flight,
+/// within half a `REPEAT` either way.
+pub fn under_along(z: f32) -> f32 {
+    let u = (z - UNDER_Z).rem_euclid(REPEAT);
+    if u < 0.5 * REPEAT {
+        u
+    } else {
+        u - REPEAT
+    }
+}
+
+/// The underpass's floor under (x, z): its treads and its flat; 0 beyond
+/// it (the pavement's level).
+pub fn under_floor(x: f32, z: f32) -> f32 {
+    let u = under_along(z);
+    if x <= UNDER_X[0] || x >= UNDER_X[1] || !(0.0..UNDER_LEN).contains(&u) {
+        0.0
+    } else if u < FLIGHT {
+        -((u / TREAD).floor() + 1.0) * RISE
+    } else if u < FLIGHT + FLAT {
+        -UNDER_DEPTH
+    } else {
+        -((RISERS - 1) as f32 - ((u - FLIGHT - FLAT) / TREAD).floor()) * RISE
+    }
+}
+
+/// The line over the treads' middles, its corners rounded: how high the
+/// walker's pelvis and the camera ride along the underpass.
+pub fn under_ramp(z: f32) -> f32 {
+    let u = under_along(z);
+    let w = 0.3;
+    let soft = |x: f32| x.max(0.0) + w * (-x.abs() / w).exp().ln_1p();
+    let slope = RISE / TREAD;
+    let (top, bottom) = (-0.5 * TREAD, UNDER_DEPTH / slope - 0.5 * TREAD);
+    let up = FLIGHT + FLAT - 0.5 * TREAD;
+    slope * (soft(u - up) - soft(u - up - UNDER_DEPTH / slope) - soft(u - top) + soft(u - bottom))
+}
+
+/// Whether the sky shows over the underpass at z (its two openings).
+pub fn under_open(z: f32) -> bool {
+    let u = under_along(z);
+    (0.0..OPEN).contains(&u) || (UNDER_LEN - OPEN..UNDER_LEN).contains(&u)
+}
 
 /// The rain: drops in a box that travels with the camera, wrapping round
 /// it; the fall and the box are chosen so the drops are where they were
@@ -86,7 +156,7 @@ pub const BLOOM: f32 = 0.09;
 pub const BYTE_KEEP: f32 = 0.5;
 
 /// The uniform slots the shaders read (common.glsl names them).
-pub const SLOTS: usize = 35;
+pub const SLOTS: usize = 38;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_PUFF: usize = 17;
 pub const SLOT_STEP: usize = 19;
@@ -95,6 +165,10 @@ pub const SLOT_STEP: usize = 19;
 pub const SLOT_PASS: usize = 27;
 pub const SLOT_SCREEN: usize = 31;
 pub const SLOT_SPHERE: usize = 33;
+/// Page 07: the frame's tunnel, the muted city, the soles' light and the
+/// support's rings; the car out of the side street; each ring's light and
+/// his own screen's.
+pub const SLOT_CHECK: usize = 35;
 /// Every figure the shaders draw: him, then the passers-by.
 pub const FIGURES: usize = 1 + story::PASSERS;
 // The slots follow one another, and the world's uniforms fit the 256
@@ -103,7 +177,8 @@ pub const FIGURES: usize = 1 + story::PASSERS;
 const _: () = {
     assert!(SLOT_STEP + STEP_MARKS <= SLOT_PASS);
     assert!(SLOT_PASS + 2 * story::PASSERS <= SLOT_SCREEN);
-    assert!(SLOT_SPHERE + 2 <= SLOTS);
+    assert!(SLOT_SPHERE + 2 <= SLOT_CHECK);
+    assert!(SLOT_CHECK + 3 <= SLOTS);
     assert!(SLOTS + FIGURES * body::PRIMITIVES * 3 + 4 <= 250);
 };
 pub const PUFFS: usize = 2;
@@ -126,22 +201,37 @@ pub const HAZE: f32 = 0.009;
 pub enum Chapter {
     /// Page 06 «Наблюдай не только смысл действия — а сам факт динамики».
     Fact,
+    /// Page 07 «Главная проверка: не потерять два первых кольца».
+    Check,
+    /// Page 08 «Используй свой голос (как настройку трех колец)».
+    Voice,
 }
 
 impl Chapter {
-    pub fn from_code(_code: u32) -> Chapter {
-        Chapter::Fact
+    pub fn from_code(code: u32) -> Chapter {
+        match code {
+            1 => Chapter::Check,
+            2 => Chapter::Voice,
+            _ => Chapter::Fact,
+        }
     }
     pub fn loop_seconds(self) -> f32 {
         match self {
             Chapter::Fact => LOOP,
+            Chapter::Check => CHECK_LOOP,
+            Chapter::Voice => VOICE_LOOP,
         }
     }
-    /// Reduced motion holds this moment: over the shoulder, mid-step, the
-    /// street lit and calm.
+    /// Reduced motion holds this moment. Page 06: over the shoulder,
+    /// mid-step, the street lit and calm. Page 07: the right take, drawn
+    /// back from him at the kerb, the sphere wide open, all three rings lit.
+    /// Page 08: in the underpass, the echo gone into him, the lines of code
+    /// on the tiles.
     pub fn still(self) -> f32 {
         match self {
             Chapter::Fact => 21.0,
+            Chapter::Check => 71.0,
+            Chapter::Voice => 33.0,
         }
     }
 }
@@ -201,13 +291,13 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[7] = v(f.body.mouth, f.breath);
     s[8] = v(f.voice_from[0], f.voice[0]);
     s[9] = v(f.voice_from[1], f.voice[1]);
-    s[10] = [f.voice[2], f.voice[3], f.walls, 0.0];
+    s[10] = [f.voice[2], f.voice[3], f.walls, f.tape[2]];
     s[11] = f.echo;
     s[12] = v(f.body.head, f.track);
     s[13] = [f.agitation, f.signal, f.prints, f.crane];
     s[14] = v(f.palm, f.palm_rain);
-    s[15] = v(f.rain_centre, 0.0);
-    s[16] = [f.puddle[0], f.puddle[1], f.puddle[2], 0.0];
+    s[15] = v(f.rain_centre, f.tape[0]);
+    s[16] = [f.puddle[0], f.puddle[1], f.puddle[2], f.tape[1]];
     for (i, p) in f.puffs.iter().enumerate() {
         s[SLOT_PUFF + i] = *p;
     }
@@ -223,6 +313,9 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[SLOT_SCREEN + 1] = v(phone.screen[1], 0.0);
     s[SLOT_SPHERE] = f.sphere;
     s[SLOT_SPHERE + 1] = f.rings;
+    s[SLOT_CHECK] = f.check;
+    s[SLOT_CHECK + 1] = f.cross_car;
+    s[SLOT_CHECK + 2] = f.ring_light;
     s
 }
 
@@ -266,8 +359,49 @@ mod tests {
 
     #[test]
     fn every_figure_is_sent() {
-        let f = Story::new(Chapter::Fact).compose(10.0);
-        assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
+        for chapter in [Chapter::Fact, Chapter::Check, Chapter::Voice] {
+            let f = Story::new(chapter).compose(10.0);
+            assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
+        }
+    }
+
+    #[test]
+    fn every_page_has_its_chapter() {
+        assert_eq!(Chapter::from_code(0), Chapter::Fact);
+        assert_eq!(Chapter::from_code(1), Chapter::Check);
+        assert_eq!(Chapter::from_code(2), Chapter::Voice);
+        for chapter in [Chapter::Fact, Chapter::Check, Chapter::Voice] {
+            assert!(chapter.still() < chapter.loop_seconds());
+        }
+    }
+
+    #[test]
+    fn the_underpass_fits_its_street() {
+        // It comes round with the street, its openings end on a tread's
+        // edge and the ramp rides over the treads.
+        const { assert!(UNDER_Z + UNDER_LEN < REPEAT) };
+        assert!(near(OPEN / TREAD, (OPEN / TREAD).round()));
+        assert!(near(under_floor(WALK_X, UNDER_Z + 0.5 * TREAD), -RISE));
+        assert!(near(
+            under_floor(WALK_X, UNDER_Z + FLIGHT + 1.0),
+            -UNDER_DEPTH
+        ));
+        assert!(near(under_floor(WALK_X, UNDER_Z + UNDER_LEN - 0.1), -RISE));
+        assert!(near(under_floor(WALK_X, UNDER_Z - 0.1), 0.0));
+        assert!(near(under_floor(-6.0, UNDER_Z + 9.0), 0.0));
+        let mut last = under_ramp(UNDER_Z - 6.0);
+        let mut z = UNDER_Z - 6.0;
+        while z < UNDER_Z + UNDER_LEN + 6.0 {
+            let floor = under_floor(WALK_X, z);
+            let ramp = under_ramp(z);
+            assert!((ramp - floor).abs() < 0.25, "{z}: {ramp} over {floor}");
+            assert!((ramp - last).abs() < 0.01, "{z}");
+            last = ramp;
+            z += 0.01;
+        }
+        assert!(near(under_ramp(UNDER_Z + REPEAT - 6.0), 0.0));
+        assert!(under_open(UNDER_Z + 1.0) && !under_open(UNDER_Z + 10.0));
+        assert!(under_open(UNDER_Z + UNDER_LEN - 1.0) && !under_open(UNDER_Z + UNDER_LEN + 1.0));
     }
 
     #[test]

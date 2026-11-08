@@ -12,15 +12,16 @@
 //! for Chrome to give up on the page; each part takes it a few seconds, and
 //! with KHR_parallel_shader_compile the page keeps running while it works.
 use crate::body::{BLEND, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, PRIMITIVES, PROPS};
-use crate::story::PUFF_LIFE;
+use crate::story::{voice_lines, PUFF_LIFE, RAIL_H, RAIL_IN, SPHERE_Y, VOICE_REACH};
 use crate::story::{PASSERS, PHONE, UMBRELLA};
 use crate::{
     cones, look, pack, recolor_code, Chapter, Look, Story, AIR, BLOCK, BLOOM, BLUR_MAX, BYTE_KEEP,
-    CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FRAME_ASPECT, HAZE,
-    LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, PALM_DROPS, PUFFS, RAD_SCALE, RAIN, RAIN_BOX,
-    RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, ROAD, SHOP_LIGHT, SLOTS, SLOT_PASS, SLOT_PUFF,
-    SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, WORLD_SCALE,
-    WORLD_WIDTH,
+    CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FLAT, FLIGHT,
+    FRAME_ASPECT, HAZE, LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, OPEN, PALM_DROPS, PUFFS,
+    RAD_SCALE, RAIN, RAIN_BOX, RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, RISE, RISERS, ROAD,
+    SHOP_LIGHT, SLAB, SLOTS, SLOT_CHECK, SLOT_PASS, SLOT_PUFF, SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP,
+    SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, TREAD, UNDER_DEPTH, UNDER_LEN, UNDER_X, UNDER_Z,
+    WORLD_SCALE, WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -82,6 +83,7 @@ fn defines() -> String {
         ("SLOT_PASS", SLOT_PASS.to_string()),
         ("SLOT_SCREEN", SLOT_SCREEN.to_string()),
         ("SLOT_SPHERE", SLOT_SPHERE.to_string()),
+        ("SLOT_CHECK", SLOT_CHECK.to_string()),
         ("PASSERS", PASSERS.to_string()),
         ("FIGURES", FIGURES.to_string()),
         ("FIG_UMBRELLA", (1 + UMBRELLA).to_string()),
@@ -134,6 +136,30 @@ fn defines() -> String {
         ("AIR", f(AIR)),
         ("HAZE", f(HAZE)),
         ("PUFF_LIFE", f(PUFF_LIFE)),
+        ("UNDER_X0", f(UNDER_X[0])),
+        ("UNDER_X1", f(UNDER_X[1])),
+        ("UNDER_Z", f(UNDER_Z)),
+        ("RISERS", f(RISERS as f32)),
+        ("RISE", f(RISE)),
+        ("TREAD", f(TREAD)),
+        ("FLAT", f(FLAT)),
+        ("SLAB", f(SLAB)),
+        ("OPEN", f(OPEN)),
+        ("FLIGHT", f(FLIGHT)),
+        ("UNDER_DEPTH", f(UNDER_DEPTH)),
+        ("UNDER_LEN", f(UNDER_LEN)),
+        ("SPHERE_Y", f(SPHERE_Y)),
+        ("RAIL_IN", f(RAIL_IN)),
+        ("RAIL_H", f(RAIL_H)),
+        ("VOICE_REACH", f(VOICE_REACH)),
+        (
+            "VOICE_LINES",
+            voice_lines()
+                .iter()
+                .map(|p| format!("vec3({}, {}, {})", f(p.x), f(p.y), f(p.z)))
+                .collect::<Vec<_>>()
+                .join(", "),
+        ),
     ];
     lines
         .iter()

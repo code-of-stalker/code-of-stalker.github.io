@@ -11,14 +11,17 @@ uniform vec4 u_edges; // left, right, top, bottom
 uniform vec3 u_warm;
 
 void main() {
-  float w = texture(u_dof, v_uv).g;
-  w += BLOOM * (0.45 * textureLod(u_dof, v_uv, 2.0).g + 0.3 * textureLod(u_dof, v_uv, 3.0).g
-              + 0.22 * textureLod(u_dof, v_uv, 4.0).g + 0.16 * textureLod(u_dof, v_uv, 5.0).g);
-  w += texelFetch(u_rain, ivec2(gl_FragCoord.xy), 0).g;
+  vec2 uv = tapeUv(v_uv);
+  float w = texture(u_dof, uv).g;
+  w += BLOOM * (0.45 * textureLod(u_dof, uv, 2.0).g + 0.3 * textureLod(u_dof, uv, 3.0).g
+              + 0.22 * textureLod(u_dof, uv, 4.0).g + 0.16 * textureLod(u_dof, uv, 5.0).g);
+  ivec2 size = textureSize(u_rain, 0);
+  ivec2 at = clamp(ivec2(gl_FragCoord.xy) + ivec2((uv - v_uv) * vec2(size)), ivec2(0), size - 1);
+  w += texelFetch(u_rain, at, 0).g;
   w = max(w * u_out.w, 0.0);
   if (w > 0.7) w = 0.7 + 0.3 * (1.0 - exp(-(w - 0.7) / 0.3));
   vec2 v = v_uv - 0.5;
-  w *= 1.0 - 0.55 * dot(v, v);
+  w *= (1.0 - 0.55 * dot(v, v)) * tunnel(v_uv) * tapeLines(gl_FragCoord.y);
   w = clamp(w, 0.0, 1.0);
   if (u_out.x > 0.5) w = pow(w, 1.3) * 0.74;
   if (u_out.y > 0.5) {

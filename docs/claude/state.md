@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»); page 07 is in work on `claude/step-7-dynamic-0682ec`. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-09. Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -258,18 +258,36 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   Production export checked at 1440 and 390 wide: page 06 and the home card ready, 60 fps,
   gpu-error 0, no console errors (sheet `glavnaya.jpg`). Shipped to `main` 2026-11-08 (Art: «так
   же залей предыдщую страницу уже»), export rechecked before the merge.
-- Page 07 «Главная проверка» (a night-city chapter): directions offered 2026-11-08, Art picks.
-  А «Автопилот на перекрёстке» (recommended): he sinks into his phone, the rings go out one by
-  one (city sound, rain and wall code freeze), the frame narrows to a tunnel; on red at the
-  crossing headlights flood, he stops; the return chain, each word its own light: стопы
-  (soles) → опора (pavement rings) → дыхание (steam) → расхлопнутость (the sphere opens, rings
-  relight) → пространство (crane, the quarter alive). Б «Три вопроса»: three checks, own camera
-  each (bags: outer sounds reach ring 1; phone call: warm flashes inside; key at the door: the
-  body), a short drop-out and return in each, calmer. В «Отражение в витрине»: side tracking
-  along the shop windows, his grey reflection walks a little ahead without a sphere; when he
-  drops out he becomes like it; on the return it falls behind and crumbles into code.
-- Next: Art's choice for page 07, then 08–10 the same way (2–3 directions each). A
-  stage-finale screen after page 10 needs Art's wording first.
+- Page 07 «Главная проверка»: Art chose А «Автопилот на перекрёстке» 2026-11-08. Built as
+  `Chapter::Check` (code 1). Round 2 after Art's note (a near miss, time rewinds, the right run),
+  commit 1ed60ce: the tape plays twice, 126.9 s loop, still 71 s; beats in the crate README.
+  Wrong take 0–26.6: phone, ring 1 then ring 2 go out, he steps off on red, a side-street car stops
+  a hand from him. The tape freezes 0.8 s and rewinds to 1 s (tape shaders in `common.glsl`).
+  Right take: phone out with rings 1–2 lit, away before the kerb, стопы → опора → дыхание →
+  расхлопнутость → пространство, the car passes and turns, green, he walks. Second showing in
+  Матрица sent 2026-11-08 (`output/prototypes/night-city/page07.jpg`, prototype chip «страница 07»
+  or `?page=1`). Art approved it 2026-11-08 («супер продолжаем», relayed by the parent session).
+  Тишина, Искра, Астрал checked, no color change (sheet `output/prototypes/night-city/page07-temy.jpg`).
+  Wired on the branch (9fb606b): `WebScene` `night-check` → chapter 1 on `dynamic-check`.
+  Production export checked at 1440 and 390 wide: ready, 60 fps, gpu-error 0, no console errors.
+  Shipped to `main` 2026-11-09 together with page 08 (Art: «Пушим 07 и 08»).
+- Page 08 «Используй свой голос (как настройку трех колец)»: Art chose А «Эхо в переходе»
+  2026-11-09 (over Б «Неон отвечает» and В «Крыша»). Built as `Chapter::Voice` (code 2, 104 s
+  loop, still 33 s), commit cdb33a4: down into a tiled underpass under the cross street, each
+  phrase runs along the tiles as a shell and comes back as an echo (sphere, ring 1, ring 2,
+  ring 3), up the far stairs with a hand on the rail, three echoes in one chord, «Я Есть» out
+  into the rain under the crane; each phrase leaves a line of code in the tiles. Beats in the
+  crate README. Pages 06–07 render as before (frames compared with the previous build).
+  Wired on the branch: `WebScene` `night-voice` → chapter 2 on `dynamic-voice`. First showing
+  in Матрица sent 2026-11-09 (`output/prototypes/night-city/page08.jpg`, prototype chip
+  «страница 08» or `?page=2`). Art approved Матрица 2026-11-09 («Ок, другие темы»); Тишина,
+  Искра, Астрал checked, no color change needed (sheet `output/prototypes/night-city/page08-temy.jpg`
+  sent). Production export checked: Step 7 page 08/10 mounts `rust-night-city`, ready, 60 fps,
+  gpu-error 0, no console errors at 1440 and 390 (the step picker also lists Step 5's page of
+  the same name; pick the Step 7 entry). Shipped to `main` 2026-11-09 together with page 07
+  (Art: «Пушим 07 и 08»), export rechecked before the merge.
+- Next: page 09 the same way (2–3 directions first), then page 10. A stage-finale screen after
+  page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

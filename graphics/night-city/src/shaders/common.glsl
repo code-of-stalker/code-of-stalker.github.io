@@ -43,6 +43,16 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define SCREEN_DIR u_d[SLOT_SCREEN + 1]  // the way it faces
 #define SPHERE     u_d[SLOT_SPHERE]      // the sphere round him: centre, radius
 #define RINGS      u_d[SLOT_SPHERE + 1]  // its rings: first's height, second's, third's turn, how seen
+// Page 07 (zero on page 06): the tunnel round his face, the city's hush,
+// the light at his soles, the support's circles (0..1 out, 1..2 gone).
+#define CHECK    u_d[SLOT_CHECK]
+#define CROSSCAR u_d[SLOT_CHECK + 1]  // the side street's car: x, z, heading, how seen
+#define RINGVIS  u_d[SLOT_CHECK + 2]  // how seen the first ring, the second; the third's boost; his screen
+// Page 07's tape: the loop's clock, how much the picture is a tape's
+// (0.35 standing, 1 running back), the flash as it stops.
+#define TAPE_T     RAINC.w
+#define TAPE_ON    PUDDLE.w
+#define TAPE_FLASH VOICE_L.w
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w
@@ -139,6 +149,100 @@ float groundAt(float x) {
   return abs(x) < ROAD ? -CURB : 0.0;
 }
 
+// Page 08 (CROSSCAR.w < 0): the underpass under the walker's pavement
+// (lib.rs), between the walls UNDER_X0 and UNDER_X1, one every REPEAT.
+#define UNDERPASS (CROSSCAR.w < 0.0)
+// How far along its underpass z lies, from the top of the down flight.
+float underAlong(float z) {
+  float u = mod(z - UNDER_Z, REPEAT);
+  return u < 0.5 * REPEAT ? u : u - REPEAT;
+}
+// The floor's cell round u (a tread, the flat, or the street beyond): its
+// ends along the underpass and its level.
+float underCell(float u, out float ua, out float ub) {
+  if (u < 0.0) { ua = -1e4; ub = 0.0; return 0.0; }
+  if (u >= UNDER_LEN) { ua = UNDER_LEN; ub = 1e4; return 0.0; }
+  if (u < FLIGHT) {
+    float k = floor(u / TREAD);
+    ua = k * TREAD;
+    ub = ua + TREAD;
+    return -(k + 1.0) * RISE;
+  }
+  if (u < FLIGHT + FLAT) { ua = FLIGHT; ub = FLIGHT + FLAT; return -UNDER_DEPTH; }
+  float i = floor((u - FLIGHT - FLAT) / TREAD);
+  ua = FLIGHT + FLAT + i * TREAD;
+  ub = ua + TREAD;
+  return -(RISERS - 1.0 - i) * RISE;
+}
+// Whether the slab roofs it at u (else the sky shows: its openings).
+bool underRoofed(float u) {
+  return u >= OPEN && u < UNDER_LEN - OPEN;
+}
+// Whether p is inside it, between its walls under the street.
+bool underInside(vec3 p) {
+  float u = underAlong(p.z);
+  return UNDERPASS && p.y < 0.0 && p.x > UNDER_X0 && p.x < UNDER_X1 && u >= 0.0 && u < UNDER_LEN;
+}
+// Whether a step at xz lands in it (on its stairs or its floor).
+bool underFoot(vec2 xz) {
+  float u = underAlong(xz.y);
+  return UNDERPASS && xz.x > UNDER_X0 && xz.x < UNDER_X1 && u >= 0.0 && u < UNDER_LEN;
+}
+// The floor's level at xz: the stairs and the floor in it, the street's
+// ground elsewhere.
+float floorAt(vec2 xz) {
+  if (!underFoot(xz)) return groundAt(xz.x);
+  float ua, ub;
+  return underCell(underAlong(xz.y), ua, ub);
+}
+// How much of the street's light reaches p: all of it over the street and
+// down the openings, none under the slab. Pass p a little out along its
+// surface's normal: the kerb's face shares a plane with the wall behind it.
+float streetShare(vec3 p) {
+  if (!underInside(p)) return 1.0;
+  float u = underAlong(p.z);
+  return smoothstep(0.5, -0.6, min(u - OPEN, UNDER_LEN - OPEN - u));
+}
+// Its fluorescent tubes along the ceiling's middle under the slab, from
+// the foot of the down flight to the foot of the up one; one stutters.
+const float TUBES = 10.0;
+const float TUBE_GAP = 2.0;
+const float TUBE_HALF = 0.6;
+const float TUBE_LIGHT = 1.0;
+vec3 tubeAt(float z0, float k) {
+  return vec3(0.5 * (UNDER_X0 + UNDER_X1), -SLAB - 0.05, z0 + FLIGHT + TUBE_GAP * k);
+}
+float tubeNear(float u) {
+  return clamp(floor((u - FLIGHT) / TUBE_GAP + 0.5), 0.0, TUBES - 1.0);
+}
+float tubeFlicker(float k) {
+  if (k != 6.0) return 1.0;
+  int epoch = pm(int(floor(TIME * 12.0)), int(LOOP * 12.0));
+  return 1.0 - 0.75 * step(rand(uint(epoch) * 2654435761u + 9u), 0.1);
+}
+// The tubes' light at p (cold); n = 0 lights from every side. They light
+// only downward: nothing over the slab.
+vec2 tubesAt(vec3 p, vec3 n, float wrap) {
+  // Lifted off the surface: the walls stand right on the underpass's edge.
+  p += 0.02 * n;
+  if (!underInside(p)) return vec2(0.0);
+  float u = underAlong(p.z);
+  float k0 = tubeNear(u);
+  float l = 0.0;
+  for (int j = -1 + ZERO; j <= 1; j++) {
+    float k = k0 + float(j);
+    if (k < 0.0 || k > TUBES - 1.0) continue;
+    vec3 d = p - tubeAt(p.z - u, k);
+    d.z -= clamp(d.z, -TUBE_HALF, TUBE_HALF);
+    float d2 = dot(d, d) + 0.02;
+    float id = inversesqrt(d2);
+    float lambert = 1.0;
+    if (dot(n, n) > 0.0) lambert = clamp((dot(n, -d) * id + wrap) / (1.0 + wrap), 0.0, 1.0);
+    l += tubeFlicker(k) * lambert * smoothstep(0.15, -0.25, d.y * id) / max(d2, 0.3);
+  }
+  return vec2(TUBE_LIGHT * l, 0.0);
+}
+
 // Street lamp k on side s (+1 the far side, cold LED; -1 the walker's,
 // warm sodium, halfway between): its head.
 float lampOffset(float s) {
@@ -174,7 +278,7 @@ vec2 lampsAt(vec3 p, vec3 n, float wrap) {
       if (side == 0) l.x += i; else l.y += i;
     }
   }
-  return l;
+  return l * streetShare(p + 0.01 * n) + tubesAt(p, n, wrap);
 }
 
 // A lot of row 1 (the street's own buildings) on side s: whether its shop
@@ -230,6 +334,58 @@ int carLook(int lane, float id) {
   float count = lane == 0 ? CARS_0_COUNT : CARS_1_COUNT;
   float laps = abs(lane == 0 ? CARS_0_REPEATS : CARS_1_REPEATS);
   return pm(int(id), int(count * laps));
+}
+
+// Page 07's car out of the side street: where it stands (on the road a
+// kerb lower) and the way it faces, (sin, cos) of its heading from +z.
+vec3 crossCar(out vec2 f) {
+  f = vec2(sin(CROSSCAR.z), cos(CROSSCAR.z));
+  float x = CROSSCAR.x;
+  return vec3(x, -CURB * smoothstep(ROAD + 0.8, ROAD - 0.8, abs(x)), CROSSCAR.y);
+}
+
+// Its headlights' light, and how it pours along their beams: x along the
+// way the car faces, `off` the point's offset from the beams' axis.
+const float CROSS_LIGHT = 3.0 * CAR_LIGHT;
+float crossBeam(float along, vec3 off) {
+  return smoothstep(0.0, 0.8, along) * exp(-dot(off, off) / (0.06 + 0.1 * along * along));
+}
+
+// Page 07's narrowing: what share of the frame's light at uv (0..1) is
+// kept, a round window about his head where the eye sees it.
+float tunnel(vec2 uv) {
+  if (CHECK.x <= 0.0) return 1.0;
+  vec3 h = project(HEAD.xyz);
+  vec2 c = mix(vec2(0.5), clamp(h.xy / u_res.xy, 0.3, 0.7), smoothstep(0.4, 1.2, h.z));
+  vec2 d = (uv - c) * vec2(u_res.x / u_res.y, 1.0);
+  float r = mix(1.1, 0.14, CHECK.x);
+  return 1.0 - 0.93 * CHECK.x * smoothstep(r, r + 0.3, length(d));
+}
+
+// The tape's bands at the frame's height y (0 … 1): one shivering low
+// while it stands, two rolling down the frame while it runs back.
+float tapeBand(float y, float c, float w) {
+  return 1.0 - smoothstep(0.0, w, abs(fract(y - c + 0.5) - 0.5));
+}
+float tapeBands(float y) {
+  float run = smoothstep(0.45, 0.9, TAPE_ON);
+  float b = (1.0 - run) * tapeBand(y, 0.07 + 0.004 * sin(53.0 * TAPE_T), 0.035);
+  float c = fract(-0.85 * TAPE_T);
+  return max(b, run * max(tapeBand(y, c, 0.05), tapeBand(y, c + 0.43, 0.025)));
+}
+// Where the tape shows the frame's point uv: its rows torn sideways, most
+// in the bands, and the picture jumping a little while it runs back.
+vec2 tapeUv(vec2 uv) {
+  if (TAPE_ON <= 0.0) return uv;
+  int tick = int(TAPE_T * 30.0);
+  float n = hash2(int(uv.y * u_res.y * 0.5), tick, 7u) - 0.5;
+  uv.x += TAPE_ON * (0.0025 * n + tapeBands(uv.y) * (0.035 + 0.04 * n));
+  uv.y += 0.006 * smoothstep(0.45, 0.9, TAPE_ON) * (hash1(tick / 3, 11u) - 0.5);
+  return uv;
+}
+// The tape's scanlines at the target's row y px.
+float tapeLines(float y) {
+  return mix(1.0, 0.82 + 0.18 * (0.5 + 0.5 * cos(TAU * y / 3.0)), TAPE_ON);
 }
 
 // The voice's shells and the echo's: centre, radius, light.

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» approved for page 06 (Art: «Супер!»), wired into page 06 and the Step 7 home card on the branch, waits for «Пушим»; page 07 «Автопилот» built, first showing waits for Art's notes. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»); page 07 «Автопилот» in work on `claude/step-7-dynamic-0682ec` (Art's notes: a near miss, time rewinds, the right run). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -256,7 +256,8 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   (waits for `ready()` before the first frame, card mode like `InnerHero`), `WebScene`
   `night-fact` on page 06, and the home card «Архитектура наблюдения» plays it when step ≥ 7.
   Production export checked at 1440 and 390 wide: page 06 and the home card ready, 60 fps,
-  gpu-error 0, no console errors (sheet `glavnaya.jpg`). Not on `main`: waits for «Пушим».
+  gpu-error 0, no console errors (sheet `glavnaya.jpg`). Shipped to `main` 2026-11-08 (Art: «так
+  же залей предыдщую страницу уже»), export rechecked before the merge.
 - Page 07 «Главная проверка»: Art chose А «Автопилот на перекрёстке» 2026-11-08. Built as
   `Chapter::Check` (code 1, 96 s loop, still 59 s), commit 4927170; beats in the crate README.
   He sinks into his phone, ring 1 then ring 2 go out (city hushes), tunnel to his face, he steps

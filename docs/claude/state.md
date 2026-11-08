@@ -259,12 +259,14 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   gpu-error 0, no console errors (sheet `glavnaya.jpg`). Shipped to `main` 2026-11-08 (Art: «так
   же залей предыдщую страницу уже»), export rechecked before the merge.
 - Page 07 «Главная проверка»: Art chose А «Автопилот на перекрёстке» 2026-11-08. Built as
-  `Chapter::Check` (code 1, 96 s loop, still 59 s), commit 4927170; beats in the crate README.
-  He sinks into his phone, ring 1 then ring 2 go out (city hushes), tunnel to his face, he steps
-  onto the crossing on red, a side-street car floods the frame and brakes, then стопы → опора →
-  дыхание → расхлопнутость → пространство. First showing in Матрица sent 2026-11-08
-  (`output/prototypes/night-city/page07.jpg`, prototype chip «страница 07» or `?page=1`); waits
-  for Art's notes. Not wired in the app yet (needs `night-check` WebScene on `dynamic-check`).
+  `Chapter::Check` (code 1). Round 2 after Art's note (a near miss, time rewinds, the right run),
+  commit 1ed60ce: the tape plays twice, 126.9 s loop, still 71 s; beats in the crate README.
+  Wrong take 0–26.6: phone, ring 1 then ring 2 go out, he steps off on red, a side-street car stops
+  a hand from him. The tape freezes 0.8 s and rewinds to 1 s (tape shaders in `common.glsl`).
+  Right take: phone out with rings 1–2 lit, away before the kerb, стопы → опора → дыхание →
+  расхлопнутость → пространство, the car passes and turns, green, he walks. Second showing in
+  Матрица sent 2026-11-08 (`output/prototypes/night-city/page07.jpg`, prototype chip «страница 07»
+  or `?page=1`); waits for Art's notes. Not wired in the app yet (needs `night-check` WebScene).
 - Next: Art's notes on page 07, other themes after his OK, wire `night-check`; then 08–10 the same way (2–3 directions each). A
   stage-finale screen after page 10 needs Art's wording first.
 

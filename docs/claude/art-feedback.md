@@ -99,6 +99,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - He missed the sphere and its three rings in the new scene («кольца ты куда дел со сферой?»): they stay, but «еле заметные», so the city leads. (Page 06.)
 - The Матрица look needs code rain on the buildings and elsewhere («нехватает матричного дождя вдоль зданий»). (Page 06.)
 - His idea: whatever enters the sphere shows its code, its «матричная суть». (Page 06.)
+- Round 2 with all six notes done passed at once («Супер!»), and he wanted the same scene on the home card when Step 7 is open: a liked page scene can become the step's home card. (Page 06, 2026-11-08.)
 
 ## Accounts and security (Intensive chat, 2026-11-07)
 - Walkers get crypto-wallet simplicity: words or key plus a PIN, no forced 2FA («лишняя нагрузка»); extra layers are opt-in. Guides and admins must use 2FA.

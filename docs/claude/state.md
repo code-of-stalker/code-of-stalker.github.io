@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» (page 06 prototype, round 2 after Art's notes) waits for Art. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-08. Step 7 pages 06–10: new scene «Ночной город» approved for page 06 (Art: «Супер!»), wired into page 06 and the Step 7 home card on the branch, waits for «Пушим»; page 07 directions А/Б/В wait for Art's choice. Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -236,8 +236,7 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
   `output/shots/page05-themes.jpg`) and in a production export (ready, gpu-error 0).
 - Pages 06–10 get a NEW scene (Art is tired of the sphere world). Art chose direction А
-  «Ночной город» 2026-11-08: new crate `graphics/night-city` (on the branch, not wired into
-  the app). A walker on a wet night street in the rain: lamps, shops with lit rooms behind the
+  «Ночной город» 2026-11-08: new crate `graphics/night-city`. A walker on a wet night street in the rain: lamps, shops with lit rooms behind the
   glass, signs, puddles, steam, car light trails, towers; camera in levels (his eyes → over
   the shoulder → beside the face → low → crane). Cold light goes through the theme recolor,
   warm light (sodium lamps, warm shops, tail lights) is added after it in `Look.warm`.
@@ -251,10 +250,25 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   instead of the flap, cars with bodies, two passers-by (umbrella, phone), the sphere with its
   three rings back but barely visible, code rain on the walls, and inside the sphere things
   (pole, passer, pavement) show their code; he does not. Details in the crate's README.
-- Next: Art looks at round 2 of the page 06 prototype in Матрица
-  (`output/prototypes/night-city/index.html`, sheet `round2.jpg` beside it) and says OK
-  or gives notes. After his OK: the other 3 dark themes, then the bridge + `WebScene` + page,
-  then pages 07–10 as chapters. A stage-finale screen after page 10 needs Art's wording first.
+- 2026-11-08 Art approved round 2 in Матрица («Супер! её же поставь на главную страницу если
+  открыт 7 шаг»). Тишина, Искра, Астрал checked, no color change (sheet
+  `output/prototypes/night-city/temy.jpg`). Wired on the branch: bridge `NightCity.web.tsx`
+  (waits for `ready()` before the first frame, card mode like `InnerHero`), `WebScene`
+  `night-fact` on page 06, and the home card «Архитектура наблюдения» plays it when step ≥ 7.
+  Production export checked at 1440 and 390 wide: page 06 and the home card ready, 60 fps,
+  gpu-error 0, no console errors (sheet `glavnaya.jpg`). Not on `main`: waits for «Пушим».
+- Page 07 «Главная проверка» (a night-city chapter): directions offered 2026-11-08, Art picks.
+  А «Автопилот на перекрёстке» (recommended): he sinks into his phone, the rings go out one by
+  one (city sound, rain and wall code freeze), the frame narrows to a tunnel; on red at the
+  crossing headlights flood, he stops; the return chain, each word its own light: стопы
+  (soles) → опора (pavement rings) → дыхание (steam) → расхлопнутость (the sphere opens, rings
+  relight) → пространство (crane, the quarter alive). Б «Три вопроса»: three checks, own camera
+  each (bags: outer sounds reach ring 1; phone call: warm flashes inside; key at the door: the
+  body), a short drop-out and return in each, calmer. В «Отражение в витрине»: side tracking
+  along the shop windows, his grey reflection walks a little ahead without a sphere; when he
+  drops out he becomes like it; on the return it falls behind and crumbles into code.
+- Next: Art's choice for page 07, then 08–10 the same way (2–3 directions each). A
+  stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

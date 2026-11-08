@@ -242,9 +242,14 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   the shoulder → beside the face → low → crane). Cold light goes through the theme recolor,
   warm light (sodium lamps, warm shops, tail lights) is added after it in `Look.warm`.
   Page 06 «Фазы шага» (chapter Fact, 64 s loop) is built; beats in the crate's `README.txt`.
+- 2026-11-08 Art: «сцена не запустилась». Cause: the one world shader took Chrome on Windows
+  (ANGLE/D3D11) ~3 min to compile and Chrome dropped it. Fixed in `28ef595`: the world is
+  drawn in parts (hits pass + 4 light passes, linked in parallel), ready in ~10 s with
+  «Загружаю сцену…» meanwhile; frames identical to before. Details in the crate's README.
+  Any new scene: keep each shader small, D3D11 compile time grows faster than its size.
 - Next: Art looks at the page 06 prototype in Матрица
-  (`output/prototypes/night-city/index.html`, key frames sent 2026-11-08) and says OK or
-  gives notes. After his OK: the other 3 dark themes, then the bridge + `WebScene` + page,
+  (`output/prototypes/night-city/index.html`, rebuilt 2026-11-08 after the fix) and says OK
+  or gives notes. After his OK: the other 3 dark themes, then the bridge + `WebScene` + page,
   then pages 07–10 as chapters. A stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

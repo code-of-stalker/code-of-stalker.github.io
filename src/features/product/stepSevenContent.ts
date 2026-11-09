@@ -67,6 +67,7 @@ export const stepSevenPages: readonly ReadingPage[] = [
       'Голос не объясняет.\nОн фиксирует.',
     ] },
   { id: 'dynamic-summary', title: 'Итог третьего уровня',
+    webScene: 'rope-dawn',
     placeholder: { name: 'Через тело', manner: 'полностью 3D, три кольца в одном ритме, каждое своё' }, paragraphs: [
       '— Три уровня должны работать синхронно, одномоментно, при этом ощущаться каждый по отдельности',
       'Осознанно помни:',

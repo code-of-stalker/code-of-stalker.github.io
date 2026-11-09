@@ -506,7 +506,8 @@ impl Walk {
             hands: [[0.0; 4]; 2],
             wrists: [0.0; 2],
             carry: Carry::Nothing,
-            scarf: [0.0; 4],
+            // Nobody in the house wears the long scarf.
+            scarf: [0.0, 0.0, 0.0, -1.0],
         }
     }
 }
@@ -823,6 +824,12 @@ pub fn build(pose: &Pose) -> Body {
     // in still air and streams and flutters in the wind, a flat ribbon
     // twisting as it goes.
     let [wx, wz, phase, strength] = pose.scarf;
+    if strength < 0.0 {
+        // No scarf: its links stand empty inside the pelvis.
+        for _ in 0..SCARF_LINKS {
+            cone(p, 0.001, p + Y * 0.01, 0.001, None);
+        }
+    }
     let wind = v3(wx, 0.0, wz);
     let wind = if wind.length() > 1e-4 {
         wind.normalize()
@@ -831,7 +838,7 @@ pub fn build(pose: &Pose) -> Body {
     };
     let across = wind.cross(Y).normalize();
     let mut at = neck + ch.up * 0.01 - ch.forward * 0.07 + ch.left * 0.03;
-    for k in 0..SCARF_LINKS {
+    for k in 0..SCARF_LINKS * usize::from(strength >= 0.0) {
         let kf = k as f32;
         let s = strength * (0.4 + 0.12 * kf).min(1.0);
         let wave = TAU * phase - 1.1 * kf;

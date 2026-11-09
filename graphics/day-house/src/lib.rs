@@ -16,9 +16,12 @@
 //! day): every number the shaders read. `browser.rs` only binds them to
 //! WebGL2. Metres at human scale; x along the street, up +y, the street
 //! toward the eye (+z); the house's open front is at z = 0.
+pub mod act;
 pub mod body;
+pub mod cast;
 pub mod house;
 pub mod math;
+pub mod props;
 pub mod story;
 
 #[cfg(target_arch = "wasm32")]
@@ -70,7 +73,7 @@ pub const DYN_ROWS: usize = DYN_TEXELS.div_ceil(DATA_W);
 /// The lamps: one a cell, as `house::lamp_at` hangs them.
 pub const LAMPS: usize = cell::COUNT;
 /// The points of his way through the house that the line of light draws.
-pub const PATH_POINTS: usize = 24;
+pub const PATH_POINTS: usize = 48;
 
 /// The uniform slots the shaders read (common.glsl names them).
 pub const SLOT_VIEW: usize = 4;
@@ -186,7 +189,7 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
         k += 1;
     }
     debug_assert_eq!(k, SLOT_PATH);
-    for (i, p) in story::PATH.iter().enumerate() {
+    for (i, p) in f.route.iter().enumerate() {
         s[SLOT_PATH + i] = *p;
     }
     s

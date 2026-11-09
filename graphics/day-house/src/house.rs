@@ -519,7 +519,7 @@ fn table(out: &mut Vec<Prim>, c: V3, hx: f32, hz: f32, h: f32, tone: f32) {
 }
 
 /// A chair facing `yaw` (0 toward the street), seat centre over `c`.
-fn chair(out: &mut Vec<Prim>, c: V3, yaw: f32, tone: f32) {
+pub fn chair(out: &mut Vec<Prim>, c: V3, yaw: f32, tone: f32) {
     let f = v3(yaw.sin(), 0.0, yaw.cos());
     out.push(cube(mat::WOOD, c + v3(0.0, 0.44, 0.0), v3(0.22, 0.025, 0.22)).yaw(yaw).tone(tone));
     out.push(cube(mat::WOOD, c + v3(0.0, 0.7, 0.0) - f * 0.2, v3(0.21, 0.22, 0.02)).yaw(yaw).tone(tone));
@@ -625,7 +625,7 @@ fn workshop(out: &mut Vec<Prim>) {
     }
     out.push(cyl(mat::WOOD, v3(6.1, 0.3, -2.8), 0.2, 0.3).tone(0.3));
     // The mechanic's low stool by the bicycle.
-    out.push(cyl(mat::WOOD, v3(4.6, 0.23, -2.84), 0.17, 0.23).tone(0.45));
+    out.push(cyl(mat::WOOD, v3(4.85, 0.23, -2.72), 0.17, 0.23).tone(0.45));
     out.push(slab(mat::DARK, v3(3.3, 0.0, -3.2), v3(6.4, 0.008, -1.0)).flags(flag::FLAT).tone(0.6));
 }
 
@@ -683,11 +683,11 @@ fn cellist(out: &mut Vec<Prim>) {
     let y = STOREY;
     chair(out, v3(5.2, y, -2.75), 0.0, 0.25);
     // The cello between her knees, leaning back a little.
-    out.push(ball(mat::WOOD, v3(5.2, y + 0.55, -2.2), v3(0.21, 0.34, 0.1)).pitch(-0.25).tone(0.85).flags(flag::GLOSS));
-    out.push(ball(mat::WOOD, v3(5.2, y + 0.82, -2.27), v3(0.15, 0.2, 0.09)).pitch(-0.25).tone(0.85).flags(flag::GLOSS));
-    out.push(cube(mat::DARK, v3(5.2, y + 1.15, -2.37), v3(0.02, 0.32, 0.02)).pitch(-0.25));
-    out.push(ball(mat::WOOD, v3(5.2, y + 1.47, -2.45), v3(0.03, 0.05, 0.03)).tone(0.85));
-    out.push(cube(mat::METAL, v3(5.2, y + 0.1, -2.12), v3(0.006, 0.12, 0.006)).pitch(0.4));
+    out.push(ball(mat::WOOD, v3(5.2, y + 0.55, -2.45), v3(0.21, 0.34, 0.1)).pitch(-0.25).tone(0.85).flags(flag::GLOSS));
+    out.push(ball(mat::WOOD, v3(5.2, y + 0.82, -2.52), v3(0.15, 0.2, 0.09)).pitch(-0.25).tone(0.85).flags(flag::GLOSS));
+    out.push(cube(mat::DARK, v3(5.2, y + 1.15, -2.62), v3(0.02, 0.32, 0.02)).pitch(-0.25));
+    out.push(ball(mat::WOOD, v3(5.2, y + 1.47, -2.7), v3(0.03, 0.05, 0.03)).tone(0.85));
+    out.push(cube(mat::METAL, v3(5.2, y + 0.1, -2.37), v3(0.006, 0.12, 0.006)).pitch(0.4));
     // The music stand.
     out.push(cyl(mat::METAL, v3(5.2, y + 0.55, -1.25), 0.012, 0.55).tone(0.2));
     out.push(cube(mat::PAPER, v3(5.2, y + 1.15, -1.3), v3(0.24, 0.17, 0.008)).pitch(0.45).tone(0.8));
@@ -713,7 +713,7 @@ fn garden(out: &mut Vec<Prim>) {
     for &(x, s, t) in &pots {
         plant(out, v3(x, y + 0.63, -4.3), s, t);
     }
-    for &(x, z, s, t) in &[(-4.9, -1.2, 1.7, 0.15), (0.9, -1.6, 2.0, 0.6), (-0.6, -0.5, 1.2, 0.85)] {
+    for &(x, z, s, t) in &[(-4.9, -1.2, 1.7, 0.15), (0.5, -1.6, 2.0, 0.6), (-0.6, -0.5, 1.2, 0.85)] {
         plant(out, v3(x, y, z), s, t);
     }
     for &(x, z, t) in &[(-3.2, -2.2, 0.3), (-1.4, -3.0, 0.75)] {
@@ -754,8 +754,8 @@ fn painter(out: &mut Vec<Prim>) {
 fn kitchen(out: &mut Vec<Prim>) {
     let y = 3.0 * STOREY;
     table(out, v3(-1.8, y, -3.0), 0.6, 0.42, 0.76, 0.55);
+    // Her chair; his moves with him (story.rs).
     chair(out, v3(-2.95, y, -3.0), FRAC_PI_2, 0.5);
-    chair(out, v3(-0.75, y, -3.0), -FRAC_PI_2, 0.5);
     out.push(cube(mat::WOOD, v3(-3.95, y + 0.45, -4.3), v3(1.55, 0.45, 0.3)).tone(0.75));
     out.push(cube(mat::STONE, v3(-3.95, y + 0.92, -4.3), v3(1.57, 0.022, 0.32)).tone(0.35).flags(flag::GLOSS));
     out.push(cube(mat::METAL, v3(-5.0, y + 0.945, -4.3), v3(0.34, 0.006, 0.27)).tone(0.15));
@@ -861,19 +861,13 @@ fn study(out: &mut Vec<Prim>) {
     out.push(cube(mat::WOOD, d + v3(-0.6, 0.36, 0.0), v3(0.22, 0.36, 0.4)).tone(0.2));
     out.push(cube(mat::WOOD, d + v3(0.75, 0.36, 0.0), v3(0.04, 0.36, 0.38)).tone(0.2));
     out.push(cube(mat::WOOD, d + v3(0.0, 0.5, 0.38), v3(0.82, 0.22, 0.015)).tone(0.2));
-    // His chair behind it.
-    let c = v3(DESK[0], y, DESK[2]);
-    out.push(cyl(mat::DARK, c + v3(0.0, 0.22, 0.0), 0.03, 0.22));
-    out.push(cyl(mat::DARK, c + v3(0.0, 0.02, 0.0), 0.28, 0.02));
-    out.push(cube(mat::FABRIC, c + v3(0.0, 0.47, 0.0), v3(0.24, 0.04, 0.24)).tone(0.05));
-    out.push(cube(mat::FABRIC, c + v3(0.0, 0.82, -0.27), v3(0.23, 0.3, 0.04)).tone(0.05));
     // The lamp on the desk.
     out.push(cyl(mat::METAL, d + v3(-0.75, 0.785, -0.15), 0.08, 0.015).tone(0.2));
     out.push(tube(mat::METAL, d + v3(-0.75, 0.79, -0.15), d + v3(-0.65, 1.2, 0.05), 0.01).tone(0.2));
     out.push(cone(mat::LAMP, d + v3(-0.6, 1.2, 0.05), 0.11, 0.07, 0.4).pitch(0.5).flags(flag::GLOSS));
     // The laptop, open toward him.
-    out.push(cube(mat::METAL, d + v3(0.05, 0.78, -0.1), v3(0.2, 0.008, 0.14)).tone(0.55));
-    out.push(cube(mat::SCREEN, d + v3(0.05, 0.92, 0.05), v3(0.2, 0.13, 0.006)).pitch(0.25).tone(0.6));
+    out.push(cube(mat::METAL, d + v3(0.05, 0.78, -0.2), v3(0.2, 0.008, 0.14)).tone(0.55));
+    out.push(cube(mat::SCREEN, d + v3(0.05, 0.92, -0.05), v3(0.2, 0.13, 0.006)).pitch(0.25).tone(0.6));
     out.push(cube(mat::CALENDAR, v3(5.3, y + 1.55, -4.58), v3(0.4, 0.46, 0.012)));
     out.push(
         Prim::new(kind::SHELF, mat::BOOKS, v3(1.88, y + 1.0, -2.9), v3(1.0, 1.0, 0.17))
@@ -1092,7 +1086,9 @@ mod tests {
                     let (lo, hi) = p.bounds();
                     assert!(lo.x >= x0.min(-SIDE_OUT) - 0.2 && hi.x <= x1.max(if col == 2 { SIDE_OUT } else { x1 }) + 0.2, "{col} {k} {p:?}");
                     let y = STOREY * k as f32;
-                    assert!(lo.y >= y - SLAB - 0.01 && hi.y <= y + STOREY + 0.01 || (col == 2 && k == 3), "{col} {k} {p:?}");
+                    // The stairwell's upper rail climbs past its landing.
+                    let top = if col == 0 { 1.2 } else { 0.01 };
+                    assert!(lo.y >= y - SLAB - 0.01 && hi.y <= y + STOREY + top || (col == 2 && k == 3), "{col} {k} {p:?}");
                 }
             }
         }

@@ -306,7 +306,17 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   in all 4 dark themes: page 09 mounts `rust-rope-dawn`, ready, 60 fps, gpu-error 0, no
   console errors, at 1440 (608 px, the plate width) and 390 (310 px). Shipped to `main`
   2026-11-09 (Art: «Пушим»).
-- Next: page 10 «dynamic-everyday»: offer Art 2–3 directions first. A stage-finale screen
+- Page 10 «В быту» (dynamic-everyday): directions offered 2026-11-09, waiting for his choice.
+  Avoid Step 5 page 07's ring of places and the page 05 «day of actions». А «Дом в разрезе»
+  (recommended: a living cutaway model of a house and street, one day in one lateral take,
+  a small test in each of the six places, one lit path through the house, the three rings
+  strike and every room he was in lights at once, the walls melt, the model and its
+  reflection on a lacquered table become one), Б «Поезд дня» (a long train, each car a place
+  of the day, day outside the left windows and night outside the right; a tunnel with only
+  his three rings; the cars become one hall; from above the train runs along the day/night
+  line), В «Зеркальная гладь» (a symmetric black-glass world: places rise as sets above the
+  mirror, below only his light outline and rings; the halves close into one).
+- Next: build page 10 in the chosen direction. A stage-finale screen
   after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

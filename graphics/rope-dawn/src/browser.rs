@@ -7,12 +7,14 @@
 //!
 //! The world is itself drawn in parts: one program finds what the eye's ray
 //! meets and keeps it in float frames, then the sky and the fog, the towers
-//! and the rope, him, the city under the fog and the air each add their
-//! light. One program for all of it takes Windows' shader compiler too
+//! and the rope, him, the city under the fog, the air and his double each
+//! add their light. One program for all of it takes Windows' shader compiler too
 //! long; each part takes it a few seconds, and with
 //! KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{BLEND, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, PRIMITIVES};
-use crate::story::SPHERE_Y;
+use crate::body::{
+    BLEND, CAP, COLLAR, CUT_ROUND, FACE, HANDS, HEAD, NECK, PRIMITIVES, PROP, SCARF, SCARF_LINKS,
+};
+use crate::story::{HEART, SPHERE_Y, WIND};
 use crate::{
     cones, look, pack, recolor_code, Chapter, Look, Story, BLOOM, BLUR_MAX, BYTE_KEEP, EXPOSURE,
     FOG_TOP, FRAME_ASPECT, HAZE, LOOP, LOT_X, LOT_Z, MIST, MIST_HEIGHT, POLE_R, RAD_SCALE, ROPE_R,
@@ -60,7 +62,7 @@ const RECORDS: u32 = 3;
 /// KHR_parallel_shader_compile's query: whether a program has linked yet.
 const COMPLETION_STATUS: u32 = 0x91B1;
 /// The world's parts, in the order they are linked.
-const PASSES: [&str; 6] = ["HITS", "FOG", "SET", "FIGURE", "CITY", "AIR"];
+const PASSES: [&str; 7] = ["HITS", "FOG", "SET", "FIGURE", "CITY", "AIR", "GHOST"];
 
 /// lib.rs's constants as the shaders' `#define`s, so both read one source.
 fn defines() -> String {
@@ -72,6 +74,11 @@ fn defines() -> String {
         ("CONE_NECK", NECK.to_string()),
         ("CONE_HEAD", HEAD.to_string()),
         ("CONE_COLLAR", COLLAR.to_string()),
+        ("CONE_FACE", FACE.to_string()),
+        ("CONE_CAP", CAP.to_string()),
+        ("CONE_SCARF", SCARF.to_string()),
+        ("SCARF_LINKS", SCARF_LINKS.to_string()),
+        ("CONE_PROP", PROP.to_string()),
         ("CONE_HAND_L", HANDS[0].to_string()),
         ("CONE_HAND_R", HANDS[1].to_string()),
         ("CUT_ROUND", f(CUT_ROUND)),
@@ -94,10 +101,14 @@ fn defines() -> String {
         ("BLUR_MAX", f(BLUR_MAX)),
         ("RAD_SCALE", f(RAD_SCALE)),
         ("BLOOM", f(BLOOM)),
+        ("EXPOSURE", f(EXPOSURE)),
         ("HAZE", f(HAZE)),
         ("MIST", f(MIST)),
         ("MIST_HEIGHT", f(MIST_HEIGHT)),
         ("SPHERE_Y", f(SPHERE_Y)),
+        ("WIND_X", f(WIND[0])),
+        ("WIND_Z", f(WIND[1])),
+        ("HEART", f(HEART)),
     ];
     lines
         .iter()
@@ -236,7 +247,7 @@ impl Linking {
 
 /// How the world is drawn.
 enum World {
-    /// The hits into the records, then the light in five parts.
+    /// The hits into the records, then the light in six parts.
     Passes {
         hits: Prog,
         fog: Prog,
@@ -244,6 +255,7 @@ enum World {
         figure: Prog,
         city: Prog,
         air: Prog,
+        ghost: Prog,
     },
     /// One program, for a GPU that cannot keep the hits in float frames.
     Whole(Prog),
@@ -259,7 +271,8 @@ impl World {
                 figure,
                 city,
                 air,
-            } => vec![hits, fog, set, figure, city, air],
+                ghost,
+            } => vec![hits, fog, set, figure, city, air, ghost],
             World::Whole(all) => vec![all],
         }
     }
@@ -279,7 +292,7 @@ impl Programs {
         let others = linked.split_off(linked.len().saturating_sub(3));
         let [dof, finish, warm]: [Prog; 3] = others.try_into().map_err(missing)?;
         let world = if linked.len() == PASSES.len() {
-            let [hits, fog, set, figure, city, air]: [Prog; 6] =
+            let [hits, fog, set, figure, city, air, ghost]: [Prog; 7] =
                 linked.try_into().map_err(missing)?;
             World::Passes {
                 hits,
@@ -288,6 +301,7 @@ impl Programs {
                 figure,
                 city,
                 air,
+                ghost,
             }
         } else {
             let [all]: [Prog; 1] = linked.try_into().map_err(missing)?;
@@ -878,6 +892,7 @@ impl RopeDawn {
                 figure,
                 city,
                 air,
+                ghost,
             } => {
                 self.records.bind(gl);
                 world(hits);
@@ -888,7 +903,7 @@ impl RopeDawn {
                 world(fog);
                 gl.enable(Gl::BLEND);
                 gl.blend_func(Gl::ONE, Gl::ONE);
-                for p in [set, figure, city, air] {
+                for p in [set, figure, city, air, ghost] {
                     world(p);
                 }
                 gl.disable(Gl::BLEND);

@@ -1,6 +1,7 @@
 // The finished frame: the lens's image with the bloom of its brightest
 // lights (its own smaller mips), a shoulder where light piles up, grain, a
-// vignette, and on the canvas the soft edges. Writes the cold light only,
+// vignette, the cloud the camera starts and ends in, and on the canvas
+// the soft edges. Writes the cold light only,
 // as grey: the theme's recolor inks it in its colour.
 out vec4 o;
 in vec2 v_uv;
@@ -23,6 +24,15 @@ void main() {
   if (c > 0.7) c = 0.7 + 0.3 * (1.0 - exp(-(c - 0.7) / 0.3));
   vec2 v = v_uv - 0.5;
   c *= 1.0 - 0.55 * dot(v, v);
+  // Deep in the cloud the frame is the cloud's grey alone, the same at
+  // the loop's end as at its start; on the way in and out, its wisps.
+  float veil = VEIL;
+  if (veil > 0.001) {
+    vec2 q = v_uv * vec2(5.0 * u_res.x / u_res.y, 5.0);
+    float wisp = fbm(q + vec2(0.0, 2.2 * TIME), 3, 211u) - 0.5;
+    float cloud = CLOUD.x * EXPOSURE + 0.12 * wisp * 4.0 * veil * (1.0 - veil);
+    c = mix(c, cloud, veil);
+  }
   c += 0.014 * grain(gl_FragCoord.xy, TIME) * (0.25 + sqrt(c));
   c += (rand(uint(gl_FragCoord.x) * 7919u + uint(gl_FragCoord.y) * 104729u) - 0.5) / 255.0;
   c = clamp(c, 0.0, 1.0);

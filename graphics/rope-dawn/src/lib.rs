@@ -1,9 +1,12 @@
 //! «Канатоходец на рассвете»: Step 7 page 09 «Итог третьего уровня». A man
-//! walks a rope with a long pole between two tall towers; below them lies a
-//! sea of fog over a waking city. The sun comes out low behind him, light
-//! wakes in his body from the soles up, the fog thins over the city, and his
-//! huge shadow on the fog (the persona) twitches with old habits, lags and
-//! dissolves while he walks on evenly to the far tower.
+//! walks a rope with a long pole between two towers of a city of towers;
+//! below them lies a sea of fog over the waking streets. His three rings
+//! show one by one and then strike together; he stops and the world stops
+//! with him; a pale double rises out of him and is drawn back; the sun comes
+//! out behind him and the light rises in him from the soles; the fog opens
+//! on the living city; his huge shadow on the fog (the persona) panics in a
+//! gust, lags and crumbles into code while he walks on evenly to the far
+//! roof.
 //!
 //! The pure core lives here and in `story.rs`: the rope, the walk, the
 //! camera, the sun, the fog and the shadow, all as numbers the shaders read.
@@ -24,7 +27,7 @@ use watcher_scene_palette::Palette;
 /// From one tower to the next; the world repeats itself every `SPAN`.
 pub const SPAN: f32 = 24.3;
 /// One loop: he crosses one span.
-pub const LOOP: f32 = 72.0;
+pub const LOOP: f32 = 96.0;
 /// A tower's half width across the rope (x) and along it (z); its roof is
 /// at y = 0 and its foot at the city's streets.
 pub const TOWER_X: f32 = 3.2;
@@ -48,7 +51,7 @@ pub const STREET: f32 = -96.0;
 pub const LOT_X: f32 = 11.0;
 pub const LOT_Z: f32 = SPAN / 3.0;
 /// The shadow on the fog: radians of the view a metre of him spans.
-pub const SHADOW_SCALE: f32 = 0.45;
+pub const SHADOW_SCALE: f32 = 0.3;
 
 /// The lens: the whole 3:2 frame stays in view on a canvas of any shape.
 pub const FRAME_ASPECT: f32 = 1.5;
@@ -74,11 +77,11 @@ pub const MIST: f32 = 0.004;
 pub const MIST_HEIGHT: f32 = 8.0;
 
 /// The uniform slots the shaders read (common.glsl names them): the
-/// camera, the figure's box, the sphere and its rings, the pole, the rope,
-/// the sun, the light in him, the fog, the shadow; then the shadow's cones,
-/// two slots each.
+/// camera, the figure's box, the sphere and its rings, the beats, the pole,
+/// the rope, the sun, the light in him, the fog, the world's clock, the
+/// double, the birds, the shadow; then the shadow's cones, two slots each.
 pub const SLOT_VIEW: usize = 4;
-pub const SLOT_SHADOW: usize = 19;
+pub const SLOT_SHADOW: usize = 27;
 pub const SLOTS: usize = SLOT_SHADOW + 2 * body::PRIMITIVES;
 // The world's uniforms fit the 256 vectors phones give a fragment shader
 // (WebGL2 promises 224; ANGLE keeps a few of its own).
@@ -99,9 +102,9 @@ impl Chapter {
         LOOP
     }
     /// Reduced motion holds this moment: before him on the rope, the sun
-    /// out behind him and the light risen in him to the crown.
+    /// out behind his chest and the light risen in him to the crown.
     pub fn still(self) -> f32 {
-        36.5
+        51.2
     }
 }
 
@@ -158,17 +161,25 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[5] = v(f.body.low, f.head_hidden);
     s[6] = v(f.body.high, f.rim);
     s[7] = f.sphere;
-    s[8] = f.rings;
-    s[9] = f.ring_light;
-    s[10] = v(f.pole[0], f.pole_seen);
-    s[11] = v(f.pole[1], POLE_DROOP);
-    s[12] = f.rope;
-    s[13] = v(f.sun, f.sun_out);
-    s[14] = f.glow;
-    s[15] = f.fog;
-    s[16] = f.shadow;
-    s[17] = f.shadow_box;
-    s[18] = f.shadow_pole;
+    s[8] = f.ring1;
+    s[9] = f.ring2;
+    s[10] = f.ring2b;
+    s[11] = f.ring3;
+    s[12] = f.ring_events;
+    s[13] = f.beat;
+    s[14] = v(f.pole[0], f.pole_seen);
+    s[15] = v(f.pole[1], POLE_DROOP);
+    s[16] = f.rope;
+    s[17] = v(f.sun, f.sun_out);
+    s[18] = f.glow;
+    s[19] = f.fog;
+    s[20] = f.world;
+    s[21] = f.double;
+    s[22] = f.birds;
+    s[23] = f.birds2;
+    s[24] = f.shadow;
+    s[25] = f.shadow_box;
+    s[26] = f.shadow_pole;
     for (i, c) in f.shadow_cones.iter().enumerate() {
         s[SLOT_SHADOW + i] = *c;
     }

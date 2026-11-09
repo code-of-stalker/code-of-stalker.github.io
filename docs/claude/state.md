@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-09. Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-09. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) built on branch `claude/step-7-dynamic-0682ec`, first showing in Матрица sent, waiting for Art's notes. Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -286,15 +286,21 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   gpu-error 0, no console errors at 1440 and 390 (the step picker also lists Step 5's page of
   the same name; pick the Step 7 entry). Shipped to `main` 2026-11-09 together with page 07
   (Art: «Пушим 07 и 08»), export rechecked before the merge.
-- Page 09 «Итог третьего уровня»: Art wants a NEW scene, not the rainy night city («там с
-  дождем надоела», 2026-11-09). Directions offered 2026-11-09, waiting for his choice:
-  А «Канатоходец на рассвете» (recommended: a rope between two towers over a sea of fog, his
-  giant shadow on the fog with a ring halo is the character that falls behind), Б «Заводной
-  механизм» (a brass clockwork shell drives him on a music-box stage; light wakes in the body,
-  the plates fall off while he keeps moving, pull back into a lived room), В «Светящееся море»
-  (a night surfer in a bioluminescent wave, three glowing tracks, old moves wash off in the tube).
-- Next: build page 09 in the chosen direction, then page 10. A stage-finale screen after
-  page 10 needs Art's wording first.
+- Page 09 «Итог третьего уровня» (dynamic-summary): Art wanted a NEW scene, not the rainy
+  night city («там с дождем надоела»), and chose А «Канатоходец на рассвете» (2026-11-09)
+  over Б «Заводной механизм» and В «Светящееся море». New crate `graphics/rope-dawn` (own
+  ray-marched world: towers, rope, pole, walker, fog sea, waking city, dawn sky), bridge
+  `RopeDawn.web.tsx`, `webScene: 'rope-dawn'`, dispatched in `Art.web.tsx` AND
+  `StepFiveScene.web.tsx` (Step 5–7 pages render through the latter; without it the page
+  shows its placeholder). 72 s loop, still 36.5 s; beats in the crate README. The giant
+  shadow with the glory ring shows at 52–62 s and dissolves by 65 s. First showing in
+  Матрица sent 2026-11-09 (sheet `output/prototypes/rope-dawn/kadry.jpg`, prototype
+  `output/prototypes/rope-dawn/index.html`); waiting for Art's notes. Export checked: page
+  09 mounts `rust-rope-dawn`, ready, 60 fps, gpu-error 0 at 1440 (608 px, the plate width)
+  and 390 (310 px). Other dark themes not yet checked (after his OK). Committed on the
+  branch, not on `main`.
+- Next: Art's notes on page 09, then the other themes, then page 10. A stage-finale screen
+  after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-09. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: Art found the first showing too sparse; the reworked second version (96 s, a beat per phrase) was sent in Матрица, waiting for Art's notes. Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-09. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: Art found the first showing too sparse; the reworked second version (96 s, a beat per phrase) was approved in Матрица («Ок, другие темы»); Тишина, Искра, Астрал checked and sent 2026-11-09 with no colour changes, waiting for Art's word to push. Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -300,10 +300,13 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   rises in him; the city opens below; his giant shadow with a glory panics, lags and crumbles
   into code). Beats in the crate README. Second showing in Матрица sent 2026-11-09 (sheet
   `output/prototypes/rope-dawn/kadry-v2.jpg`, prototype `output/prototypes/rope-dawn/index.html`);
-  waiting for Art's notes. Export checked: page 09 mounts `rust-rope-dawn`, ready, 60 fps,
-  gpu-error 0 at 1440 (608 px, the plate width) and 390 (310 px). Other dark themes not yet
-  checked (after his OK). Committed on the branch, not on `main`.
-- Next: Art's notes on page 09, then the other themes, then page 10. A stage-finale screen
+  Art approved it 2026-11-09 («Ок, другие темы»). Тишина, Искра, Астрал rendered and sent
+  (`output/prototypes/rope-dawn/kadry-tishina.jpg`, `kadry-iskra.jpg`, `kadry-astral.jpg`);
+  each theme's own warm sun (`look()` in lib.rs) reads well, nothing retuned. Export checked
+  in all 4 dark themes: page 09 mounts `rust-rope-dawn`, ready, 60 fps, gpu-error 0, no
+  console errors, at 1440 (608 px, the plate width) and 390 (310 px). Committed on the
+  branch, not on `main`.
+- Next: Art's «пушим» for page 09 (then `/ship-to-main`), then page 10. A stage-finale screen
   after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

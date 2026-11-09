@@ -286,7 +286,14 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   gpu-error 0, no console errors at 1440 and 390 (the step picker also lists Step 5's page of
   the same name; pick the Step 7 entry). Shipped to `main` 2026-11-09 together with page 07
   (Art: «Пушим 07 и 08»), export rechecked before the merge.
-- Next: page 09 the same way (2–3 directions first), then page 10. A stage-finale screen after
+- Page 09 «Итог третьего уровня»: Art wants a NEW scene, not the rainy night city («там с
+  дождем надоела», 2026-11-09). Directions offered 2026-11-09, waiting for his choice:
+  А «Канатоходец на рассвете» (recommended: a rope between two towers over a sea of fog, his
+  giant shadow on the fog with a ring halo is the character that falls behind), Б «Заводной
+  механизм» (a brass clockwork shell drives him on a music-box stage; light wakes in the body,
+  the plates fall off while he keeps moving, pull back into a lived room), В «Светящееся море»
+  (a night surfer in a bioluminescent wave, three glowing tracks, old moves wash off in the tube).
+- Next: build page 09 in the chosen direction, then page 10. A stage-finale screen after
   page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

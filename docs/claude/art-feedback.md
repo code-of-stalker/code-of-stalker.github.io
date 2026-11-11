@@ -132,4 +132,5 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 ## UI fixes (2026-11-11)
 - A scroll cue never sits beside a control: in tasks it is centered at the very bottom, under the step selector («он не должен быть сбоку»).
 - If the screen height allows, both level plates are open at once.
+- No arrow beside the plus on the report plate («тупо»): it folds by a drag up and unfolds by a drag down.
 - Bold text is harsh on the eyes; how to soften it waits for Art's pick among variants.

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { PanResponder, Platform, Pressable, StyleSheet, View, type AccessibilityActionEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { PanelArtwork } from '../motion/PanelArtwork';
@@ -7,6 +7,7 @@ import { ProductText } from '../ui';
 import { DiaryGlass } from './DiaryGlass';
 import { DiaryAsset, DiaryIcon } from './DiaryIcons';
 import { diaryArtwork } from './diaryArtwork';
+import { claimsReportFold, flipsReportFold } from './report-fold-gesture';
 
 export type DiaryReportPromptProps = {
   /** Big line, e.g. «Что ощутили сегодня?». */
@@ -14,55 +15,67 @@ export type DiaryReportPromptProps = {
   /** Small caps line under the title, e.g. «ДОБАВИТЬ ОТЧЁТ ДИНАМИКИ». */
   hint: string;
   /** The one line shown while folded, e.g. «ОТЧЁТ О ДИНАМИКЕ». */
-  foldedLabel?: string;
+  foldedLabel: string;
   accessibilityLabel: string;
   /** The owner persists this (diary: `settings.diaryReportCollapsed`). */
-  collapsed?: boolean;
-  /** Without it the plate cannot be folded: the Intensive chat keeps it until today's report is sent. */
-  onCollapsedChange?(next: boolean): void;
+  collapsed: boolean;
+  onCollapsedChange(next: boolean): void;
   onPress(): void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
 
-// The daily report plate. Shared by the diary and the Intensive daily reports.
-// In the diary it folds to one thin line, so it stops taking the screen.
-export function DiaryReportPrompt({ title, hint, foldedLabel = hint, accessibilityLabel, collapsed: folded = false, onCollapsedChange, onPress, disabled, style, testID = 'diary-report-prompt' }: DiaryReportPromptProps) {
+// The daily report plate. Shared by the diary and the Intensive daily reports:
+// folded it shrinks to one thin line, so it stops taking the screen. It folds by a drag
+// up and unfolds by a drag down on the strip (Art 2026-11-11: no arrow beside the plus).
+export function DiaryReportPrompt({ title, hint, foldedLabel, accessibilityLabel, collapsed, onCollapsedChange, onPress, disabled, style, testID = 'diary-report-prompt' }: DiaryReportPromptProps) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const frame = useMemo(() => diaryArtwork('prompt', colors), [colors]);
-  const collapsed = !!onCollapsedChange && folded;
-  const fold = onCollapsedChange && <Pressable testID={`${testID}-fold`} accessibilityRole="button" accessibilityLabel={collapsed ? 'Развернуть плашку отчёта' : 'Свернуть плашку отчёта'} accessibilityState={{ expanded: !collapsed }}
-    hitSlop={6} onPress={() => onCollapsedChange(!collapsed)} style={styles.fold}>
-    <View style={!collapsed && styles.chevronUp}><DiaryAsset name="chevron" /></View>
-  </Pressable>;
-  if (collapsed) return <View testID={testID} style={[styles.folded, style]}>
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} style={styles.foldedOpen}>
+  const latest = useRef({ collapsed, onCollapsedChange });
+  useEffect(() => { latest.current = { collapsed, onCollapsedChange }; }, [collapsed, onCollapsedChange]);
+  /* eslint-disable react-hooks/refs -- PanResponder registers callbacks; they read the ref only on touch. */
+  const drag = useMemo(() => PanResponder.create({
+    // Capture so the drag is taken from the inner tap target once it is clearly vertical.
+    onMoveShouldSetPanResponderCapture: (_, state) => claimsReportFold(latest.current.collapsed, state.dx, state.dy),
+    onPanResponderRelease: (_, state) => {
+      const { collapsed: now, onCollapsedChange: change } = latest.current;
+      if (flipsReportFold(now, state.dx, state.dy)) change(!now);
+    },
+    onPanResponderTerminationRequest: () => true,
+  }), []);
+  /* eslint-enable react-hooks/refs */
+  const a11y = {
+    accessibilityActions: [{ name: collapsed ? 'expand' : 'collapse', label: collapsed ? 'Развернуть плашку отчёта' : 'Свернуть плашку отчёта' }],
+    onAccessibilityAction: (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === 'expand' || event.nativeEvent.actionName === 'collapse') onCollapsedChange(!collapsed);
+    },
+  };
+  if (collapsed) return <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.folded, webNoBrowserPan, style]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Потяни вниз, чтобы развернуть" disabled={disabled} onPress={onPress} style={styles.foldedOpen}>
       <DiaryIcon name="plus" size={14} /><ProductText style={styles.foldedLabel}>{foldedLabel}</ProductText>
     </Pressable>
-    {fold}
     <View style={styles.foldedLine} />
   </View>;
-  return <View testID={testID} style={[styles.prompt, style]}>
+  return <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.prompt, webNoBrowserPan, style]}>
     <DiaryGlass shape="panel" /><PanelArtwork source={frame} />
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} style={[styles.open, !fold && styles.openAlone]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Потяни вверх, чтобы свернуть" disabled={disabled} onPress={onPress} style={styles.open}>
       <DiaryAsset name="sparkle" />
       <View style={styles.copy}><ProductText variant="title" style={styles.title}>{title}</ProductText><ProductText style={styles.hint}>{hint}</ProductText></View>
       <DiaryIcon name="plus" />
     </Pressable>
-    {fold}
   </View>;
 }
 
+// On web the browser must not turn the drag into page panning or pull-to-refresh.
+const webNoBrowserPan = Platform.OS === 'web' ? ({ touchAction: 'none' } as unknown as ViewStyle) : null;
+
 const createStyles = (colors: ProductColors) => StyleSheet.create({
   prompt: { minHeight: 64, flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  open: { flex: 1, minWidth: 0, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, paddingVertical: 10 },
-  openAlone: { paddingRight: 12 },
+  open: { flex: 1, minWidth: 0, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 10 },
   copy: { flex: 1, minWidth: 0, gap: 6 },
   title: { fontSize: 12, lineHeight: 16 },
   hint: { color: colors.muted, fontSize: 8, lineHeight: 12 },
-  fold: { width: 36, alignSelf: 'stretch', minHeight: 36, alignItems: 'center', justifyContent: 'center' },
-  chevronUp: { transform: [{ rotate: '180deg' }] },
   folded: { minHeight: 36, flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   foldedOpen: { flex: 1, minWidth: 0, minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 8 },
   foldedLabel: { fontSize: 8, lineHeight: 12, color: colors.muted, flexShrink: 1 },

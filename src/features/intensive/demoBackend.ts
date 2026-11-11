@@ -99,11 +99,11 @@ class DemoServer {
   }
 
   /** Sends as a seeded person, encrypting with the chat key they hold. */
-  async sendAs(chatId: string, senderId: string, text: string, minutesAgo = 0) {
+  async sendAs(chatId: string, senderId: string, text: string, minutesAgo = 0, report = false) {
     const row = this.keys.find(k => k.chatId === chatId && k.memberId === senderId);
     if (!row) return;
     const raw = await c.unwrapChatKey(row, this.privateKeys.get(senderId)!, { chatId, version: row.version, memberId: senderId });
-    const sealed = await c.encryptMessage(await c.chatCipher(raw), chatId, text);
+    const sealed = await c.encryptMessage(await c.chatCipher(raw), chatId, text, report);
     const message = this.insertMessage(chatId, senderId, row.version, sealed.iv, sealed.body);
     if (minutesAgo) message.createdAt = new Date(Date.now() - minutesAgo * 60_000).toISOString();
   }
@@ -123,7 +123,6 @@ class DemoServer {
     const dina = await this.addPerson('Дина Лебедева', 'ИДУЩАЯ С ПРОВОДНИКОМ', [], false, 2500);
     await this.addPerson('Ника Зорина', 'ИДУЩИЙ, ЖДЁТ НАЗНАЧЕНИЯ', [], false, 40);
     const timur = await this.addPerson('Тимур Каримов', 'ИДУЩИЙ, ДОСТУП ЗАКРЫТ', [], false, 5000);
-    void yana;
     this.guideAdmins.set(mira, oleg);
     this.blocked.add(timur);
     const chat = async (walkerId: string, minutesAgo: number) => {
@@ -133,13 +132,17 @@ class DemoServer {
       return id;
     };
     const alexChat = await chat(alex, 2900);
+    await this.sendAs(alexChat, alex, 'Первый день. Весь день тянуло проверить телефон, заметил это раз двадцать. К вечеру стало тише.', 2800, true);
+    await this.sendAs(alexChat, alex, 'Утром заметил, что слышу свои шаги только на лестнице. Днём трижды ловил себя на том, что смотрю, но не вижу.', 1500, true);
+    await this.sendAs(alexChat, mira, 'Хорошо, что ловишь. Это и есть начало.', 1440);
     await this.sendAs(alexChat, alex, 'Добрый вечер. День третий: пока шёл до работы, замечал звуки. Насчитал девять разных.', 190);
     await this.sendAs(alexChat, mira, 'Хорошо. Завтра не считай, а отмечай, откуда пришёл каждый звук.', 150);
     await this.sendAs(alexChat, oleg, 'Присоединяюсь. Алекс, запиши это в дневник после прогулки.', 120);
     await this.sendAs(alexChat, alex, 'Принято.', 95);
     const dinaChat = await chat(dina, 2400);
-    await this.sendAs(dinaChat, dina, 'Сегодня смотрела на тени в обед. Они короче, чем я думала.', 600);
+    await this.sendAs(dinaChat, dina, 'Сегодня смотрела на тени в обед. Они короче, чем я думала.', 600, true);
     await this.sendAs(dinaChat, mira, 'Отлично. Вечером сравни с тенями на закате.', 540);
+    await this.sendAs(dinaChat, yana, 'Дина, в конце недели посмотрю твои отчёты. Пиши каждый день.', 480);
   }
 }
 

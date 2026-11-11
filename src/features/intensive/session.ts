@@ -41,6 +41,8 @@ export type DecodedMessage = {
   text: string | null;
   /** A voice message's description; its audio comes from `voiceAudio`. */
   voice: c.VoiceMeta | null;
+  /** The walker's daily report, marked inside the seal (false when it cannot be decrypted here). */
+  report: boolean;
 };
 
 /** A recorded voice message ready to be sealed. */
@@ -280,14 +282,14 @@ export class IntensiveSession {
   async decode(chatId: string, row: MessageRow): Promise<DecodedMessage> {
     const decoded: DecodedMessage = {
       id: row.id, senderId: row.senderId, senderRole: row.senderRole, createdAt: row.createdAt,
-      kind: row.kind, keyVersion: row.keyVersion, editedAt: row.editedAt, deletedAt: row.deletedAt, text: null, voice: null,
+      kind: row.kind, keyVersion: row.keyVersion, editedAt: row.editedAt, deletedAt: row.deletedAt, text: null, voice: null, report: false,
     };
     if (decoded.deletedAt) this.dropAudio(row.id);
     const cipher = this.chatCiphers.get(chatId)?.ciphers.get(row.keyVersion);
     if (!cipher || decoded.deletedAt || row.iv === null || row.body === null) return decoded;
     try {
-      if (row.kind === 'voice') decoded.voice = await c.decryptVoice(cipher, chatId, row.iv, row.body);
-      else decoded.text = await c.decryptMessage(cipher, chatId, row.iv, row.body);
+      if (row.kind === 'voice') ({ voice: decoded.voice, report: decoded.report } = await c.decryptVoice(cipher, chatId, row.iv, row.body));
+      else ({ text: decoded.text, report: decoded.report } = await c.decryptMessage(cipher, chatId, row.iv, row.body));
     } catch { /* Stays without content: shown as a message that does not open here. */ }
     return decoded;
   }
@@ -309,15 +311,16 @@ export class IntensiveSession {
     return { version: cipher.current, key: cipher.ciphers.get(cipher.current)! };
   }
 
-  async send(chatId: string, text: string): Promise<DecodedMessage> {
+  async send(chatId: string, text: string, report = false): Promise<DecodedMessage> {
     const { version, key } = await this.currentCipher(chatId);
-    const sealed = await c.encryptMessage(key, chatId, text);
+    const sealed = await c.encryptMessage(key, chatId, text, report);
     return this.decode(chatId, await this.backend.send(chatId, version, sealed.iv, sealed.body));
   }
 
-  async edit(chatId: string, messageId: number, text: string): Promise<DecodedMessage> {
+  /** `report` keeps an edited daily report a report. */
+  async edit(chatId: string, messageId: number, text: string, report = false): Promise<DecodedMessage> {
     const { version, key } = await this.currentCipher(chatId);
-    const sealed = await c.encryptMessage(key, chatId, text);
+    const sealed = await c.encryptMessage(key, chatId, text, report);
     return this.decode(chatId, await this.backend.edit(messageId, version, sealed.iv, sealed.body));
   }
 
@@ -325,9 +328,9 @@ export class IntensiveSession {
     return this.decode(chatId, await this.backend.remove(messageId));
   }
 
-  async sendVoice(chatId: string, draft: VoiceDraft): Promise<DecodedMessage> {
+  async sendVoice(chatId: string, draft: VoiceDraft, report = false): Promise<DecodedMessage> {
     const { version, key } = await this.currentCipher(chatId);
-    const sealed = await c.encryptVoice(key, chatId, draft, draft.audio);
+    const sealed = await c.encryptVoice(key, chatId, draft, draft.audio, report);
     const row = await this.backend.sendVoice(chatId, version, sealed.iv, sealed.body, sealed.mediaIv, sealed.mediaBody);
     this.keepAudio(row.id, draft.audio.slice());
     return this.decode(chatId, row);

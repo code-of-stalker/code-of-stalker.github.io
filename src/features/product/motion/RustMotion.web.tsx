@@ -14,7 +14,7 @@ export const gentle = [.22, .8, .2, 1] as const;
 
 /** Target events only. The shared Rust clock writes the presentation style and
  * reports completion; React never calculates a transition's intermediate frame. */
-export function RustMotion({ children, initial = shown, target = shown, duration = 460, delay = 0, curve = gentle, active = true, loop, onComplete, scaleX = false, freezeScale = false, springScale = false, height, initialHeight, scanDuration, style, ...attributes }: PropsWithChildren<{
+export function RustMotion({ children, initial = shown, target = shown, duration = 460, delay = 0, curve = gentle, active = true, loop, onComplete, scaleX = false, freezeScale = false, springScale = false, height, initialHeight, scanDuration, breathe, style, ...attributes }: PropsWithChildren<{
   initial?: MotionValues; target?: MotionValues; duration?: number; delay?: number; curve?: readonly number[]; active?: boolean;
   loop?: { width: number; speed: number }; onComplete?(): void; style?: CSSProperties;
   'data-testid'?: string; 'aria-hidden'?: boolean;
@@ -22,9 +22,12 @@ export function RustMotion({ children, initial = shown, target = shown, duration
   freezeScale?: boolean;
   springScale?: boolean;
   height?: number; initialHeight?: number; scanDuration?: number;
+  /** Waiting pulse of the opacity: period in ms and lowest factor. */
+  breathe?: { period: number; low: number };
 }>) {
   const systemReduced = useSystemReducedMotion();
   if (systemReduced) { duration = 0; delay = 0; if (loop) active = false; }
+  const breath = systemReduced ? undefined : breathe;
   // Microphone samples and scroll updates rerender their parents. Equal values
   // must not resend a transition or re-arm its completion on every update.
   const [opacity, x, y, scale, rotation, width] = target;
@@ -33,8 +36,8 @@ export function RustMotion({ children, initial = shown, target = shown, duration
   const resolvedTarget = useMemo<MotionValues>(() => [opacity, x, y, resolvedScale, rotation, width], [opacity, x, y, resolvedScale, rotation, width]);
   const resolvedCurve = useMemo(() => [x1, y1, x2, y2], [x1, y1, x2, y2]);
   const root = useRef<HTMLDivElement>(null), handle = useRef<ElementTimeline | null>(null), controller = useEffectsController(), focused = useIsFocused();
-  const latest = useRef({ target: resolvedTarget, duration, delay, curve: resolvedCurve, active: active && focused, loop, onComplete, springScale, scale, height, scanDuration });
-  useLayoutEffect(() => { latest.current = { target: resolvedTarget, duration, delay, curve: resolvedCurve, active: active && focused, loop, onComplete, springScale, scale, height, scanDuration }; });
+  const latest = useRef({ target: resolvedTarget, duration, delay, curve: resolvedCurve, active: active && focused, loop, onComplete, springScale, scale, height, scanDuration, breath });
+  useLayoutEffect(() => { latest.current = { target: resolvedTarget, duration, delay, curve: resolvedCurve, active: active && focused, loop, onComplete, springScale, scale, height, scanDuration, breath }; });
   const [initialValues] = useState(initial);
   const [startingHeight] = useState(initialHeight ?? height);
   const completion = useRef(false);
@@ -52,6 +55,7 @@ export function RustMotion({ children, initial = shown, target = shown, duration
       node.target(Float64Array.from(value.target), value.duration, value.delay, Float64Array.from(value.curve));
       if (value.springScale) node.spring_scale(value.scale, value.duration <= 0);
       node.active(value.active); if (value.loop) node.loop(value.loop.width, value.loop.speed);
+      if (value.breath) node.breathe(value.breath.period, value.breath.low);
       const token = {}; unregister = controller.register(token, 'Переход · Rust', message => { if ((message as { type: string }).type === 'watcher-clock-reset') node.reset_clock(); });
       detach = controller.frameJob(at => {
         const value = latest.current; node.active(value.active); const drew = node.frame(at), moving = node.moving();
@@ -75,6 +79,8 @@ export function RustMotion({ children, initial = shown, target = shown, duration
     previousFocus.current=focused;
   },[focused,scanDuration,delay,systemReduced]);
   useEffect(()=>{if(height!==undefined){completion.current=false;handle.current?.target_height_curve(height,duration,Float64Array.from(resolvedCurve));}},[height,duration,resolvedCurve]);
+  const breathPeriod = breath?.period ?? 0, breathLow = breath?.low ?? 1;
+  useEffect(() => { handle.current?.breathe(breathPeriod, breathLow); }, [breathPeriod, breathLow]);
   const loopWidth = loop?.width, loopSpeed = loop?.speed;
   useEffect(() => { if (loopWidth !== undefined && loopSpeed !== undefined) handle.current?.loop(loopWidth, loopSpeed); }, [loopWidth, loopSpeed]);
   return <div {...attributes} ref={root} data-rust-transition data-rust-scale-x={scaleX ? '' : undefined} style={{ ...style, height: startingHeight ?? style?.height,

@@ -10,16 +10,17 @@ import { ProductText } from '../ui';
 import { VolumeSlider } from '../VolumeSlider';
 import { DiaryIcon } from './DiaryIcons';
 import { diaryClock } from './feed';
+import { VoiceWaveBars } from '../motion/VoiceWaveBars';
+import { Breathe } from '../motion/Breathe';
 
-export const DiaryWaveform = memo(function DiaryWaveform({ waveform, positionMs = 0, durationMs, onSeek }: {
-  waveform: readonly number[]; positionMs?: number; durationMs: number; onSeek?(ms: number): void;
+export const DiaryWaveform = memo(function DiaryWaveform({ waveform, positionMs = 0, durationMs, playing = false, onSeek }: {
+  waveform: readonly number[]; positionMs?: number; durationMs: number; playing?: boolean; onSeek?(ms: number): void;
 }) {
   const colors = useThemeColors(), timeline = useRef<View>(null);
   const bars = useMemo(() => Array.from({ length: 32 }, (_, i) => {
     const from = Math.floor(i * waveform.length / 32), to = Math.max(from + 1, Math.floor((i + 1) * waveform.length / 32));
     return Math.max(.02, ...waveform.slice(from, to));
   }), [waveform]);
-  const progress = Math.min(1, positionMs / Math.max(1, durationMs));
   return <View ref={timeline} style={styles.timeline}>
     <Pressable accessibilityRole={onSeek ? 'adjustable' : 'progressbar'} accessibilityLabel="Позиция в записи"
       accessibilityValue={{ min: 0, max: durationMs, now: Math.min(positionMs, durationMs), text: `${diaryClock(positionMs)} из ${diaryClock(durationMs)}` }}
@@ -27,7 +28,7 @@ export const DiaryWaveform = memo(function DiaryWaveform({ waveform, positionMs 
       onAccessibilityAction={event => onSeek?.(Math.max(0, Math.min(durationMs, positionMs + (event.nativeEvent.actionName === 'increment' ? 10000 : -10000))))}
       disabled={!onSeek} onPress={event => { const x = event.nativeEvent.pageX; timeline.current?.measureInWindow((left, _y, width) => { if (width > 0) onSeek?.(Math.max(0, Math.min(1, (x - left) / width)) * durationMs); }); }}
       style={styles.waveform}>
-      {bars.map((level, i) => <View key={i} style={{ width: 1, height: 3 + level * 25, backgroundColor: i / bars.length < progress ? colors.accent : colors.muted, opacity: i / bars.length < progress ? 1 : .65 }} />)}
+      <VoiceWaveBars bars={bars} positionMs={positionMs} durationMs={durationMs} playing={playing} accent={colors.accent} muted={colors.muted} />
     </Pressable>
     <ProductText style={[styles.time, { color: colors.muted }]}>{diaryClock(positionMs)} / {diaryClock(durationMs)}</ProductText>
   </View>;
@@ -57,9 +58,9 @@ function LoadedDiaryAudio({ record }: { record: AudioRecord }) {
     <View style={styles.row}>
       <Pressable accessibilityRole="button" accessibilityLabel={problem ? 'Повторить загрузку записи' : player.playing ? 'Пауза' : 'Слушать запись'} disabled={!problem && !player.loaded}
         onPress={() => { if (problem) { started.current = false; setUri(null); setError(''); setAttempt(value => value + 1); } else void player.toggle(); }} style={styles.play}>
-        <DiaryGlass /><PanelBorder />{problem || !player.loaded ? <ProductText>{problem ? '↻' : '···'}</ProductText> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
+        <DiaryGlass /><PanelBorder />{problem ? <ProductText>↻</ProductText> : !player.loaded ? <Breathe><ProductText>···</ProductText></Breathe> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
       </Pressable>
-      <DiaryWaveform waveform={record.waveform} durationMs={record.durationMs} positionMs={player.positionMs} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
+      <DiaryWaveform waveform={record.waveform} durationMs={record.durationMs} positionMs={player.positionMs} playing={player.playing} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
       <Pressable accessibilityRole="button" accessibilityLabel="Громкость записи" accessibilityState={{ expanded: volumeOpen }} onPress={() => setVolumeOpen(value => !value)} style={styles.sound}><DiaryIcon name="sound" size={18} /></Pressable>
     </View>
     {player.loaded && <View style={styles.transport}>

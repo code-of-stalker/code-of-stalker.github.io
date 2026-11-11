@@ -17,6 +17,8 @@ pub struct ElementTimeline {
     speed: f64,
     offset: f64,
     last_offset: f64,
+    /// Waiting pulse: (period in seconds, lowest opacity factor).
+    breath: Option<(f64, f32)>,
 }
 #[wasm_bindgen]
 impl ElementTimeline {
@@ -41,6 +43,7 @@ impl ElementTimeline {
             speed: 0.,
             offset: 0.,
             last_offset: 0.,
+            breath: None,
         }
     }
     pub fn initial(&mut self, values: Vec<f64>) {
@@ -162,11 +165,20 @@ impl ElementTimeline {
         self.speed = speed.max(0.);
         self.dirty = true;
     }
+    /// A soft waiting pulse on top of the opacity channel; a period of 0 ends it.
+    pub fn breathe(&mut self, period: f64, low: f64) {
+        if !self.moving() {
+            self.clock.suspend();
+        }
+        self.breath = (period > 0.).then_some((period / 1000., low as f32));
+        self.dirty = true;
+    }
     pub fn reset_clock(&mut self) {
         self.clock.suspend();
     }
     pub fn moving(&self) -> bool {
         self.loop_width > 0. && self.speed > 0.
+            || self.breath.is_some()
             || self.channels.iter().any(|c| c.moving(self.clock.elapsed))
             || self.scale_spring.is_some_and(|spring| spring.moving())
             || self
@@ -214,6 +226,9 @@ impl ElementTimeline {
         }
         if let Some(scan) = self.scan {
             crate::panel_reveal::panel_reveal(&self.root, scan.value(self.clock.elapsed), false);
+        }
+        if let Some((period, low)) = self.breath {
+            value[0] *= crate::ui_motion::breath_level(self.clock.elapsed, period, low);
         }
         let _ = style.set_property("opacity", &value[0].to_string());
         let scale = if self.root.has_attribute("data-rust-scale-x") {

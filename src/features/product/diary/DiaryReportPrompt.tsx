@@ -3,6 +3,8 @@ import { PanResponder, Platform, Pressable, StyleSheet, View, type Accessibility
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { PanelArtwork } from '../motion/PanelArtwork';
+import { Appear } from '../motion/Appear';
+import { AutoHeight } from '../motion/AutoHeight';
 import { ProductText } from '../ui';
 import { DiaryGlass } from './DiaryGlass';
 import { DiaryAsset, DiaryIcon } from './DiaryIcons';
@@ -51,20 +53,22 @@ export function DiaryReportPrompt({ title, hint, foldedLabel, accessibilityLabel
       if (event.nativeEvent.actionName === 'expand' || event.nativeEvent.actionName === 'collapse') onCollapsedChange(!collapsed);
     },
   };
-  if (collapsed) return <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.folded, webNoBrowserPan, style]}>
+  // Folding glides the height (AutoHeight) while the new face fades in from the side it came from.
+  return <AutoHeight style={style}><Appear key={collapsed ? 'folded' : 'open'} rise={collapsed ? 6 : -6}>{collapsed
+  ? <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.folded, webNoBrowserPan]}>
     <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Потяни вниз, чтобы развернуть" disabled={disabled} onPress={onPress} style={styles.foldedOpen}>
       <DiaryIcon name="plus" size={14} /><ProductText style={styles.foldedLabel}>{foldedLabel}</ProductText>
     </Pressable>
     <View style={styles.foldedLine} />
-  </View>;
-  return <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.prompt, webNoBrowserPan, style]}>
+  </View>
+  : <View testID={testID} {...drag.panHandlers} {...a11y} style={[styles.prompt, webNoBrowserPan]}>
     <DiaryGlass shape="panel" /><PanelArtwork source={frame} />
     <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint="Потяни вверх, чтобы свернуть" disabled={disabled} onPress={onPress} style={styles.open}>
       <DiaryAsset name="sparkle" />
       <View style={styles.copy}><ProductText variant="title" style={styles.title}>{title}</ProductText><ProductText style={styles.hint}>{hint}</ProductText></View>
       <DiaryIcon name="plus" />
     </Pressable>
-  </View>;
+  </View>}</Appear></AutoHeight>;
 }
 
 // On web the browser must not turn the drag into page panning or pull-to-refresh.

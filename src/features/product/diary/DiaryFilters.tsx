@@ -4,13 +4,15 @@ import { productLevels } from '../content';
 import { ProductButton, ProductText } from '../ui';
 import { DiaryGlass } from './DiaryGlass';
 import { PanelBorder } from '../PanelBorder';
+import { Fade } from '../motion/Fade';
+import { uiDuration, useUiReduced } from '../motion/uiMotion';
 import { useThemeColors } from '../ProductTheme';
 import { DiaryDatePicker } from './DiaryDatePicker';
 import { DiaryAsset, DiaryEntryIcon, DiaryIcon } from './DiaryIcons';
 import { diaryDay, emptyDiaryFilter, type DiaryFilter } from './feed';
 
 export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(filter: DiaryFilter): void }) {
-  const colors = useThemeColors(), [draft, setDraft] = useState(value), [error, setError] = useState('');
+  const colors = useThemeColors(), reduced = useUiReduced(), [draft, setDraft] = useState(value), [error, setError] = useState('');
   const format = (date: string) => date ? date.split('-').reverse().join('.') : '';
   const [from, setFrom] = useState(value.from), [to, setTo] = useState(value.to);
   const [activeDate, setActiveDate] = useState<'from' | 'to' | null>(null);
@@ -35,8 +37,12 @@ export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(f
   }
   // Art 2026-11-11: the chosen option is filled solid with the accent and its text turns dark.
   function face(label: string, selected: boolean) {
-    return <>{selected ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.accent }]} /> : <DiaryGlass />}
-      <PanelBorder color={selected ? colors.accent : colors.border} /><ProductText style={[styles.option, selected && { color: colors.onAccent }]}>{label}</ProductText></>;
+    // The fill and its dark label fade in together over the plain option (Rust, uiDuration).
+    return <><DiaryGlass /><ProductText style={styles.option}>{label}</ProductText>
+      <Fade opacity={selected ? 1 : 0} duration={reduced ? 0 : uiDuration} style={[StyleSheet.absoluteFill, styles.fill, { backgroundColor: colors.accent }]}>
+        <ProductText style={[styles.option, { color: colors.onAccent }]}>{label}</ProductText>
+      </Fade>
+      <PanelBorder color={selected ? colors.accent : colors.border} /></>;
   }
   function choice(label: string, selected: boolean, action: () => void) {
     return <Pressable key={label} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: selected }} onPress={action} style={styles.choice}>{face(label, selected)}</Pressable>;
@@ -71,4 +77,4 @@ export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(f
     <ProductButton label="СБРОСИТЬ ФИЛЬТРЫ" kind="ghost" onPress={() => onApply({ ...emptyDiaryFilter })} />
   </View>;
 }
-const styles = StyleSheet.create({ root: { gap: 14 }, heading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, title: { fontSize: 14, lineHeight: 20 }, wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, choice: { minHeight: 40, minWidth: 36, paddingHorizontal: 9, paddingVertical: 8, justifyContent: 'center' }, option: { fontSize: 8, lineHeight: 13 }, range: { flexDirection: 'row', gap: 8 }, dateField: { flex: 1, minWidth: 0, minHeight: 56, paddingHorizontal: 10, paddingVertical: 8, gap: 4 }, dateCaption: { fontSize: 8, lineHeight: 13 }, dateValue: { fontSize: 10, lineHeight: 16 } });
+const styles = StyleSheet.create({ root: { gap: 14 }, heading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, title: { fontSize: 14, lineHeight: 20 }, wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, choice: { minHeight: 40, minWidth: 36, paddingHorizontal: 9, paddingVertical: 8, justifyContent: 'center' }, fill: { paddingHorizontal: 9, paddingVertical: 8, justifyContent: 'center', pointerEvents: 'none' }, option: { fontSize: 8, lineHeight: 13 }, range: { flexDirection: 'row', gap: 8 }, dateField: { flex: 1, minWidth: 0, minHeight: 56, paddingHorizontal: 10, paddingVertical: 8, gap: 4 }, dateCaption: { fontSize: 8, lineHeight: 13 }, dateValue: { fontSize: 10, lineHeight: 16 } });

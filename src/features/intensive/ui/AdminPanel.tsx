@@ -7,7 +7,8 @@ import type { DirectoryEntry } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import { Avatar, GlassField, Glyph, ListGroup, ListItem } from './chrome';
-import { formatTime, Note, problemText, Tabs } from './parts';
+import { formatTime, Loading, Note, problemText, Tabs } from './parts';
+import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
 type Group = 'waiting' | 'walkers' | 'team';
@@ -43,7 +44,7 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
     return () => { alive = false; };
   }, [session, version]);
 
-  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Note center>Загружаю людей…</Note>}</View>;
+  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Loading center>Загружаю людей…</Loading>}</View>;
   const byId = new Map(directory.map(entry => [entry.userId, entry]));
   const person = selected ? byId.get(selected) : undefined;
   if (person) return <PersonCard session={session} person={person} directory={directory} onChanged={load} onOpenChat={onOpenChat} onBack={() => setSelected(null)} />;
@@ -64,12 +65,12 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
     ]} />
     {directory.length >= SEARCH_FROM ? <GlassField value={query} onChangeText={setQuery} placeholder="Имя или код" accessibilityLabel="Поиск по имени или коду"
       autoCapitalize="none" returnKeyType="search" right={<Glyph name="search" size={18} color={colors.muted} />} /> : null}
-    <ListGroup caption={needle ? 'ПОИСК ПО ВСЕМ' : undefined}
+    <Appear key={needle ? 'search' : group}><ListGroup caption={needle ? 'ПОИСК ПО ВСЕМ' : undefined}
       footer={!needle && group === 'waiting' && list.length ? 'Новые аккаунты. Откройте человека и назначьте ему проводника.' : undefined}>
       {list.length ? list.map((entry, index) => <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={44} accent={isStaff(entry)} />}
         title={entry.name} detail={describe(entry, byId)} onPress={() => setSelected(entry.userId)} last={index === list.length - 1} />)
         : <ListItem glyph="people" title={needle ? 'Никого не нашлось' : 'Здесь пока никого'} last />}
-    </ListGroup>
+    </ListGroup></Appear>
     <ProductButton label="ОБНОВИТЬ" kind="ghost" onPress={load} />
     {error ? <Note tone="error">{error}</Note> : null}
   </View>;

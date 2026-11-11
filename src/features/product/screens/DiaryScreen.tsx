@@ -13,7 +13,10 @@ import { ProductToggle } from '../ProductToggle';
 import { productLevels, productStepNames } from '../content';
 import { useProduct } from '../state/ProductProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
-import { DIARY_TEXT_LIMIT, type DiaryCategory, type Observation } from '../state/model';
+import { DIARY_TEXT_LIMIT, type DiaryCategory, type DiaryText, type Observation } from '../state/model';
+import { EditBar } from '../messages/EditBar';
+import { canCopy, useMenuAnchor, type MenuItem, type MenuRect } from '../messages/menu';
+import { MessageMenu } from '../messages/MessageMenu';
 import { useProductLayout, useProductSpacing } from '../layout';
 import { Panel, ProductButton, ProductIconButton, ProductScreen, ProductText } from '../ui';
 import { DiaryGlass } from '../diary/DiaryGlass';
@@ -46,7 +49,7 @@ function dayLabel(time: number) {
 
 export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles), { gutter } = useProductSpacing(), { width, height } = useWindowDimensions(), { air, icon } = useProductLayout();
-  const { observations, diaryEntries = [], listenLater = [], settings, ready, resetting, error: storageError, retryLoad, updateSettings, saveDiaryText, deleteObservation, setListenLater } = useProduct();
+  const { observations, diaryEntries = [], listenLater = [], settings, ready, resetting, error: storageError, retryLoad, updateSettings, saveDiaryText, editDiaryText, deleteObservation, setListenLater } = useProduct();
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const keyboard = useDiaryKeyboard();
@@ -57,6 +60,11 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
   const [leaving, setLeaving] = useState<string | null>(null), [revive, setRevive] = useState(0);
   const [sheetKind, setSheetKind] = useState<Sheet>(null), [editorSession, setEditorSession] = useState(0);
   const [material, setMaterial] = useState<Observation | null>(null);
+  // The entry menu (long-press, right-click) and the entry whose text the composer is changing.
+  const [menu, setMenu] = useState<{ entry: FeedEntry; open: boolean; anchor: MenuRect } | null>(null);
+  const [editing, setEditing] = useState<DiaryText | null>(null);
+  /** The unsent draft waits while an entry is changed and comes back afterwards. */
+  const heldDraft = useRef<{ text: string; format: DiaryTextRun[]; category: DiaryCategory } | null>(null);
   const [text, setText] = useState(''), [category, setCategory] = useState<DiaryCategory>('observation');
   useWebUpdateBlock(!!text.trim());
   const [format, setFormat] = useState<DiaryTextRun[]>([]), [feedScrolled, setFeedScrolled] = useState(false);
@@ -125,8 +133,41 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
     setNotice('ЗАПИСЬ СОХРАНЕНА');
     requestAnimationFrame(() => { if (newest) list.current?.scrollToOffset({ offset: 0, animated: true }); else list.current?.scrollToEnd({ animated: true }); });
   }
+  function startEditing(entry: DiaryText) {
+    if (!editing) heldDraft.current = { text, format, category };
+    setEditing(entry); setText(entry.text); setFormat(entry.format ?? []); setCategory(entry.category); setError('');
+    setTimeout(() => input.current?.focus(), 60);
+  }
+  function stopEditing() {
+    const draft = heldDraft.current; heldDraft.current = null;
+    setEditing(null); setText(draft?.text ?? ''); setFormat(draft?.format ?? []); setCategory(draft?.category ?? 'observation'); setInputHeight(composerHeight);
+  }
+  // An edit ends by itself when its entry is deleted.
+  const editingNow = editing && diaryEntries.some(entry => entry.id === editing.id) ? editing : null;
+  async function sendEdit(entry: DiaryText) {
+    if (text.trim() === entry.text && JSON.stringify(format) === JSON.stringify(entry.format ?? [])) { stopEditing(); return; }
+    pending.current = true; setBusy(true); setError('');
+    try { await editDiaryText(entry.id, text, format.length ? format : undefined); if (alive.current) { stopEditing(); Keyboard.dismiss(); setNotice('ЗАПИСЬ ИЗМЕНЕНА'); } }
+    catch (problem) { if (alive.current) setError(problem instanceof Error ? problem.message : 'Не удалось изменить запись.'); }
+    finally { pending.current = false; if (alive.current) setBusy(false); }
+  }
+  function closeMenu() { setMenu(current => current && { ...current, open: false }); }
+  function afterMenu(next: () => void) { closeMenu(); setTimeout(next, 280); }
+  const menuItems = useMemo<MenuItem[]>(() => {
+    const entry = menu?.entry;
+    if (!entry) return [];
+    const words = !isArchitecture(entry) && entry.kind === 'text' ? entry : null;
+    return [
+      ...(words ? [{ key: 'edit', label: 'Изменить', icon: 'edit' as const, onPress: () => afterMenu(() => startEditing(words)) }] : []),
+      ...(words && canCopy() ? [{ key: 'copy', label: 'Копировать', icon: 'copy' as const, onPress: () => { closeMenu(); navigator.clipboard.writeText(words.text).then(() => setNotice('СКОПИРОВАНО'), () => setError('Не удалось скопировать.')); } }] : []),
+      { key: 'remove', label: 'Удалить', icon: 'trash' as const, tone: 'error' as const, onPress: () => afterMenu(() => { setDeleteId(entry.id); open('delete'); }) },
+    ];
+    // The items belong to the entry the menu was opened on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menu?.entry]);
   async function sendText() {
     if (!text.trim() || !ready || pending.current) return;
+    if (editingNow) { await sendEdit(editingNow); return; }
     pending.current = true; setBusy(true); setError('');
     try { await saveDiaryText(text, category, format.length ? format : undefined); if (alive.current) { setText(''); setFormat([]); setInputHeight(composerHeight); Keyboard.dismiss(); afterSave(); } }
     catch (problem) { if (alive.current) setError(problem instanceof Error ? problem.message : 'Не удалось сохранить текст.'); }
@@ -146,7 +187,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
   async function gone(id: string) {
     if (pending.current) return;
     pending.current = true; setBusy(true);
-    try { await deleteObservation(id); }
+    try { await deleteObservation(id); if (alive.current && editing?.id === id) stopEditing(); }
     catch (problem) { if (alive.current) { setError(problem instanceof Error ? problem.message : 'Не удалось удалить запись.'); setRevive(value => value + 1); } }
     finally { pending.current = false; if (alive.current) { setBusy(false); setLeaving(null); setDeleteId(null); } }
   }
@@ -200,8 +241,9 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
             const architecture = isArchitecture(entry), audio = architecture || entry.kind === 'audio', marked = listenLater.includes(entry.id);
             return <View testID={`diary-entry-${entry.id}`}>
               {index === 0 || diaryDay(entries[index - 1].createdAt) !== diaryDay(entry.createdAt) ? <View style={styles.dayRow}><View style={styles.dayLine} /><ProductText style={styles.day}>{dayLabel(entry.createdAt)}</ProductText><View style={styles.dayLine} /></View> : null}
-              <Leave key={`${entry.id}-${revive}`} leaving={leaving === entry.id} onGone={() => { void gone(entry.id); }}><Panel style={[styles.card, {backgroundColor:"transparent"}]}><DiaryGlass shape="card" />
-                <View style={styles.cardMeta}><View style={styles.kindRow}><DiaryEntryIcon kind={architecture ? 'architecture' : entry.category} /><ProductText style={styles.kind}>{architecture ? 'АРХИТЕКТУРА' : entry.category === 'dynamics' ? 'ОТЧЁТ О ДИНАМИКЕ' : 'НАБЛЮДЕНИЕ'}</ProductText></View><ProductText style={styles.time}>{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</ProductText></View>
+              <Leave key={`${entry.id}-${revive}`} leaving={leaving === entry.id} onGone={() => { void gone(entry.id); }}><EntryHold disabled={busy || !ready || voice.capturing} marked={editingNow?.id === entry.id}
+                onMenu={anchor => { Keyboard.dismiss(); setMenu({ entry, open: true, anchor }); }}><Panel style={[styles.card, {backgroundColor:"transparent"}]}><DiaryGlass shape="card" />
+                <View style={styles.cardMeta}><View style={styles.kindRow}><DiaryEntryIcon kind={architecture ? 'architecture' : entry.category} /><ProductText style={styles.kind}>{architecture ? 'АРХИТЕКТУРА' : entry.category === 'dynamics' ? 'ОТЧЁТ О ДИНАМИКЕ' : 'НАБЛЮДЕНИЕ'}</ProductText></View><ProductText style={styles.time}>{'editedAt' in entry && entry.editedAt ? 'ИЗМ. ' : ''}{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</ProductText></View>
                 {architecture && <>
                   <View style={styles.stepRow}>
                     <ProductText style={styles.level}>{productLevels.find(level => level.id === entry.level)?.title} ·</ProductText>
@@ -222,7 +264,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
                   {audio && <Pressable accessibilityRole="button" accessibilityLabel={marked ? 'Убрать из подборки к прослушиванию' : 'Добавить к прослушиванию'} accessibilityState={{ selected: marked }} onPress={() => { void mark(entry.id); }} style={styles.bookmark}><DiaryIcon name="bookmark" filled={marked} size={15} /><ProductText style={styles.bookmarkText}>{marked ? 'В ПОДБОРКЕ' : 'К ПРОСЛУШИВАНИЮ'}</ProductText></Pressable>}
                   <Pressable accessibilityRole="button" accessibilityLabel="Удалить запись" onPress={() => { setDeleteId(entry.id); open('delete'); }} style={styles.delete}><DiaryIcon name="trash" size={16} /></Pressable>
                 </View>
-              </Panel></Leave>
+              </Panel></EntryHold></Leave>
             </View>;
           }}
           ListEmptyComponent={<View style={styles.empty}><ProductText variant="title" style={styles.emptyTitle}>{!ready ? 'ОТКРЫВАЕМ ДНЕВНИК' : collection ? 'К ПРОСЛУШИВАНИЮ' : activeFilter || allEntries.length ? 'ЗДЕСЬ ПОКА НЕТ ЗАПИСЕЙ' : 'ЗАПИШИ СВОИ НАБЛЮДЕНИЯ'}</ProductText><ProductText style={styles.emptyCopy}>{collection ? 'ОТМЕЧАЙ ГОЛОСОВЫЕ ЗАПИСИ ЗАКЛАДКОЙ, ЧТОБЫ ВЕРНУТЬСЯ К НИМ.' : activeFilter || allEntries.length ? 'ИЗМЕНИ ФИЛЬТРЫ ИЛИ ДОБАВЬ НОВОЕ НАБЛЮДЕНИЕ.' : 'ИНСАЙТ. ОЩУЩЕНИЕ. МАЛЕНЬКИЙ СДВИГ.\nЗАПИШИ ТЕКСТОМ ИЛИ ГОЛОСОМ.'}</ProductText></View>}
@@ -234,7 +276,8 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
           {!!(storageError || error) && <View><ProductText accessibilityRole="alert" style={styles.error}>{error || storageError}</ProductText>{!ready && <ProductButton label="ПОВТОРИТЬ ЗАГРУЗКУ" kind="ghost" onPress={() => { void retryLoad(); }} />}</View>}
           {!!notice && <ProductText accessibilityLiveRegion="polite" style={styles.notice}>{notice}</ProductText>}
           {!!(voice.recorder.error || voice.hint) && !voice.review && <ProductText accessibilityRole={voice.recorder.error ? 'alert' : undefined} style={voice.recorder.error ? styles.error : styles.notice}>{voice.recorder.error || voice.hint}</ProductText>}
-          {category === 'dynamics' && <View testID="diary-dynamics-draft" style={styles.draftCategory}><ProductText style={[styles.small, { flex: 1 }]}>ОТЧЁТ О ДИНАМИКЕ · ЧТО ИЗМЕНИЛОСЬ ЗА ДЕНЬ?</ProductText><Pressable accessibilityRole="button" accessibilityLabel="Писать обычное наблюдение" disabled={voice.capturing || voice.review} onPress={() => setCategory('observation')} style={styles.filterButton}><DiaryIcon name="close" size={16} /></Pressable></View>}
+          {category === 'dynamics' && !editingNow && <View testID="diary-dynamics-draft" style={styles.draftCategory}><ProductText style={[styles.small, { flex: 1 }]}>ОТЧЁТ О ДИНАМИКЕ · ЧТО ИЗМЕНИЛОСЬ ЗА ДЕНЬ?</ProductText><Pressable accessibilityRole="button" accessibilityLabel="Писать обычное наблюдение" disabled={voice.capturing || voice.review} onPress={() => setCategory('observation')} style={styles.filterButton}><DiaryIcon name="close" size={16} /></Pressable></View>}
+          {editingNow && <EditBar key={editingNow.id} quote={editingNow.text} disabled={busy} onCancel={stopEditing} />}
           <View style={styles.composerRow}>
             <View style={styles.inputWrap}><DiaryGlass shape="input" /><PanelArtwork source={frames.input} />{voice.capturing ? <View testID="diary-recording-timer" style={[styles.recordingInput, { height: composerHeight }]}>
               <View style={[styles.recordingDot, { backgroundColor: colors.accent }]} />
@@ -248,13 +291,14 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
               <Pressable accessibilityRole="button" accessibilityLabel="Раскрыть редактор текста" accessibilityState={{ expanded: sheet === 'editor' }} disabled={!ready || busy || resetting} onPress={() => open('editor')} style={styles.expandInput}><DiaryIcon name="expand" size={16} /></Pressable>
             </>}
             </View>
-            {text.trim() && !voice.capturing ? <Pressable accessibilityRole="button" accessibilityLabel="Сохранить текст" accessibilityState={{ disabled: busy || !ready || resetting, busy }} disabled={!ready || busy || resetting} onPress={() => { void sendText(); }} style={[styles.voiceButton, { width: composerHeight, height: composerHeight }]}><DiaryGlass /><PanelBorder color={colors.accent} />{busy ? <ProductText color={colors.text}>···</ProductText> : <DiaryIcon name="send" size={20} />}</Pressable>
-              : <DiaryRecordButton voice={voice} size={composerHeight} disabled={!ready || busy || resetting || sheet !== null} />}
+            {text.trim() && !voice.capturing ? <Pressable accessibilityRole="button" accessibilityLabel={editingNow ? 'Сохранить изменение' : 'Сохранить текст'} accessibilityState={{ disabled: busy || !ready || resetting, busy }} disabled={!ready || busy || resetting} onPress={() => { void sendText(); }} style={[styles.voiceButton, { width: composerHeight, height: composerHeight }]}><DiaryGlass /><PanelBorder color={colors.accent} />{busy ? <ProductText color={colors.text}>···</ProductText> : <DiaryIcon name="send" size={20} />}</Pressable>
+              : <DiaryRecordButton voice={voice} size={composerHeight} disabled={!ready || busy || resetting || sheet !== null || !!editingNow} />}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="О локальном хранении дневника" onPress={() => open('info')} style={styles.storageNote}><ProductText style={styles.storageText}>ДНЕВНИК ЛОКАЛЬНЫЙ</ProductText><DiaryAsset name="info" dim /></Pressable>
         </View>
       </KeyboardAvoidingView>
     </ProductScreen>
+    <MessageMenu open={!!menu?.open && focused} anchor={menu?.anchor ?? null} side="start" items={menuItems} onClose={closeMenu} />
     <BottomSheet open={sheet !== null && focused} onClose={closeSheet} reducedMotion={settings.reducedMotion} bottomInset={keyboard.bottomInset}
       onDismiss={() => { setSheetKind(null); if (focusAfterSheet.current && focused) { focusAfterSheet.current = false; input.current?.focus(); } }}>
       {sheetKind === 'material' && material && diaryMaterial(material) ? <HintPanel text={diaryMaterial(material)!} reducedMotion={settings.reducedMotion} /> : sheetKind === 'voice' ?
@@ -293,6 +337,17 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
       </DiaryDesignPanel>}
     </BottomSheet>
   </>;
+}
+
+/** A diary card opens its menu by long-press or right-click, as a chat message does. Its own
+ * buttons keep their taps; the card itself has no role, so no button sits inside a button. */
+function EntryHold({ children, disabled, marked, onMenu }: { children: React.ReactNode; disabled: boolean; marked: boolean; onMenu(anchor: MenuRect): void }) {
+  const anchor = useRef<View>(null);
+  const openMenu = useMenuAnchor(anchor, disabled ? undefined : onMenu);
+  return <Pressable ref={anchor} accessibilityActions={disabled ? undefined : [{ name: 'menu', label: 'Действия с записью' }]} onAccessibilityAction={openMenu}
+    onLongPress={disabled ? undefined : openMenu} delayLongPress={350} style={({ pressed }) => [(pressed || marked) && { opacity: .7 }, Platform.OS === 'web' && { cursor: 'auto' } as ViewStyle]}>
+    {children}
+  </Pressable>;
 }
 
 const createStyles = (colors: ProductColors) => StyleSheet.create({

@@ -29,6 +29,33 @@ export class ElementTimeline {
     target_height_curve(value: number, duration: number, curve: Float64Array): void;
 }
 
+export class IconMotion {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * `stroke` is the approved line width in layout pixels and `width` the glyph's
+     * rendered width, so the still glyph matches the former raster exactly. Hair
+     * outlines stay 0.25 layout pixels; ground parts take the host's `--icon-ground`.
+     */
+    static create(root: Element, name: string, filled: boolean, round: boolean, stroke: number, width: number): IconMotion;
+    dispose(): void;
+    /**
+     * Advances to `at` (ms). Returns whether another frame is needed.
+     */
+    frame(at: number): boolean;
+    /**
+     * Plays the glyph's tap scene from its start on the next frame.
+     */
+    play(): void;
+    reduced(value: boolean): void;
+    set_filled(filled: boolean): void;
+    /**
+     * Swaps the glyph. Play and pause morph into each other; any other change redraws.
+     */
+    set_name(name: string): void;
+}
+
 export class ProductRenderer {
     private constructor();
     free(): void;
@@ -148,6 +175,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_elementtimeline_free: (a: number, b: number) => void;
+    readonly __wbg_iconmotion_free: (a: number, b: number) => void;
     readonly __wbg_productrenderer_free: (a: number, b: number) => void;
     readonly __wbg_productstate_free: (a: number, b: number) => void;
     readonly __wbg_svgtimeline_free: (a: number, b: number) => void;
@@ -168,6 +196,13 @@ export interface InitOutput {
     readonly elementtimeline_target_height: (a: number, b: number, c: number) => void;
     readonly elementtimeline_target_height_curve: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly graphics_diagnostics: () => void;
+    readonly iconmotion_create: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly iconmotion_dispose: (a: number) => void;
+    readonly iconmotion_frame: (a: number, b: number) => number;
+    readonly iconmotion_play: (a: number) => void;
+    readonly iconmotion_reduced: (a: number, b: number) => void;
+    readonly iconmotion_set_filled: (a: number, b: number) => void;
+    readonly iconmotion_set_name: (a: number, b: number, c: number, d: number) => void;
     readonly level_panel_geometry: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly panel_geometry: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly panel_reveal: (a: number, b: number, c: number) => void;
@@ -228,12 +263,12 @@ export interface InitOutput {
     readonly texttimeline_frame: (a: number, b: number) => number;
     readonly texttimeline_reset_clock: (a: number) => void;
     readonly texttimeline_resize: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_2116: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2116_80: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2116_81: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_7991: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_8012: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2120: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_2141: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2141_87: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2141_88: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8019: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8040: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2145: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

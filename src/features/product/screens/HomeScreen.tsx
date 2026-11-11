@@ -1,6 +1,7 @@
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { Image } from 'expo-image';
+import { RustIcon } from '../motion/RustIcon';
 import { useEffect, useState } from 'react';
 import { AppState, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useIsFocused } from 'expo-router';
@@ -50,7 +51,10 @@ export function HomeScreen({
   const large = kind !== 'phone';
   // Side by side, each card is wide enough to carry its name on one line.
   const oneLine = columns === 2, titleStyle = [styles.cardTitle, large && styles.cardTitleLarge];
-  const arrowImage = <Image source={arrow} tintColor={colors.iconTint} style={large ? styles.arrowLarge : styles.arrowImage} contentFit="contain" />;
+  const arrowSize = large ? 22 : 16;
+  // The card's press leaves the screen, so the arrow darts once as the card appears.
+  const arrowImage = <RustIcon name="home-arrow" width={arrowSize} height={arrowSize} stroke={.75 * arrowSize / 16} round={false} color={colors.iconTint ?? '#F5DD07'} autoplay
+    fallback={<Image source={arrow} tintColor={colors.iconTint} style={large ? styles.arrowLarge : styles.arrowImage} contentFit="contain" />} />;
   return (
     <ProductScreen scroll={false} layout="wide" background={<MatrixBackdrop active={focused && foreground} reducedMotion={!!reducedMotion} />}>
       <Reveal reducedMotion={reducedMotion} style={styles.header}>

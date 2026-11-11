@@ -131,3 +131,7 @@ export function useProduct() {
   if (!value) throw new Error('ProductProvider должен находиться над экраном приложения.');
   return value;
 }
+/** For shared parts (icons) that may also render outside the product screens. */
+export function useOptionalProduct() {
+  return useContext(ProductContext);
+}

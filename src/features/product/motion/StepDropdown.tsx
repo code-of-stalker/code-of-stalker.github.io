@@ -2,6 +2,7 @@ import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
+import { RustIcon } from './RustIcon';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { productStepNames } from '../content';
@@ -42,11 +43,11 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
         style={[styles.stepTitle, { paddingLeft: inset }]}>
         <ProductText testID={`step-option-label-${value}`} fitToWidth variant="label" color={value === current ? colors.text : colors.muted} style={styles.optionText}>{`ШАГ ${value}. ${productStepNames[value]}`}</ProductText>
       </Pressable>
-      {disabled ? <View style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}><Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" /></View>
+      {disabled ? <View style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}><RustIcon name="step-lock" width={12} height={14} color={colors.iconTint ?? '#B69D4B'} autoplay fallback={<Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" />} /></View>
         : <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
           onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }, Platform.OS === 'web' && { outlineWidth: 0 }]}>
           <View pointerEvents="none" style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-          <Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />
+          <RustIcon name="sections" width={18} height={18} stroke={.85} color={expanded ? colors.text : colors.accent} fallback={<Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />} />
         </Pressable>}
     </View>
     {!!groups.length && <Animated.View pointerEvents={expanded ? 'auto' : 'none'} accessibilityElementsHidden={!expanded} aria-hidden={!expanded}

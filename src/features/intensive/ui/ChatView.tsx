@@ -30,6 +30,7 @@ import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
 import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
 import { RoleMark } from './RoleMark';
 import { Breathe } from '../../product/motion/Breathe';
+import { Leave } from '../../product/motion/Leave';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -172,6 +173,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const [menu, setMenu] = useState<Sheet>(null);
   const [doomed, setDoomed] = useState<Sheet>(null);
   const [removing, setRemoving] = useState(false);
+  // A deleted message folds away first (Rust, Leave); the server call runs when it is gone.
+  const [leaving, setLeaving] = useState<DecodedMessage['id'] | null>(null), [revive, setRevive] = useState(0);
   const [editing, setEditing] = useState<DecodedMessage | null>(null);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -426,13 +429,16 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     closeMenu();
     navigator.clipboard.writeText(text).then(() => flash('СКОПИРОВАНО'), () => flash('Не удалось скопировать.'));
   };
-  const removeMessage = async () => {
+  const confirmRemove = () => {
     const message = doomed?.message;
-    if (!message || removing) return;
+    if (!message || removing || leaving !== null) return;
+    setDoomed(closed); setLeaving(message.id);
+  };
+  const removeMessage = async (id: DecodedMessage['id']) => {
     setRemoving(true);
-    try { merge([await session.remove(chatId, message.id)]); setError(''); }
-    catch (problem) { setError(problemText(problem, say('Не удалось удалить сообщение. Попробуй ещё раз.', 'Не удалось удалить сообщение. Попробуйте ещё раз.'), formal)); }
-    finally { setRemoving(false); setDoomed(closed); }
+    try { merge([await session.remove(chatId, id)]); setError(''); }
+    catch (problem) { setRevive(count => count + 1); setError(problemText(problem, say('Не удалось удалить сообщение. Попробуй ещё раз.', 'Не удалось удалить сообщение. Попробуйте ещё раз.'), formal)); }
+    finally { setRemoving(false); setLeaving(null); }
   };
 
   const names = useMemo(() => new Map(members.map(m => [m.userId, m])), [members]);
@@ -474,14 +480,14 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     const last = next ? opensRun(next, message) : !waiting.length || pendingOpens;
     const author = names.get(message.senderId);
     const actions = actionsFor(message);
-    feed.push(<Bubble key={message.id} own={own} first={first} frame={(own ? frames.own : frames.roles[message.senderRole] ?? frames.other)[bubbleSpot(first, last)]}
+    feed.push(<Leave key={`${message.id}-${revive}`} leaving={leaving === message.id} onGone={() => { void removeMessage(message.id); }}><Bubble own={own} first={first} frame={(own ? frames.own : frames.roles[message.senderRole] ?? frames.other)[bubbleSpot(first, last)]}
       author={!own && first ? { name: author?.name ?? 'Бывший участник', role: message.senderRole, ink: frames.inks[message.senderRole] } : undefined}
       time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id || (!!menu?.open && menu.message.id === message.id)}
       onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'} report={message.report}>
       {message.kind === 'voice' && message.voice
         ? <VoiceBody voice={message.voice} active={activeVoice === message.id} onActivate={() => setActiveVoice(message.id)} source={{ session, chatId, message }} />
         : <MessageText text={message.text} />}
-    </Bubble>);
+    </Bubble></Leave>);
   });
   waiting.forEach((item, index) => {
     const first = index === 0 ? pendingOpens : item.report || waiting[index - 1].report;
@@ -598,7 +604,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
       <DiaryReportGuide onWrite={startReport} onView={() => showReports(true)} />
     </BottomSheet>
     <ConfirmSheet open={!!doomed?.open} title="УДАЛИТЬ СООБЩЕНИЕ?" text="Сообщение исчезнет у всех участников переписки." confirmLabel="УДАЛИТЬ"
-      busy={removing} onConfirm={() => { void removeMessage(); }} onClose={() => setDoomed(closed)} />
+      busy={removing} onConfirm={confirmRemove} onClose={() => setDoomed(closed)} />
     <BottomSheet open={info} onClose={() => setInfo(false)} reducedMotion={settings.reducedMotion} bottomInset={keyboard.bottomInset}>
       <DiaryDesignPanel title="УЧАСТНИКИ ПЕРЕПИСКИ" onClose={() => setInfo(false)}
         footer={<ProductButton label="ПОНЯТНО" kind="outline" onPress={() => setInfo(false)} />}>

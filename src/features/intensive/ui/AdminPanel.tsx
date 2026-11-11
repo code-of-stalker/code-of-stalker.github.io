@@ -7,7 +7,7 @@ import type { DirectoryEntry } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import { Avatar, GlassField, Glyph, ListGroup, ListItem } from './chrome';
-import { formatTime, Loading, Note, problemText, Tabs } from './parts';
+import { formatTime, Note, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
@@ -44,7 +44,7 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
     return () => { alive = false; };
   }, [session, version]);
 
-  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Loading center>Загружаю людей…</Loading>}</View>;
+  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Skeleton rows={6} label="Загружаю людей…" />}</View>;
   const byId = new Map(directory.map(entry => [entry.userId, entry]));
   const person = selected ? byId.get(selected) : undefined;
   if (person) return <PersonCard session={session} person={person} directory={directory} onChanged={load} onOpenChat={onOpenChat} onBack={() => setSelected(null)} />;

@@ -21,7 +21,7 @@ import { AdminPanel } from './AdminPanel';
 import { ChatList, ChatView } from './ChatView';
 import { ConfirmSheet, GlassIconButton, Plate } from './chrome';
 import { ConfirmWords, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
-import { FormalTone, Header, Loading, Note, PinPad, problemText, Tabs } from './parts';
+import { FormalTone, Header, Loading, Note, PinPad, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 
 /** Locks the account when the page stays hidden this long. */
@@ -356,7 +356,7 @@ function StaffChats({ session, onOpen }: { session: IntensiveSession; onOpen: (c
     return () => { alive = false; clearInterval(timer); };
   }, [session]);
   if (error && !chats) return <Note tone="error">{error}</Note>;
-  if (!chats) return <Loading>Загружаю…</Loading>;
+  if (!chats) return <Skeleton />;
   return <ChatList session={session} chats={chats} onOpen={onOpen} />;
 }
 

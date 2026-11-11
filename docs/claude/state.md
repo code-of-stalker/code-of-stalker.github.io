@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-11. Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-11. Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Intensive daily reports and Rust role marks shipped 2026-11-11. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -390,8 +390,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB, 5 min ≈ 0.9 MB at 24 kbit/s); longer needs a schema change.
 - Chat top (Art 2026-11-11, shipped 2026-11-11 as a small fix): no line and no solid fill under the
   header; the feed melts over 24 px under it once scrolled (diary's mask, `--chat-fade-top` in `ChatView.tsx`).
-- In progress, Art 2026-11-11: daily reports in Intensive «как в дневнике», into the chat with the
-  guide (Art: «В чат с проводником»). Done on the branch: the report mark sealed inside the message
+- Daily reports + role marks, shipped to `main` 2026-11-11 (Art: «Ок, пушим»). Daily reports in
+  Intensive «как в дневнике», into the chat with the guide (Art: «В чат с проводником»): the report mark sealed inside the message
   (no server change), report mode for text and voice, report cards, reports-only view (header
   icon), the diary's guide sheet shared as `DiaryReportGuide` (the diary uses it too), and the
   walker's plate above the chat (shared `DiaryReportPrompt`): folds by the diary's drag (up folds,
@@ -407,10 +407,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   `ui/roleMarks.generated.ts`; replaced the static `roleGlyph`. Checked in the demo (Тишина, PC
   and 390 px phone, reduced motion). A person has one role per chat (`private.chat_role`:
   walker > guide > admin > main), so Яна leading a walker is ПРОВОДНИК (flame) in that chat.
-  Art OK'd the marks in Тишина («Ок, другие темы»); the 4-theme tints wait for his look
-  (picture `output/role-themes.png`). Branch `claude/intensive-chat-9e8099`, local only; push
-  only on his OK.
-- Next: Art's look at the role tints in all 4 themes, then `/ship-to-main` on his OK. Walker screens keep naming Яна («Яна назначит…»)
+  Art OK'd the marks in Тишина («Ок, другие темы») and the 4-theme tints (`output/role-themes.png`).
+- Next: nothing waits on this branch. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 

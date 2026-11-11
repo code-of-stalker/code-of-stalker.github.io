@@ -103,8 +103,8 @@ export function useIntensiveFrames() {
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
     const role = (contour: string, ink: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92"/>
-<path d="${contour}" fill="url(#intensive-role)" fill-opacity="0.34" stroke="${ink}" stroke-opacity="0.9" stroke-width="0.25"/>
-<defs><linearGradient id="intensive-role" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}"/><stop offset="1" stop-color="${ink}" stop-opacity="0.3"/></linearGradient></defs></svg>`);
+<path d="${contour}" fill="url(#intensive-role)" stroke="${ink}" stroke-opacity="0.85" stroke-width="0.25"/>
+<defs><linearGradient id="intensive-role" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}" stop-opacity="0.05"/><stop offset="1" stop-color="${ink}" stop-opacity="0.15"/></linearGradient></defs></svg>`);
     const roles: Partial<Record<Place, Record<BubbleSpot, { uri: string }>>> = {};
     for (const place of places) {
       const ink = tints?.[place];

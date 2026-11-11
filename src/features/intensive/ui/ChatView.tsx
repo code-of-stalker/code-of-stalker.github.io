@@ -24,7 +24,7 @@ import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductIconButton, ProductText } from '../../product/ui';
 import type { ChatSummary, Member, Place } from '../backend';
-import { draftFor, keepDraft, keepPreview, markSeen, previewFor, seenId } from '../chatMemory';
+import { draftFor, keepDraft, keepPreview, keepReportFolded, markSeen, previewFor, reportFolded, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
 import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, roleGlyph, useIntensiveFrames } from './chrome';
@@ -175,7 +175,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const [saving, setSaving] = useState(false);
   const [activeVoice, setActiveVoice] = useState<number | null>(null);
   // The diary's daily report: the plate opens the guide sheet, which starts report mode or shows the reports.
-  // Unlike the diary's, the walker's plate cannot be folded: it leaves only once today's report is sent (Art).
+  // The walker's plate folds by a drag like the diary's (kept on this device) and leaves once today's report is sent.
+  const [reportFold, setReportFold] = useState(reportFolded);
   const [reportMode, setReportMode] = useState(false);
   const [reportsOnly, setReportsOnly] = useState(false);
   const [reportGuide, setReportGuide] = useState(false);
@@ -516,8 +517,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
       {reportsOnly ? <Pressable accessibilityRole="button" accessibilityLabel="Показать всю переписку" onPress={() => showReports(false)} style={[styles.applied, { marginHorizontal: gutter }]}>
         <ProductText maxFontSize={10} style={styles.appliedText}>{`ТОЛЬКО ОТЧЁТЫ · ${reports.length}`}</ProductText><DiaryIcon name="close" size={14} />
       </Pressable> : null}
-      {/* The walker's daily report plate: no fold, it leaves only once today's report is sent (Art). */}
-      {walker && ready && !reportedToday ? <DiaryReportPrompt testID="intensive-report-prompt" title={diaryReport.promptTitle} hint={diaryReport.promptHint}
+      {walker && ready && !reportedToday ? <DiaryReportPrompt testID="intensive-report-prompt" title={diaryReport.promptTitle} hint={diaryReport.promptHint} foldedLabel={diaryReport.promptHint}
+        collapsed={reportFold} onCollapsedChange={next => { setReportFold(next); keepReportFolded(next); }}
         accessibilityLabel={diaryReport.promptLabel} onPress={() => setReportGuide(true)} style={{ marginHorizontal: gutter }} /> : null}
       <View ref={feedViewport} style={[styles.feedWindow, Platform.OS === 'web' && feedFade]}>
         <ScrollView ref={scroll} style={styles.feed} contentContainerStyle={[styles.feedContent, { paddingHorizontal: gutter }, (empty || !ready) && styles.feedCentered]}
@@ -637,8 +638,8 @@ function Bubble({ own, first, frame, author, time: sentAt, edited = false, statu
       <PanelArtwork source={frame} />
       {author ? <View accessible accessibilityLabel={`${author.name}, ${shortPlace[author.role].toLowerCase()}`} style={styles.authorRow}>
         <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, styles.authorName, { color: author.ink }]}>{`${author.name} ·`}</ProductText>
-        <Glyph name={roleGlyph[author.role]} size={12} color={author.ink} />
         <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, { color: author.ink }]}>{shortPlace[author.role]}</ProductText>
+        <Glyph name={roleGlyph[author.role]} size={12} color={author.ink} />
       </View> : null}
       {report ? <View style={styles.reportTag}><DiaryEntryIcon kind="dynamics" /><ProductText maxFontSize={10} style={styles.reportKind}>{diaryReport.kind}</ProductText></View> : null}
       {children}

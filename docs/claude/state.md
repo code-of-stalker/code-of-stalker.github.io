@@ -399,7 +399,9 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
 
 ## Shipped features (all on main)
 - Art's fixes of 11.11 (`claude/art-fixes-1111-569d08`, shipped 2026-11-11): the diary's
-  daily report plate folds and remembers it (`settings.diaryReportCollapsed`; shared component
+  daily report plate folds by a drag up and unfolds by a drag down on its thin strip (Art: an
+  arrow beside the plus is clumsy), tap still opens the report; the state is remembered
+  (`settings.diaryReportCollapsed`; gesture rule `diary/report-fold-gesture.ts`; shared component
   `src/features/product/diary/DiaryReportPrompt.tsx`, meant for reuse by the Intensive diary);
   in recorded tasks the scroll cue sits centered at the very bottom under the step selector,
   never beside it (Art: «он не должен быть сбоку»), hidden while the selector is open; no

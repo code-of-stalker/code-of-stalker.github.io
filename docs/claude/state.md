@@ -399,11 +399,14 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
 
 ## Shipped features (all on main)
 - Soft emphasis (Art 11.11 chose variants A + C, shipped 2026-11-11): bold body text was harsh.
-  Emphasis keeps Disket Mono Bold but at 78% of the text colour with 0.06em tracking; on a page
-  or task text with an emphasis, the plain copy beside it is at 62% (`softBold`, `quietText`,
-  `fade` in `theme.ts`). Used in task explanations (`PracticeIntroScreen`) and reading pages
-  (`EconomyReadingPages`: bold paragraphs, spoken, statement, conclusion). Display headings, the
-  diary's user formatting and `DreamRealityText` keep their own faces.
+  Emphasis keeps Disket Mono Bold but at 90% of the text colour with 0.06em tracking; on a page
+  or task text with an emphasis, the plain copy beside it is at 74% (`softBold`, `quietText`,
+  `fade` in `theme.ts`; Art set 74/90). Site-wide: task explanations, reading pages (bold
+  paragraphs, spoken, statement, emphasis, conclusion), Step 1 conclusion, Step 2 emphasis, diary
+  labels. Only the diary's user formatting (the person's own bold) keeps the plain bold face.
+- Levels screen «ВЫ ЗДЕСЬ» (2026-11-11): a small accent diamond and caption in the current level's
+  header. Current = ИНТЕНСИВ if this device joined the Intensive (`hasDevice`) or progress chose it,
+  else БАЗОВЫЙ once a level was started; nothing before any level is chosen.
 - Art's fixes of 11.11 (`claude/art-fixes-1111-569d08`, shipped 2026-11-11): the diary's
   daily report plate folds by a drag up and unfolds by a drag down on its thin strip (Art: an
   arrow beside the plus is clumsy), tap still opens the report; the state is remembered

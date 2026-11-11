@@ -195,10 +195,15 @@ vec3 constellationStar(int c, int j) {
 // share; for each thing that flares its root and size, the way it reaches
 // and how far it has grown, how far it has folded, its light and writhe;
 // and the bead it leaves, with its light. All 0 on every other page.
+// (INNER: warm share, the two melts, and page 05's lit support.)
 #define INNER u_d[SLOT_INNER]
 #define EVENT(e, j) u_d[SLOT_INNER + 1 + 3 * (e) + (j)]
 #define FACT(e) u_d[SLOT_INNER + 1 + 3 * EVENTS + (e)]
 #define PULL(e) u_d[SLOT_INNER + 1 + 4 * EVENTS + (e)]
+// Page 05 (lib.rs Frame props): what the figure holds, its middle and
+// shape (0 a cup, 1 a phone, 2 a box), its up, its forward and how far it
+// has built, and the cup's water and the phone's screen. All 0 otherwise.
+#define PROP(k) u_d[SLOT_PROP + (k)]
 // What of a light is kept warm goes into the frame's alpha, by its luma;
 // the warm pass (warm.frag) adds it back in the theme's warm color.
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);

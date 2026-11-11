@@ -230,6 +230,14 @@ pub const PULL_STRETCH: f32 = 1.4;
 /// The thought melts the figure from its feet up: the points go out over
 /// this far under the melt's front (m).
 pub const MELT_BAND: f32 = 0.45;
+/// Page 05: what the figure holds, one thing at a time, drawn as its edges
+/// in this many pieces: a cup (its rim's and its foot's radii, half its
+/// height), a phone (half its width, length and thickness) and a box (half
+/// its side), m.
+pub const PROP_LINES: u32 = 96;
+pub const CUP: [f32; 3] = [0.036, 0.029, 0.05];
+pub const PHONE: [f32; 3] = [0.034, 0.07, 0.005];
+pub const BOX_HALF: f32 = 0.15;
 
 /// Peak light of each family.
 pub const CROWN_LIGHT: f32 = 1.0;
@@ -246,6 +254,7 @@ pub const DESK_LIGHT: f32 = 0.75;
 pub const VOICE_LIGHT: f32 = 1.15;
 pub const BRANCH_LIGHT: f32 = 1.0;
 pub const FACT_LIGHT: f32 = 2.2;
+pub const PROP_LIGHT: f32 = 0.85;
 /// The one met on page 02, of the figure's light.
 pub const OTHER_LIGHT: f32 = 0.6;
 /// Page 03's lantern: its light falls to a quarter this far from it (m); its flame is
@@ -427,6 +436,13 @@ pub struct Frame {
     pub pulls: [[f32; 4]; EVENTS],
     /// Page 04: the height of the melt's front (m) and how far it holds.
     pub melt: [f32; 2],
+    /// Page 05: what the figure holds (all 0 on every other page): its
+    /// middle and shape (0 a cup, 1 a phone, 2 a box), its up and light, its
+    /// front and how far built (0 none … 1 whole), the water in the cup and
+    /// the phone's screen; and how much each step lights the ground it
+    /// stands on.
+    pub props: [[f32; 4]; 4],
+    pub support: f32,
 }
 
 /// The uniform block every scene shader reads, as vec4 slots.
@@ -445,7 +461,8 @@ pub const SLOT_DESK: usize = SLOT_VOICE + 2 * VOICES;
 pub const SLOT_LAMP: usize = SLOT_DESK + 2 * SEATS;
 pub const SLOT_CASTER: usize = SLOT_LAMP + 3;
 pub const SLOT_INNER: usize = SLOT_CASTER + 2 * CASTERS;
-pub const SLOTS: usize = SLOT_INNER + 1 + 5 * EVENTS;
+pub const SLOT_PROP: usize = SLOT_INNER + 1 + 5 * EVENTS;
+pub const SLOTS: usize = SLOT_PROP + 4;
 
 /// The frame as the shaders' slots (common.glsl names them); the view slot
 /// is the canvas's, filled by the browser.
@@ -516,7 +533,7 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     for (k, c) in f.casters.iter().enumerate() {
         d[SLOT_CASTER + k] = *c;
     }
-    d[SLOT_INNER] = [f.warmth, f.melt[0], f.melt[1], 0.0];
+    d[SLOT_INNER] = [f.warmth, f.melt[0], f.melt[1], f.support];
     for (k, b) in f.branches.iter().enumerate() {
         d[SLOT_INNER + 1 + k] = *b;
     }
@@ -525,6 +542,9 @@ pub fn pack(f: &Frame, story: &Story) -> [[f32; 4]; SLOTS] {
     }
     for (k, b) in f.pulls.iter().enumerate() {
         d[SLOT_INNER + 1 + 4 * EVENTS + k] = *b;
+    }
+    for (k, p) in f.props.iter().enumerate() {
+        d[SLOT_PROP + k] = *p;
     }
     d
 }
@@ -658,18 +678,19 @@ mod tests {
     use crate::body::SEAT_BACK;
     use crate::math::{v3, V3};
     use crate::story::{
-        crown_phase, ARRIVE_LOCK, ARRIVE_LOOP, HERO_LOOP, INNER_LOOP, LIFE_DOWN, LIFE_LOOP,
-        LIFE_UP, TALK, VOICE_LIFE,
+        crown_phase, ACTION_LOOP, ARRIVE_LOCK, ARRIVE_LOOP, BOX_BUILT, BREATH_RINGS, HERO_LOOP,
+        INNER_LOOP, LIFE_DOWN, LIFE_LOOP, LIFE_UP, PHRASES, SIPS, SUPPORT, TALK, VOICE_LIFE,
     };
     use std::f32::consts::{PI, TAU};
 
-    fn chapters() -> [Story; 5] {
+    fn chapters() -> [Story; 6] {
         [
             Story::new(Chapter::Hero),
             Story::new(Chapter::Arrive),
             Story::new(Chapter::Life),
             Story::new(Chapter::Night),
             Story::new(Chapter::Inner),
+            Story::new(Chapter::Action),
         ]
     }
 
@@ -1052,10 +1073,94 @@ mod tests {
                 // Page 04 stills on the walk with every bead the scanner
                 // has gathered, the crown burning again.
                 assert!(f.facts.iter().all(|b| b[3] > 0.5) && f.rings[0].light > 0.99);
+            } else if story.chapter == Chapter::Action {
+                // Page 05 stills on the call: the phone at its ear, a voice
+                // coming in.
+                assert!(f.props[2][3] > 0.99 && f.voices.iter().any(|v| v[7] > 0.1));
             } else {
                 assert!(f.amount > 0.99, "{:?}", story.chapter);
             }
         }
+    }
+
+    #[test]
+    fn on_page_five_the_sphere_s_ring_keeps_the_day_s_tempo() {
+        let story = Story::new(Chapter::Action);
+        let f = |t: f32| story.compose(t);
+        // It joins the other two after the start and goes out before the
+        // end, and turns whole turns a loop.
+        assert!(f(0.0).rings[2].light < 0.01 && f(ACTION_LOOP - 0.1).rings[2].light < 0.01);
+        assert!(f(30.0).rings[2].light > 0.99);
+        let turns = (f(ACTION_LOOP - 1e-3).rings[2].flow - f(0.0).rings[2].flow) / TAU;
+        assert!(turns > 0.5 && close(turns, turns.round(), 1e-3), "{turns}");
+        // The busier, the faster: with the box faster than speaking, and
+        // that much faster than stopped to breathe.
+        let rate = |a: f32, b: f32| (f(b).rings[2].flow - f(a).rings[2].flow) / (b - a);
+        let (hurry, words, still) = (rate(45.0, 50.0), rate(25.0, 30.0), rate(52.0, 56.0));
+        assert!(
+            hurry > words && words > 1.5 * still,
+            "{hurry} {words} {still}"
+        );
+        // Each step lights its support only walking on after the stop.
+        let [on, _, _, off] = SUPPORT;
+        assert!(f(on + 3.0).support > 0.9 && f(on - 6.0).support < 0.01);
+        assert!(f(off + 1.0).support < 0.01);
+    }
+
+    #[test]
+    fn on_page_five_it_drinks_calls_and_carries() {
+        let story = Story::new(Chapter::Action);
+        let f = |t: f32| story.compose(t);
+        let at = |p: [f32; 4]| v3(p[0], p[1], p[2]);
+        // At each sip the cup's rim is at the lips.
+        for [a, b] in SIPS {
+            let g = f(0.5 * (a + b));
+            let rim = at(g.props[0]) + at(g.props[1]) * CUP[2];
+            let off = (rim - g.body.mouth).length();
+            assert!(g.props[0][3] == 0.0 && off < 0.07, "{off}");
+        }
+        // On the call the phone is at its head, its screen lit.
+        let g = f(33.0);
+        let off = (at(g.props[0]) - g.body.head).length();
+        assert!(
+            g.props[0][3] == 1.0 && off < 0.13 && g.props[3][1] > 0.99,
+            "{off}"
+        );
+        // The box is carried before it, between its hands.
+        let [_, built, gone, _] = BOX_BUILT;
+        let g = f(0.5 * (built + gone));
+        let c = at(g.props[0]);
+        let hands = [17, 18].map(|k| {
+            let [x, y, z, _] = g.body.cones[3 * k];
+            v3(x, y, z)
+        });
+        assert!(g.props[0][3] == 2.0);
+        for h in hands {
+            let d = h - c;
+            assert!(d.length() < BOX_HALF + 0.12, "{}", d.length());
+        }
+        // It holds nothing before the cup or after the box.
+        assert!(f(12.0).props[2][3] == 0.0 && f(56.0).props[2][3] == 0.0);
+    }
+
+    #[test]
+    fn on_page_five_no_ring_of_sound_is_dropped() {
+        let story = Story::new(Chapter::Action);
+        let mut t = 0.0;
+        while t < ACTION_LOOP {
+            let f = story.compose(t);
+            let lit = f.voices.iter().filter(|v| v[7] > 0.0).count();
+            assert!(lit < VOICES, "{t}: {lit}");
+            t += 0.05;
+        }
+        // Its words aloud, the call both ways, its breath.
+        for (_, from, to) in PHRASES {
+            let f = story.compose(0.5 * (from + to));
+            assert!(f.voices.iter().any(|v| v[7] > 0.1), "{from}");
+        }
+        let [a, b] = BREATH_RINGS;
+        let f = story.compose(0.5 * (a + b));
+        assert!(f.voices.iter().any(|v| v[7] > 0.1));
     }
 
     #[test]

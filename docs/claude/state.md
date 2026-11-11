@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-09. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -227,8 +227,87 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   rides in the frame's alpha (`warm.frag` after the recolor), pages 00–03 pixel-identical.
   Checked in the 4 dark themes (sheet `output/prototypes/step-seven/kadry-04-temy.jpg`) and in
   a production export. Ring 3 joins on page 05.
-- Next: pages 05–10, each a new chapter of the same world; a stage-finale screen after
-  page 10 needs Art's wording first.
+- Shipped to `main` 2026-11-08 (Art: «Пушим»): page 05 «Третье кольцо — ДЕЙСТВИЕ» (chapter 5,
+  `dynamic-action`), direction А «Темп дня». One day in a row (sit, rise, walk, drink, speak aloud, a
+  phone call, carry a box, stop and breathe, walk on with lit support, sit). Ring 3 joins at
+  the start and spins with the body's tempo, fastest with the box, slowing to the breath;
+  rings 1 and 2 stay steady. Held things (cup, phone, box) build in the hand (line kind 16).
+  On the call his own voice returns from the glass, the caller's comes from far. Art approved
+  Матрица 2026-11-08 («Ок, другие темы»); Тишина, Искра, Астрал checked (sheet
+  `output/shots/page05-themes.jpg`) and in a production export (ready, gpu-error 0).
+- Pages 06–10 get a NEW scene (Art is tired of the sphere world). Art chose direction А
+  «Ночной город» 2026-11-08: new crate `graphics/night-city`. A walker on a wet night street in the rain: lamps, shops with lit rooms behind the
+  glass, signs, puddles, steam, car light trails, towers; camera in levels (his eyes → over
+  the shoulder → beside the face → low → crane). Cold light goes through the theme recolor,
+  warm light (sodium lamps, warm shops, tail lights) is added after it in `Look.warm`.
+  Page 06 «Фазы шага» (chapter Fact, 64 s loop) is built; beats in the crate's `README.txt`.
+- 2026-11-08 Art: «сцена не запустилась». Cause: the one world shader took Chrome on Windows
+  (ANGLE/D3D11) ~3 min to compile and Chrome dropped it. Fixed in `28ef595`: the world is
+  drawn in parts (hits pass + 4 light passes, linked in parallel), ready in ~10 s with
+  «Загружаю сцену…» meanwhile; frames identical to before. Details in the crate's README.
+  Any new scene: keep each shader small, D3D11 compile time grows faster than its size.
+- 2026-11-08 Art's notes on the first showing, all done on the branch (round 2): a raincoat
+  instead of the flap, cars with bodies, two passers-by (umbrella, phone), the sphere with its
+  three rings back but barely visible, code rain on the walls, and inside the sphere things
+  (pole, passer, pavement) show their code; he does not. Details in the crate's README.
+- 2026-11-08 Art approved round 2 in Матрица («Супер! её же поставь на главную страницу если
+  открыт 7 шаг»). Тишина, Искра, Астрал checked, no color change (sheet
+  `output/prototypes/night-city/temy.jpg`). Wired on the branch: bridge `NightCity.web.tsx`
+  (waits for `ready()` before the first frame, card mode like `InnerHero`), `WebScene`
+  `night-fact` on page 06, and the home card «Архитектура наблюдения» plays it when step ≥ 7.
+  Production export checked at 1440 and 390 wide: page 06 and the home card ready, 60 fps,
+  gpu-error 0, no console errors (sheet `glavnaya.jpg`). Shipped to `main` 2026-11-08 (Art: «так
+  же залей предыдщую страницу уже»), export rechecked before the merge.
+- Page 07 «Главная проверка»: Art chose А «Автопилот на перекрёстке» 2026-11-08. Built as
+  `Chapter::Check` (code 1). Round 2 after Art's note (a near miss, time rewinds, the right run),
+  commit 1ed60ce: the tape plays twice, 126.9 s loop, still 71 s; beats in the crate README.
+  Wrong take 0–26.6: phone, ring 1 then ring 2 go out, he steps off on red, a side-street car stops
+  a hand from him. The tape freezes 0.8 s and rewinds to 1 s (tape shaders in `common.glsl`).
+  Right take: phone out with rings 1–2 lit, away before the kerb, стопы → опора → дыхание →
+  расхлопнутость → пространство, the car passes and turns, green, he walks. Second showing in
+  Матрица sent 2026-11-08 (`output/prototypes/night-city/page07.jpg`, prototype chip «страница 07»
+  or `?page=1`). Art approved it 2026-11-08 («супер продолжаем», relayed by the parent session).
+  Тишина, Искра, Астрал checked, no color change (sheet `output/prototypes/night-city/page07-temy.jpg`).
+  Wired on the branch (9fb606b): `WebScene` `night-check` → chapter 1 on `dynamic-check`.
+  Production export checked at 1440 and 390 wide: ready, 60 fps, gpu-error 0, no console errors.
+  Shipped to `main` 2026-11-09 together with page 08 (Art: «Пушим 07 и 08»).
+- Page 08 «Используй свой голос (как настройку трех колец)»: Art chose А «Эхо в переходе»
+  2026-11-09 (over Б «Неон отвечает» and В «Крыша»). Built as `Chapter::Voice` (code 2, 104 s
+  loop, still 33 s), commit cdb33a4: down into a tiled underpass under the cross street, each
+  phrase runs along the tiles as a shell and comes back as an echo (sphere, ring 1, ring 2,
+  ring 3), up the far stairs with a hand on the rail, three echoes in one chord, «Я Есть» out
+  into the rain under the crane; each phrase leaves a line of code in the tiles. Beats in the
+  crate README. Pages 06–07 render as before (frames compared with the previous build).
+  Wired on the branch: `WebScene` `night-voice` → chapter 2 on `dynamic-voice`. First showing
+  in Матрица sent 2026-11-09 (`output/prototypes/night-city/page08.jpg`, prototype chip
+  «страница 08» or `?page=2`). Art approved Матрица 2026-11-09 («Ок, другие темы»); Тишина,
+  Искра, Астрал checked, no color change needed (sheet `output/prototypes/night-city/page08-temy.jpg`
+  sent). Production export checked: Step 7 page 08/10 mounts `rust-night-city`, ready, 60 fps,
+  gpu-error 0, no console errors at 1440 and 390 (the step picker also lists Step 5's page of
+  the same name; pick the Step 7 entry). Shipped to `main` 2026-11-09 together with page 07
+  (Art: «Пушим 07 и 08»), export rechecked before the merge.
+- Page 09 «Итог третьего уровня» (dynamic-summary): Art wanted a NEW scene, not the rainy
+  night city («там с дождем надоела»), and chose А «Канатоходец на рассвете» (2026-11-09)
+  over Б «Заводной механизм» and В «Светящееся море». New crate `graphics/rope-dawn` (own
+  ray-marched world: towers, rope, pole, walker, fog sea, waking city, dawn sky), bridge
+  `RopeDawn.web.tsx`, `webScene: 'rope-dawn'`, dispatched in `Art.web.tsx` AND
+  `StepFiveScene.web.tsx` (Step 5–7 pages render through the latter; without it the page
+  shows its placeholder). First showing (72 s) got «скудненько… разбивки не очевидно
+  показывают текст… это финал»; reworked into a second version (commit b6fe1ac): a city of
+  glass and stone towers, fog with puffs and holes onto the living streets, cirrus, god rays,
+  birds; 96 s loop that starts and ends inside the cloud, still 51.2 s; one beat per phrase
+  (rings 1/2/3 each alone, then a chord; the world stops; a double rises and returns; the sun
+  rises in him; the city opens below; his giant shadow with a glory panics, lags and crumbles
+  into code). Beats in the crate README. Second showing in Матрица sent 2026-11-09 (sheet
+  `output/prototypes/rope-dawn/kadry-v2.jpg`, prototype `output/prototypes/rope-dawn/index.html`);
+  Art approved it 2026-11-09 («Ок, другие темы»). Тишина, Искра, Астрал rendered and sent
+  (`output/prototypes/rope-dawn/kadry-tishina.jpg`, `kadry-iskra.jpg`, `kadry-astral.jpg`);
+  each theme's own warm sun (`look()` in lib.rs) reads well, nothing retuned. Export checked
+  in all 4 dark themes: page 09 mounts `rust-rope-dawn`, ready, 60 fps, gpu-error 0, no
+  console errors, at 1440 (608 px, the plate width) and 390 (310 px). Shipped to `main`
+  2026-11-09 (Art: «Пушим»).
+- Next: page 10 «dynamic-everyday»: offer Art 2–3 directions first. A stage-finale screen
+  after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

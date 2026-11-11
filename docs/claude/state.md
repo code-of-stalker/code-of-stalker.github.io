@@ -394,11 +394,15 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   guide (Art: «В чат с проводником»). Done on the branch: the report mark sealed inside the message
   (no server change), report mode for text and voice, report cards, reports-only view (header
   icon), the diary's guide sheet shared as `DiaryReportGuide` (the diary uses it too), and the
-  walker's plate above the chat (shared `DiaryReportPrompt`, fold optional). In the chat the plate
-  cannot be folded and leaves only after today's report (Art 2026-11-11); in the diary folding
-  stays optional. Branch `claude/intensive-chat-9e8099`, local only; waits for Art's OK to ship
-  (picture `output/intensive/otchety-idushchego.png`).
-  Show Art before pushing.
+  walker's plate above the chat (shared `DiaryReportPrompt`): folds by the diary's drag (up folds,
+  down unfolds), kept per device (`intensive.reportFolded.v1` in `chatMemory.ts`), leaves after
+  today's report. Role marks: faint role tint on bubbles (`ROLE_TINTS`/`roleGlyph` in
+  `ui/chrome.tsx`, Тишина only so far) and a static icon right of the role word. Art wants the
+  icons premium and animated: prototype `output/prototypes/role-marks/index.html` (JS sketch,
+  git-ignored) shows А «Чеканка» (cast metal, a glint), Б «Живые знаки» (recommended: needle
+  swings to north, scan + check on the shield, crown stones light, prints step) and В «Самоцвет»
+  (cut stone, facets turn); waits for his pick, then build it in Rust (product has no JS animation). Branch `claude/intensive-chat-9e8099`,
+  local only; waits for Art's OK to ship. Show Art before pushing.
 - Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.

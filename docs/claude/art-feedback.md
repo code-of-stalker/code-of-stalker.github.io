@@ -120,7 +120,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
 - The same in a run of chat bubbles: no cuts where two bubbles of one writer meet, only the outer corners of the run.
 - Chat header: no line under it; text that scrolls under it melts in a soft fade, never a hard cut («не резкий срез а мягкий фейд»).
-- Daily report plate in the Intensive chat cannot be folded; it leaves only once today's report is written, so the walker does not forget it. In the diary folding stays optional (Art 2026-11-11).
+- Daily report plate in the Intensive chat folds by a drag like the diary's (up folds, down unfolds; Art 2026-11-11 reversed his earlier «нельзя свернуть» once the drag gesture existed). It still leaves once today's report is written.
+- Role marks in the chat (Art 2026-11-11): a role tint on the bubble plus a small icon to the RIGHT of the role word. A tint that is bright on one side drowns the white text («слева слишком ярко… белый теряется»): keep it faint (≈5–15 %). Plain line icons read as cheap: he wants them «дорогие премиум и анимированные».
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).

@@ -393,9 +393,11 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
 - In progress, Art 2026-11-11: daily reports in Intensive «как в дневнике», into the chat with the
   guide (Art: «В чат с проводником»). Done on the branch: the report mark sealed inside the message
   (no server change), report mode for text and voice, report cards, reports-only view (header
-  icon), the diary's guide sheet shared as `DiaryReportGuide`. Left: the plate above the chat from
-  «Этап 1»'s shared `DiaryReportPrompt` once it reaches `main`. In the chat the plate cannot be
-  folded and leaves only after today's report (Art 2026-11-11); in the diary folding stays optional.
+  icon), the diary's guide sheet shared as `DiaryReportGuide` (the diary uses it too), and the
+  walker's plate above the chat (shared `DiaryReportPrompt`, fold optional). In the chat the plate
+  cannot be folded and leaves only after today's report (Art 2026-11-11); in the diary folding
+  stays optional. Branch `claude/intensive-chat-9e8099`, local only; waits for Art's OK to ship
+  (picture `output/intensive/otchety-idushchego.png`).
   Show Art before pushing.
 - Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place

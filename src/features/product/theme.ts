@@ -70,3 +70,19 @@ export const dawnColors: ProductColors = {
 export const LIGHT_THEMES: readonly ProductColors[] = [lightColors, mirageColors, dawnColors];
 export const isLightTheme = (colors: ProductColors) => LIGHT_THEMES.includes(colors);
 export const fonts = { title: 'Tektur', body: 'DisketMono', bodyBold: 'DisketMonoBold' };
+
+/** `#RRGGBB` at the given alpha, as `rgba(...)`. */
+export function fade(hex: string, alpha: number) {
+  const value = parseInt(hex.slice(1, 7), 16);
+  return `rgba(${value >> 16 & 255}, ${value >> 8 & 255}, ${value & 255}, ${alpha})`;
+}
+
+/**
+ * Body emphasis (Art 2026-11-11 chose variants A + C: full-strength bold body text is harsh
+ * on the eyes). An emphasised run keeps the bold face but is softer and letter-spaced;
+ * the plain text beside it steps back, so the emphasis still leads.
+ * Use `quietText` only next to an emphasised run, never on a page without one.
+ */
+export const softBold = (colors: ProductColors, fontSize: number) =>
+  ({ fontFamily: fonts.bodyBold, color: fade(colors.text, 0.78), letterSpacing: fontSize * 0.06 });
+export const quietText = (colors: ProductColors) => ({ color: fade(colors.text, 0.62) });

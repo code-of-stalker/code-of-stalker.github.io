@@ -398,6 +398,12 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
+- Soft emphasis (Art 11.11 chose variants A + C, shipped 2026-11-11): bold body text was harsh.
+  Emphasis keeps Disket Mono Bold but at 78% of the text colour with 0.06em tracking; on a page
+  or task text with an emphasis, the plain copy beside it is at 62% (`softBold`, `quietText`,
+  `fade` in `theme.ts`). Used in task explanations (`PracticeIntroScreen`) and reading pages
+  (`EconomyReadingPages`: bold paragraphs, spoken, statement, conclusion). Display headings, the
+  diary's user formatting and `DreamRealityText` keep their own faces.
 - Art's fixes of 11.11 (`claude/art-fixes-1111-569d08`, shipped 2026-11-11): the diary's
   daily report plate folds by a drag up and unfolds by a drag down on its thin strip (Art: an
   arrow beside the plus is clumsy), tap still opens the report; the state is remembered
@@ -461,8 +467,6 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   2026-10-31 at the end of block 2 page 08.
 
 ## Open decisions and ideas (nothing promised)
-- Bold text is harsh on the eyes (Art, 11.11): 2–3 variants shown as screenshots (Матрица,
-  Тишина); implement only the one Art picks. Disket Mono has Regular and Bold only.
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.
 - Never enable GitHub Pages on another `code-of-stalker` repo: same origin means full access
   to diaries. (Hence no prototypes site.)

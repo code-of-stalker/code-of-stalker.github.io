@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
 import { useThemeColors } from '../ProductTheme';
-import { fonts } from '../theme';
+import { quietText, softBold } from '../theme';
 import { typeset } from '../typeset';
 import { ProductText } from '../ui';
 import { Art } from './Art';
@@ -45,11 +45,14 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
     locked.current = true; setMoving(true); onReady(false); onProgress(0);
     setPosition({ index: next, end: direction < 0, offset: 0 });
   }
-  const textStyle = [styles.text, { fontSize: width >= 300 ? 20 : 18, lineHeight: width >= 300 ? 29 : 27 }];
+  const fontSize = width >= 300 ? 20 : 18, textStyle = [styles.text, { fontSize, lineHeight: width >= 300 ? 29 : 27 }];
+  // Emphasis is a soft bold; on a page with one, the plain copy steps back (Art 2026-11-11, A + C).
+  const strong = [textStyle, softBold(colors, fontSize)], quiet = [textStyle, quietText(colors)];
   return <View testID="economy-reading-pages" style={styles.fill}>
     <ContentSwap value={index} fill reducedMotion={reducedMotion} duration={520} exitDuration={220} onComplete={finish}
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
+        const plain = page.bold?.length || page.spoken?.length || page.statement || page.conclusion ? quiet : textStyle;
         const wider = kind === 'identity-imprints' ? 1.15 : 1;
         const artWidth = Math.max(1, width - 16) * wider, artHeight = step >= 4 ? artWidth * 2 / 3 : kind ? (step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
@@ -63,12 +66,12 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             <ProductText testID="reading-page-count" variant="label" style={[styles.count, phone && { marginBottom: 16 }, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{typeset(page.title)}</ProductText>}
             <View testID="reading-page-copy" style={[styles.copy, phone && { gap: 20 }]}>
-              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={page.bold?.includes(text) ? [textStyle, { fontFamily: fonts.bodyBold }] : textStyle} />)}
-              {page.spoken?.map(text => <ProductText key={text} style={[textStyle, { fontFamily: fonts.bodyBold }]}>{typeset(text)}</ProductText>)}
-              {page.after?.map(text => <ProductText key={text} style={textStyle}>{typeset(text)}</ProductText>)}
-              {page.statement && <ProductText style={[textStyle, { fontFamily: fonts.bodyBold }]}>{typeset(page.statement)}</ProductText>}
+              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={page.bold?.includes(text) ? strong : plain} />)}
+              {page.spoken?.map(text => <ProductText key={text} style={strong}>{typeset(text)}</ProductText>)}
+              {page.after?.map(text => <ProductText key={text} style={plain}>{typeset(text)}</ProductText>)}
+              {page.statement && <ProductText style={strong}>{typeset(page.statement)}</ProductText>}
               {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
-              {page.conclusion && <DreamConclusion text={page.conclusion} style={[textStyle, { fontFamily: fonts.bodyBold }]} active={playing} reducedMotion={reducedMotion} />}
+              {page.conclusion && <DreamConclusion text={page.conclusion} style={strong} active={playing} reducedMotion={reducedMotion} />}
             </View>
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}
             {(kind || page.placeholder) && <View testID={`reading-page-art-${kind ?? page.id}`} pointerEvents="none" style={[styles.art,

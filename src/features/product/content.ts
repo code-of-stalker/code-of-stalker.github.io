@@ -57,7 +57,7 @@ export const productLevels: {
     id: 'basic',
     number: '01',
     title: 'БАЗОВЫЙ',
-    description: 'ПЕРВЫЕ ШАГИ ПО ВЫСТРАИВАНИЮ\nНАБЛЮДЕНИЯ',
+    description: 'ПЕРВЫЕ ШАГИ ПО ВЫСТРАИВАНИЮ НАБЛЮДЕНИЯ',
     action: 'НАЧАТЬ',
   },
   // Art 2026-11-11: the former «ВОДИТЕЛЬСТВО» plate (its art and frame) is now

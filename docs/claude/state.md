@@ -398,10 +398,12 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   down unfolds), kept per device (`intensive.reportFolded.v1` in `chatMemory.ts`), leaves after
   today's report. Role marks: faint role tint on bubbles (`ROLE_TINTS`/`roleGlyph` in
   `ui/chrome.tsx`, Тишина only so far) and a static icon right of the role word. Art wants the
-  icons premium and animated: prototype `output/prototypes/role-marks/index.html` (JS sketch,
-  git-ignored) shows А «Чеканка» (cast metal, a glint), Б «Живые знаки» (recommended: needle
-  swings to north, scan + check on the shield, crown stones light, prints step) and В «Самоцвет»
-  (cut stone, facets turn); waits for his pick, then build it in Rust (product has no JS animation). Branch `claude/intensive-chat-9e8099`,
+  icons premium and animated. Round 1 (А «Чеканка», Б «Живые знаки», В «Самоцвет»): Art liked
+  Б's motion, not its drawings («мимо нашего стиля»). Round 2, prototype
+  `output/prototypes/role-marks/index.html` (JS sketch, git-ignored): app line icons with a faint
+  fill and a running pale dash; walker 3 chevrons light in turn, guide compass needle swings to
+  north + ring light, admin cut shield scan + check redraw, main crown stones light + base light.
+  Waits for his word, then build it in Rust (product has no JS animation). Branch `claude/intensive-chat-9e8099`,
   local only; waits for Art's OK to ship. Show Art before pushing.
 - Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place

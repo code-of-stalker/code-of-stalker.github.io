@@ -23,7 +23,7 @@ import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductIconButton, ProductText } from '../../product/ui';
 import type { ChatSummary, Member, Place } from '../backend';
-import { draftFor, keepDraft, keepPreview, keepReportPlateFolded, markSeen, previewFor, reportPlateFolded, seenId } from '../chatMemory';
+import { draftFor, keepDraft, keepPreview, markSeen, previewFor, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
 import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
@@ -174,10 +174,10 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const [saving, setSaving] = useState(false);
   const [activeVoice, setActiveVoice] = useState<number | null>(null);
   // The diary's daily report: the plate opens the guide sheet, which starts report mode or shows the reports.
+  // Unlike the diary's, the walker's plate cannot be folded: it leaves only once today's report is sent (Art).
   const [reportMode, setReportMode] = useState(false);
   const [reportsOnly, setReportsOnly] = useState(false);
   const [reportGuide, setReportGuide] = useState(false);
-  const [plateFolded, setPlateFolded] = useState(reportPlateFolded);
   // As in the diary: «today» moves at midnight while the chat stays open.
   const [today, setToday] = useState(() => diaryDay(Date.now()));
   useEffect(() => { const timer = setInterval(() => setToday(diaryDay(Date.now())), 60000); return () => clearInterval(timer); }, []);
@@ -404,7 +404,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     setTimeout(() => { setReportMode(true); input.current?.focus(); }, SHEET_GAP_MS);
   };
   const showReports = (on: boolean) => { followNext.current = true; setReportsOnly(on); setReportGuide(false); };
-  const foldPlate = (folded: boolean) => { setPlateFolded(folded); keepReportPlateFolded(folded); };
+
   const onKey = (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
     const native = event.nativeEvent as TextInputKeyPressEventData & { shiftKey?: boolean; isComposing?: boolean };
     if (native.key === 'Escape' && editingNow) { event.preventDefault(); stopEditing(); return; }
@@ -506,7 +506,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
             <ProductText numberOfLines={1} maxFontSize={10} style={[styles.headerSubtitle, error && phase !== 'ready' && { color: colors.error }]}>{subtitle}</ProductText>
           </View>
         </Pressable>
-        {!walker && reports.length ? <Pressable accessibilityRole="button" accessibilityLabel={reportsOnly ? 'Вся переписка' : `Отчёты идущего: ${reports.length}`}
+        {reports.length ? <Pressable accessibilityRole="button" accessibilityLabel={reportsOnly ? 'Вся переписка' : `${walker ? 'Мои отчёты' : 'Отчёты идущего'}: ${reports.length}`}
           accessibilityState={{ selected: reportsOnly }} onPress={() => showReports(!reportsOnly)} style={[styles.reportsButton, reportsOnly && styles.reportsButtonOn]}>
           <DiaryEntryIcon kind="dynamics" />
         </Pressable> : null}

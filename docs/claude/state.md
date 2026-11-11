@@ -390,9 +390,13 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB, 5 min ≈ 0.9 MB at 24 kbit/s); longer needs a schema change.
 - Chat top (Art 2026-11-11, shipped 2026-11-11 as a small fix): no line and no solid fill under the
   header; the feed melts over 24 px under it once scrolled (diary's mask, `--chat-fade-top` in `ChatView.tsx`).
-- Next, Art 2026-11-11: daily reports in Intensive «как в дневнике» (reuse the diary's report
-  component and logic). Wait for «Этап 1» (`art-fixes-1111`: collapsible report plate in the
-  diary) to reach `main`, merge it, then build; show Art before pushing.
+- In progress, Art 2026-11-11: daily reports in Intensive «как в дневнике», into the chat with the
+  guide (Art: «В чат с проводником»). Done on the branch: the report mark sealed inside the message
+  (no server change), report mode for text and voice, report cards, reports-only view (header
+  icon), the diary's guide sheet shared as `DiaryReportGuide`. Left: the plate above the chat from
+  «Этап 1»'s shared `DiaryReportPrompt` once it reaches `main`. In the chat the plate cannot be
+  folded and leaves only after today's report (Art 2026-11-11); in the diary folding stays optional.
+  Show Art before pushing.
 - Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.

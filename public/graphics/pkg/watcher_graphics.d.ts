@@ -35,7 +35,8 @@ export class IconMotion {
     [Symbol.dispose](): void;
     /**
      * `stroke` is the approved line width in layout pixels and `width` the glyph's
-     * rendered width, so the still glyph matches the former raster exactly.
+     * rendered width, so the still glyph matches the former raster exactly. Hair
+     * outlines stay 0.25 layout pixels; ground parts take the host's `--icon-ground`.
      */
     static create(root: Element, name: string, filled: boolean, round: boolean, stroke: number, width: number): IconMotion;
     dispose(): void;

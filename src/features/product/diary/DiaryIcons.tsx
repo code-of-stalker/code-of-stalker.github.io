@@ -18,8 +18,12 @@ export function DiaryAsset({ name, dim = false, transparentBackground = false, s
   const colors = useThemeColors(), [width, height] = size ? [size.width, size.height] : sizes[name];
   const themed = name === 'collection' || name === 'calendar';
   const source = useMemo(() => name === 'info' ? { uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="${colors.accent}" stroke-width=".75"/><circle cx="10" cy="6.25" r=".8" fill="${colors.accent}"/><path d="M8.75 9H10v5.5m-1.25 0h2.5" fill="none" stroke="${colors.accent}" stroke-width=".75" stroke-linecap="round" stroke-linejoin="round"/></svg>`)}` } : themed ? diaryArtwork(name as 'collection' | 'calendar', colors, transparentBackground) : assets[name], [themed, name, colors, transparentBackground]);
-  return <Image pointerEvents="none" testID={`diary-icon-${name}`} source={source} tintColor={themed || name === 'info' ? undefined : dim ? colors.faint : colors.accent} contentFit="contain" style={{ width, height, flexShrink: 0, opacity: themed && dim ? .5 : 1 }} />;
+  const still = <Image pointerEvents="none" testID={`diary-icon-${name}`} source={source} tintColor={themed || name === 'info' ? undefined : dim ? colors.faint : colors.accent} contentFit="contain" style={{ width, height, flexShrink: 0, opacity: themed && dim ? .5 : 1 }} />;
+  const tint = themed || name === 'info' || !dim ? colors.accent : colors.faint;
+  return <RustIcon name={glyphs[name]} width={width} height={height} color={tint} opacity={themed && dim ? .5 : 1} autoplay={name === 'sparkle'} fallback={still} />;
 }
+/** Rust glyph names of the diary assets (`icon_motion.rs`). */
+const glyphs = { calendar: 'calendar', sparkle: 'sparkle', info: 'info', collection: 'collection', chevron: 'sort-chevron' } as const;
 const paths = {
   filter: 'M3 4h18l-7 8v7l-4 2v-9Z',
   bookmark: 'M6 3h12v18l-6-4-6 4Z',
@@ -46,5 +50,6 @@ export function DiaryIcon({ name, filled = false, size = 20 }: { name: DiaryIcon
 export function DiaryEntryIcon({ kind }: { kind: 'architecture' | 'dynamics' | 'observation' }) {
   const colors = useThemeColors();
   const source = useMemo(() => iconSource(kind === 'architecture' ? architecturePath : kind === 'dynamics' ? paths.stairs : notebookPath, colors.accent, 16), [kind, colors.accent]);
-  return <Image pointerEvents="none" testID={`diary-kind-icon-${kind}`} source={source} contentFit="contain" style={{ width: 16, height: 16, flexShrink: 0 }} />;
+  const still = <Image pointerEvents="none" testID={`diary-kind-icon-${kind}`} source={source} contentFit="contain" style={{ width: 16, height: 16, flexShrink: 0 }} />;
+  return <RustIcon name={kind === 'architecture' ? 'architecture' : kind === 'dynamics' ? 'stairs' : 'notes'} width={16} height={16} color={colors.accent} autoplay fallback={still} />;
 }

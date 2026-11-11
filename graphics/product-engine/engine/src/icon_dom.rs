@@ -1,6 +1,6 @@
 //! Browser adapter for `icon_motion`: Rust builds the glyph's SVG strokes and writes
 //! every intermediate pose. The bridge only forwards taps, glyph changes and frames.
-use crate::icon_motion::{self, Glyph, Scene, Spring, MORPH};
+use crate::icon_motion::{self, Glyph, Kind, Scene, Spring, MORPH, WOBBLY};
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
 
@@ -70,7 +70,9 @@ pub struct IconMotion {
     glyph: Glyph,
     nodes: Vec<Element>,
     round: bool,
+    /// Line width and rendered width in layout pixels.
     stroke: f32,
+    width: f32,
     tap: Option<f64>,
     tap_pending: bool,
     morph: Tween,
@@ -86,7 +88,8 @@ fn attr(node: &Element, key: &str, value: impl ToString) {
 #[wasm_bindgen]
 impl IconMotion {
     /// `stroke` is the approved line width in layout pixels and `width` the glyph's
-    /// rendered width, so the still glyph matches the former raster exactly.
+    /// rendered width, so the still glyph matches the former raster exactly. Hair
+    /// outlines stay 0.25 layout pixels; ground parts take the host's `--icon-ground`.
     pub fn create(
         root: Element,
         name: &str,
@@ -102,10 +105,11 @@ impl IconMotion {
             glyph,
             nodes: Vec::new(),
             round,
-            stroke: stroke * glyph.view[2] / width.max(1.),
+            stroke,
+            width: width.max(1.),
             tap: None,
             tap_pending: false,
-            morph: Tween::rest(if name == "pause" { 1. } else { 0. }),
+            morph: Tween::rest(if name.ends_with("pause") { 1. } else { 0. }),
             fill: Tween::rest(if filled { 1. } else { 0. }),
             reduced: false,
             last: 0.,
@@ -131,25 +135,39 @@ impl IconMotion {
             "display:block;overflow:visible;pointer-events:none",
         );
         self.nodes.clear();
+        let unit = w / self.width;
         for part in self.glyph.parts {
             let node = document.create_element_ns(Some(SVG), "path")?;
             if !part.d.is_empty() {
                 attr(&node, "d", part.d);
             }
-            if part.fill {
-                attr(&node, "fill", "currentColor");
-                attr(&node, "stroke", "none");
-            } else {
-                attr(&node, "fill", "currentColor");
-                attr(&node, "fill-opacity", 0);
-                attr(&node, "stroke", "currentColor");
-                attr(&node, "stroke-width", format!("{:.4}", self.stroke));
-                attr(
-                    &node,
-                    "stroke-linecap",
-                    if self.round { "round" } else { "butt" },
-                );
-                attr(&node, "stroke-linejoin", "round");
+            match part.kind {
+                Kind::Spark | Kind::Solid => {
+                    attr(&node, "fill", "currentColor");
+                    attr(&node, "stroke", "none");
+                }
+                Kind::Ground => {
+                    attr(&node, "fill", "var(--icon-ground, transparent)");
+                    attr(&node, "fill-opacity", 0.7);
+                    attr(&node, "stroke", "none");
+                }
+                Kind::Hair => {
+                    attr(&node, "fill", "none");
+                    attr(&node, "stroke", "currentColor");
+                    attr(&node, "stroke-width", format!("{:.4}", 0.25 * unit));
+                }
+                Kind::Line => {
+                    attr(&node, "fill", "currentColor");
+                    attr(&node, "fill-opacity", 0);
+                    attr(&node, "stroke", "currentColor");
+                    attr(&node, "stroke-width", format!("{:.4}", self.stroke * unit));
+                    attr(
+                        &node,
+                        "stroke-linecap",
+                        if self.round { "round" } else { "butt" },
+                    );
+                    attr(&node, "stroke-linejoin", "round");
+                }
             }
             svg.append_child(&node)?;
             self.nodes.push(node);
@@ -161,10 +179,13 @@ impl IconMotion {
     pub fn set_name(&mut self, name: &str) -> Result<(), JsValue> {
         let next = icon_motion::glyph(name)
             .ok_or_else(|| JsValue::from_str(&format!("Unknown icon {name}")))?;
-        if next.scene == Scene::Playback && self.glyph.scene == Scene::Playback {
+        if next.scene == Scene::Playback
+            && self.glyph.scene == Scene::Playback
+            && next.view == self.glyph.view
+        {
             let reduced = self.reduced;
             self.morph.retarget(
-                if name == "pause" { 1. } else { 0. },
+                if name.ends_with("pause") { 1. } else { 0. },
                 Some(self.last),
                 reduced,
             );
@@ -218,20 +239,25 @@ impl IconMotion {
         if !scene {
             self.tap = None;
         }
-        scene || self.morph.moving(at, MORPH.settle()) || self.fill.moving(at, 0.26)
+        scene || self.morph.moving(at, MORPH.settle()) || self.fill.moving(at, WOBBLY.settle())
     }
     fn paint(&self, at: f64) {
         let t = self.tap.map(|s| ((at - s) as f32 / 1000.).max(0.));
-        let morph = (self.glyph.scene == Scene::Playback)
-            .then(|| icon_motion::playback(self.morph.spring(at, MORPH)));
+        let morph = self
+            .glyph
+            .morph
+            .map(|m| icon_motion::playback(m, self.morph.spring(at, MORPH)));
         let fill = self.fill.value(at);
+        let state = self.fill.spring(at, WOBBLY);
+        let fills = self.glyph.state == icon_motion::State::Fill;
         for (i, node) in self.nodes.iter().enumerate() {
-            let pose = match t {
+            let mut pose = match t {
                 Some(t) if t < icon_motion::duration(self.glyph.scene) => {
                     icon_motion::pose(&self.glyph, i, t)
                 }
                 _ => icon_motion::still(&self.glyph, i),
             };
+            icon_motion::apply_state(&self.glyph, i, state, &mut pose);
             attr(node, "transform", pose.transform());
             // Play's second stroke is a point until it opens into pause's right bar.
             let opacity = if morph.is_some() && i == 1 {
@@ -243,8 +269,12 @@ impl IconMotion {
             if let Some(d) = morph.as_ref().map(|m| m[i.min(1)].clone()).or(pose.d) {
                 attr(node, "d", d);
             }
-            if !self.glyph.parts[i].fill {
-                attr(node, "fill-opacity", format!("{fill:.3}"));
+            if self.glyph.parts[i].kind == Kind::Line {
+                attr(
+                    node,
+                    "fill-opacity",
+                    format!("{:.3}", if fills { fill } else { 0. }),
+                );
             }
             match pose.drawn {
                 Some((share, length)) => {

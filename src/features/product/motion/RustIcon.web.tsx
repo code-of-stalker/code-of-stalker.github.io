@@ -12,7 +12,7 @@ const pressable = '[role="button"],button,a,[role="link"],[role="switch"],[role=
 /** Bridge only: Rust builds the glyph and owns every frame of its tap scene
  * (Art 2026-11-11, direction «Характер»). JS forwards the tap of the nearest
  * pressable ancestor, glyph changes and animation frames. */
-export function RustIcon({ name, width, height, color, filled = false, round = true, stroke = iconStroke, fallback }: RustIconProps) {
+export function RustIcon({ name, width, height, color, filled = false, round = true, stroke = iconStroke, ground, opacity = 1, autoplay = false, fallback }: RustIconProps) {
   const host = useRef<HTMLDivElement>(null), icon = useRef<IconMotion | null>(null), raf = useRef(0);
   const [ready, setReady] = useState(false);
   const product = useOptionalProduct(), systemReduced = useSystemReducedMotion();
@@ -39,18 +39,21 @@ export function RustIcon({ name, width, height, color, filled = false, round = t
       if (disposed) return;
       const value = latest.current, node = module.IconMotion.create(element, value.name, value.filled, round, stroke, width);
       node.reduced(value.reduced); icon.current = node; setReady(true);
+      if (autoplay) { node.play(); run(); }
     }).catch(problem => { element.dataset.graphicsError = String(problem); });
     return () => {
       disposed = true; trigger?.removeEventListener('click', onClick);
       cancelAnimationFrame(raf.current); raf.current = 0;
       icon.current?.dispose(); icon.current = null;
     };
+    // Autoplay is read once, at mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, stroke, width, run]);
   useEffect(() => { if (icon.current) { icon.current.set_name(name); run(); } }, [name, run]);
   useEffect(() => { if (icon.current) { icon.current.set_filled(filled); run(); } }, [filled, run]);
   useEffect(() => { icon.current?.reduced(reduced); }, [reduced]);
-  return <View pointerEvents="none" style={{ width, height, flexShrink: 0 }}>
-    <div ref={host} data-rust-icon={name} style={{ position: 'absolute', inset: 0, color, display: ready ? 'block' : 'none', pointerEvents: 'none' }} />
+  return <View pointerEvents="none" style={{ width, height, flexShrink: 0, opacity }}>
+    <div ref={host} data-rust-icon={name} style={{ position: 'absolute', inset: 0, color, display: ready ? 'block' : 'none', pointerEvents: 'none', ...(ground ? { '--icon-ground': ground } : {}) } as React.CSSProperties} />
     {!ready && fallback}
   </View>;
 }

@@ -2,6 +2,7 @@ import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
+import { RustIcon } from '../motion/RustIcon';
 import { AppState, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,7 +109,8 @@ export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBa
                       <Pressable accessibilityRole="button" accessibilityLabel={level.action} onPress={() => onStart(level.id)} style={styles.action}>
                         <PanelArtwork source={actions[level.id]} flipY={level.id === 'guidance'} />
                         <ProductText variant="title" style={styles.actionLabel}>{level.action}</ProductText>
-                        <Image pointerEvents="none" source={arrow} tintColor={colors.onAccent} style={styles.arrow} contentFit="contain" />
+                        <View pointerEvents="none" style={styles.arrow}><RustIcon name="level-arrow" width={32} height={32} round={false} color={colors.onAccent} autoplay
+                          fallback={<Image pointerEvents="none" source={arrow} tintColor={colors.onAccent} style={styles.arrowImage} contentFit="contain" />} /></View>
                       </Pressable>
                     </View>
                   </View>
@@ -148,4 +150,5 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   action: { height: 42, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { color: colors.onAccent, fontSize: 16, lineHeight: 23, fontWeight: '500' },
   arrow: { position: 'absolute', width: 32, height: 32, right: 5, top: 5, transform: [{ scaleY: -1 }] },
+  arrowImage: { width: 32, height: 32 },
 });

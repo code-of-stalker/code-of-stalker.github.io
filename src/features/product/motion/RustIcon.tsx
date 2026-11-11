@@ -10,6 +10,11 @@ export type RustIconProps = {
   round?: boolean;
   /** Line width in layout pixels. */
   stroke?: number;
+  /** Page color under a control's ground (toggle track). */
+  ground?: string;
+  opacity?: number;
+  /** Plays the scene once when it appears: glyphs that are not pressable themselves. */
+  autoplay?: boolean;
   /** The still raster glyph, shown on native and until the engine arrives. */
   fallback: ReactNode;
 };

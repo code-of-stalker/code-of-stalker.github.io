@@ -17,6 +17,7 @@ import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductText } from '../../product/ui';
+import type { Place } from '../backend';
 
 /** Stroke glyphs on a 24 grid, drawn like the diary icons. */
 export const glyphs = {
@@ -43,6 +44,10 @@ export const glyphs = {
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5',
   close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
   refresh: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4',
+  // Role marks: the walker's steps, the guide's compass, the admin's shield, the main admin's crown.
+  steps: 'M8 16.5c-1.5 0-2.5-2-2.5-4.5S6.5 7.5 8 7.5s2.5 2 2.5 4.5-1 4.5-2.5 4.5ZM6.5 19.5h3M16 12.5c-1.5 0-2.5-2-2.5-4.5S14.5 3.5 16 3.5s2.5 2 2.5 4.5-1 4.5-2.5 4.5ZM14.5 15.5h3',
+  compass: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0ZM15 9l-1.8 4.2L9 15l1.8-4.2Z',
+  crown: 'M4.5 19h15M5 15.5 3.5 7l5 4L12 4.5l3.5 6.5 5-4-1.5 8.5Z',
 };
 export type GlyphName = keyof typeof glyphs;
 
@@ -72,11 +77,22 @@ const OTHER_CONTOURS: Record<BubbleSpot, string> = {
   tail: 'M.125 .125H119.875V31.875L111.875 39.875H.125Z',
 };
 const spots: BubbleSpot[] = ['alone', 'head', 'middle', 'tail'];
+
+/** The small mark by a writer's role in the chat. */
+export const roleGlyph: Record<Place, GlyphName> = { walker: 'steps', guide: 'compass', admin: 'shield', main: 'crown' };
+// The guide's side gets its own bubble tint per role. A theme without a set keeps plain bubbles
+// and the accent marks: Тишина goes to Art first, the other themes after his OK.
+const ROLE_TINTS: Partial<Record<string, Partial<Record<Place, string>>>> = {
+  neutral: { guide: '#D9BE86', admin: '#9FB4E8', main: '#CDA6E3' },
+};
+const places: Place[] = ['walker', 'guide', 'admin', 'main'];
 export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ? last ? 'alone' : 'head' : last ? 'tail' : 'middle';
 
 /** Authored frames for this section; PanelArtwork moves their anchors to the layout size. */
 export function useIntensiveFrames() {
   const colors = useThemeColors();
+  const { settings } = useProduct();
+  const tints = ROLE_TINTS[settings.theme];
   return useMemo(() => {
     const tag = colors.accent.replace('#', '');
     const own = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,7 +101,19 @@ export function useIntensiveFrames() {
 <defs><linearGradient id="intensive-own-${tag}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`);
     const other = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
+    const role = (contour: string, ink: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="${contour}" fill="${colors.surface}" fill-opacity="0.92"/>
+<path d="${contour}" fill="url(#intensive-role)" fill-opacity="0.34" stroke="${ink}" stroke-opacity="0.9" stroke-width="0.25"/>
+<defs><linearGradient id="intensive-role" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}"/><stop offset="1" stop-color="${ink}" stop-opacity="0.3"/></linearGradient></defs></svg>`);
+    const roles: Partial<Record<Place, Record<BubbleSpot, { uri: string }>>> = {};
+    for (const place of places) {
+      const ink = tints?.[place];
+      if (ink) roles[place] = Object.fromEntries(spots.map(spot => [spot, role(OTHER_CONTOURS[spot], ink)])) as Record<BubbleSpot, { uri: string }>;
+    }
     return {
+      /** Ink of each role's name line and mark. */
+      inks: Object.fromEntries(places.map(place => [place, tints?.[place] ?? colors.accent])) as Record<Place, string>,
+      roles,
       own: Object.fromEntries(spots.map(spot => [spot, own(OWN_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       other: Object.fromEntries(spots.map(spot => [spot, other(OTHER_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       icon: svgSource(`<svg width="44" height="42" viewBox="0 0 44 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -93,7 +121,7 @@ export function useIntensiveFrames() {
       input: diaryArtwork('input', colors, true),
       prompt: diaryArtwork('prompt', colors),
     };
-  }, [colors]);
+  }, [colors, tints]);
 }
 
 /** The diary's icon contour with the person's initial; roles with a light hand get the accent outline. */

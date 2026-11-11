@@ -27,7 +27,7 @@ import type { ChatSummary, Member, Place } from '../backend';
 import { draftFor, keepDraft, keepPreview, markSeen, previewFor, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
-import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
+import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, roleGlyph, useIntensiveFrames } from './chrome';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -471,8 +471,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     const last = next ? opensRun(next, message) : !waiting.length || pendingOpens;
     const author = names.get(message.senderId);
     const actions = actionsFor(message);
-    feed.push(<Bubble key={message.id} own={own} first={first} frame={(own ? frames.own : frames.other)[bubbleSpot(first, last)]}
-      author={!own && first ? `${author?.name ?? 'Бывший участник'} · ${shortPlace[message.senderRole]}` : undefined}
+    feed.push(<Bubble key={message.id} own={own} first={first} frame={(own ? frames.own : frames.roles[message.senderRole] ?? frames.other)[bubbleSpot(first, last)]}
+      author={!own && first ? { name: author?.name ?? 'Бывший участник', role: message.senderRole, ink: frames.inks[message.senderRole] } : undefined}
       time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id || (!!menu?.open && menu.message.id === message.id)}
       onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'} report={message.report}>
       {message.kind === 'voice' && message.voice
@@ -620,7 +620,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
 }
 
 function Bubble({ own, first, frame, author, time: sentAt, edited = false, status, marked = false, holdsControls = false, report = false, onMenu, onRetry, onDrop, children }: {
-  own: boolean; first: boolean; frame: { uri: string }; author?: string; time: string; edited?: boolean; report?: boolean;
+  own: boolean; first: boolean; frame: { uri: string }; author?: { name: string; role: Place; ink: string }; time: string; edited?: boolean; report?: boolean;
   status?: 'sending' | 'sent' | 'failed'; marked?: boolean; holdsControls?: boolean; onMenu?: () => void; onRetry?: () => void; onDrop?: () => void; children: ReactNode;
 }) {
   const colors = useThemeColors();
@@ -635,7 +635,11 @@ function Bubble({ own, first, frame, author, time: sentAt, edited = false, statu
       onPress={onMenu} onLongPress={onMenu} delayLongPress={350}
       style={({ pressed }) => [styles.bubble, report && styles.reportBubble, status === 'sending' && { opacity: .75 }, (pressed || marked) && { opacity: .7 }]}>
       <PanelArtwork source={frame} />
-      {author ? <ProductText numberOfLines={1} maxFontSize={10} style={styles.author}>{author}</ProductText> : null}
+      {author ? <View accessible accessibilityLabel={`${author.name}, ${shortPlace[author.role].toLowerCase()}`} style={styles.authorRow}>
+        <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, styles.authorName, { color: author.ink }]}>{`${author.name} ·`}</ProductText>
+        <Glyph name={roleGlyph[author.role]} size={12} color={author.ink} />
+        <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, { color: author.ink }]}>{shortPlace[author.role]}</ProductText>
+      </View> : null}
       {report ? <View style={styles.reportTag}><DiaryEntryIcon kind="dynamics" /><ProductText maxFontSize={10} style={styles.reportKind}>{diaryReport.kind}</ProductText></View> : null}
       {children}
       <View style={styles.meta}>
@@ -750,7 +754,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   ownRow: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   otherRow: { alignSelf: 'flex-start', alignItems: 'flex-start' },
   bubble: { minWidth: 76, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6, gap: 2 },
-  author: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8, marginBottom: 2 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2, maxWidth: '100%' },
+  author: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8 },
+  authorName: { flexShrink: 1 },
   reportBubble: { minWidth: 216, paddingTop: 10 },
   reportTag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   reportKind: { fontFamily: fonts.bodyBold, fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8 },

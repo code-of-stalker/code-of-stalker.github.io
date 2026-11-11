@@ -123,7 +123,6 @@ class DemoServer {
     const dina = await this.addPerson('Дина Лебедева', 'ИДУЩАЯ С ПРОВОДНИКОМ', [], false, 2500);
     await this.addPerson('Ника Зорина', 'ИДУЩИЙ, ЖДЁТ НАЗНАЧЕНИЯ', [], false, 40);
     const timur = await this.addPerson('Тимур Каримов', 'ИДУЩИЙ, ДОСТУП ЗАКРЫТ', [], false, 5000);
-    void yana;
     this.guideAdmins.set(mira, oleg);
     this.blocked.add(timur);
     const chat = async (walkerId: string, minutesAgo: number) => {
@@ -143,6 +142,7 @@ class DemoServer {
     const dinaChat = await chat(dina, 2400);
     await this.sendAs(dinaChat, dina, 'Сегодня смотрела на тени в обед. Они короче, чем я думала.', 600, true);
     await this.sendAs(dinaChat, mira, 'Отлично. Вечером сравни с тенями на закате.', 540);
+    await this.sendAs(dinaChat, yana, 'Дина, в конце недели посмотрю твои отчёты. Пиши каждый день.', 480);
   }
 }
 

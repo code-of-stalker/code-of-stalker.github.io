@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import { useThemeColors } from '../ProductTheme';
 import { ObservationIcon } from '../ObservationControls';
+import { RustIcon } from '../motion/RustIcon';
 import { diaryArtwork } from './diaryArtwork';
 import { architecturePath, iconSource, notebookPath } from '../icon-source';
 
@@ -37,7 +38,10 @@ export function DiaryIcon({ name, filled = false, size = 20 }: { name: DiaryIcon
   const colors = useThemeColors();
   const path = paths[name as keyof typeof paths];
   const source = useMemo(() => iconSource(path ?? '', colors.accent, size, '0 0 24 24', filled), [colors.accent, filled, path, size]);
-  return path ? <Image pointerEvents="none" source={source} style={{ width: size, height: size }} contentFit="contain" /> : <ObservationIcon name={name as 'lips' | 'play' | 'trash' | 'close'} size={size} />;
+  // Play and pause share one Rust glyph so a toggle morphs between them.
+  if (!path && name !== 'play') return <ObservationIcon name={name as 'lips' | 'trash' | 'close'} size={size} />;
+  const still = path ? <Image pointerEvents="none" source={source} style={{ width: size, height: size }} contentFit="contain" /> : <ObservationIcon name="play" size={size} animated={false} />;
+  return <RustIcon name={name} width={size} height={size} color={colors.accent} filled={filled} fallback={still} />;
 }
 export function DiaryEntryIcon({ kind }: { kind: 'architecture' | 'dynamics' | 'observation' }) {
   const colors = useThemeColors();

@@ -5,6 +5,7 @@ pub mod contour;
 pub mod cover_motion;
 pub mod decoder;
 pub mod gesture;
+pub mod icon_motion;
 pub mod inertial_progress;
 pub mod insight_motion;
 pub mod level_contour;
@@ -74,6 +75,10 @@ pub use text_motion::*;
 mod panel_reveal;
 #[cfg(target_arch = "wasm32")]
 pub use panel_reveal::*;
+#[cfg(target_arch = "wasm32")]
+mod icon_dom;
+#[cfg(target_arch = "wasm32")]
+pub use icon_dom::*;
 #[cfg(target_arch = "wasm32")]
 mod level_panel;
 #[cfg(target_arch = "wasm32")]

@@ -16,7 +16,8 @@ import { usePanelSize } from './motion/usePanelSize';
 import { ProductScroll } from './motion/ProductScroll';
 import { PanelBorder } from './PanelBorder';
 import { Fade } from './motion/Fade';
-import { iconSource, notebookPath } from './icon-source';
+import { iconSource, iconStroke, notebookPath } from './icon-source';
+import { RustIcon } from './motion/RustIcon';
 import { useFittedText } from './useFittedText';
 export { ScreenTransition } from './motion/ScreenTransition';
 
@@ -103,6 +104,8 @@ const icons = {
   diary: require('../../../assets/product/diary-glyph.svg'),
   notes: require('../../../assets/product/levels/notes-glyph.svg'),
 };
+/** Rust tap-scene glyphs (`icon_motion.rs`) for the button icons. */
+const glyphNames = { back: 'back-button', close: 'close-button', settings: 'settings', diary: 'notes', notes: 'notes' } as const;
 const iconLabels = { back: 'Назад', close: 'Закрыть', settings: 'Настройки', diary: 'Дневник', notes: 'Дневник' };
 export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons; onPress: () => void }) {
   const colors = useThemeColors();
@@ -115,12 +118,15 @@ export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons;
   // screen is hidden. Scope that presentation cache to the current palette,
   // including the return to an untinted source; leave the button and GPU face alive.
   const imageIdentity = icon + ':' + (colors.iconTint ?? 'source') + ':' + colors.accent;
+  const glyph = complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale };
   return <Pressable accessibilityRole="button" accessibilityLabel={iconLabels[icon]} onPress={onPress}
     style={[styles.iconButton, { width: size.width, minHeight: size.buttonHeight }]} hitSlop={2}>
     {icon === 'diary' ?
       <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42 * scale, height: 28 * scale }} contentFit="contain" /> :
       <GlassHost style={[styles.iconPanel, { width: size.width, height: size.height, alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
-        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale }} contentFit="contain" />
+        <RustIcon name={glyphNames[icon]} width={glyph.width} height={glyph.height} stroke={iconStroke * scale} round={icon !== 'back'}
+          color={icon === 'notes' ? colors.accent : colors.iconTint ?? (icon === 'settings' ? '#E7E100' : '#F5DD07')}
+          fallback={<Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={glyph} contentFit="contain" />} />
       </GlassHost>}
   </Pressable>;
 }

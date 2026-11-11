@@ -123,6 +123,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Daily report plate in the Intensive chat folds by a drag like the diary's (up folds, down unfolds; Art 2026-11-11 reversed his earlier «нельзя свернуть» once the drag gesture existed). It still leaves once today's report is written.
 - Role marks in the chat (Art 2026-11-11): a role tint on the bubble plus a small icon to the RIGHT of the role word. A tint that is bright on one side drowns the white text («слева слишком ярко… белый теряется»): keep it faint (≈5–15 %). Plain line icons read as cheap: he wants them «дорогие премиум и анимированные».
 - Role marks round 1 (Art 2026-11-11): metal, gem and gradient icons were «мимо нашего стиля»; he liked Б's motion logic (each mark acts its meaning). «Premium» here means our own language, not jewelry: one ink, the app's thin line, faint fill, a running pale dash, no gradients or bevels.
+- Role marks round 2 (Art 2026-11-11): his subjects, not mine: walker = feet (the footprints of round 1 Б), guide = «огонёк света», admin = eye, main admin = wrench.
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).

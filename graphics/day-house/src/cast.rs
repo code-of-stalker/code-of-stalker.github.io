@@ -289,7 +289,7 @@ const KETTLE_HOME: V3 = v3(-4.74, 10.04, -4.3);
 /// (up, forward).
 pub const KETTLE_GRIP: f32 = 0.13;
 pub const SPOUT: [f32; 2] = [0.08, 0.17];
-const CUP: V3 = v3(-1.4, 9.76, -3.15);
+const CUP: V3 = v3(-1.47, 9.76, -3.15);
 const CUP_HALF: f32 = 0.045;
 const BAG_SET: V3 = v3(-1.85, 9.76, -2.72);
 const HER_SEAT: [f32; 2] = [-2.53, -3.0];
@@ -338,7 +338,7 @@ impl Cast {
         p.quick = 0.8;
         p.wait_until(2.5).turn_to(1.37).wait_until(6.6).turn_to(PI);
         p.wait_until(8.8).mark("kettle").wait(1.0);
-        p.walk(&[[-1.22, -3.72]], flat, WALKING);
+        p.walk(&[[-1.29, -3.72]], flat, WALKING);
         p.turn_to(0.0).mark("pour").wait(2.0);
         p.walk(&[[STOVE.x, STOVE.z]], flat, WALKING);
         p.turn_to(PI).mark("p_set");

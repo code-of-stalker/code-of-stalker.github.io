@@ -294,7 +294,7 @@ pub fn lamp_at(c: usize) -> V3 {
             (2, 0) => v3(5.6, y + 2.0, -3.6),
             (1, 1) => v3(-1.2, y + 1.5, -2.95),
             (2, 1) => v3(3.3, y + 1.6, -4.1),
-            (1, 3) => v3(-1.8, y + 2.0, -3.0),
+            (1, 3) => v3(-1.95, y + 2.0, -3.0),
             (2, 3) => v3(9.15, y + 1.5, -3.25),
             (1, 4) => v3(-0.65, y + 0.75, -4.2),
             (2, 4) => v3(DESK[0] - 0.6, y + 1.12, DESK[1] + 0.05),
@@ -1242,7 +1242,7 @@ fn painter(out: &mut Vec<Prim>) {
 /// shelf of jars, the lamp over the table.
 fn kitchen(out: &mut Vec<Prim>) {
     let y = 3.0 * STOREY;
-    table(out, v3(-1.8, y, -3.0), 0.6, 0.42, 0.76, 0.55);
+    table(out, v3(-1.95, y, -3.0), 0.6, 0.42, 0.76, 0.55);
     // Her chair; his moves with him (story.rs).
     chair(out, v3(-2.95, y, -3.0), FRAC_PI_2, 0.5);
     out.push(cube(mat::WOOD, v3(-3.95, y + 0.45, -4.3), v3(1.55, 0.45, 0.3)).tone(0.75));

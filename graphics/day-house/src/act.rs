@@ -286,6 +286,15 @@ impl Act {
         }
     }
 
+    /// How far the way has carried the figure up above where it set out:
+    /// the ramp its body rides (0 on the level and standing).
+    fn lifted(&self, t: f32) -> f32 {
+        match &self.place {
+            Place::Way { ramp, .. } => ramp(self.walk.track(t)) * self.k,
+            Place::Spot { .. } => 0.0,
+        }
+    }
+
     /// The figure's pose in its walk's frame (its gestures are added to it).
     pub fn pose(&self, t: f32, breath: f32) -> Pose {
         let mut pose = self.walk.pose(t, breath);
@@ -572,7 +581,7 @@ pub struct Tram {
 
 /// From the first stop it is back in from the left this long after leaving,
 /// and brakes into the second stop over `BACK_BRAKE` s from `BACK_FROM` away.
-pub const BACK_AFTER: f32 = 9.5;
+pub const BACK_AFTER: f32 = 17.0;
 pub const BACK_BRAKE: f32 = 4.5;
 const BACK_FROM: f32 = 12.0;
 
@@ -939,9 +948,12 @@ impl Plan {
         act.local(t, world.carried(act.ride, act.t0, t))
     }
 
-    /// A smooth anchor over the floor under him (the walk's own track).
+    /// A smooth anchor under him (the walk's own track): up a stair it
+    /// rises with the line his body rides, not left on the floor below
+    /// until the top.
     pub fn anchor(&self, t: f32, world: &World) -> V3 {
-        self.frame_at(t, world).origin
+        let act = self.act_at(t);
+        act.local(t, world.carried(act.ride, act.t0, t)).origin + Y * act.lifted(t)
     }
 }
 

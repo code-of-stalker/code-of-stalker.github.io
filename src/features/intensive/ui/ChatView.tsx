@@ -374,7 +374,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     if (!text || saving) return;
     if (text === message.text) { stopEditing(); return; }
     setSaving(true);
-    try { merge([await session.edit(chatId, message.id, text)]); stopEditing(); setError(''); }
+    try { merge([await session.edit(chatId, message.id, text, message.report)]); stopEditing(); setError(''); }
     catch (problem) { setError(problemText(problem, say('Не удалось изменить сообщение. Попробуй ещё раз.', 'Не удалось изменить сообщение. Попробуйте ещё раз.'), formal)); }
     finally { setSaving(false); }
   };

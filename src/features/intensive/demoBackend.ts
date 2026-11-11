@@ -99,11 +99,11 @@ class DemoServer {
   }
 
   /** Sends as a seeded person, encrypting with the chat key they hold. */
-  async sendAs(chatId: string, senderId: string, text: string, minutesAgo = 0) {
+  async sendAs(chatId: string, senderId: string, text: string, minutesAgo = 0, report = false) {
     const row = this.keys.find(k => k.chatId === chatId && k.memberId === senderId);
     if (!row) return;
     const raw = await c.unwrapChatKey(row, this.privateKeys.get(senderId)!, { chatId, version: row.version, memberId: senderId });
-    const sealed = await c.encryptMessage(await c.chatCipher(raw), chatId, text);
+    const sealed = await c.encryptMessage(await c.chatCipher(raw), chatId, text, report);
     const message = this.insertMessage(chatId, senderId, row.version, sealed.iv, sealed.body);
     if (minutesAgo) message.createdAt = new Date(Date.now() - minutesAgo * 60_000).toISOString();
   }
@@ -133,12 +133,14 @@ class DemoServer {
       return id;
     };
     const alexChat = await chat(alex, 2900);
+    await this.sendAs(alexChat, alex, 'Отчёт за день. Утром заметил, что слышу свои шаги только на лестнице. Днём трижды ловил себя на том, что смотрю, но не вижу.', 1500, true);
+    await this.sendAs(alexChat, mira, 'Хорошо, что ловишь. Это и есть начало.', 1440);
     await this.sendAs(alexChat, alex, 'Добрый вечер. День третий: пока шёл до работы, замечал звуки. Насчитал девять разных.', 190);
     await this.sendAs(alexChat, mira, 'Хорошо. Завтра не считай, а отмечай, откуда пришёл каждый звук.', 150);
     await this.sendAs(alexChat, oleg, 'Присоединяюсь. Алекс, запиши это в дневник после прогулки.', 120);
     await this.sendAs(alexChat, alex, 'Принято.', 95);
     const dinaChat = await chat(dina, 2400);
-    await this.sendAs(dinaChat, dina, 'Сегодня смотрела на тени в обед. Они короче, чем я думала.', 600);
+    await this.sendAs(dinaChat, dina, 'Сегодня смотрела на тени в обед. Они короче, чем я думала.', 600, true);
     await this.sendAs(dinaChat, mira, 'Отлично. Вечером сравни с тенями на закате.', 540);
   }
 }

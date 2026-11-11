@@ -72,7 +72,7 @@ test('identity opens only with its phrase; chat keys open only for their member 
   const cipher = await c.chatCipher(chatKey);
   const sealed = await c.encryptMessage(cipher, 'chat-1', 'Тишина у реки');
   assert.ok(!sealed.body.includes('Тишина'));
-  assert.equal(await c.decryptMessage(cipher, 'chat-1', sealed.iv, sealed.body), 'Тишина у реки');
+  assert.deepEqual(await c.decryptMessage(cipher, 'chat-1', sealed.iv, sealed.body), { text: 'Тишина у реки', report: false });
   await assert.rejects(c.decryptMessage(cipher, 'chat-2', sealed.iv, sealed.body));
 });
 
@@ -144,9 +144,10 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
   assert.equal(chat.adminName, 'Олег Ветров');
   await alex.chatCipher(chat.chatId);
   const history = await alex.messages(chat.chatId);
-  assert.ok(history.length >= 4);
+  assert.ok(history.length >= 6);
   assert.ok(history.every(m => typeof m.text === 'string'));
-  assert.deepEqual(history.slice(0, 3).map(m => m.senderRole), ['walker', 'guide', 'admin']);
+  assert.deepEqual(history.slice(0, 5).map(m => m.senderRole), ['walker', 'guide', 'walker', 'guide', 'admin']);
+  assert.deepEqual(history.map(m => m.report), [true, false, false, false, false, false]);
   const sent = await alex.send(chat.chatId, 'Сегодня слушал дождь.');
   assert.equal(sent.text, 'Сегодня слушал дождь.');
 
@@ -285,10 +286,41 @@ test('a voice message is sealed apart from its description and plays for every m
   await assert.rejects(fresh.voiceAudio(chat.chatId, heard), /gone/);
 });
 
+test('a daily report is marked inside the seal; the guide and the guide admin see it, edits keep it', async () => {
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => firstName(p.name) === name).entropy);
+  const alex = await as('Алекс');
+  const [chat] = await alex.myChats();
+  await alex.chatCipher(chat.chatId);
+  const plain = await alex.send(chat.chatId, 'Просто вопрос');
+  assert.equal(plain.report, false);
+  const report = await alex.send(chat.chatId, 'Сегодня замечал запахи у рынка.', true);
+  assert.equal(report.report, true);
+  const voice = await alex.sendVoice(chat.chatId, { audio: c.randomBytes(64), durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' }, true);
+  assert.equal(voice.report, true);
+  // The server keeps an ordinary text row: the mark is sealed.
+  const row = (await alex.backend.messages(chat.chatId)).find(m => m.id === report.id);
+  assert.equal(row.kind, 'text');
+  assert.ok(!JSON.stringify(row).includes('report'));
+
+  for (const [name, code] of [['Мира', '123456'], ['Олег', '123456']]) {
+    const reader = await as(name);
+    await reader.verifyTotp(code);
+    await reader.chatCipher(chat.chatId);
+    const seen = await reader.messages(chat.chatId);
+    assert.equal(seen.find(m => m.id === report.id).report, true, name);
+    assert.equal(seen.find(m => m.id === voice.id).report, true, name);
+    assert.equal(seen.find(m => m.id === plain.id).report, false, name);
+  }
+  assert.equal((await alex.edit(chat.chatId, report.id, 'Сегодня замечал запахи у рынка и у реки.', true)).report, true);
+});
+
 test('a voice description that does not match the format is refused', async () => {
   const key = await c.chatCipher(c.newChatKey());
   const sealed = await c.encryptVoice(key, 'chat-a', { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' }, c.randomBytes(16));
-  assert.deepEqual(await c.decryptVoice(key, 'chat-a', sealed.iv, sealed.body), { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' });
+  assert.deepEqual(await c.decryptVoice(key, 'chat-a', sealed.iv, sealed.body), { voice: { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' }, report: false });
+  const marked = await c.encryptVoice(key, 'chat-a', { durationMs: 1000, waveform: [.5], mimeType: 'audio/ogg' }, c.randomBytes(16), true);
+  assert.equal((await c.decryptVoice(key, 'chat-a', marked.iv, marked.body)).report, true);
   await assert.rejects(c.decryptVoice(key, 'chat-b', sealed.iv, sealed.body));
   const bad = await c.encryptVoice(key, 'chat-a', { durationMs: 1000, waveform: [.5], mimeType: 'text/html' }, c.randomBytes(16));
   await assert.rejects(c.decryptVoice(key, 'chat-a', bad.iv, bad.body), /Malformed/);

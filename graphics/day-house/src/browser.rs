@@ -1,25 +1,24 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
-//! from the `Story`; the shaders trace the dawn from nothing but those
-//! numbers. Three passes: the world (one ray a pixel, at a share of the
-//! canvas), the lens (its blur, then its mips for the bloom), and the
-//! finish, which the theme's recolor (scene-palette) maps before the warm
-//! light is added back over it.
+//! from the `Story`; the shaders trace the house and the day from nothing
+//! but those numbers and the scene's data texture (lib.rs `Scene`: the
+//! house's primitives, the moving ones and the people's cones). Three
+//! passes: the world (one ray a pixel, at a share of the canvas), the lens
+//! (its blur, then its mips for the bloom), and the finish, which the
+//! theme's recolor (scene-palette) maps before the warm light is added back
+//! over it.
 //!
 //! The world is itself drawn in parts: one program finds what the eye's ray
-//! meets and keeps it in float frames, then the sky and the fog, the towers
-//! and the rope, him, the city under the fog, the air and his double each
-//! add their light. One program for all of it takes Windows' shader compiler too
-//! long; each part takes it a few seconds, and with
-//! KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{
-    BLEND, CAP, COLLAR, CUT_ROUND, FACE, HANDS, HEAD, NECK, PRIMITIVES, PROP, SCARF, SCARF_LINKS,
-};
-use crate::story::{HEART, SPHERE_Y, WIND};
+//! meets and keeps it in float frames, one lights it, one adds the light in
+//! the air (the rings, the line of his day). One program for all of it takes
+//! Windows' shader compiler too long; each part takes it a few seconds, and
+//! with KHR_parallel_shader_compile the page keeps running while it works.
+use crate::body::{BLEND, CAP, CUT_ROUND, FACE, FEET, HANDS, HEAD, NECK, PRIMITIVES, TOES};
+use crate::house::{self, cell, flag, kind, mat};
+use crate::story::{BEADS, ROUTE};
 use crate::{
-    cones, look, pack, recolor_code, Chapter, Look, Story, BLOOM, BLUR_MAX, BYTE_KEEP, EXPOSURE,
-    FOG_TOP, FRAME_ASPECT, HAZE, LOOP, LOT_X, LOT_Z, MIST, MIST_HEIGHT, POLE_R, RAD_SCALE, ROPE_R,
-    ROPE_ROUND, ROPE_SAG, SLOTS, SLOT_SHADOW, SLOT_VIEW, SPAN, STREET, TOWER_X, TOWER_Z,
-    WORLD_SCALE, WORLD_WIDTH,
+    look, pack, recolor_code, Chapter, Look, Scene, Story, BLOOM, BLUR_MAX, BYTE_KEEP, DATA_W,
+    DYN_ROWS, EXPOSURE, FIGS, FRAME_ASPECT, LAMPS, LOOP, PATH_POINTS, RAD_SCALE, SLOTS, SLOT_LAMPS,
+    SLOT_PATH, SLOT_VIEW, WORLD_SCALE, WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
@@ -37,9 +36,8 @@ const WARM: &str = include_str!("shaders/warm.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// Every uniform any program reads; a program without one ignores it.
-const NAMES: [&str; 12] = [
+const NAMES: [&str; 14] = [
     "u_d",
-    "u_b",
     "u_res",
     "u_world",
     "u_dof",
@@ -48,72 +46,164 @@ const NAMES: [&str; 12] = [
     "u_edges",
     "u_warm",
     "u_h0",
-    "u_h1",
-    "u_h2",
+    "u_shadow",
+    "u_data",
+    "u_c",
+    "u_fig",
+    "u_refl",
 ];
 /// The texture units of the world's frame and the lens's.
 const UNIT_WORLD: u32 = 0;
 const UNIT_DOF: u32 = 1;
 /// The first of the hit records' units; unit 3 is where frames are made.
 const UNIT_HITS: u32 = 4;
-/// The hit records: the eye's hit, its normal and the line's distance, the
-/// line's normal.
-const RECORDS: u32 = 3;
+/// The hit records: what the eye's ray met and its normal, in one frame
+/// (Chrome on Windows builds a pass that writes several twice).
+const RECORDS: u32 = 1;
+/// Where the sun reaches.
+const UNIT_SHADOW: u32 = 5;
+// A record keeps the cell or the person in 5 bits.
+const _: () = assert!(FIGS <= 32 && cell::COUNT <= 32);
+/// The scene's data texture.
+const UNIT_DATA: u32 = 7;
+/// The table's reflection, which the lacquer reads.
+const UNIT_REFL: u32 = 8;
+/// `u_res.w` while the world is drawn from the eye mirrored under the
+/// table (for its reflection).
+const MIRROR: f32 = 5.0;
 /// KHR_parallel_shader_compile's query: whether a program has linked yet.
 const COMPLETION_STATUS: u32 = 0x91B1;
 /// The world's parts, in the order they are linked.
-const PASSES: [&str; 7] = ["HITS", "FOG", "SET", "FIGURE", "CITY", "AIR", "GHOST"];
+const PASSES: [&str; 4] = ["HITS", "SHADOW", "LIGHT", "FX"];
+
+/// The materials by the shaders' names.
+const MATERIALS: [(&str, u32); 37] = [
+    ("PLASTER", mat::PLASTER),
+    ("TILE", mat::TILE),
+    ("BOARDS", mat::BOARDS),
+    ("WOOD", mat::WOOD),
+    ("FABRIC", mat::FABRIC),
+    ("METAL", mat::METAL),
+    ("BRASS", mat::BRASS),
+    ("LAMP", mat::LAMP),
+    ("SCREEN", mat::SCREEN),
+    ("PAPER", mat::PAPER),
+    ("CERAMIC", mat::CERAMIC),
+    ("PLANT", mat::PLANT),
+    ("BREAD", mat::BREAD),
+    ("GOODS", mat::GOODS),
+    ("BOOKS", mat::BOOKS),
+    ("BRICK", mat::BRICK),
+    ("PAVING", mat::PAVING),
+    ("RAIL", mat::RAIL),
+    ("TRAM", mat::TRAM),
+    ("PLINTH", mat::PLINTH),
+    ("BACKDROP", mat::BACKDROP),
+    ("ROOF", mat::ROOF),
+    ("GRASS", mat::GRASS),
+    ("RUG", mat::RUG),
+    ("CANVAS", mat::CANVAS),
+    ("FRAME", mat::FRAME),
+    ("CLOTH", mat::CLOTH),
+    ("CALENDAR", mat::CALENDAR),
+    ("SIGN", mat::SIGN),
+    ("DARK", mat::DARK),
+    ("GLASS", mat::GLASS),
+    ("BARK", mat::BARK),
+    ("TOY", mat::TOY),
+    ("FUR", mat::FUR),
+    ("STONE", mat::STONE),
+    ("FRIDGE", mat::FRIDGE),
+    ("STREETLAMP", mat::STREETLAMP),
+];
 
 /// lib.rs's constants as the shaders' `#define`s, so both read one source.
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
+    let u = |v: u32| v.to_string();
+    let n = |v: usize| v.to_string();
+    let lamps = (0..cell::COUNT)
+        .map(|c| {
+            let p = house::lamp_at(c);
+            format!("vec3({:?}, {:?}, {:?})", p.x, p.y, p.z)
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
     let lines = [
-        ("SLOTS", SLOTS.to_string()),
-        ("SLOT_SHADOW", SLOT_SHADOW.to_string()),
-        ("CONES", PRIMITIVES.to_string()),
-        ("CONE_NECK", NECK.to_string()),
-        ("CONE_HEAD", HEAD.to_string()),
-        ("CONE_COLLAR", COLLAR.to_string()),
-        ("CONE_FACE", FACE.to_string()),
-        ("CONE_CAP", CAP.to_string()),
-        ("CONE_SCARF", SCARF.to_string()),
-        ("SCARF_LINKS", SCARF_LINKS.to_string()),
-        ("CONE_PROP", PROP.to_string()),
-        ("CONE_HAND_L", HANDS[0].to_string()),
-        ("CONE_HAND_R", HANDS[1].to_string()),
+        ("SLOTS", n(SLOTS)),
+        ("SLOT_LAMPS", n(SLOT_LAMPS)),
+        ("LAMP_SLOTS", n(LAMPS.div_ceil(4))),
+        ("SLOT_PATH", n(SLOT_PATH)),
+        ("PATH_POINTS", n(PATH_POINTS)),
+        ("ROUTE", n(ROUTE)),
+        ("BEADS", n(BEADS)),
+        ("CELLS", n(cell::COUNT)),
+        ("DATA_W", n(DATA_W)),
+        ("FIGS", n(FIGS)),
+        ("CONES", n(PRIMITIVES)),
+        ("CONE_NECK", n(NECK)),
+        ("CONE_HEAD", n(HEAD)),
+        ("CONE_FACE", n(FACE)),
+        ("CONE_CAP", n(CAP)),
+        ("HAND_L", n(HANDS[0])),
+        ("HAND_R", n(HANDS[1])),
+        ("FOOT_L", n(FEET[0])),
+        ("TOE_R", n(TOES[1])),
         ("CUT_ROUND", f(CUT_ROUND)),
         (
             "BLENDS",
             BLEND.iter().map(|&b| f(b)).collect::<Vec<_>>().join(", "),
         ),
-        ("SPAN", f(SPAN)),
+        ("LAMP_LIST", lamps),
+        ("KIND_BOX", u(kind::BOX)),
+        ("KIND_CYL", u(kind::CYL)),
+        ("KIND_BALL", u(kind::BALL)),
+        ("KIND_TORUS", u(kind::TORUS)),
+        ("KIND_CONE", u(kind::CONE)),
+        ("KIND_STAIRS", u(kind::STAIRS)),
+        ("KIND_SHELF", u(kind::SHELF)),
+        ("KIND_CAGE", u(kind::CAGE)),
+        ("KIND_LEAVES", u(kind::LEAVES)),
+        ("KIND_WINDOW", u(kind::WINDOW)),
+        ("F_WALL", u(flag::WALL)),
+        ("F_SLAB", u(flag::SLAB)),
+        ("F_FLAT", u(flag::FLAT)),
+        ("F_GLOSS", u(flag::GLOSS)),
+        ("STOREY", f(house::STOREY)),
+        ("FLOORS", n(house::FLOORS)),
+        ("SIDE_X", f(house::SIDE)),
+        ("BACK_Z", f(house::BACK)),
+        ("ROOF_Y", f(house::ROOF)),
+        ("TABLE_Y", f(house::TABLE)),
+        ("BACKDROP_HALF", f(house::BACKDROP_HALF)),
+        ("BACKDROP_TOP", f(house::BACKDROP_TOP)),
+        ("MIRROR", f(MIRROR)),
+        ("TRACK_Z", f(house::TRACK_Z)),
+        ("COL_1", f(house::COLUMNS[1][0])),
+        ("COL_2", f(house::COLUMNS[2][0])),
+        ("CELL_ROOF", n(cell::ROOF)),
+        ("CELL_LIFT", n(cell::LIFT)),
+        ("CELL_STREET_L", n(cell::STREET_L)),
+        ("CELL_STREET_M", n(cell::STREET_M)),
+        ("CELL_STREET_R", n(cell::STREET_R)),
+        ("CELL_YARD", n(cell::YARD)),
+        ("CELL_PLINTH", n(cell::PLINTH)),
+        ("CELL_TRAM", n(cell::TRAM)),
+        ("CELL_MOVE", n(cell::MOVE)),
         ("LOOP", f(LOOP)),
-        ("TOWER_X", f(TOWER_X)),
-        ("TOWER_Z", f(TOWER_Z)),
-        ("ROPE_R", f(ROPE_R)),
-        ("ROPE_SAG", f(ROPE_SAG)),
-        ("ROPE_ROUND", f(ROPE_ROUND)),
-        ("POLE_R", f(POLE_R)),
-        ("FOG_TOP", f(FOG_TOP)),
-        ("STREET", f(STREET)),
-        ("LOT_X", f(LOT_X)),
-        ("LOT_Z", f(LOT_Z)),
         ("BLUR_MAX", f(BLUR_MAX)),
         ("RAD_SCALE", f(RAD_SCALE)),
         ("BLOOM", f(BLOOM)),
         ("EXPOSURE", f(EXPOSURE)),
-        ("HAZE", f(HAZE)),
-        ("MIST", f(MIST)),
-        ("MIST_HEIGHT", f(MIST_HEIGHT)),
-        ("SPHERE_Y", f(SPHERE_Y)),
-        ("WIND_X", f(WIND[0])),
-        ("WIND_Z", f(WIND[1])),
-        ("HEART", f(HEART)),
     ];
-    lines
+    let mut out: String = lines
         .iter()
         .map(|(name, value)| format!("#define {name} {value}\n"))
-        .collect()
+        .collect();
+    for (name, code) in MATERIALS {
+        out.push_str(&format!("#define M_{name} {code}\n"));
+    }
+    out
 }
 
 /// A shader that shares the scene's camera, slots, plan and hash.
@@ -232,9 +322,10 @@ impl Linking {
         gl.use_program(Some(&prog.program));
         gl.uniform1i(prog.at("u_world"), UNIT_WORLD as i32);
         gl.uniform1i(prog.at("u_dof"), UNIT_DOF as i32);
-        for (i, name) in ["u_h0", "u_h1", "u_h2"].iter().enumerate() {
-            gl.uniform1i(prog.at(name), (UNIT_HITS + i as u32) as i32);
-        }
+        gl.uniform1i(prog.at("u_h0"), UNIT_HITS as i32);
+        gl.uniform1i(prog.at("u_shadow"), UNIT_SHADOW as i32);
+        gl.uniform1i(prog.at("u_data"), UNIT_DATA as i32);
+        gl.uniform1i(prog.at("u_refl"), UNIT_REFL as i32);
         Ok(prog)
     }
     fn dispose(self, gl: &Gl) {
@@ -247,15 +338,13 @@ impl Linking {
 
 /// How the world is drawn.
 enum World {
-    /// The hits into the records, then the light in six parts.
+    /// The hits into the records, the sun's shadow, then their light,
+    /// then the light in the air.
     Passes {
         hits: Prog,
-        fog: Prog,
-        set: Prog,
-        figure: Prog,
-        city: Prog,
-        air: Prog,
-        ghost: Prog,
+        shadow: Prog,
+        light: Prog,
+        fx: Prog,
     },
     /// One program, for a GPU that cannot keep the hits in float frames.
     Whole(Prog),
@@ -266,13 +355,10 @@ impl World {
         match self {
             World::Passes {
                 hits,
-                fog,
-                set,
-                figure,
-                city,
-                air,
-                ghost,
-            } => vec![hits, fog, set, figure, city, air, ghost],
+                shadow,
+                light,
+                fx,
+            } => vec![hits, shadow, light, fx],
             World::Whole(all) => vec![all],
         }
     }
@@ -286,22 +372,18 @@ struct Programs {
 }
 
 impl Programs {
-    /// From the linked programs in the order `RopeDawn::new` started them.
+    /// From the linked programs in the order `DayHouse::new` started them.
     fn from_linked(mut linked: Vec<Prog>) -> Result<Self, JsValue> {
         let missing = |_| JsValue::from_str("A program is missing");
         let others = linked.split_off(linked.len().saturating_sub(3));
         let [dof, finish, warm]: [Prog; 3] = others.try_into().map_err(missing)?;
         let world = if linked.len() == PASSES.len() {
-            let [hits, fog, set, figure, city, air, ghost]: [Prog; 7] =
-                linked.try_into().map_err(missing)?;
+            let [hits, shadow, light, fx]: [Prog; 4] = linked.try_into().map_err(missing)?;
             World::Passes {
                 hits,
-                fog,
-                set,
-                figure,
-                city,
-                air,
-                ghost,
+                shadow,
+                light,
+                fx,
             }
         } else {
             let [all]: [Prog; 1] = linked.try_into().map_err(missing)?;
@@ -510,8 +592,77 @@ impl Records {
     }
 }
 
+/// The scene's data texture: 32-bit float texels, `DATA_W` a row; the
+/// still rows are written once, the moving ones every frame.
+struct Data {
+    texture: WebGlTexture,
+    /// The first moving row.
+    row: i32,
+}
+
+impl Data {
+    fn new(gl: &Gl, scene: &Scene) -> Result<Self, JsValue> {
+        let texture = gl.create_texture().ok_or("Cannot allocate texture")?;
+        gl.active_texture(Gl::TEXTURE0 + UNIT_DATA);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&texture));
+        for (key, value) in [
+            (Gl::TEXTURE_MIN_FILTER, Gl::NEAREST),
+            (Gl::TEXTURE_MAG_FILTER, Gl::NEAREST),
+            (Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE),
+            (Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE),
+        ] {
+            gl.tex_parameteri(Gl::TEXTURE_2D, key, value as i32);
+        }
+        let rows = scene.rows();
+        let mut all = vec![0.0f32; 4 * DATA_W * rows];
+        for (i, t) in scene.texels.iter().enumerate() {
+            all[4 * i..4 * i + 4].copy_from_slice(t);
+        }
+        let view = js_sys::Float32Array::from(all.as_slice());
+        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+            Gl::TEXTURE_2D,
+            0,
+            Gl::RGBA32F as i32,
+            DATA_W as i32,
+            rows as i32,
+            0,
+            Gl::RGBA,
+            Gl::FLOAT,
+            Some(&view),
+        )?;
+        gl.bind_texture(Gl::TEXTURE_2D, None);
+        gl.active_texture(Gl::TEXTURE0);
+        Ok(Self {
+            texture,
+            row: (scene.dynamic / DATA_W) as i32,
+        })
+    }
+    /// This frame's moving rows.
+    fn update(&self, gl: &Gl, moving: &[[f32; 4]]) {
+        let flat: Vec<f32> = moving.iter().flatten().copied().collect();
+        let view = js_sys::Float32Array::from(flat.as_slice());
+        gl.active_texture(Gl::TEXTURE0 + UNIT_DATA);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.texture));
+        // A failed upload leaves last frame's rows: nothing to report.
+        let _ = gl.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_array_buffer_view(
+            Gl::TEXTURE_2D,
+            0,
+            0,
+            self.row,
+            DATA_W as i32,
+            DYN_ROWS as i32,
+            Gl::RGBA,
+            Gl::FLOAT,
+            Some(&view),
+        );
+    }
+    fn dispose(&self, gl: &Gl) {
+        gl.delete_texture(Some(&self.texture));
+    }
+}
+
 #[wasm_bindgen]
-pub struct RopeDawn {
+pub struct DayHouse {
     gl: Gl,
     canvas: HtmlCanvasElement,
     /// The programs once all of them have linked.
@@ -527,6 +678,11 @@ pub struct RopeDawn {
     /// Whether the world is drawn in parts, its hits kept in `records`.
     passes: bool,
     world_frame: Target,
+    /// Where the sun reaches, from the eye's hits.
+    shadow_frame: Target,
+    /// The table's reflection at half size: its hits, then its light.
+    mirror_records: Records,
+    mirror_frame: Target,
     lens_frame: Target,
     /// Whether the frames hold half floats.
     float: bool,
@@ -534,6 +690,8 @@ pub struct RopeDawn {
     themed: Themed,
     look: Look,
     story: Story,
+    scene: Scene,
+    data: Data,
     soft_edges: bool,
     backdrop: [f32; 3],
     elapsed: f32,
@@ -545,12 +703,12 @@ pub struct RopeDawn {
 }
 
 #[wasm_bindgen]
-impl RopeDawn {
-    /// Nothing to load: the sky, the fog, the towers and the walker are
-    /// built on the GPU. The programs link in the background; `ready` says when the
+impl DayHouse {
+    /// Nothing to load: the house, its people and the sky are built here
+    /// and on the GPU. The programs link in the background; `ready` says when the
     /// scene can draw, and frames before that draw nothing.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement) -> Result<RopeDawn, JsValue> {
+    pub fn new(canvas: HtmlCanvasElement) -> Result<DayHouse, JsValue> {
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
         js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
@@ -594,6 +752,8 @@ impl RopeDawn {
                 }
             }
         }
+        let scene = Scene::new();
+        let data = Data::new(&gl, &scene)?;
         let themed = Themed::new(&gl, false)?;
         let empty = gl
             .create_vertex_array()
@@ -602,6 +762,9 @@ impl RopeDawn {
             world_frame: Target::new(&gl, true, false)?,
             lens_frame: Target::new(&gl, true, true)?,
             records: Records::new(&gl)?,
+            shadow_frame: Target::new(&gl, false, false)?,
+            mirror_records: Records::new(&gl)?,
+            mirror_frame: Target::new(&gl, true, false)?,
             gl,
             canvas,
             programs: None,
@@ -614,7 +777,9 @@ impl RopeDawn {
             empty,
             themed,
             look: look(4),
-            story: Story::new(Chapter::Summary),
+            story: Story::new(Chapter::Everyday),
+            scene,
+            data,
             soft_edges: false,
             backdrop: [0.0; 3],
             elapsed: 0.0,
@@ -625,7 +790,7 @@ impl RopeDawn {
             frames: 0,
         })
     }
-    /// Which page's loop to play: only page 09, so any code plays it.
+    /// Which page's loop to play: only page 10, so any code plays it.
     pub fn chapter(&mut self, _code: u32) {}
     /// Whether the programs have linked and the scene draws; it never
     /// waits where the GPU can say. An error says why they did not link.
@@ -681,8 +846,8 @@ impl RopeDawn {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: the sun out behind him on the rope
-    /// and the light risen in him.
+    /// Reduced motion holds one moment: the night house, the line of his
+    /// day drawn through it, the three rings striking together round him.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -730,6 +895,10 @@ impl RopeDawn {
         self.world_frame.dispose(gl);
         self.lens_frame.dispose(gl);
         self.records.dispose(gl);
+        self.shadow_frame.dispose(gl);
+        self.mirror_records.dispose(gl);
+        self.mirror_frame.dispose(gl);
+        self.data.dispose(gl);
         gl.delete_vertex_array(Some(&self.empty));
         for l in self.linking.drain(..) {
             l.dispose(gl);
@@ -742,7 +911,7 @@ impl RopeDawn {
     }
 }
 
-impl RopeDawn {
+impl DayHouse {
     /// Finishes the programs once the GPU has linked every one of them.
     fn poll(&mut self) -> Result<bool, JsValue> {
         if self.programs.is_some() {
@@ -809,7 +978,16 @@ impl RopeDawn {
             }
             if ok {
                 if self.passes && !self.records.ready(world.0, world.1) {
-                    self.passes = float && self.records.allocate(&self.gl, world.0, world.1)?;
+                    self.passes = float
+                        && self.records.allocate(&self.gl, world.0, world.1)?
+                        && self
+                            .shadow_frame
+                            .allocate(&self.gl, world.0, world.1, false)?;
+                }
+                let half = ((world.0 + 1) / 2, (world.1 + 1) / 2);
+                if self.passes && !self.mirror_records.ready(half.0, half.1) {
+                    self.passes = self.mirror_records.allocate(&self.gl, half.0, half.1)?
+                        && self.mirror_frame.allocate(&self.gl, half.0, half.1, true)?;
                 }
                 if !self.passes || !float {
                     self.passes = false;
@@ -849,7 +1027,7 @@ impl RopeDawn {
             return;
         };
         let at = if self.reduced {
-            Chapter::Summary.still()
+            Chapter::Everyday.still()
         } else {
             self.elapsed
         };
@@ -864,7 +1042,17 @@ impl RopeDawn {
             0.0,
         ];
         let flat: Vec<f32> = slots.iter().flatten().copied().collect();
-        let cones = cones(&f);
+        // The eye mirrored under the table: its reflection's camera.
+        let mut mirrored = slots;
+        mirrored[0][1] = 2.0 * house::TABLE - mirrored[0][1];
+        for axis in &mut mirrored[1..4] {
+            axis[1] = -axis[1];
+        }
+        let mirrored: Vec<f32> = mirrored.iter().flatten().copied().collect();
+        let (moving, cells) = self.scene.moving(&f);
+        let cells: Vec<f32> = cells.iter().flatten().copied().collect();
+        let people: Vec<f32> = self.scene.people(&f).iter().flatten().copied().collect();
+        self.data.update(&self.gl, &moving);
         let keep = if self.float { 1.0 } else { BYTE_KEEP };
         let gl = &self.gl;
         gl.bind_vertex_array(Some(&self.empty));
@@ -879,38 +1067,57 @@ impl RopeDawn {
         let Some(programs) = self.programs.as_ref() else {
             return;
         };
-        let world = |p: &Prog| {
-            scene(p, ww, wh, 0.0);
-            gl.uniform4fv_with_f32_array(p.at("u_b"), &cones);
+        gl.active_texture(Gl::TEXTURE0 + UNIT_DATA);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.data.texture));
+        let world = |p: &Prog, eye: &[f32], (w, h): (i32, i32), kind: f32| {
+            gl.use_program(Some(&p.program));
+            gl.uniform4fv_with_f32_array(p.at("u_d"), eye);
+            gl.uniform4f(p.at("u_res"), w as f32, h as f32, keep, kind);
+            gl.uniform4fv_with_f32_array(p.at("u_c"), &cells);
+            gl.uniform4fv_with_f32_array(p.at("u_fig"), &people);
             gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         };
         match &programs.world {
             World::Passes {
                 hits,
-                fog,
-                set,
-                figure,
-                city,
-                air,
-                ghost,
+                shadow,
+                light,
+                fx,
             } => {
-                self.records.bind(gl);
-                world(hits);
-                // The sky and the fog also write the depth and the blur; the
-                // others add their light over it.
-                self.world_frame.bind(gl);
-                self.records.read(gl);
-                world(fog);
+                // The table's reflection first: the same passes from the
+                // mirrored eye, at half size. Its light reads no reflection
+                // and no shadow; the lens's frame only fills their units.
+                let half = self.mirror_frame.size;
+                self.mirror_records.bind(gl);
+                world(hits, &mirrored, half, MIRROR);
+                self.mirror_frame.bind(gl);
+                self.mirror_records.read(gl);
+                self.lens_frame.read(gl, UNIT_REFL);
+                self.lens_frame.read(gl, UNIT_SHADOW);
+                world(light, &mirrored, half, MIRROR);
                 gl.enable(Gl::BLEND);
                 gl.blend_func(Gl::ONE, Gl::ONE);
-                for p in [set, figure, city, air, ghost] {
-                    world(p);
-                }
+                world(fx, &mirrored, half, MIRROR);
+                gl.disable(Gl::BLEND);
+                // The eye's own: the light also writes the depth and the
+                // blur; the light in the air is added over it.
+                self.records.bind(gl);
+                world(hits, &flat, (ww, wh), 0.0);
+                self.shadow_frame.bind(gl);
+                self.records.read(gl);
+                world(shadow, &flat, (ww, wh), 0.0);
+                self.world_frame.bind(gl);
+                self.shadow_frame.read(gl, UNIT_SHADOW);
+                self.mirror_frame.read(gl, UNIT_REFL);
+                world(light, &flat, (ww, wh), 0.0);
+                gl.enable(Gl::BLEND);
+                gl.blend_func(Gl::ONE, Gl::ONE);
+                world(fx, &flat, (ww, wh), 0.0);
                 gl.disable(Gl::BLEND);
             }
             World::Whole(all) => {
                 self.world_frame.bind(gl);
-                world(all);
+                world(all, &flat, (ww, wh), 0.0);
             }
         }
 
@@ -965,7 +1172,7 @@ impl RopeDawn {
         gl.uniform3fv_with_f32_array(programs.warm.at("u_warm"), &self.look.warm);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.disable(Gl::BLEND);
-        let units = [UNIT_WORLD, UNIT_DOF].into_iter();
+        let units = [UNIT_WORLD, UNIT_DOF, UNIT_DATA, UNIT_REFL, UNIT_SHADOW].into_iter();
         for unit in units.chain(UNIT_HITS..UNIT_HITS + RECORDS) {
             gl.active_texture(Gl::TEXTURE0 + unit);
             gl.bind_texture(Gl::TEXTURE_2D, None);

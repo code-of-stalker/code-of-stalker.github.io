@@ -215,7 +215,11 @@ pub enum Place {
         ramp: fn(f32) -> f32,
     },
     /// On one spot: its heels' middle on the ground, the way it faces.
-    Spot { at: V3, heading: f32, turn: Option<Turn> },
+    Spot {
+        at: V3,
+        heading: f32,
+        turn: Option<Turn>,
+    },
 }
 
 /// One act of a figure's day.
@@ -449,7 +453,8 @@ impl World {
     /// How far the tram's doors are open, 0..1.
     pub fn tram_doors(&self, t: f32) -> f32 {
         let r = &self.tram;
-        let open = |a: f32, b: f32| smooth(a + 0.2, a + 0.9, t) * (1.0 - smooth(b - 0.9, b - 0.2, t));
+        let open =
+            |a: f32, b: f32| smooth(a + 0.2, a + 0.9, t) * (1.0 - smooth(b - 0.9, b - 0.2, t));
         open(r.stop1, r.go1).max(open(r.stop2, r.go2))
     }
 
@@ -659,7 +664,8 @@ impl Plan {
     ) -> &mut Self {
         let begin = self.t + READY;
         let (steps, last) = footsteps(begin, zs, gait);
-        let walk = Walk::new([[FOOT_X, 0.0], [-FOOT_X, 0.0]], steps, self.sway).on_ground(floor, ramp);
+        let walk =
+            Walk::new([[FOOT_X, 0.0], [-FOOT_X, 0.0]], steps, self.sway).on_ground(floor, ramp);
         let t1 = last + 0.45;
         let end = path.end();
         let heading = path.heading(path.length());
@@ -758,7 +764,10 @@ mod tests {
         plan.walk(&[[0.0, 3.0], [2.0, 3.0]], flat, WALKING);
         let world = World::default();
         let end = plan.anchor(plan.t, &world);
-        assert!((end.x - 2.0).abs() < 0.08 && (end.z - 3.0).abs() < 0.08, "{end:?}");
+        assert!(
+            (end.x - 2.0).abs() < 0.08 && (end.z - 3.0).abs() < 0.08,
+            "{end:?}"
+        );
         let act = plan.last_way();
         let body = act.body(plan.t, &act.pose(plan.t, 0.0), v3(0.0, 0.0, 0.0));
         assert!((body.pelvis.x - 2.06).abs() < 0.1, "{:?}", body.pelvis);

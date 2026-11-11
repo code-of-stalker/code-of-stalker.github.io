@@ -167,7 +167,14 @@ pub fn breath(t: f32) -> f32 {
 /// The six places of his day: the kitchen, the street, the shop, the
 /// living room, the study, the roof.
 fn bead_times(k: &Keys) -> [f32; BEADS] {
-    [k.sip, k.rails, k.queue + 4.0, k.catch, k.desk + 3.0, k.run_end + 1.0]
+    [
+        k.sip,
+        k.rails,
+        k.queue + 4.0,
+        k.catch,
+        k.desk + 3.0,
+        k.run_end + 1.0,
+    ]
 }
 
 impl Story {
@@ -210,7 +217,8 @@ impl Story {
         let k = self.cast.keys;
         let world = &self.cast.world;
         // His breath quickens in the argument, at the desk, in the run.
-        let hurried = window(s, 3.0, 4.0, k.sip, k.rise) + window(s, k.desk + 2.0, k.desk + 3.0, k.desk + 6.5, k.desk + 8.0);
+        let hurried = window(s, 3.0, 4.0, k.sip, k.rise)
+            + window(s, k.desk + 2.0, k.desk + 3.0, k.desk + 6.5, k.desk + 8.0);
         let b = breath(s * (1.0 + 0.6 * hurried));
         let moment = self.cast.moment(s, b);
         let held: Held = moment.held;
@@ -230,7 +238,11 @@ impl Story {
         };
         let rel = curve(|k| k.rel);
         let eye = v3(curve(|k| k.eye.x), curve(|k| k.eye.y), curve(|k| k.eye.z)) + hero * rel;
-        let look = v3(curve(|k| k.look.x), curve(|k| k.look.y), curve(|k| k.look.z)) + hero * rel;
+        let look = v3(
+            curve(|k| k.look.x),
+            curve(|k| k.look.y),
+            curve(|k| k.look.z),
+        ) + hero * rel;
         let lens = curve(|k| k.lens);
         let aperture = curve(|k| k.aperture).max(0.0);
         let forward = (look - eye).normalize();
@@ -247,8 +259,10 @@ impl Story {
         let az = 1.15 - 2.4 * u;
         let el = 0.05 + 0.85 * (PI * u).sin();
         let sun = v3(az.sin() * el.cos(), el.sin(), az.cos() * el.cos());
-        let sun_amount = smooth(-2.0, 8.0, s) * (1.0 - smooth(150.0, 159.0, s)) + 0.25 * smooth(174.0, 180.0, s);
-        let sky = (0.25 + 0.75 * smooth(0.0, 12.0, s)) * (1.0 - 0.85 * smooth(150.0, 162.0, s)) + 0.2 * smooth(172.0, 180.0, s);
+        let sun_amount =
+            smooth(-2.0, 8.0, s) * (1.0 - smooth(150.0, 159.0, s)) + 0.25 * smooth(174.0, 180.0, s);
+        let sky = (0.25 + 0.75 * smooth(0.0, 12.0, s)) * (1.0 - 0.85 * smooth(150.0, 162.0, s))
+            + 0.2 * smooth(172.0, 180.0, s);
         let golden = window(s, 120.0, 140.0, 156.0, 162.0);
         let night = window(s, 152.0, 162.0, 174.0, 180.0);
         let gloss = window(s, 168.0, 172.0, 177.0, 180.0);
@@ -257,7 +271,8 @@ impl Story {
 
         // The rings round him.
         let hb = heartbeat(s, HEART * (1.0 - 0.25 * hurried));
-        let tremble2 = window(s, 3.0, 3.8, k.pour + 0.5, k.sip + 2.0) + 0.7 * window(s, k.desk + 2.0, k.desk + 3.0, k.desk + 5.5, k.desk + 7.0);
+        let tremble2 = window(s, 3.0, 3.8, k.pour + 0.5, k.sip + 2.0)
+            + 0.7 * window(s, k.desk + 2.0, k.desk + 3.0, k.desk + 5.5, k.desk + 7.0);
         let honk = pulse(s - k.honk);
         let coin = pulse(s - (k.queue + 2.9));
         let catch = pulse(s - (k.catch - 0.55));
@@ -265,16 +280,31 @@ impl Story {
         let run = window(s, k.run, k.run + 1.0, k.run_end, k.run_end + 1.0);
         let lit = 0.35 + 0.25 * run + 0.4 * window(s, 158.0, 160.0, 172.0, 175.0);
         let ring1 = [1.5, 0.05, lit, 0.0];
-        let ring1b = [honk.max(coin * 0.6) + chord, (TAU * s / 40.0).rem_euclid(TAU), 1.0, 0.0];
+        let ring1b = [
+            honk.max(coin * 0.6) + chord,
+            (TAU * s / 40.0).rem_euclid(TAU),
+            1.0,
+            0.0,
+        ];
         let ring2 = [0.42 + 0.04 * b, 1.25 + 0.12 * b, lit, tremble2];
         let ring2b = [hb * 0.5 + chord, b, 1.0 + hurried, 0.0];
         let ring3 = [0.75, 0.02, lit, 0.0];
         let track = self.cast.plans[HERO].act_at(s).walk.track(s);
         let ring3b = [catch + chord, (-track / 0.75).rem_euclid(TAU), 1.0, 0.0];
-        let events = [(k.honk, 1.0), (k.queue + 2.9, 1.0), (k.sip, 2.0), (k.catch - 0.55, 3.0), (k.desk + 6.0, 2.0)];
+        let events = [
+            (k.honk, 1.0),
+            (k.queue + 2.9, 1.0),
+            (k.sip, 2.0),
+            (k.catch - 0.55, 3.0),
+            (k.desk + 6.0, 2.0),
+        ];
         let mut touched = events.iter().filter(|e| e.0 <= s);
-        let newest = touched.next_back().map_or((0.0, 99.0), |e| (e.1, (s - e.0).min(99.0)));
-        let before = touched.next_back().map_or((0.0, 99.0), |e| (e.1, (s - e.0).min(99.0)));
+        let newest = touched
+            .next_back()
+            .map_or((0.0, 99.0), |e| (e.1, (s - e.0).min(99.0)));
+        let before = touched
+            .next_back()
+            .map_or((0.0, 99.0), |e| (e.1, (s - e.0).min(99.0)));
         let ring_events = [newest.0, newest.1, before.0, before.1];
         let rings_seen = 1.0 - 0.5 * window(s, 0.0, 0.1, 2.0, 3.0);
 
@@ -284,7 +314,12 @@ impl Story {
         let melt = [window(s, 170.0, 172.5, 175.5, 178.5), gloss, 0.0, 0.0];
 
         let desk_on = window(s, k.desk - 2.0, k.desk, k.desk + 8.5, k.desk + 10.5);
-        let sparks = [desk_on * window(s, k.desk + 1.0, k.desk + 2.0, k.desk + 6.0, k.desk + 7.5), 0.0, 0.0, 0.0];
+        let sparks = [
+            desk_on * window(s, k.desk + 1.0, k.desk + 2.0, k.desk + 6.0, k.desk + 7.5),
+            0.0,
+            0.0,
+            0.0,
+        ];
         let spark_to = [5.3, 13.55, -4.55, 0.0];
         let desk = [desk_on, desk_on, 0.0, 0.0];
         let c = world.tram_c(s);
@@ -296,10 +331,31 @@ impl Story {
         let motion = [s, slow, ly, world.lift_moving(s)];
         let cup = [held.kid_cup.x, held.kid_cup.y, held.kid_cup.z, slow];
         let steam_at = held.cup + v3(0.0, 0.12, 0.0);
-        let steam = [steam_at.x, steam_at.y, steam_at.z, window(s, k.pour + 0.3, k.pour + 1.0, k.rise + 2.0, k.rise + 6.0)];
+        let steam = [
+            steam_at.x,
+            steam_at.y,
+            steam_at.z,
+            window(s, k.pour + 0.3, k.pour + 1.0, k.rise + 2.0, k.rise + 6.0),
+        ];
         let honk_at = v3(c + 4.7, 1.4, 4.3);
-        let honk = [honk_at.x, honk_at.y, honk_at.z, window(s, k.honk - 0.05, k.honk, k.honk + 0.7, k.honk + 1.6)];
-        let coin = [held.coin.x, held.coin.y, held.coin.z, window(s, k.queue + 2.9, k.queue + 3.0, k.queue + 4.3, k.queue + 4.8)];
+        let honk = [
+            honk_at.x,
+            honk_at.y,
+            honk_at.z,
+            window(s, k.honk - 0.05, k.honk, k.honk + 0.7, k.honk + 1.6),
+        ];
+        let coin = [
+            held.coin.x,
+            held.coin.y,
+            held.coin.z,
+            window(
+                s,
+                k.queue + 2.9,
+                k.queue + 3.0,
+                k.queue + 4.3,
+                k.queue + 4.8,
+            ),
+        ];
 
         let movers = [props::tram(c, doors), props::movers(s, world, &held)];
         Frame {
@@ -359,10 +415,13 @@ fn lamps(s: f32, k: &Keys) -> [f32; LAMPS] {
     l[cell::room(2, 1)] = 0.6;
     l[cell::room(1, 2)] = 0.3 + 0.5 * evening;
     l[cell::room(2, 2)] = 0.7;
-    l[cell::room(1, 3)] = (dawn + window(s, 0.0, 0.1, 25.0, 30.0)).min(1.0).max(evening);
+    l[cell::room(1, 3)] = (dawn + window(s, 0.0, 0.1, 25.0, 30.0))
+        .min(1.0)
+        .max(evening);
     l[cell::room(2, 3)] = (0.6 * dawn).max(evening);
     l[cell::room(1, 4)] = 0.4 * evening;
-    l[cell::room(2, 4)] = window(s, k.desk - 3.0, k.desk - 1.0, k.desk + 9.0, k.desk + 12.0).max(evening);
+    l[cell::room(2, 4)] =
+        window(s, k.desk - 3.0, k.desk - 1.0, k.desk + 9.0, k.desk + 12.0).max(evening);
     l[cell::ROOF] = smooth(150.0, 156.0, s) * (1.0 - smooth(174.0, 179.0, s));
     let street = dawn.max(smooth(150.0, 154.0, s) * (1.0 - smooth(176.0, 179.5, s)));
     for c in [cell::STREET_L, cell::STREET_M, cell::STREET_R] {
@@ -374,56 +433,181 @@ fn lamps(s: f32, k: &Keys) -> [f32; LAMPS] {
 
 /// The camera through the day.
 fn shots(k: &Keys) -> Vec<Key> {
-    let wide = |at: f32| key(at, v3(0.0, 8.6, 47.0), v3(0.0, 7.6, 0.0), 2.0, 0.0, 0.0);
+    let wide = |at: f32| key(at, v3(0.0, 7.4, 31.0), v3(0.0, 6.4, 0.0), 2.0, 0.0, 0.0);
     let kitchen_eye = v3(-0.9, 10.8, 6.5);
     let kitchen_look = v3(-1.85, 10.0, -3.0);
     let follow = |at: f32, eye: V3, look: V3, lens: f32| key(at, eye, look, lens, 0.004, 1.0);
     let mut v = vec![
         wide(0.0),
-        key(1.0, v3(-0.4, 9.6, 30.0), v3(-1.4, 9.4, -2.0), 2.0, 0.0, 0.0),
-        key(3.0, kitchen_eye, kitchen_look, 2.1, 0.003, 0.0),
-        key(k.pour - 1.0, v3(-1.1, 10.6, 5.0), kitchen_look, 2.3, 0.004, 0.0),
-        key(k.rise, v3(-0.8, 10.5, 4.6), v3(-1.6, 10.1, -3.0), 2.3, 0.004, 0.0),
+        key(2.5, v3(-0.5, 9.5, 19.0), v3(-1.5, 9.3, -2.5), 2.0, 0.0, 0.0),
+        key(5.0, kitchen_eye, kitchen_look, 2.1, 0.003, 0.0),
+        key(
+            k.pour - 1.0,
+            v3(-1.1, 10.6, 5.0),
+            kitchen_look,
+            2.3,
+            0.004,
+            0.0,
+        ),
+        key(
+            k.rise,
+            v3(-0.8, 10.5, 4.6),
+            v3(-1.6, 10.1, -3.0),
+            2.3,
+            0.004,
+            0.0,
+        ),
         // Out to the lift and down with it.
         follow(k.rise + 1.6, v3(1.6, 2.0, 7.0), v3(-0.6, 1.0, -1.0), 2.1),
         follow(k.press, v3(2.4, 1.8, 7.5), v3(-0.3, 1.1, -0.5), 2.1),
         follow(k.lift0 + 4.0, v3(2.6, 1.6, 8.0), v3(0.0, 1.1, 0.0), 2.1),
         // The street: the kerb, then wide for the tram.
         follow(k.kerb, v3(1.5, 2.0, 8.5), v3(0.0, 1.0, 0.0), 2.0),
-        key(k.honk - 3.0, v3(-5.0, 2.8, 17.5), v3(-8.2, 1.2, 4.6), 1.9, 0.002, 0.0),
-        key(k.honk + 2.0, v3(-6.0, 2.5, 15.0), v3(-9.5, 1.2, 4.6), 2.0, 0.003, 0.0),
+        key(
+            k.honk - 3.0,
+            v3(-5.0, 2.8, 17.5),
+            v3(-8.2, 1.2, 4.6),
+            1.9,
+            0.002,
+            0.0,
+        ),
+        key(
+            k.honk + 2.0,
+            v3(-6.0, 2.5, 15.0),
+            v3(-9.5, 1.2, 4.6),
+            2.0,
+            0.003,
+            0.0,
+        ),
         // Aboard: the camera rides along.
         follow(k.board, v3(0.8, 1.8, 7.5), v3(0.0, 1.2, -0.3), 2.0),
         follow(k.alight + 1.5, v3(1.5, 2.0, 8.0), v3(0.0, 1.0, -1.0), 2.0),
         // The shop.
-        key(k.queue - 1.0, v3(-2.3, 1.9, 4.2), v3(-3.6, 1.05, -2.3), 2.2, 0.004, 0.0),
-        key(k.queue + 2.4, v3(-2.5, 1.2, 2.0), v3(-3.1, 0.5, -2.3), 2.3, 0.006, 0.0),
-        key(k.queue + 5.6, v3(-2.5, 1.2, 2.0), v3(-3.2, 0.7, -2.3), 2.3, 0.006, 0.0),
-        key(k.queue + 8.0, v3(-2.6, 1.8, 3.8), v3(-3.9, 1.1, -2.4), 2.2, 0.004, 0.0),
-        follow(k.shop_out - 0.05, v3(1.5, 2.0, 8.0), v3(0.0, 1.0, -0.5), 2.0),
+        key(
+            k.queue - 1.0,
+            v3(0.2, 1.7, -0.6),
+            v3(-3.5, 1.1, -2.4),
+            2.1,
+            0.004,
+            0.0,
+        ),
+        // The coin slips: from his side, the floor in front of his feet.
+        key(
+            k.queue + 2.4,
+            v3(-2.15, 1.3, -0.7),
+            v3(-2.95, 0.62, -2.2),
+            2.0,
+            0.005,
+            0.0,
+        ),
+        key(
+            k.queue + 5.6,
+            v3(-2.15, 1.25, -0.75),
+            v3(-2.9, 0.75, -2.25),
+            2.0,
+            0.005,
+            0.0,
+        ),
+        key(
+            k.queue + 8.0,
+            v3(0.2, 1.7, -0.7),
+            v3(-3.9, 1.1, -2.4),
+            2.1,
+            0.004,
+            0.0,
+        ),
+        follow(
+            k.shop_out - 0.05,
+            v3(1.5, 2.0, 8.0),
+            v3(0.0, 1.0, -0.5),
+            2.0,
+        ),
         // Home: a cut to the landing on his floor.
         follow(k.home + 0.05, v3(2.4, 1.8, 7.5), v3(0.5, 1.0, -0.5), 2.1),
-        key(k.bread, v3(-0.8, 10.6, 5.4), v3(-1.8, 9.9, -2.5), 2.2, 0.004, 0.0),
+        key(
+            k.bread,
+            v3(-0.8, 10.6, 5.4),
+            v3(-1.8, 9.9, -2.5),
+            2.2,
+            0.004,
+            0.0,
+        ),
         follow(k.bread + 3.0, v3(1.0, 1.8, 7.0), v3(0.5, 1.0, -0.5), 2.1),
         // The cup.
-        key(k.trip - 1.6, v3(5.6, 10.2, 3.6), v3(5.0, 9.6, -1.5), 2.3, 0.006, 0.0),
-        key(k.catch, v3(5.4, 10.0, 2.8), v3(4.95, 9.7, -1.5), 2.5, 0.008, 0.0),
-        key(k.catch + 2.6, v3(5.5, 10.2, 3.4), v3(5.0, 9.7, -1.5), 2.3, 0.006, 0.0),
+        key(
+            k.trip - 1.6,
+            v3(5.6, 10.2, 3.6),
+            v3(5.0, 9.6, -1.5),
+            2.3,
+            0.006,
+            0.0,
+        ),
+        key(
+            k.catch,
+            v3(5.4, 10.0, 2.8),
+            v3(4.95, 9.7, -1.5),
+            2.5,
+            0.008,
+            0.0,
+        ),
+        key(
+            k.catch + 2.6,
+            v3(5.5, 10.2, 3.4),
+            v3(5.0, 9.7, -1.5),
+            2.3,
+            0.006,
+            0.0,
+        ),
         // Up the stair to the desk.
         follow(k.stairs, v3(0.4, 1.8, 7.8), v3(0.3, 1.2, -0.5), 2.0),
-        key(k.desk - 0.5, v3(4.0, 13.5, 3.0), v3(4.1, 12.9, -3.0), 2.3, 0.005, 0.0),
-        key(k.desk + 7.5, v3(4.4, 13.3, 2.4), v3(4.3, 12.95, -3.2), 2.4, 0.006, 0.0),
+        key(
+            k.desk - 0.5,
+            v3(4.0, 13.5, 3.0),
+            v3(4.1, 12.9, -3.0),
+            2.3,
+            0.005,
+            0.0,
+        ),
+        key(
+            k.desk + 7.5,
+            v3(4.4, 13.3, 2.4),
+            v3(4.3, 12.95, -3.2),
+            2.4,
+            0.006,
+            0.0,
+        ),
         // The roof.
         follow(k.roof, v3(2.0, 3.0, 9.0), v3(0.0, 1.0, -0.5), 2.0),
         follow(k.run + 2.0, v3(0.5, 4.0, 12.0), v3(0.0, 1.0, -1.0), 1.9),
-        key(k.run_end, v3(3.0, 18.5, 11.0), v3(2.4, 15.9, -2.0), 1.9, 0.004, 0.0),
-        key((k.run_end + 2.5).min(158.5), v3(2.6, 17.4, 7.5), v3(2.3, 16.3, -2.4), 2.2, 0.004, 0.0),
+        key(
+            k.run_end,
+            v3(3.0, 18.5, 11.0),
+            v3(2.4, 15.9, -2.0),
+            1.9,
+            0.004,
+            0.0,
+        ),
+        key(
+            (k.run_end + 2.5).min(158.5),
+            v3(2.6, 17.4, 7.5),
+            v3(2.3, 16.3, -2.4),
+            2.2,
+            0.004,
+            0.0,
+        ),
         // Night: the house whole, the line of his day; the rings strike.
         wide(160.0),
-        wide(167.0),
-        key(CHORD + 1.0, v3(0.0, 8.0, 44.0), v3(0.0, 7.6, 0.0), 2.0, 0.0, 0.0),
+        key(167.0, v3(0.0, 7.3, 29.5), v3(0.0, 6.5, 0.0), 2.0, 0.0, 0.0),
+        key(
+            CHORD + 1.0,
+            v3(0.0, 7.1, 27.5),
+            v3(0.0, 6.6, 0.0),
+            2.0,
+            0.0,
+            0.0,
+        ),
         // The walls melt; the camera sinks to the table's lacquer.
-        key(175.0, v3(0.0, 1.0, 40.0), v3(0.0, 5.5, 0.0), 1.9, 0.0, 0.0),
+        key(175.0, v3(0.0, 0.4, 26.0), v3(0.0, 5.6, 0.0), 1.9, 0.0, 0.0),
         wide(180.0),
     ];
     // Monotone keys need rising times.
@@ -447,12 +631,22 @@ fn route(cast: &Cast) -> [[f32; 4]; PATH_POINTS] {
         if t > k.shop_out && t < k.home + 0.2 {
             t = k.home + 0.2;
             // Back to the stairwell and up in the lift.
-            pts.extend([v3(-6.6, 0.0, 2.0), v3(-7.0, 0.0, -1.0), lift(0.0), lift(9.0)]);
+            pts.extend([
+                v3(-6.6, 0.0, 2.0),
+                v3(-7.0, 0.0, -1.0),
+                lift(0.0),
+                lift(9.0),
+            ]);
             continue;
         }
         if t > k.desk + 8.0 && t < k.roof + 0.4 {
             t = k.roof + 0.4;
-            pts.extend([v3(1.6, 12.0, -1.5), v3(-5.6, 12.0, -1.5), v3(-7.0, 12.0, -1.5), v3(-7.0, 15.0, -1.5)]);
+            pts.extend([
+                v3(1.6, 12.0, -1.5),
+                v3(-5.6, 12.0, -1.5),
+                v3(-7.0, 12.0, -1.5),
+                v3(-7.0, 15.0, -1.5),
+            ]);
             continue;
         }
         if pts.last().is_none_or(|q| (*q - p).length() > 0.05) {

@@ -4,9 +4,7 @@
 //! gardener, the painter and the mechanic. Each lives by a `Plan` of acts;
 //! here their hands, heads and the things they carry are added on top.
 //! Times are story times (`story::story_time` slows the cup's fall).
-use crate::act::{
-    flat, Gait, Local, Plan, Ride, World, CLIMBING, RUNNING, STROLL, WALKING,
-};
+use crate::act::{flat, Gait, Local, Plan, Ride, World, CLIMBING, RUNNING, STROLL, WALKING};
 use crate::body::{build, Body, Carry, Pose, HANDS};
 use crate::math::{mix, smooth, smooth_integral, v3, window, V3};
 use crate::LOOP;
@@ -228,7 +226,11 @@ impl Cast {
         let mut p = Plan::new(0.0, v3(-2.53, 9.0, -3.0), FRAC_PI_2, true, 0.95, 4.6);
         p.quick = 0.8;
         p.wait_until(6.0).mark("p_rise").rise(1.0).wait(0.5);
-        p.walk(&[[-2.6, -2.3], [-1.6, -2.25], [-0.95, -2.45]], flat, WALKING);
+        p.walk(
+            &[[-2.6, -2.3], [-1.6, -2.25], [-0.95, -2.45]],
+            flat,
+            WALKING,
+        );
         p.turn_to(-2.82).mark("pour");
         k.p_rise = p.when("p_rise");
         k.pour = p.when("pour");
@@ -239,7 +241,15 @@ impl Cast {
         let mut h = Plan::new(0.0, v3(-1.15, 9.0, -3.0), -FRAC_PI_2, true, 1.0, 4.2);
         h.wait_until(k.rise).rise(1.4);
         h.walk(
-            &[[-0.85, -3.7], [-3.4, -3.7], [-4.6, -2.6], [-5.3, -1.5], [-6.4, -1.4], [-7.1, -1.1], [-8.25, -1.25]],
+            &[
+                [-0.85, -3.7],
+                [-3.4, -3.7],
+                [-4.6, -2.6],
+                [-5.3, -1.5],
+                [-6.4, -1.4],
+                [-7.1, -1.1],
+                [-8.25, -1.25],
+            ],
             flat,
             WALKING,
         );
@@ -249,7 +259,11 @@ impl Cast {
         world.lift.push([k.lift0, k.lift0 + 4.0, 9.0, 0.0]);
         h.wait_until(k.lift0);
         h.ride_until(Ride::Lift, k.lift0 + 4.0, &world).wait(0.7);
-        h.walk(&[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 2.0]], crate::cast::street, WALKING);
+        h.walk(
+            &[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 2.0]],
+            crate::cast::street,
+            WALKING,
+        );
         h.mark("kerb").wait(1.0);
         k.kerb = h.when("kerb");
         h.walk(&[[-6.6, 6.3], [-7.3, 6.75], [-9.0, 6.75]], street, WALKING);
@@ -278,7 +292,11 @@ impl Cast {
         h.turn_to(PI).wait_until(world.tram.go2 + 2.2);
 
         // The shop.
-        h.walk(&[[-1.2, 5.4], [-1.2, 0.3], [-1.4, -1.2], [-2.65, -2.3]], street, WALKING);
+        h.walk(
+            &[[-1.2, 5.4], [-1.2, 0.3], [-1.4, -1.2], [-2.65, -2.3]],
+            street,
+            WALKING,
+        );
         h.turn_to(-FRAC_PI_2).mark("queue");
         k.queue = h.when("queue");
         let q = k.queue;
@@ -297,7 +315,11 @@ impl Cast {
         h.walk(&[[-6.4, -1.4], [-5.0, -1.55], [-1.8, -2.15]], flat, WALKING);
         h.turn_to(PI).mark("bread").wait(1.8);
         k.bread = h.when("bread");
-        h.walk(&[[0.6, -1.6], [1.6, -1.5], [2.6, -1.5], [4.5, -1.7]], flat, WALKING);
+        h.walk(
+            &[[0.6, -1.6], [1.6, -1.5], [2.6, -1.5], [4.5, -1.7]],
+            flat,
+            WALKING,
+        );
         h.mark("arrive");
         k.arrive = h.when("arrive");
         k.trip = k.arrive + 1.7;
@@ -319,7 +341,9 @@ impl Cast {
         h.wait_until(k.desk + 7.0).rise(1.2);
 
         // The roof: a run round the track at sunset.
-        h.cut(v3(-6.3, 15.0, -1.2), FRAC_PI_2).mark("roof").wait(0.3);
+        h.cut(v3(-6.3, 15.0, -1.2), FRAC_PI_2)
+            .mark("roof")
+            .wait(0.3);
         k.roof = h.when("roof");
         let mut lap = vec![[-2.3, -1.25], [6.5, -1.25]];
         for i in 1..=7 {
@@ -339,7 +363,10 @@ impl Cast {
         k.p_back = p.when("p_back");
         p.wait(1.0);
         p.walk(&[[-1.6, -2.25], [-2.6, -2.3], [-2.53, -3.0]], flat, WALKING);
-        p.turn_to(FRAC_PI_2).wait(0.9).sit(1.4).wait_until(LOOP + 10.0);
+        p.turn_to(FRAC_PI_2)
+            .wait(0.9)
+            .sit(1.4)
+            .wait_until(LOOP + 10.0);
 
         // The child: plays at the low table, runs to him with the cup and
         // trips; takes it back and goes back to play.
@@ -362,16 +389,40 @@ impl Cast {
         // K behind the counter: L's purchase, then his.
         let mut kp = Plan::new(0.0, v3(-4.82, 0.0, -2.45), FRAC_PI_2, false, 1.0, 4.4);
         kp.wait_until(q - 3.0).turn_by(PI).wait(0.6).turn_by(-PI);
-        kp.wait_until(q + 10.6).turn_by(PI).wait(0.7).turn_by(-PI).wait_until(LOOP + 10.0);
+        kp.wait_until(q + 10.6)
+            .turn_by(PI)
+            .wait(0.7)
+            .turn_by(-PI)
+            .wait_until(LOOP + 10.0);
 
         // L: in from the sidewalk, buys, steps aside, leaves for the tram.
         let mut l = Plan::new(0.0, v3(-3.6, 0.0, 1.0), PI, false, 0.92, 4.9);
         l.wait_until(q - 13.0);
-        l.walk(&[[-1.9, 1.0], [-1.2, 0.4], [-1.2, -0.5], [-2.2, -1.9], [-3.75, -2.3]], street, STROLL);
+        l.walk(
+            &[
+                [-1.9, 1.0],
+                [-1.2, 0.4],
+                [-1.2, -0.5],
+                [-2.2, -1.9],
+                [-3.75, -2.3],
+            ],
+            street,
+            STROLL,
+        );
         l.turn_to(-FRAC_PI_2).wait_until(q + 0.8);
         l.walk(&[[-3.6, -1.6], [-3.4, -1.0]], flat, STROLL);
         l.turn_to(0.0).wait_until(q + 30.0);
-        l.walk(&[[-2.2, -0.9], [-1.2, -0.4], [-1.2, 0.9], [-8.0, 1.0], [-16.5, 1.0]], street, STROLL);
+        l.walk(
+            &[
+                [-2.2, -0.9],
+                [-1.2, -0.4],
+                [-1.2, 0.9],
+                [-8.0, 1.0],
+                [-16.5, 1.0],
+            ],
+            street,
+            STROLL,
+        );
         l.wait_until(LOOP + 10.0);
 
         // On the tram: a youth with his phone, the driver.
@@ -387,7 +438,8 @@ impl Cast {
         let mut v = Plan::new(0.0, v3(5.2, 3.0, -2.33), 0.0, true, 0.9, 4.4);
         v.wait_until(LOOP + 10.0);
         let mut g = Plan::new(0.0, v3(-4.1, 6.0, -1.25), -FRAC_PI_2, false, 0.95, 4.7);
-        g.wait_until(60.0).walk(&[[-3.4, -0.6], [-1.4, -0.6]], flat, STROLL);
+        g.wait_until(60.0)
+            .walk(&[[-3.4, -0.6], [-1.4, -0.6]], flat, STROLL);
         g.turn_to(FRAC_PI_2).wait_until(100.0);
         g.walk(&[[0.1, -1.9]], flat, STROLL);
         g.turn_to(1.21).wait_until(135.0);
@@ -402,7 +454,11 @@ impl Cast {
         m.wait_until(LOOP + 10.0);
 
         let plans = vec![h, p, c, kp, l, y, d, o, v, g, a, m];
-        Cast { world, plans, keys: k }
+        Cast {
+            world,
+            plans,
+            keys: k,
+        }
     }
 
     /// Everyone at story time `s` (−10 … LOOP + 10).
@@ -471,22 +527,54 @@ impl Cast {
                 pose.turn += -0.35 * window(s, 6.6, 7.2, k.pour - 0.6, k.pour);
                 let p_head = v3(-2.95, 10.2, -3.0);
                 look(pose, local, p_head, window(s, 2.6, 3.0, 6.2, 6.6));
-                look(pose, local, v3(-1.0, 10.3, -2.45), window(s, k.pour - 0.4, k.pour, k.pour + 1.6, k.pour + 2.0));
+                look(
+                    pose,
+                    local,
+                    v3(-1.0, 10.3, -2.45),
+                    window(s, k.pour - 0.4, k.pour, k.pour + 1.6, k.pour + 2.0),
+                );
                 // The tea: up to his lips and back.
                 let sip = window(s, k.sip, k.sip + 0.7, k.sip + 1.6, k.sip + 2.2);
                 let lips = local.world(pose.pelvis + v3(-0.05, 0.62, 0.22));
-                let cup = lerp3(CUP, lips, smooth(k.sip + 0.4, k.sip + 0.9, s) - smooth(k.sip + 1.4, k.sip + 1.9, s));
+                let cup = lerp3(
+                    CUP,
+                    lips,
+                    smooth(k.sip + 0.4, k.sip + 0.9, s) - smooth(k.sip + 1.4, k.sip + 1.9, s),
+                );
                 reach(pose, local, 1, cup, sip);
                 // The lift's button.
-                reach(pose, local, 0, v3(-7.9, 10.2, -1.72), window(s, k.press - 0.3, k.press + 0.2, k.press + 0.6, k.press + 0.9));
+                reach(
+                    pose,
+                    local,
+                    0,
+                    v3(-7.9, 10.2, -1.72),
+                    window(
+                        s,
+                        k.press - 0.3,
+                        k.press + 0.2,
+                        k.press + 0.6,
+                        k.press + 0.9,
+                    ),
+                );
                 // At the kerb: left, right, left.
                 let kerb = window(s, k.kerb, k.kerb + 0.3, k.kerb + 1.4, k.kerb + 1.8);
                 pose.turn += kerb * 0.9 * (TAU * (s - k.kerb) / 1.5).sin();
                 // The honk: he turns his head to it.
                 let tram = v3(self.world.tram_c(s) + 4.6, 1.6, 4.3);
-                look(pose, local, tram, window(s, k.honk, k.honk + 0.25, k.honk + 1.2, k.honk + 1.8));
+                look(
+                    pose,
+                    local,
+                    tram,
+                    window(s, k.honk, k.honk + 0.25, k.honk + 1.2, k.honk + 1.8),
+                );
                 // On the tram, a hand on the rail.
-                let ride = window(s, k.board - 0.2, k.board + 0.4, self.world.tram.stop2 + 0.3, self.world.tram.stop2 + 0.8);
+                let ride = window(
+                    s,
+                    k.board - 0.2,
+                    k.board + 0.4,
+                    self.world.tram.stop2 + 0.3,
+                    self.world.tram.stop2 + 0.8,
+                );
                 hold(pose, 1, v3(-0.2, 1.83, -0.12), ride);
                 // The coin: out of his pocket, it slips, he picks it up,
                 // lays it on the counter.
@@ -494,44 +582,154 @@ impl Cast {
                 hold(pose, 1, v3(-0.12, 1.05, 0.3), coin_out);
                 look(pose, local, local.world(v3(-0.12, 1.0, 0.3)), coin_out);
                 let fallen = coin_floor(k);
-                look(pose, local, fallen, window(s, q + 2.95, q + 3.2, q + 5.2, q + 5.6));
+                look(
+                    pose,
+                    local,
+                    fallen,
+                    window(s, q + 2.95, q + 3.2, q + 5.2, q + 5.6),
+                );
                 crouch(pose, window(s, q + 3.3, q + 4.1, q + 4.7, q + 5.5));
-                reach(pose, local, 1, fallen, window(s, q + 3.9, q + 4.3, q + 4.6, q + 5.0));
-                hold(pose, 1, v3(-0.15, 1.0, 0.25), window(s, q + 4.8, q + 5.3, q + 5.9, q + 6.2));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    fallen,
+                    window(s, q + 3.9, q + 4.3, q + 4.6, q + 5.0),
+                );
+                hold(
+                    pose,
+                    1,
+                    v3(-0.15, 1.0, 0.25),
+                    window(s, q + 4.8, q + 5.3, q + 5.9, q + 6.2),
+                );
                 let give = window(s, q + 8.4, q + 8.9, q + 9.2, q + 9.6);
                 pose.lean += 0.3 * give;
                 reach(pose, local, 1, COUNTER_COIN, give);
-                look(pose, local, v3(-4.75, 1.6, -2.45), window(s, q + 8.6, q + 9.0, q + 15.0, q + 15.4));
+                look(
+                    pose,
+                    local,
+                    v3(-4.75, 1.6, -2.45),
+                    window(s, q + 8.6, q + 9.0, q + 15.0, q + 15.4),
+                );
                 // The loaf: from K's hand, under his arm, onto the table.
                 let take = keeper_hands_loaf(q);
-                reach(pose, local, 1, v3(-4.15, 1.15, -2.35), window(s, take - 0.4, take, take + 0.3, take + 0.7));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(-4.15, 1.15, -2.35),
+                    window(s, take - 0.4, take, take + 0.3, take + 0.7),
+                );
                 let carry = window(s, take + 0.3, take + 0.8, k.bread + 0.2, k.bread + 0.6);
                 hold(pose, 1, v3(-0.24, 0.92, 0.1), carry);
-                reach(pose, local, 1, BREAD_AT, window(s, k.bread + 0.1, k.bread + 0.6, k.bread + 0.9, k.bread + 1.3));
-                look(pose, local, v3(-2.95, 10.2, -3.0), window(s, k.bread + 1.2, k.bread + 1.6, k.bread + 2.0, k.bread + 2.6));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    BREAD_AT,
+                    window(
+                        s,
+                        k.bread + 0.1,
+                        k.bread + 0.6,
+                        k.bread + 0.9,
+                        k.bread + 1.3,
+                    ),
+                );
+                look(
+                    pose,
+                    local,
+                    v3(-2.95, 10.2, -3.0),
+                    window(
+                        s,
+                        k.bread + 1.2,
+                        k.bread + 1.6,
+                        k.bread + 2.0,
+                        k.bread + 2.6,
+                    ),
+                );
                 // The cup: he sees it fall, crouches and catches it.
                 let c = k.catch;
-                look(pose, local, v3(5.6, 9.9, -1.5), window(s, k.trip - 0.6, k.trip - 0.2, c - 0.3, c));
-                crouch(pose, 0.55 * window(s, k.trip + 0.05, c - 0.05, c + 0.6, c + 1.4));
-                reach(pose, local, 1, cup_flight(k, s), window(s, k.trip + 0.05, c - 0.1, c + 0.1, c + 0.2));
+                look(
+                    pose,
+                    local,
+                    v3(5.6, 9.9, -1.5),
+                    window(s, k.trip - 0.6, k.trip - 0.2, c - 0.3, c),
+                );
+                crouch(
+                    pose,
+                    0.55 * window(s, k.trip + 0.05, c - 0.05, c + 0.6, c + 1.4),
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    cup_flight(k, s),
+                    window(s, k.trip + 0.05, c - 0.1, c + 0.1, c + 0.2),
+                );
                 let back = v3(4.95, 9.7, -1.58);
-                reach(pose, local, 1, lerp3(CATCH, back, smooth(c + 0.3, c + 1.6, s)), window(s, c, c + 0.1, c + 2.0, c + 2.4));
-                look(pose, local, v3(5.3, 9.6, -1.5), window(s, c + 0.3, c + 0.8, c + 2.2, c + 2.8));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    lerp3(CATCH, back, smooth(c + 0.3, c + 1.6, s)),
+                    window(s, c, c + 0.1, c + 2.0, c + 2.4),
+                );
+                look(
+                    pose,
+                    local,
+                    v3(5.3, 9.6, -1.5),
+                    window(s, c + 0.3, c + 0.8, c + 2.2, c + 2.8),
+                );
                 // The desk: typing, the phone, his temples, the calendar.
                 let d = k.desk;
-                let typing = window(s, d + 0.2, d + 0.8, d + 2.4, d + 2.8) + window(s, d + 4.6, d + 5.0, d + 7.0, d + 7.6);
-                let tap = |x: f32, ph: f32| v3(x, 12.8 + 0.02 * (TAU * s / 0.23 + ph).sin().max(0.0), -2.68);
+                let typing = window(s, d + 0.2, d + 0.8, d + 2.4, d + 2.8)
+                    + window(s, d + 4.6, d + 5.0, d + 7.0, d + 7.6);
+                let tap = |x: f32, ph: f32| {
+                    v3(x, 12.8 + 0.02 * (TAU * s / 0.23 + ph).sin().max(0.0), -2.68)
+                };
                 reach(pose, local, 0, tap(4.02, 0.0), typing);
                 reach(pose, local, 1, tap(3.78, 1.7), typing);
                 let phone = window(s, d + 2.5, d + 3.0, d + 4.1, d + 4.5);
                 let ear = local.world(pose.pelvis + v3(0.12, 0.7, 0.05));
-                reach(pose, local, 0, lerp3(DESK_PHONE, ear, smooth(d + 2.7, d + 3.1, s) - smooth(d + 3.8, d + 4.2, s)), phone);
+                reach(
+                    pose,
+                    local,
+                    0,
+                    lerp3(
+                        DESK_PHONE,
+                        ear,
+                        smooth(d + 2.7, d + 3.1, s) - smooth(d + 3.8, d + 4.2, s),
+                    ),
+                    phone,
+                );
                 let temples = window(s, d + 5.2, d + 5.6, d + 6.4, d + 6.9);
-                reach(pose, local, 0, local.world(pose.pelvis + v3(0.11, 0.78, 0.12)), temples);
-                reach(pose, local, 1, local.world(pose.pelvis + v3(-0.11, 0.78, 0.12)), temples);
+                reach(
+                    pose,
+                    local,
+                    0,
+                    local.world(pose.pelvis + v3(0.11, 0.78, 0.12)),
+                    temples,
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    local.world(pose.pelvis + v3(-0.11, 0.78, 0.12)),
+                    temples,
+                );
                 pose.nod += 0.3 * temples;
-                look(pose, local, v3(5.3, 13.55, -4.58), window(s, d + 1.2, d + 1.6, d + 2.0, d + 2.4));
-                look(pose, local, v3(4.0, 12.95, -2.45), window(s, d + 0.1, d + 0.5, d + 7.4, d + 7.8) * 0.7);
+                look(
+                    pose,
+                    local,
+                    v3(5.3, 13.55, -4.58),
+                    window(s, d + 1.2, d + 1.6, d + 2.0, d + 2.4),
+                );
+                look(
+                    pose,
+                    local,
+                    v3(4.0, 12.95, -2.45),
+                    window(s, d + 0.1, d + 0.5, d + 7.4, d + 7.8) * 0.7,
+                );
                 // After the run: hands on knees, then up to the sunset.
                 let e = k.run_end;
                 let blown = window(s, e + 0.5, e + 1.0, e + 3.2, e + 4.0);
@@ -545,22 +743,67 @@ impl Cast {
                 let argue = window(s, 2.8, 3.2, 6.0, 6.5);
                 pose.arms[1] += 0.55 * argue * (0.5 + 0.5 * (TAU * s / 0.9).sin());
                 pose.bend[1] += 0.7 * argue;
-                look(pose, local, v3(-0.75, 10.15, -3.0), window(s, 2.6, 3.0, 6.3, 6.8));
+                look(
+                    pose,
+                    local,
+                    v3(-0.75, 10.15, -3.0),
+                    window(s, 2.6, 3.0, 6.3, 6.8),
+                );
                 // The teapot: from the table, over his cup, set down.
-                let lift = window(s, k.p_rise + 0.6, k.p_rise + 1.0, k.pour + 1.3, k.pour + 1.7);
+                let lift = window(
+                    s,
+                    k.p_rise + 0.6,
+                    k.p_rise + 1.0,
+                    k.pour + 1.3,
+                    k.pour + 1.7,
+                );
                 let tp = self.teapot_path(s);
                 reach(pose, local, 0, tp + v3(0.0, 0.1, 0.0), lift);
-                pose.lean += 0.25 * window(s, k.pour - 0.2, k.pour + 0.2, k.pour + 1.1, k.pour + 1.5);
-                look(pose, local, CUP, window(s, k.pour - 0.4, k.pour, k.pour + 1.2, k.pour + 1.6));
+                pose.lean +=
+                    0.25 * window(s, k.pour - 0.2, k.pour + 0.2, k.pour + 1.1, k.pour + 1.5);
+                look(
+                    pose,
+                    local,
+                    CUP,
+                    window(s, k.pour - 0.4, k.pour, k.pour + 1.2, k.pour + 1.6),
+                );
                 // Her hand on his shoulder while he drinks.
                 let shoulder = v3(-0.73, 10.2, -2.82);
-                reach(pose, local, 1, shoulder, window(s, k.pour + 1.6, k.pour + 2.1, k.rise - 0.4, k.rise + 0.1));
-                look(pose, local, v3(-0.73, 10.3, -3.0), window(s, k.pour + 1.6, k.pour + 2.0, k.rise, k.rise + 0.8));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    shoulder,
+                    window(s, k.pour + 1.6, k.pour + 2.1, k.rise - 0.4, k.rise + 0.1),
+                );
+                look(
+                    pose,
+                    local,
+                    v3(-0.73, 10.3, -3.0),
+                    window(s, k.pour + 1.6, k.pour + 2.0, k.rise, k.rise + 0.8),
+                );
                 // The teapot back.
-                let back = window(s, k.p_back + 0.2, k.p_back + 0.6, k.p_back + 5.6, k.p_back + 6.1);
-                reach(pose, local, 0, self.teapot_path(s) + v3(0.0, 0.1, 0.0), back);
+                let back = window(
+                    s,
+                    k.p_back + 0.2,
+                    k.p_back + 0.6,
+                    k.p_back + 5.6,
+                    k.p_back + 6.1,
+                );
+                reach(
+                    pose,
+                    local,
+                    0,
+                    self.teapot_path(s) + v3(0.0, 0.1, 0.0),
+                    back,
+                );
                 // She looks up at him when he brings the bread.
-                look(pose, local, v3(-1.8, 10.6, -2.15), window(s, k.bread - 0.4, k.bread, k.bread + 2.2, k.bread + 2.8));
+                look(
+                    pose,
+                    local,
+                    v3(-1.8, 10.6, -2.15),
+                    window(s, k.bread - 0.4, k.bread, k.bread + 2.2, k.bread + 2.8),
+                );
             }
             CHILD => {
                 let c0 = k.c0;
@@ -569,9 +812,20 @@ impl Cast {
                 crouch(pose, 0.85 * play);
                 let blocks = local.world(v3(0.05 + 0.04 * (TAU * s / 2.3).sin(), 0.3, 0.35));
                 reach(pose, local, 0, blocks, play * 0.8);
-                reach(pose, local, 1, KID_CUP, window(s, c0 - 0.3, c0 + 0.1, c0 + 0.3, c0 + 0.6));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    KID_CUP,
+                    window(s, c0 - 0.3, c0 + 0.1, c0 + 0.3, c0 + 0.6),
+                );
                 // Running with it held up.
-                hold(pose, 1, v3(-0.16, 1.02, 0.32), window(s, c0 + 0.4, c0 + 0.8, k.trip - 0.05, k.trip + 0.05));
+                hold(
+                    pose,
+                    1,
+                    v3(-0.16, 1.02, 0.32),
+                    window(s, c0 + 0.4, c0 + 0.8, k.trip - 0.05, k.trip + 0.05),
+                );
                 // The trip.
                 let trip = window(s, k.trip - 0.1, k.trip + 0.05, k.trip + 0.5, k.trip + 1.2);
                 pose.lean += 0.7 * trip;
@@ -579,34 +833,112 @@ impl Cast {
                 pose.pelvis.y -= 0.12 * trip;
                 // Takes the cup back, carries it home and sets it down.
                 let cc = k.catch;
-                reach(pose, local, 1, v3(4.95, 9.7, -1.58), window(s, cc + 1.7, cc + 2.0, cc + 2.2, cc + 2.6));
-                hold(pose, 1, v3(-0.15, 0.95, 0.3), window(s, cc + 2.2, cc + 2.6, cc + 5.0, cc + 5.6));
-                reach(pose, local, 1, KID_CUP, window(s, cc + 5.0, cc + 5.6, cc + 6.0, cc + 6.4));
-                look(pose, local, v3(4.6, 10.4, -1.7), window(s, k.arrive - 0.5, k.arrive, cc + 2.6, cc + 3.2));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(4.95, 9.7, -1.58),
+                    window(s, cc + 1.7, cc + 2.0, cc + 2.2, cc + 2.6),
+                );
+                hold(
+                    pose,
+                    1,
+                    v3(-0.15, 0.95, 0.3),
+                    window(s, cc + 2.2, cc + 2.6, cc + 5.0, cc + 5.6),
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    KID_CUP,
+                    window(s, cc + 5.0, cc + 5.6, cc + 6.0, cc + 6.4),
+                );
+                look(
+                    pose,
+                    local,
+                    v3(4.6, 10.4, -1.7),
+                    window(s, k.arrive - 0.5, k.arrive, cc + 2.6, cc + 3.2),
+                );
             }
             KEEPER => {
                 // L's coin to the till, the loaf from the shelf to her.
-                reach(pose, local, 0, TILL, window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5));
-                reach(pose, local, 1, LOAF_SHELF, window(s, q - 2.5, q - 2.2, q - 2.0, q - 1.7));
-                reach(pose, local, 1, v3(-4.15, 1.15, -2.3), window(s, q - 1.1, q - 0.7, q - 0.2, q + 0.2));
+                reach(
+                    pose,
+                    local,
+                    0,
+                    TILL,
+                    window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5),
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    LOAF_SHELF,
+                    window(s, q - 2.5, q - 2.2, q - 2.0, q - 1.7),
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(-4.15, 1.15, -2.3),
+                    window(s, q - 1.1, q - 0.7, q - 0.2, q + 0.2),
+                );
                 // His coin, his loaf.
                 let coin = window(s, q + 9.5, q + 9.8, q + 10.1, q + 10.4);
                 pose.lean += 0.25 * coin + 0.25 * window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5);
-                reach(pose, local, 0, lerp3(COUNTER_COIN, TILL, smooth(q + 9.8, q + 10.2, s)), coin);
-                reach(pose, local, 1, LOAF_SHELF, window(s, q + 12.0, q + 12.3, q + 12.6, q + 12.9));
+                reach(
+                    pose,
+                    local,
+                    0,
+                    lerp3(COUNTER_COIN, TILL, smooth(q + 9.8, q + 10.2, s)),
+                    coin,
+                );
+                reach(
+                    pose,
+                    local,
+                    1,
+                    LOAF_SHELF,
+                    window(s, q + 12.0, q + 12.3, q + 12.6, q + 12.9),
+                );
                 let hand = keeper_hands_loaf(q);
-                reach(pose, local, 1, v3(-4.25, 1.17, -2.35), window(s, hand - 0.9, hand - 0.4, hand + 0.1, hand + 0.5));
-                let customer = if s < q + 2.0 { v3(-3.75, 1.6, -2.3) } else { v3(-3.75, 1.7, -2.3) };
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(-4.25, 1.17, -2.35),
+                    window(s, hand - 0.9, hand - 0.4, hand + 0.1, hand + 0.5),
+                );
+                let customer = if s < q + 2.0 {
+                    v3(-3.75, 1.6, -2.3)
+                } else {
+                    v3(-3.75, 1.7, -2.3)
+                };
                 look(pose, local, customer, 0.6);
             }
             LADY => {
                 let pay = window(s, q - 5.4, q - 5.0, q - 4.8, q - 4.4);
                 pose.lean += 0.3 * pay;
                 reach(pose, local, 1, COUNTER_COIN, pay);
-                reach(pose, local, 1, v3(-4.15, 1.15, -2.3), window(s, q - 0.9, q - 0.5, q - 0.2, q + 0.2));
-                hold(pose, 1, v3(-0.22, 0.95, 0.12), window(s, q + 0.1, q + 0.5, LOOP + 5.0, LOOP + 6.0));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(-4.15, 1.15, -2.3),
+                    window(s, q - 0.9, q - 0.5, q - 0.2, q + 0.2),
+                );
+                hold(
+                    pose,
+                    1,
+                    v3(-0.22, 0.95, 0.12),
+                    window(s, q + 0.1, q + 0.5, LOOP + 5.0, LOOP + 6.0),
+                );
                 // Aside, she watches him chase his coin.
-                look(pose, local, coin_floor(k), window(s, q + 3.0, q + 3.4, q + 5.4, q + 6.0));
+                look(
+                    pose,
+                    local,
+                    coin_floor(k),
+                    window(s, q + 3.0, q + 3.4, q + 5.4, q + 6.0),
+                );
             }
             YOUTH => {
                 pose.carry = Carry::Screen(1.0);
@@ -618,7 +950,12 @@ impl Cast {
             DRIVER => {
                 hold(pose, 0, v3(0.18, 0.95, 0.42), 1.0);
                 hold(pose, 1, v3(-0.18, 0.95, 0.42), 1.0);
-                look(pose, local, v3(-4.0, 1.4, 6.4), window(s, k.honk - 1.0, k.honk - 0.4, k.honk + 1.0, k.honk + 2.0));
+                look(
+                    pose,
+                    local,
+                    v3(-4.0, 1.4, 6.4),
+                    window(s, k.honk - 1.0, k.honk - 0.4, k.honk + 1.0, k.honk + 2.0),
+                );
             }
             OLD => {
                 pose.turn = -0.3;
@@ -637,13 +974,18 @@ impl Cast {
                 pose.nod = 0.2;
             }
             GARDENER => {
-                let water = window(s, 63.5, 64.5, 72.0, 73.0) + window(s, 103.0, 104.0, 112.0, 113.0);
+                let water =
+                    window(s, 63.5, 64.5, 72.0, 73.0) + window(s, 103.0, 104.0, 112.0, 113.0);
                 reach(pose, local, 1, local.world(v3(-0.25, 1.02, 0.42)), water);
                 hold(pose, 1, v3(-0.24, 0.72, 0.05), 1.0 - water);
                 pose.nod += 0.3 * water;
             }
             PAINTER => {
-                let at = v3(5.62 + 0.12 * (TAU * s / 2.7).sin(), 7.25 + 0.2 * (TAU * s / 1.9).sin(), -2.12);
+                let at = v3(
+                    5.62 + 0.12 * (TAU * s / 2.7).sin(),
+                    7.25 + 0.2 * (TAU * s / 1.9).sin(),
+                    -2.12,
+                );
                 let paint = 1.0 - window(s, 69.5, 70.0, 80.0, 81.5);
                 reach(pose, local, 1, at, paint);
                 hold(pose, 0, v3(0.22, 1.0, 0.18), 1.0);
@@ -755,7 +1097,8 @@ impl Cast {
         // mechanic's wrench.
         let g = &bodies[GARDENER];
         held.can = grip(g, 1) - v3(0.0, 0.12, 0.0);
-        held.can_tilt = 0.7 * (window(s, 63.5, 64.5, 72.0, 73.0) + window(s, 103.0, 104.0, 112.0, 113.0));
+        held.can_tilt =
+            0.7 * (window(s, 63.5, 64.5, 72.0, 73.0) + window(s, 103.0, 104.0, 112.0, 113.0));
         let a = &bodies[PAINTER];
         let b = grip(a, 1);
         held.brush = [b, b + (b - a.chest).normalize() * 0.22];
@@ -775,7 +1118,9 @@ impl Default for Cast {
     }
 }
 
-const CLOTHES: [f32; PEOPLE] = [0.32, 0.72, 0.9, 0.55, 0.62, 0.18, 0.4, 0.5, 0.15, 0.68, 0.85, 0.28];
+const CLOTHES: [f32; PEOPLE] = [
+    0.32, 0.72, 0.9, 0.55, 0.62, 0.18, 0.4, 0.5, 0.15, 0.68, 0.85, 0.28,
+];
 
 /// K holds the loaf out to him here.
 fn keeper_hands_loaf(q: f32) -> f32 {

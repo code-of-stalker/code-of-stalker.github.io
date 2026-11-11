@@ -390,7 +390,12 @@ impl Scene {
             }
             let b = &fig.body;
             let base = self.figure_texel(i) as f32;
-            s[4 * i] = [b.low.x, b.low.y, b.low.z, base + 0.9 * fig.accent.clamp(0.0, 1.0)];
+            s[4 * i] = [
+                b.low.x,
+                b.low.y,
+                b.low.z,
+                base + 0.9 * fig.accent.clamp(0.0, 1.0),
+            ];
             s[4 * i + 1] = [b.high.x, b.high.y, b.high.z, fig.clothes];
             let feet = v3(b.pelvis.x, b.low.y + 0.15, b.pelvis.z);
             let head = v3(b.head.x, b.head.y - 0.12, b.head.z);
@@ -451,6 +456,8 @@ mod tests {
                     let t = &scene.texels[p0 + 3 * i..p0 + 3 * i + 3];
                     let kind = t[0][3] as u32 % 64;
                     assert!(kind <= house::kind::WINDOW, "{c} {g} {i}");
+                    // The shader draws no stairs or leaves of its own.
+                    assert!(kind != house::kind::STAIRS && kind != house::kind::LEAVES);
                 }
             }
         }

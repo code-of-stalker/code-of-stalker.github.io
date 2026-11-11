@@ -3,7 +3,7 @@ import type { DiaryTextRun, DiaryTextStyle } from './text-format';
 import { diaryTextEditorScript } from './text-editor-runtime.generated';
 import assets from '../../../../assets/product/diary/revision-1288/sources.json';
 import { iconSource } from '../icon-source';
-type Config = { runs: DiaryTextRun[]; colors: Pick<ProductColors, 'text' | 'accent' | 'muted' | 'background' | 'border'> & { faint?: string; secondary?: string; onAccent?: string }; size: number; limit: number };
+type Config = { runs: DiaryTextRun[]; colors: Pick<ProductColors, 'text' | 'accent' | 'muted' | 'background' | 'border'> & { faint?: string; secondary?: string; onAccent?: string; strong?: string }; size: number; limit: number };
 
 /** Self-contained DOM adapter used by both the browser and native WebView. */
 export function textEditorRuntime(config: Config) {
@@ -63,6 +63,10 @@ export function textEditorRuntime(config: Config) {
       span.textContent = run.text; span.style.fontSize = `${style.size ?? config.size}px`;
       span.style.color = config.colors[style.color ?? 'text'] ?? config.colors.text; span.dataset.ink = style.color ?? 'text';
       span.style.fontFamily = style.bold ? 'DisketMonoBold,monospace' : 'DisketMono,monospace';
+      // A bold run in plain ink is the soft bold of the app (90% ink, letter-spaced).
+      const soft = style.bold && (style.color ?? 'text') === 'text';
+      if (soft && config.colors.strong) span.style.color = config.colors.strong;
+      span.style.letterSpacing = soft ? `${(style.size ?? config.size) * 0.06}px` : '';
       span.style.fontWeight = style.bold ? '700' : '400'; span.style.fontStyle = style.italic ? 'italic' : 'normal';
       span.style.textDecoration = style.underline ? 'underline' : 'none'; root.append(span);
     }

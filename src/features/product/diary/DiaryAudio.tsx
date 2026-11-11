@@ -41,6 +41,7 @@ export function DiaryAudio({ record, active, onActivate }: { record: AudioRecord
   </View>;
 }
 function LoadedDiaryAudio({ record }: { record: AudioRecord }) {
+  const colors = useThemeColors();
   const { loadPlayback, discardPlayback } = useProduct();
   const [uri, setUri] = useState<string | null>(null), [error, setError] = useState(''), [attempt, setAttempt] = useState(0);
   const player = useObservationPlayer(uri), started = useRef(false);
@@ -58,7 +59,7 @@ function LoadedDiaryAudio({ record }: { record: AudioRecord }) {
     <View style={styles.row}>
       <Pressable accessibilityRole="button" accessibilityLabel={problem ? 'Повторить загрузку записи' : player.playing ? 'Пауза' : 'Слушать запись'} disabled={!problem && !player.loaded}
         onPress={() => { if (problem) { started.current = false; setUri(null); setError(''); setAttempt(value => value + 1); } else void player.toggle(); }} style={styles.play}>
-        <DiaryGlass /><PanelBorder />{problem ? <ProductText>↻</ProductText> : !player.loaded ? <Breathe><ProductText>···</ProductText></Breathe> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
+        <DiaryGlass /><PanelBorder />{problem ? <ProductText color={colors.text}>↻</ProductText> : !player.loaded ? <Breathe><ProductText color={colors.text}>···</ProductText></Breathe> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
       </Pressable>
       <DiaryWaveform waveform={record.waveform} durationMs={record.durationMs} positionMs={player.positionMs} playing={player.playing} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
       <Pressable accessibilityRole="button" accessibilityLabel="Громкость записи" accessibilityState={{ expanded: volumeOpen }} onPress={() => setVolumeOpen(value => !value)} style={styles.sound}><DiaryIcon name="sound" size={18} /></Pressable>

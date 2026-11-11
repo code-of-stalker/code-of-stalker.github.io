@@ -6,9 +6,10 @@ import { validateTextRuns } from './text-format';
 import { DIARY_TEXT_LIMIT } from '../state/model';
 import type { DiaryTextEditorProps } from './DiaryTextEditor.types';
 import { diaryTextColors } from './text-colors';
+import { quietText, softBold } from '../theme';
 
 export function DiaryTextEditor({ text, runs, onChange, size }: DiaryTextEditorProps) {
-  const colors = diaryTextColors(useThemeColors()), frame = useRef<HTMLIFrameElement>(null), changed = useRef(onChange);
+  const theme = useThemeColors(), colors = { ...diaryTextColors(theme), text: quietText(theme).color, strong: softBold(theme, 0).color }, frame = useRef<HTMLIFrameElement>(null), changed = useRef(onChange);
   useEffect(() => { changed.current = onChange; }, [onChange]);
   const [html] = useState(() => textEditorDocument({ runs: runs.length ? runs : text ? [{ text, style: {} }] : [], colors, size, limit: DIARY_TEXT_LIMIT },
     new URL(Asset.fromModule(require('../../../../assets/product/fonts/Disket-Mono-Regular.ttf')).uri, document.baseURI).href,

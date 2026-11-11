@@ -10,6 +10,7 @@ import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
 import { DiaryEntryIcon, DiaryIcon } from '../../product/diary/DiaryIcons';
 import { DiaryRecordButton } from '../../product/diary/DiaryRecordButton';
 import { DiaryReportGuide, diaryReport } from '../../product/diary/DiaryReportGuide';
+import { DiaryReportPrompt } from '../../product/diary/DiaryReportPrompt';
 import { diaryClock, diaryDay } from '../../product/diary/feed';
 import { useDiaryKeyboard } from '../../product/diary/useDiaryKeyboard';
 import { useObservationPlayer } from '../../product/hooks/useObservationPlayer';
@@ -515,6 +516,9 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
       {reportsOnly ? <Pressable accessibilityRole="button" accessibilityLabel="Показать всю переписку" onPress={() => showReports(false)} style={[styles.applied, { marginHorizontal: gutter }]}>
         <ProductText maxFontSize={10} style={styles.appliedText}>{`ТОЛЬКО ОТЧЁТЫ · ${reports.length}`}</ProductText><DiaryIcon name="close" size={14} />
       </Pressable> : null}
+      {/* The walker's daily report plate: no fold, it leaves only once today's report is sent (Art). */}
+      {walker && ready && !reportedToday ? <DiaryReportPrompt testID="intensive-report-prompt" title={diaryReport.promptTitle} hint={diaryReport.promptHint}
+        accessibilityLabel={diaryReport.promptLabel} onPress={() => setReportGuide(true)} style={{ marginHorizontal: gutter }} /> : null}
       <View ref={feedViewport} style={[styles.feedWindow, Platform.OS === 'web' && feedFade]}>
         <ScrollView ref={scroll} style={styles.feed} contentContainerStyle={[styles.feedContent, { paddingHorizontal: gutter }, (empty || !ready) && styles.feedCentered]}
           onScroll={onScroll} scrollEventThrottle={32} onContentSizeChange={onContentSize}

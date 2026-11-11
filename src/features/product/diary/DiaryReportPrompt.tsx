@@ -14,23 +14,25 @@ export type DiaryReportPromptProps = {
   /** Small caps line under the title, e.g. «ДОБАВИТЬ ОТЧЁТ ДИНАМИКИ». */
   hint: string;
   /** The one line shown while folded, e.g. «ОТЧЁТ О ДИНАМИКЕ». */
-  foldedLabel: string;
+  foldedLabel?: string;
   accessibilityLabel: string;
   /** The owner persists this (diary: `settings.diaryReportCollapsed`). */
-  collapsed: boolean;
-  onCollapsedChange(next: boolean): void;
+  collapsed?: boolean;
+  /** Without it the plate cannot be folded: the Intensive chat keeps it until today's report is sent. */
+  onCollapsedChange?(next: boolean): void;
   onPress(): void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
 
-// The daily report plate. Shared by the diary and the Intensive daily reports:
-// folded it shrinks to one thin line, so it stops taking the screen.
-export function DiaryReportPrompt({ title, hint, foldedLabel, accessibilityLabel, collapsed, onCollapsedChange, onPress, disabled, style, testID = 'diary-report-prompt' }: DiaryReportPromptProps) {
+// The daily report plate. Shared by the diary and the Intensive daily reports.
+// In the diary it folds to one thin line, so it stops taking the screen.
+export function DiaryReportPrompt({ title, hint, foldedLabel = hint, accessibilityLabel, collapsed: folded = false, onCollapsedChange, onPress, disabled, style, testID = 'diary-report-prompt' }: DiaryReportPromptProps) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const frame = useMemo(() => diaryArtwork('prompt', colors), [colors]);
-  const fold = <Pressable testID={`${testID}-fold`} accessibilityRole="button" accessibilityLabel={collapsed ? 'Развернуть плашку отчёта' : 'Свернуть плашку отчёта'} accessibilityState={{ expanded: !collapsed }}
+  const collapsed = !!onCollapsedChange && folded;
+  const fold = onCollapsedChange && <Pressable testID={`${testID}-fold`} accessibilityRole="button" accessibilityLabel={collapsed ? 'Развернуть плашку отчёта' : 'Свернуть плашку отчёта'} accessibilityState={{ expanded: !collapsed }}
     hitSlop={6} onPress={() => onCollapsedChange(!collapsed)} style={styles.fold}>
     <View style={!collapsed && styles.chevronUp}><DiaryAsset name="chevron" /></View>
   </Pressable>;
@@ -43,7 +45,7 @@ export function DiaryReportPrompt({ title, hint, foldedLabel, accessibilityLabel
   </View>;
   return <View testID={testID} style={[styles.prompt, style]}>
     <DiaryGlass shape="panel" /><PanelArtwork source={frame} />
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} style={styles.open}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} style={[styles.open, !fold && styles.openAlone]}>
       <DiaryAsset name="sparkle" />
       <View style={styles.copy}><ProductText variant="title" style={styles.title}>{title}</ProductText><ProductText style={styles.hint}>{hint}</ProductText></View>
       <DiaryIcon name="plus" />
@@ -55,6 +57,7 @@ export function DiaryReportPrompt({ title, hint, foldedLabel, accessibilityLabel
 const createStyles = (colors: ProductColors) => StyleSheet.create({
   prompt: { minHeight: 64, flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   open: { flex: 1, minWidth: 0, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, paddingVertical: 10 },
+  openAlone: { paddingRight: 12 },
   copy: { flex: 1, minWidth: 0, gap: 6 },
   title: { fontSize: 12, lineHeight: 16 },
   hint: { color: colors.muted, fontSize: 8, lineHeight: 12 },

@@ -31,6 +31,7 @@ import { DiaryFormattedText } from '../diary/DiaryFormattedText';
 import { rebaseTextRuns, type DiaryTextRun } from '../diary/text-format';
 import { BackupExportForm } from '../settings/BackupExportForm';
 import { DiaryFilters } from '../diary/DiaryFilters';
+import { DiaryReportGuide } from '../diary/DiaryReportGuide';
 import { DiaryReportPrompt } from '../diary/DiaryReportPrompt';
 import { useDiaryKeyboard } from '../diary/useDiaryKeyboard';
 import { diaryClock, diaryDay, diaryQuestion, diaryMaterial, emptyDiaryFilter, filterDiary, isArchitecture, isAudioEntry, type DiaryFilter, type FeedEntry } from '../diary/feed';
@@ -256,14 +257,14 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
           onSave={() => { void voice.save(); }} onRecordAgain={() => { void recordAgain(); }} />}</View> : sheetKind === 'editor' ?
         <DiaryEditorPanel session={editorSession} height={Math.min((keyboard.viewportHeight || height) - gutter * 2, height * .86, width >= 375 ? 600 : 460)}
           text={text} runs={format} size={width >= 375 ? 16 : 12} onChange={(value, runs) => { setText(value); setFormat(runs); }} onDone={closeEditor} /> :
-      sheetKind === 'report' || sheetKind === 'leave' || sheetKind === 'discard-voice' ?
-        <DiaryDesignPanel title={sheetKind === 'report' ? 'ОТЧЁТ О ДИНАМИКЕ' : sheetKind === 'leave' ? 'ТЕКСТ НЕ СОХРАНЁН' : 'ЗАПИСЬ НЕ СОХРАНЕНА'} height={Math.min(height * .78, width >= 375 ? 416 : sheetKind === 'report' ? 317 : 319)}>
-          <ProductText style={styles.designCopy}>{sheetKind === 'report' ? 'ЗАМЕТЬ КАК МЕНЯЮТСЯ ТВОИ ОЩУЩЕНИЯ. КАЖДЫЙ ДЕНЬ СТАРАЙСЯ ОТМЕЧАТЬ ДИНАМИКУ НАБЛЮДЕНИЯ.\n\n-КАКИЕ ПАТТЕРНЫ ПОВТОРЯЮТСЯ?\n-КАК ПРОВОЦИРУЕТ ЛИЧНОСТЬ?\n-ГДЕ ПРОИСХОДИТ ЗАЛИПАНИЕ В ПЕРСОНАЖ?' : sheetKind === 'leave' ? 'ВЕРНУТЬСЯ К ТЕКСТУ ЧТОБЫ СОХРАНИТЬ НАБЛЮДЕНИЕ?' : 'ВЕРНУТЬСЯ К ЗАПИСИ ЧТОБЫ СОХРАНИТЬ НАБЛЮДЕНИЕ?'}</ProductText>
+      sheetKind === 'report' ? <DiaryReportGuide onWrite={startReport} onView={() => { setCollection(false); setFilter({ ...emptyDiaryFilter, category: 'dynamics' }); setSheet(null); }} /> :
+      sheetKind === 'leave' || sheetKind === 'discard-voice' ?
+        <DiaryDesignPanel title={sheetKind === 'leave' ? 'ТЕКСТ НЕ СОХРАНЁН' : 'ЗАПИСЬ НЕ СОХРАНЕНА'} height={Math.min(height * .78, width >= 375 ? 416 : 319)}>
+          <ProductText style={styles.designCopy}>{sheetKind === 'leave' ? 'ВЕРНУТЬСЯ К ТЕКСТУ ЧТОБЫ СОХРАНИТЬ НАБЛЮДЕНИЕ?' : 'ВЕРНУТЬСЯ К ЗАПИСИ ЧТОБЫ СОХРАНИТЬ НАБЛЮДЕНИЕ?'}</ProductText>
           <View style={styles.designActions}>
-            <DiaryDesignAction label={sheetKind === 'report' ? 'ЗАПИСАТЬ ОТЧЁТ' : 'ПРОДОЛЖИТЬ ЗАПИСЬ'} onPress={() => { if (sheetKind === 'report') startReport(); else if (sheetKind === 'discard-voice' && voice.review) { setSheetKind('voice'); setSheet('voice'); } else setSheet(null); }} />
-            <DiaryDesignAction ghost label={sheetKind === 'report' ? 'ПОСМОТРЕТЬ ОТЧЁТЫ' : 'ВЫЙТИ БЕЗ СОХРАНЕНИЯ'} onPress={() => {
-              if (sheetKind === 'report') { setCollection(false); setFilter({ ...emptyDiaryFilter, category: 'dynamics' }); setSheet(null); }
-              else if (sheetKind === 'discard-voice') { void voice.discard().then(() => { setSheet(null); leaveAction.current(); }); }
+            <DiaryDesignAction label="ПРОДОЛЖИТЬ ЗАПИСЬ" onPress={() => { if (sheetKind === 'discard-voice' && voice.review) { setSheetKind('voice'); setSheet('voice'); } else setSheet(null); }} />
+            <DiaryDesignAction ghost label="ВЫЙТИ БЕЗ СОХРАНЕНИЯ" onPress={() => {
+              if (sheetKind === 'discard-voice') { void voice.discard().then(() => { setSheet(null); leaveAction.current(); }); }
               else { setText(''); setFormat([]); setSheet(null); leaveAction.current(); }
             }} />
           </View>

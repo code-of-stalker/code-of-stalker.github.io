@@ -74,11 +74,17 @@ const OTHER_CONTOURS: Record<BubbleSpot, string> = {
 };
 const spots: BubbleSpot[] = ['alone', 'head', 'middle', 'tail'];
 
-// The guide's side gets its own bubble tint per role. A theme without a set keeps plain bubbles
-// and the accent marks: Тишина goes to Art first, the other themes after his OK.
+// The guide's side gets its own bubble tint per role; the walker keeps the accent. Every theme
+// keeps the same hues by role (guide warm gold, admin cool blue, main admin violet): shades of
+// one hue merge on a black page (Art 2026-11-11, Матрица). A theme without a set keeps plain bubbles.
 const ROLE_TINTS: Partial<Record<string, Partial<Record<Place, string>>>> = {
   neutral: { guide: '#D9BE86', admin: '#9FB4E8', main: '#CDA6E3' },
+  violet: { guide: '#E0C38A', admin: '#7DD3E3', main: '#AE8CF2' },
+  matrix: { guide: '#FFC857', admin: '#4FD3F5', main: '#C79BF2' },
+  dark: { guide: '#FF9B3D', admin: '#5FC8F0', main: '#C79BF2' },
 };
+// On a black page a bright ink washes the bubble harder, so those themes tint it less.
+const ROLE_WASH: Partial<Record<string, number>> = { matrix: .55, dark: .55 };
 const places: Place[] = ['walker', 'guide', 'admin', 'main'];
 export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ? last ? 'alone' : 'head' : last ? 'tail' : 'middle';
 
@@ -86,7 +92,7 @@ export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ?
 export function useIntensiveFrames() {
   const colors = useThemeColors();
   const { settings } = useProduct();
-  const tints = ROLE_TINTS[settings.theme];
+  const tints = ROLE_TINTS[settings.theme], wash = ROLE_WASH[settings.theme] ?? 1;
   return useMemo(() => {
     const tag = colors.accent.replace('#', '');
     const own = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -97,8 +103,8 @@ export function useIntensiveFrames() {
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
     const role = (contour: string, ink: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92"/>
-<path d="${contour}" fill="url(#intensive-role)" stroke="${ink}" stroke-opacity="0.85" stroke-width="0.25"/>
-<defs><linearGradient id="intensive-role" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}" stop-opacity="0.05"/><stop offset="1" stop-color="${ink}" stop-opacity="0.15"/></linearGradient></defs></svg>`);
+<path d="${contour}" fill="url(#intensive-role-${ink.slice(1)})" stroke="${ink}" stroke-opacity="0.85" stroke-width="0.25"/>
+<defs><linearGradient id="intensive-role-${ink.slice(1)}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}" stop-opacity="${+(.05 * wash).toFixed(3)}"/><stop offset="1" stop-color="${ink}" stop-opacity="${+(.15 * wash).toFixed(3)}"/></linearGradient></defs></svg>`);
     const roles: Partial<Record<Place, Record<BubbleSpot, { uri: string }>>> = {};
     for (const place of places) {
       const ink = tints?.[place];
@@ -115,7 +121,7 @@ export function useIntensiveFrames() {
       input: diaryArtwork('input', colors, true),
       prompt: diaryArtwork('prompt', colors),
     };
-  }, [colors, tints]);
+  }, [colors, tints, wash]);
 }
 
 /** The diary's icon contour with the person's initial; roles with a light hand get the accent outline. */

@@ -15,6 +15,7 @@ import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { levelActionArtwork } from '../levelArtwork';
 
 import { productLevels } from '../content';
+import { typeset } from '../typeset';
 import type { LevelId } from '../content';
 import { Art } from '../motion/Art';
 import { useProductLayout, useProductSpacing } from '../layout';
@@ -103,7 +104,7 @@ export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBa
                     </View>
                     <View style={styles.levelCopy}>
                       <Image pointerEvents="none" source={fade} style={styles.artFade} contentFit="fill" />
-                      <ProductText variant="body" style={styles.description}>{level.description}</ProductText>
+                      <ProductText variant="body" style={styles.description}>{typeset(level.description)}</ProductText>
                       <Pressable accessibilityRole="button" accessibilityLabel={level.action} onPress={() => onStart(level.id)} style={styles.action}>
                         <PanelArtwork source={actions[level.id]} flipY={level.id === 'guidance'} />
                         <ProductText variant="title" style={styles.actionLabel}>{level.action}</ProductText>

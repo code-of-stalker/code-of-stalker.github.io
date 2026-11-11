@@ -17,6 +17,7 @@ import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductText } from '../../product/ui';
+import type { Place } from '../backend';
 
 /** Stroke glyphs on a 24 grid, drawn like the diary icons. */
 export const glyphs = {
@@ -72,11 +73,26 @@ const OTHER_CONTOURS: Record<BubbleSpot, string> = {
   tail: 'M.125 .125H119.875V31.875L111.875 39.875H.125Z',
 };
 const spots: BubbleSpot[] = ['alone', 'head', 'middle', 'tail'];
+
+// The guide's side gets its own bubble tint per role; the walker keeps the accent. Every theme
+// keeps the same hues by role (guide warm gold, admin cool blue, main admin violet): shades of
+// one hue merge on a black page (Art 2026-11-11, Матрица). A theme without a set keeps plain bubbles.
+const ROLE_TINTS: Partial<Record<string, Partial<Record<Place, string>>>> = {
+  neutral: { guide: '#D9BE86', admin: '#9FB4E8', main: '#CDA6E3' },
+  violet: { guide: '#E0C38A', admin: '#7DD3E3', main: '#AE8CF2' },
+  matrix: { guide: '#FFC857', admin: '#4FD3F5', main: '#C79BF2' },
+  dark: { guide: '#FF9B3D', admin: '#5FC8F0', main: '#C79BF2' },
+};
+// On a black page a bright ink washes the bubble harder, so those themes tint it less.
+const ROLE_WASH: Partial<Record<string, number>> = { matrix: .55, dark: .55 };
+const places: Place[] = ['walker', 'guide', 'admin', 'main'];
 export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ? last ? 'alone' : 'head' : last ? 'tail' : 'middle';
 
 /** Authored frames for this section; PanelArtwork moves their anchors to the layout size. */
 export function useIntensiveFrames() {
   const colors = useThemeColors();
+  const { settings } = useProduct();
+  const tints = ROLE_TINTS[settings.theme], wash = ROLE_WASH[settings.theme] ?? 1;
   return useMemo(() => {
     const tag = colors.accent.replace('#', '');
     const own = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,7 +101,19 @@ export function useIntensiveFrames() {
 <defs><linearGradient id="intensive-own-${tag}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`);
     const other = (contour: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="${contour}" fill="${colors.surface}" fill-opacity="0.92" stroke="${colors.muted}" stroke-opacity="0.55" stroke-width="0.25"/></svg>`);
+    const role = (contour: string, ink: string) => svgSource(`<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="${contour}" fill="${colors.surface}" fill-opacity="0.92"/>
+<path d="${contour}" fill="url(#intensive-role-${ink.slice(1)})" stroke="${ink}" stroke-opacity="0.85" stroke-width="0.25"/>
+<defs><linearGradient id="intensive-role-${ink.slice(1)}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${ink}" stop-opacity="${+(.05 * wash).toFixed(3)}"/><stop offset="1" stop-color="${ink}" stop-opacity="${+(.15 * wash).toFixed(3)}"/></linearGradient></defs></svg>`);
+    const roles: Partial<Record<Place, Record<BubbleSpot, { uri: string }>>> = {};
+    for (const place of places) {
+      const ink = tints?.[place];
+      if (ink) roles[place] = Object.fromEntries(spots.map(spot => [spot, role(OTHER_CONTOURS[spot], ink)])) as Record<BubbleSpot, { uri: string }>;
+    }
     return {
+      /** Ink of each role's name line and mark. */
+      inks: Object.fromEntries(places.map(place => [place, tints?.[place] ?? colors.accent])) as Record<Place, string>,
+      roles,
       own: Object.fromEntries(spots.map(spot => [spot, own(OWN_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       other: Object.fromEntries(spots.map(spot => [spot, other(OTHER_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       icon: svgSource(`<svg width="44" height="42" viewBox="0 0 44 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -93,7 +121,7 @@ export function useIntensiveFrames() {
       input: diaryArtwork('input', colors, true),
       prompt: diaryArtwork('prompt', colors),
     };
-  }, [colors]);
+  }, [colors, tints, wash]);
 }
 
 /** The diary's icon contour with the person's initial; roles with a light hand get the accent outline. */

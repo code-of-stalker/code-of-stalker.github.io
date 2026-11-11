@@ -5,7 +5,7 @@
 const SEEN_KEY = 'intensive.seen.v1';
 
 /** `editedAt` tells a stored preview from the text after an edit. */
-type Preview = { messageId: number; editedAt: string | null; senderId: string; senderRole: string; text: string | null };
+type Preview = { messageId: number; editedAt: string | null; senderId: string; senderRole: string; text: string | null; report?: boolean };
 
 const drafts = new Map<string, string>();
 const previews = new Map<string, Preview>();
@@ -45,6 +45,17 @@ export const previewFor = (chatId: string, messageId: number, editedAt: string |
   return preview?.messageId === messageId && same(preview.editedAt, editedAt) ? preview : undefined;
 };
 export const keepPreview = (chatId: string, preview: Preview) => { previews.set(chatId, preview); };
+
+const FOLD_KEY = 'intensive.reportFolded.v1';
+
+/** Whether the walker folded the daily report plate on this device (the diary keeps its own). */
+export function reportFolded() {
+  try { return globalThis.localStorage?.getItem(FOLD_KEY) === '1'; } catch { return false; }
+}
+
+export function keepReportFolded(folded: boolean) {
+  try { globalThis.localStorage?.setItem(FOLD_KEY, folded ? '1' : '0'); } catch { /* Storage may be blocked; the plate then opens unfolded. */ }
+}
 
 /** Drops plaintext held for the open session. */
 export function clearChatMemory() {

@@ -396,19 +396,17 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   icon), the diary's guide sheet shared as `DiaryReportGuide` (the diary uses it too), and the
   walker's plate above the chat (shared `DiaryReportPrompt`): folds by the diary's drag (up folds,
   down unfolds), kept per device (`intensive.reportFolded.v1` in `chatMemory.ts`), leaves after
-  today's report. Role marks: faint role tint on bubbles (`ROLE_TINTS`/`roleGlyph` in
-  `ui/chrome.tsx`, Тишина only so far) and a static icon right of the role word. Art wants the
-  icons premium and animated. Round 1 (А «Чеканка», Б «Живые знаки», В «Самоцвет»): Art liked
-  Б's motion, not its drawings («мимо нашего стиля»). Round 2 (app line style; chevrons, compass,
-  shield, crown): Art picked new subjects. Round 3, prototype
-  `output/prototypes/role-marks/index.html` (JS sketch, git-ignored; source in the session
-  scratchpad): app line + faint fill + running pale dash; walker two footprints set down in
-  turn, guide a small flame that flickers, flares and sheds a spark, admin an eye that blinks,
-  glances and gets light along the lid, main admin a wrench that turns twice. A person has one
-  role per chat (`private.chat_role`: walker > guide > admin > main), so Яна leading a walker is
-  ПРОВОДНИК (flame) in that chat. Waits for his word, then build it in Rust (product has no JS
-  animation). Branch `claude/intensive-chat-9e8099`,
-  local only; waits for Art's OK to ship. Show Art before pushing.
+  today's report. Role marks: faint role tint on bubbles (`ROLE_TINTS` in `ui/chrome.tsx`,
+  Тишина only so far) and a live 16 px sign right of the role word. Rounds 1–2 rejected (see
+  art-feedback). Round 3 = Art's subjects (prototype `output/prototypes/role-marks/index.html`):
+  walker footprints, guide flame, admin eye, main admin wrench. Art: «Знаки 16 делай в раст» →
+  built in Rust (110448f): crate `graphics/role-marks` (beats and build in its `README.txt`),
+  bridge `ui/RoleMark.web.tsx`, native still `ui/RoleMark.tsx` + generated
+  `ui/roleMarks.generated.ts`; replaced the static `roleGlyph`. Checked in the demo (Тишина, PC
+  and 390 px phone, reduced motion). A person has one role per chat (`private.chat_role`:
+  walker > guide > admin > main), so Яна leading a walker is ПРОВОДНИК (flame) in that chat.
+  Waits for Art's look in Тишина. Branch `claude/intensive-chat-9e8099`, local only; push only
+  on his OK.
 - Next: the other dark themes after Art's OK. Walker screens keep naming Яна («Яна назначит…»)
   even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.

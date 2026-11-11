@@ -382,16 +382,24 @@ pub struct World {
     pub tram: Tram,
 }
 
-/// The tram's day: it comes out of the left tunnel, stops twice, leaves
-/// through the right one. Times of story.
+/// The tram's day: it comes out of the left tunnel to the first stop,
+/// leaves through the right one, comes round out of the left again at
+/// `back` to the second stop, and leaves to the right. Times of story.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Tram {
     pub enter: f32,
     pub stop1: f32,
     pub go1: f32,
+    pub back: f32,
     pub stop2: f32,
     pub go2: f32,
 }
+
+/// From the first stop it is back in from the left this long after leaving,
+/// and brakes into the second stop over `BACK_BRAKE` s from `BACK_FROM` away.
+pub const BACK_AFTER: f32 = 9.5;
+pub const BACK_BRAKE: f32 = 4.5;
+const BACK_FROM: f32 = 12.0;
 
 /// The tram's two stops: its middle's x.
 pub const STOP1: f32 = -11.4;
@@ -440,8 +448,30 @@ impl World {
         if t < r.go1 {
             return STOP1;
         }
-        if t < r.stop2 {
-            return mix(STOP1, STOP2, min_jerk((t - r.go1) / (r.stop2 - r.go1)));
+        if r.back <= r.go1 {
+            // No round: straight on to the second stop.
+            if t < r.stop2 {
+                return mix(STOP1, STOP2, min_jerk((t - r.go1) / (r.stop2 - r.go1)));
+            }
+        } else {
+            let v = 2.0 * BACK_FROM / (r.stop2 - r.back);
+            if t < r.back - 1.0 {
+                // Off to the right, gathering way, out through the tunnel.
+                let u = t - r.go1;
+                return if u < 5.0 {
+                    STOP1 + 0.6 * u * u
+                } else {
+                    STOP1 + 15.0 + 6.0 * (u - 5.0)
+                };
+            }
+            if t < r.back {
+                // Round the block, out of the left tunnel.
+                return STOP2 - BACK_FROM + v * (t - r.back);
+            }
+            if t < r.stop2 {
+                let s = (t - r.back) / (r.stop2 - r.back);
+                return STOP2 - BACK_FROM * (1.0 - s) * (1.0 - s);
+            }
         }
         if t < r.go2 {
             return STOP2;

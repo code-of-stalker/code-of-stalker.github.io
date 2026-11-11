@@ -37,7 +37,9 @@ use watcher_scene_palette::Palette;
 /// evening and the finale comes this much later than in the first cut.
 pub const DAY_EXTRA: f32 = 39.0;
 /// One loop: the whole day, three minutes and a little more.
-pub const LOOP: f32 = 180.0 + DAY_EXTRA;
+pub const LOOP: f32 = 271.9;
+/// The finale after he stops running.
+pub const FINALE: f32 = 34.0;
 
 /// The lens: the whole 3:2 frame stays in view on a canvas of any shape.
 pub const FRAME_ASPECT: f32 = 1.5;

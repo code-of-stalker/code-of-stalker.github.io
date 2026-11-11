@@ -70,9 +70,6 @@ pub const WELL_X: [f32; 2] = [5.2, 7.9];
 pub const WELL_Z: f32 = -3.55;
 /// The lift's shaft through the stairwell's floors (x from, to; z from).
 pub const SHAFT: [f32; 3] = [-9.45, -7.55, -2.05];
-/// The roof's running track: an oval round (x, z) with straights this half
-/// long and ends of this radius at the lane's middle.
-pub const TRACK: [f32; 4] = [2.1, -2.5, 4.4, 1.4];
 
 /// What a primitive is: the shader intersects the first three exactly and
 /// marches the others inside their box.
@@ -1255,6 +1252,9 @@ fn kitchen(out: &mut Vec<Prim>) {
             .flags(flag::GLOSS),
     );
     out.push(cube(mat::METAL, v3(-5.0, y + 0.945, -4.3), v3(0.34, 0.006, 0.27)).tone(0.15));
+    // Her pot on the hob.
+    out.push(cyl(mat::METAL, v3(-5.14, y + 1.026, -4.3), 0.12, 0.075).tone(0.45));
+    out.push(cube(mat::DARK, v3(-5.3, y + 1.08, -4.3), v3(0.06, 0.008, 0.012)));
     out.push(
         cube(mat::METAL, v3(-3.8, y + 0.9, -4.3), v3(0.3, 0.03, 0.2))
             .tone(0.6)
@@ -1294,6 +1294,15 @@ fn living(out: &mut Vec<Prim>) {
     let y = 3.0 * STOREY;
     sofa(out, v3(9.05, y, -1.95), 0.95, -FRAC_PI_2, 0.7);
     out.push(cube(mat::WOOD, v3(7.65, y + 0.4, -1.95), v3(0.32, 0.025, 0.55)).tone(0.3));
+    // The tower of blocks she builds on it.
+    for (i, (x, z)) in [(7.52f32, -1.72f32), (7.6, -1.8), (7.55, -1.76)].into_iter().enumerate() {
+        let lift = if i == 2 { 0.07 } else { 0.0 };
+        out.push(
+            cube(mat::TOY, v3(x, y + 0.46 + lift, z), v3(0.035, 0.035, 0.035))
+                .yaw(0.5 * i as f32)
+                .tone(0.2 + 0.3 * i as f32),
+        );
+    }
     legs(out, mat::WOOD, v3(7.65, y, -1.95), 0.29, 0.52, 0.38, 0.02);
     out.push(
         slab(mat::RUG, v3(3.4, y, -3.35), v3(8.7, y + 0.012, -0.5))
@@ -1592,27 +1601,12 @@ fn roof(out: &mut Vec<Prim>) {
     ));
     out.push(cube(mat::WOOD, v3(-3.0, y + 0.42, -0.55), v3(0.7, 0.04, 0.2)).tone(0.4));
     legs(out, mat::METAL, v3(-3.0, y, -0.55), 0.66, 0.18, 0.4, 0.02);
-    // The running track: a stadium of rubber round a painted infield,
-    // a white line between its two lanes.
-    let [tx, tz, half, r] = TRACK;
-    let stadium = |out: &mut Vec<Prim>, m: u32, rr: f32, h: f32, tone: f32| {
-        out.push(
-            cube(m, v3(tx, y + 0.5 * h, tz), v3(half, 0.5 * h, rr))
-                .flags(flag::FLAT)
-                .tone(tone),
-        );
-        for x in [tx - half, tx + half] {
-            out.push(
-                cyl(m, v3(x, y + 0.5 * h, tz), rr, 0.5 * h)
-                    .flags(flag::FLAT)
-                    .tone(tone),
-            );
-        }
-    };
-    stadium(out, mat::RUG, r + 0.32, 0.01, 0.62);
-    stadium(out, mat::PAPER, r + 0.02, 0.013, 0.97);
-    stadium(out, mat::RUG, r - 0.01, 0.016, 0.62);
-    stadium(out, mat::ROOF, r - 0.3, 0.019, 0.35);
+    // A bench and pots of herbs where the neighbours sit out in summer.
+    out.push(cube(mat::WOOD, v3(1.6, y + 0.42, -2.9), v3(0.8, 0.03, 0.2)).tone(0.45));
+    legs(out, mat::METAL, v3(1.6, y, -2.9), 0.74, 0.16, 0.4, 0.02);
+    for (x, z, hgt) in [(0.2f32, -3.2f32, 0.5f32), (3.0, -3.3, 0.7), (3.5, -1.6, 0.4)] {
+        plant(out, v3(x, y, z), hgt, 0.3);
+    }
     for x in [6.4f32, 8.6] {
         out.push(cube(mat::WOOD, v3(x, y + 0.2, -0.45), v3(0.6, 0.2, 0.22)).tone(0.5));
         out.push(

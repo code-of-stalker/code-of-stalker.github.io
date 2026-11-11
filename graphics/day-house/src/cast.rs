@@ -4,10 +4,13 @@
 //! gardener, the painter and the mechanic. Each lives by a `Plan` of acts;
 //! here their hands, heads and the things they carry are added on top.
 //! Times are story times (`story::story_time` slows the cup's fall).
-use crate::act::{flat, Gait, Local, Plan, Ride, World, CLIMBING, RUNNING, STROLL, WALKING};
-use crate::body::{build, Body, Carry, Hair, Pose, HANDS};
-use crate::math::{mix, smooth, smooth_integral, v3, window, V3};
-use crate::LOOP;
+use crate::act::{
+    flat, turn_between, Gait, Local, Plan, Ride, World, BACK_AFTER, BACK_BRAKE, BRAKE, CLIMBING,
+    RUNNING, STROLL, WALKING,
+};
+use crate::body::{build, Body, Carry, Hair, Pose, HANDS, STAND};
+use crate::math::{mix, smooth, smooth_integral, v3, window, V3, Y};
+use crate::{FINALE, LOOP};
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 pub const HERO: usize = 0;
@@ -87,6 +90,21 @@ pub fn grip(body: &Body, side: usize) -> V3 {
     )
 }
 
+/// The hand on `side` aims its wrist at `w` (the walk's frame), `a` of the
+/// way: what it reached for before keeps its share, so one reach hands
+/// over to the next without a jump.
+fn aim(pose: &mut Pose, side: usize, w: V3, a: f32) {
+    let a = a.clamp(0.0, 1.0);
+    if a <= 0.001 {
+        return;
+    }
+    let [x, y, z, old] = pose.hands[side];
+    let keep = old * (1.0 - a);
+    let amount = keep + a;
+    let t = (v3(x, y, z) * keep + w * a) * (1.0 / amount);
+    pose.hands[side] = [t.x, t.y, t.z, amount];
+}
+
 /// The hand on `side` reaches for the world point `target`, `a` of the way.
 fn reach(pose: &mut Pose, local: &Local, side: usize, target: V3, a: f32) {
     if a <= 0.001 {
@@ -99,19 +117,20 @@ fn reach(pose: &mut Pose, local: &Local, side: usize, target: V3, a: f32) {
     let d = q - shoulder;
     let len = d.length().max(1e-4);
     // The wrist stops short of the target so the hand's middle is there.
-    let w = q - d * (0.055 / len);
-    let old = pose.hands[side][3];
-    let amount = old + (1.0 - old) * a.clamp(0.0, 1.0);
-    pose.hands[side] = [w.x, w.y, w.z, amount];
+    aim(pose, side, q - d * (0.055 / len), a);
 }
 
-/// The hand on `side` at a point of the walk's own frame.
+/// The hand on `side` held at `at` from the pelvis (as if it stood at the
+/// walk's origin): it goes where the body goes, walking, riding, turning.
 fn hold(pose: &mut Pose, side: usize, at: V3, a: f32) {
-    if a <= 0.001 {
-        return;
-    }
-    let old = pose.hands[side][3];
-    pose.hands[side] = [at.x, at.y, at.z, old + (1.0 - old) * a.clamp(0.0, 1.0)];
+    let p = pose.pelvis;
+    aim(pose, side, v3(p.x + at.x, p.y + at.y - STAND, p.z + at.z), a);
+}
+
+/// The hand on `side` at a fixed point of the walk's frame (a seated
+/// figure's knee, the hands on his knees after the run).
+fn hold_at(pose: &mut Pose, side: usize, at: V3, a: f32) {
+    aim(pose, side, at, a);
 }
 
 /// The head turns to look at the world point `target`, `a` of the way.
@@ -129,7 +148,7 @@ fn look(pose: &mut Pose, local: &Local, target: V3, a: f32) {
     pose.nod = mix(pose.nod, nod, a);
 }
 
-/// Down on the haunches, `c` of the way.
+/// A grown-up down on the haunches, `c` of the way.
 fn crouch(pose: &mut Pose, c: f32) {
     if c <= 0.0 {
         return;
@@ -139,17 +158,34 @@ fn crouch(pose: &mut Pose, c: f32) {
     pose.lean += 0.95 * c;
 }
 
+/// A child's squat: low on bent knees with the back upright.
+fn squat(pose: &mut Pose, c: f32) {
+    if c <= 0.0 {
+        return;
+    }
+    pose.pelvis.y = mix(pose.pelvis.y, 0.36, c);
+    pose.pelvis.z -= 0.1 * c;
+    pose.lean += 0.3 * c;
+}
+
 fn lerp3(a: V3, b: V3, s: f32) -> V3 {
     a.lerp(b, s.clamp(0.0, 1.0))
+}
+
+/// The angle `w` of the way from `a` to `b`, the short way round.
+fn mix_angle(a: f32, b: f32, w: f32) -> f32 {
+    a + turn_between(a, b) * w
 }
 
 /// The key moments of the day, story time.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Keys {
-    pub p_rise: f32,
+    /// She lifts the kettle off the stove; pours; sets it back.
+    pub kettle: f32,
     pub pour: f32,
     pub sip: f32,
     pub rise: f32,
+    pub p_set: f32,
     pub press: f32,
     pub lift0: f32,
     pub kerb: f32,
@@ -168,21 +204,34 @@ pub struct Keys {
     pub stairs: f32,
     pub desk: f32,
     pub call: f32,
-    pub roof: f32,
+    pub down: f32,
     pub run: f32,
+    /// Out of the frame on the right; back in from the left.
+    pub gone: f32,
+    pub again: f32,
     pub run_end: f32,
-    pub p_back: f32,
+    pub p_sit: f32,
 }
 
 /// Where the things people handle are this moment.
 #[derive(Clone, Copy, Debug)]
 pub struct Held {
-    pub teapot: V3,
-    pub teapot_tilt: f32,
+    /// The kettle's middle, how far it tips forward and which way its
+    /// spout points.
+    pub kettle: V3,
+    pub kettle_tilt: f32,
+    pub kettle_yaw: f32,
+    /// Her spoon in the pot: its bowl and its end.
+    pub spoon: [V3; 2],
     pub cup: V3,
     pub kid_cup: V3,
     pub kid_cup_spin: f32,
-    pub loaf: V3,
+    /// His bread in its paper bag (the bag's bottom, its yaw), and the
+    /// lady's.
+    pub bag: V3,
+    pub bag_yaw: f32,
+    pub bag2: V3,
+    pub bag2_yaw: f32,
     pub coin: V3,
     pub phone: V3,
     pub chair: V3,
@@ -204,19 +253,42 @@ pub struct Cast {
     pub keys: Keys,
 }
 
-// The kitchen table and what stands on it.
-const TEAPOT: V3 = v3(-2.2, 9.86, -3.25);
-const TEAPOT_SET: V3 = v3(-1.35, 9.86, -2.72);
-const POUR_AT: V3 = v3(-1.22, 10.02, -2.92);
-const CUP: V3 = v3(-1.25, 9.8, -3.12);
-const BREAD_AT: V3 = v3(-1.8, 9.84, -2.7);
-const KID_CUP: V3 = v3(7.45, 9.47, -1.62);
-const CATCH: V3 = v3(4.85, 9.75, -1.45);
+/// Out of the world.
+const HIDDEN: V3 = v3(0.0, -60.0, 0.0);
+// The kitchen: where she stands at the stove, her pot and kettle on it,
+// his cup, where he sets the bread down, where she sits.
+const STOVE: V3 = v3(-5.0, 9.0, -3.8);
+pub const POT: V3 = v3(-5.14, 10.03, -4.3);
+const KETTLE_HOME: V3 = v3(-4.74, 10.04, -4.3);
+/// The kettle's handle over its middle; its spout's tip from its middle
+/// (up, forward).
+pub const KETTLE_GRIP: f32 = 0.13;
+pub const SPOUT: [f32; 2] = [0.08, 0.17];
+const CUP: V3 = v3(-1.4, 9.76, -3.15);
+const CUP_HALF: f32 = 0.045;
+const BAG_SET: V3 = v3(-1.85, 9.76, -2.72);
+const HER_SEAT: [f32; 2] = [-2.53, -3.0];
+const HER_HEAD: V3 = v3(-2.85, 10.25, -3.0);
+// The shop: over the counter, the coins, the till, the shelf of bread.
+const HANDOVER: V3 = v3(-4.2, 1.38, -2.35);
+/// A carried bag hangs this far under the hand's grip.
+pub const BAG_DROP: f32 = 0.25;
+/// Where a hand carries a bag (from the pelvis, see `hold`).
+const CARRY: V3 = v3(-0.24, 0.72, 0.04);
 const COUNTER_COIN: V3 = v3(-4.3, 1.055, -2.42);
 const TILL: V3 = v3(-4.38, 1.27, -2.85);
 const LOAF_SHELF: V3 = v3(-5.12, 1.32, -2.45);
+// The living room: the child's cup on the low table, his hand catching it.
+const KID_CUP: V3 = v3(7.45, 9.425, -1.46);
+const KID_HALF: f32 = 0.04;
+const CATCH: V3 = v3(4.85, 9.75, -1.45);
 const DESK_PHONE: V3 = v3(4.55, 12.785, -2.3);
 const CRANK: V3 = v3(4.35, 0.66, -2.0);
+/// The tram's straps: the handles' height, their line across, and where
+/// they hang along the car from its middle.
+pub const STRAP_Y: f32 = 1.93;
+pub const STRAP_Z: f32 = 4.45;
+pub const STRAPS: [f32; 4] = [-3.0, -1.3, 0.5, 2.1];
 
 impl Cast {
     pub fn new() -> Cast {
@@ -226,29 +298,42 @@ impl Cast {
         };
         let mut k = Keys::default();
 
-        // P, first: the argument, then she makes peace with the teapot.
-        let mut p = Plan::new(0.0, v3(-2.53, 9.0, -3.0), FRAC_PI_2, true, 0.95, 4.6);
+        // P at the stove, stirring. The argument; she turns back to her
+        // pot, then takes the kettle along the counter to his cup, pours
+        // and goes straight back to the stove.
+        let mut p = Plan::new(0.0, STOVE, PI, false, 0.95, 4.6);
         p.quick = 0.8;
-        p.wait_until(6.0).mark("p_rise").rise(1.0).wait(0.5);
+        p.wait_until(2.5).turn_to(1.37).wait_until(6.6).turn_to(PI);
+        p.wait_until(8.8).mark("kettle").wait(1.0);
+        p.walk(&[[-1.22, -3.72]], flat, WALKING);
+        p.turn_to(0.0).mark("pour").wait(2.0);
+        p.walk(&[[STOVE.x, STOVE.z]], flat, WALKING);
+        p.turn_to(PI).mark("p_set");
+        k.kettle = p.when("kettle");
+        k.pour = p.when("pour");
+        k.p_set = p.when("p_set");
+        k.sip = k.pour + 2.6;
+        k.rise = k.sip + 2.6;
+        // Later (he is out) she sits down at the table.
+        p.wait_until(k.p_set + 14.0);
         p.walk(
-            &[[-2.6, -2.3], [-1.6, -2.25], [-0.95, -2.45]],
+            &[[-3.6, -3.68], [-2.55, -3.62], [HER_SEAT[0], HER_SEAT[1]]],
             flat,
             WALKING,
         );
-        p.turn_to(-2.82).mark("pour");
-        k.p_rise = p.when("p_rise");
-        k.pour = p.when("pour");
-        k.sip = k.pour + 2.4;
-        k.rise = k.sip + 2.6;
+        p.turn_to(FRAC_PI_2).wait(0.3).sit(1.4).mark("p_sit");
+        k.p_sit = p.when("p_sit");
+        p.wait_until(LOOP + 10.0);
 
-        // H: the kitchen, the lift, the street and the tram.
+        // H: the kitchen (out by the near side of the table), the lift,
+        // the street and the tram.
         let mut h = Plan::new(0.0, v3(-1.15, 9.0, -3.0), -FRAC_PI_2, true, 1.0, 4.2);
         h.wait_until(k.rise).rise(1.4);
         h.walk(
             &[
-                [-0.85, -3.7],
-                [-3.4, -3.7],
-                [-4.6, -2.6],
+                [-0.95, -2.25],
+                [-3.0, -1.95],
+                [-4.6, -1.7],
                 [-5.3, -1.5],
                 [-6.4, -1.4],
                 [-7.1, -1.1],
@@ -263,11 +348,7 @@ impl Cast {
         world.lift.push([k.lift0, k.lift0 + 4.0, 9.0, 0.0]);
         h.wait_until(k.lift0);
         h.ride_until(Ride::Lift, k.lift0 + 4.0, &world).wait(0.7);
-        h.walk(
-            &[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 2.0]],
-            crate::cast::street,
-            WALKING,
-        );
+        h.walk(&[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 2.0]], street, WALKING);
         h.mark("kerb").wait(1.0);
         k.kerb = h.when("kerb");
         h.walk(&[[-6.6, 6.3], [-7.3, 6.75], [-9.0, 6.75]], street, WALKING);
@@ -276,20 +357,25 @@ impl Cast {
         k.rails = h.last_way().time_at(2.3);
         k.honk = k.rails - 0.2;
         world.tram.enter = k.rails - 1.34;
-        world.tram.stop1 = world.tram.enter + crate::act::BRAKE;
+        world.tram.stop1 = world.tram.enter + BRAKE;
         h.turn_to(PI);
         let stop1 = world.tram.stop1;
         h.wait_until(h.t.max(stop1 + 1.0));
-        h.walk(&[[-9.0, 4.9]], boarding, WALKING);
-        h.turn_to(0.0).mark("board");
+        // In by the front door; a hand up to a strap, facing the windows.
+        h.walk(&[[-9.0, 5.0], [-9.45, 4.78]], boarding, WALKING);
+        h.turn_to(PI).mark("board");
         k.board = h.when("board");
-        world.tram.go1 = h.t + 0.3;
-        world.tram.stop2 = world.tram.go1 + 4.5;
+        // It pulls away to the right, out through the tunnel, and comes
+        // back in from the left to the second stop.
+        world.tram.go1 = k.board + 0.5;
+        world.tram.back = world.tram.go1 + BACK_AFTER;
+        world.tram.stop2 = world.tram.back + BACK_BRAKE;
         let stop2 = world.tram.stop2;
         // It waits at the second stop until he is off (set below).
         world.tram.go2 = stop2 + 100.0;
         h.ride_until(Ride::Tram, stop2 + 1.0, &world);
-        h.walk(&[[h.at.x, 6.6]], boarding, WALKING);
+        let door = h.at.x + 0.45;
+        h.walk(&[[door, 5.2], [door, 6.6]], boarding, WALKING);
         h.mark("alight");
         k.alight = h.when("alight");
         world.tram.go2 = h.t + 0.3;
@@ -335,7 +421,7 @@ impl Cast {
             flat,
             WALKING,
         );
-        h.turn_to(PI).mark("bread").wait(1.8);
+        h.turn_to(PI).mark("bread").wait(2.2);
         k.bread = h.when("bread");
         h.walk(
             &[[0.6, -1.6], [1.6, -1.5], [2.6, -1.5], [4.5, -1.7]],
@@ -348,7 +434,8 @@ impl Cast {
         k.catch = k.trip + 0.55;
         h.wait_until(k.catch + 2.6);
 
-        // Up the stair to his desk.
+        // Up the stair to his desk: work, a call, work again, the screen
+        // goes dark.
         h.walk(&[[3.9, -3.3], [4.0, -4.08]], flat, WALKING);
         h.mark("stairs");
         k.stairs = h.when("stairs");
@@ -360,11 +447,10 @@ impl Cast {
         h.walk(&[[8.3, -3.0], [3.9, -3.0]], flat, WALKING);
         h.turn_to(0.0).sit(1.4).mark("desk");
         k.desk = h.when("desk");
-        h.wait_until(k.desk + 7.0).rise(1.2);
+        h.wait_until(k.desk + DESK_SPAN).rise(1.2);
 
         // Out through the bedroom to the stairwell. On the landing he
-        // presses the call (the cage waits on his floor below), walks to the
-        // gate as it comes up, steps in and rides to the roof.
+        // calls the cage up from his floor below and rides it down.
         h.walk(
             &[
                 [2.8, -3.0],
@@ -379,44 +465,32 @@ impl Cast {
         );
         h.mark("call");
         k.call = h.when("call");
-        world.lift.push([k.call + 0.3, k.call + 2.1, 9.0, 12.0]);
+        world.lift.push([k.call + 0.3, k.call + 2.3, 9.0, 12.0]);
         h.walk(&[[-6.6, -1.3], [-7.15, -1.1]], flat, WALKING);
-        h.wait_until(h.t.max(k.call + 2.3));
+        h.wait_until(h.t.max(k.call + 2.5));
         h.walk(&[[-8.25, -1.25]], flat, WALKING);
         h.turn_to(FRAC_PI_2);
-        let up = h.t + 0.2;
-        h.wait_until(up);
-        world.lift.push([up, up + 2.2, 12.0, 15.0]);
-        h.ride_until(Ride::Lift, up + 2.2, &world).wait(0.3);
+        let go = h.t + 0.3;
+        h.wait_until(go);
+        world.lift.push([go, go + 5.0, 12.0, 0.0]);
+        h.ride_until(Ride::Lift, go + 5.0, &world).wait(0.4);
+        h.mark("down");
+        k.down = h.when("down");
 
-        // The roof: a run round the track at sunset.
-        h.walk(&[[-7.0, -1.2], [-6.3, -1.2]], flat, WALKING);
-        h.mark("roof");
-        k.roof = h.when("roof");
-        // Someone below calls the empty cage back down.
-        world.lift.push([k.roof + 6.0, k.roof + 10.0, 15.0, 9.0]);
-        let mut lap = vec![[-2.3, -1.25], [6.5, -1.25]];
-        for i in 1..=7 {
-            let a = PI * i as f32 / 8.0;
-            lap.push([6.5 + 1.25 * a.sin(), -2.5 + 1.25 * a.cos()]);
-        }
-        lap.extend([[6.5, -3.75], [2.1, -3.75]]);
-        h.mark("run");
+        // The evening run along the street: out of the frame on the
+        // right; the camera cuts; back in from the left to the lamp.
+        h.walk(&[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 0.9]], street, WALKING);
+        h.wait(1.2).mark("run");
         k.run = h.when("run");
-        h.walk(&lap, flat, RUNNING);
+        h.walk(&[[12.5, 0.9]], street, RUNNING);
+        h.mark("gone");
+        k.gone = h.when("gone");
+        h.cut(v3(-16.4, 0.0, 0.9), FRAC_PI_2).mark("again");
+        k.again = h.when("again");
+        h.walk(&[[0.3, 0.9]], flat, RUNNING);
         h.mark("run_end");
         k.run_end = h.when("run_end");
-        h.turn_to(0.3).wait_until(LOOP + 10.0);
-
-        // P again: she takes the teapot back and sits down.
-        p.wait_until(k.rise + 1.8).mark("p_back");
-        k.p_back = p.when("p_back");
-        p.wait(1.0);
-        p.walk(&[[-1.6, -2.25], [-2.6, -2.3], [-2.53, -3.0]], flat, WALKING);
-        p.turn_to(FRAC_PI_2)
-            .wait(0.9)
-            .sit(1.4)
-            .wait_until(LOOP + 10.0);
+        h.wait_until(LOOP + 10.0);
 
         // The child: plays at the low table, runs to him with the cup and
         // trips; takes it back and goes back to play.
@@ -445,9 +519,10 @@ impl Cast {
             .turn_by(-PI)
             .wait_until(LOOP + 10.0);
 
-        // L: in from the sidewalk, buys, steps aside, leaves for the tram.
-        let mut l = Plan::new(0.0, v3(-3.6, 0.0, 1.0), PI, false, 0.92, 4.9);
-        l.wait_until(q - 13.0);
+        // L: along the sidewalk from the left, buys, steps aside, leaves
+        // the way she came.
+        let mut l = Plan::new(0.0, v3(-16.5, 0.0, 1.0), FRAC_PI_2, false, 0.92, 4.9);
+        l.wait_until(q - 27.0);
         l.walk(
             &[
                 [-1.9, 1.0],
@@ -459,7 +534,9 @@ impl Cast {
             street,
             STROLL,
         );
-        l.turn_to(-FRAC_PI_2).wait_until(q + 0.8);
+        l.turn_to(-FRAC_PI_2);
+        let paid = l.t.max(q + 0.8);
+        l.wait_until(paid);
         l.walk(&[[-3.6, -1.6], [-3.4, -1.0]], flat, STROLL);
         l.turn_to(0.0).wait_until(q + 30.0);
         l.walk(
@@ -475,9 +552,16 @@ impl Cast {
         );
         l.wait_until(LOOP + 10.0);
 
-        // On the tram: a youth with his phone, the driver.
+        // On the tram: a youth with his phone, holding a strap; the driver.
         let c0 = world.tram_c(0.0);
-        let mut y = Plan::new(0.0, v3(c0 - 1.5, 0.22, 4.3), 0.0, false, 0.97, 3.9);
+        let mut y = Plan::new(
+            0.0,
+            v3(c0 + STRAPS[1], 0.22, STRAP_Z + 0.27),
+            FRAC_PI_2,
+            false,
+            0.97,
+            3.9,
+        );
         y.ride_until(Ride::Tram, LOOP + 10.0, &world);
         let mut d = Plan::new(0.0, v3(c0 + 3.7, 0.22, 4.3), FRAC_PI_2, true, 1.0, 4.8);
         d.ride_until(Ride::Tram, LOOP + 10.0, &world);
@@ -516,20 +600,25 @@ impl Cast {
         let k = &self.keys;
         let mut figures = Vec::with_capacity(PEOPLE);
         let mut held = Held {
-            teapot: TEAPOT,
-            teapot_tilt: 0.0,
+            kettle: KETTLE_HOME,
+            kettle_tilt: 0.0,
+            kettle_yaw: PI,
+            spoon: [POT; 2],
             cup: CUP,
             kid_cup: KID_CUP,
             kid_cup_spin: 0.0,
-            loaf: LOAF_SHELF,
-            coin: v3(0.0, -60.0, 0.0),
+            bag: HIDDEN,
+            bag_yaw: 0.0,
+            bag2: HIDDEN,
+            bag2_yaw: 0.0,
+            coin: HIDDEN,
             phone: DESK_PHONE,
             chair: v3(-0.75 + 0.3 * smooth(k.rise, k.rise + 1.0, s), 9.0, -3.0),
-            can: v3(0.0, -60.0, 0.0),
+            can: HIDDEN,
             can_tilt: 0.0,
-            brush: [v3(0.0, -60.0, 0.0); 2],
-            bow: [v3(0.0, -60.0, 0.0); 2],
-            wrench: [v3(0.0, -60.0, 0.0); 2],
+            brush: [HIDDEN; 2],
+            bow: [HIDDEN; 2],
+            wrench: [HIDDEN; 2],
         };
         let mut bodies: Vec<Body> = Vec::with_capacity(PEOPLE);
         for (i, plan) in self.plans.iter().enumerate() {
@@ -550,10 +639,9 @@ impl Cast {
         self.place_held(s, &bodies, &mut held);
         for (i, body) in bodies.into_iter().enumerate() {
             let plan = &self.plans[i];
-            let mut seen = 1.0;
-            if matches!(i, YOUTH | DRIVER | LADY) {
-                seen *= 1.0 - smooth(14.8, 15.4, body.pelvis.x.abs());
-            }
+            // Past the street's ends (the tunnels, the plinth's edge)
+            // nobody shows.
+            let seen = 1.0 - smooth(15.2, 15.8, body.pelvis.x.abs());
             figures.push(Figure {
                 body,
                 seen,
@@ -566,9 +654,32 @@ impl Cast {
         Moment { figures, held }
     }
 
+    /// How much she is stirring her pot.
+    fn stir(&self, s: f32) -> f32 {
+        let ps = self.keys.p_set;
+        window(s, -2.0, -1.0, 2.2, 2.6)
+            + window(s, 7.5, 7.9, 8.5, 8.8)
+            + window(s, ps + 1.1, ps + 1.5, ps + 13.0, ps + 13.5)
+    }
+
+    /// The kettle over his cup: its middle and how far it tips, the spout's
+    /// tip held over the cup as it pours.
+    fn kettle_pour(&self, s: f32) -> (V3, f32) {
+        let pr = self.keys.pour;
+        let tilt = 0.9 * window(s, pr + 0.2, pr + 0.7, pr + 1.3, pr + 1.8);
+        // She faces +z across the table.
+        let f = v3(0.0, 0.0, 1.0);
+        let (st, ct) = tilt.sin_cos();
+        let up = Y * ct + f * st;
+        let fw = f * ct - Y * st;
+        let tip = CUP + v3(0.0, 0.12 + 0.1 * (1.0 - tilt / 0.9), 0.0);
+        (tip - up * SPOUT[0] - fw * SPOUT[1], tilt)
+    }
+
     fn gestures(&self, i: usize, s: f32, pose: &mut Pose, local: &Local) {
         let k = &self.keys;
         let q = k.queue;
+        let w = &self.world;
         match i {
             HERO => {
                 // The argument: he answers with his hands, then looks away.
@@ -576,24 +687,31 @@ impl Cast {
                 pose.arms[0] += 0.5 * argue * (0.6 + 0.4 * (TAU * s / 1.1).sin());
                 pose.arms[1] += 0.45 * argue * (0.6 + 0.4 * (TAU * s / 1.3 + 1.0).sin());
                 pose.bend = pose.bend.map(|b| b + 0.6 * argue);
-                pose.turn += -0.35 * window(s, 6.6, 7.2, k.pour - 0.6, k.pour);
-                let p_head = v3(-2.95, 10.2, -3.0);
-                look(pose, local, p_head, window(s, 2.6, 3.0, 6.2, 6.6));
+                pose.turn += -0.35 * window(s, 6.6, 7.2, k.pour - 1.2, k.pour - 0.6);
                 look(
                     pose,
                     local,
-                    v3(-1.0, 10.3, -2.45),
-                    window(s, k.pour - 0.4, k.pour, k.pour + 1.6, k.pour + 2.0),
+                    STOVE + v3(0.0, 1.5, 0.0),
+                    window(s, 2.4, 2.9, 6.2, 6.6),
+                );
+                // He watches her pour.
+                look(
+                    pose,
+                    local,
+                    CUP + v3(0.0, 0.1, 0.0),
+                    window(s, k.pour - 0.6, k.pour - 0.1, k.pour + 1.8, k.pour + 2.3),
                 );
                 // The tea: up to his lips and back.
-                let sip = window(s, k.sip, k.sip + 0.7, k.sip + 1.6, k.sip + 2.2);
+                let sip = k.sip;
                 let lips = local.world(pose.pelvis + v3(-0.05, 0.62, 0.22));
-                let cup = lerp3(
-                    CUP,
-                    lips,
-                    smooth(k.sip + 0.4, k.sip + 0.9, s) - smooth(k.sip + 1.4, k.sip + 1.9, s),
+                let up = smooth(sip + 0.8, sip + 1.3, s) - smooth(sip + 1.6, sip + 2.1, s);
+                reach(
+                    pose,
+                    local,
+                    1,
+                    lerp3(CUP + v3(0.0, CUP_HALF, 0.0), lips, up),
+                    window(s, sip, sip + 0.7, sip + 2.2, sip + 2.8),
                 );
-                reach(pose, local, 1, cup, sip);
                 // The lift's button.
                 reach(
                     pose,
@@ -612,28 +730,37 @@ impl Cast {
                 let kerb = window(s, k.kerb, k.kerb + 0.3, k.kerb + 1.4, k.kerb + 1.8);
                 pose.turn += kerb * 0.9 * (TAU * (s - k.kerb) / 1.5).sin();
                 // The honk: he turns his head to it.
-                let tram = v3(self.world.tram_c(s) + 4.6, 1.6, 4.3);
                 look(
                     pose,
                     local,
-                    tram,
+                    v3(w.tram_c(s) + 4.6, 1.6, 4.3),
                     window(s, k.honk, k.honk + 0.25, k.honk + 1.2, k.honk + 1.8),
                 );
-                // On the tram, a hand on the rail.
-                let ride = window(
-                    s,
-                    k.board - 0.2,
-                    k.board + 0.4,
-                    self.world.tram.stop2 + 0.3,
-                    self.world.tram.stop2 + 0.8,
+                // On the tram, a hand up on a strap.
+                reach(
+                    pose,
+                    local,
+                    1,
+                    v3(w.tram_c(s) + STRAPS[3], STRAP_Y, STRAP_Z),
+                    window(
+                        s,
+                        k.board - 0.3,
+                        k.board + 0.3,
+                        w.tram.stop2 + 0.4,
+                        w.tram.stop2 + 0.9,
+                    ),
                 );
-                hold(pose, 1, v3(-0.2, 1.83, -0.12), ride);
                 // The coin: out of his pocket, it slips, he picks it up,
                 // lays it on the counter.
                 let coin_out = window(s, q + 1.0, q + 1.6, q + 2.9, q + 3.0);
                 hold(pose, 1, v3(-0.12, 1.05, 0.3), coin_out);
-                look(pose, local, local.world(v3(-0.12, 1.0, 0.3)), coin_out);
-                let fallen = coin_floor(k);
+                look(
+                    pose,
+                    local,
+                    local.world(pose.pelvis + v3(-0.12, 0.08, 0.3)),
+                    coin_out,
+                );
+                let fallen = coin_floor();
                 look(
                     pose,
                     local,
@@ -663,41 +790,32 @@ impl Cast {
                     v3(-4.75, 1.6, -2.45),
                     window(s, q + 8.6, q + 9.0, q + 15.0, q + 15.4),
                 );
-                // The loaf: from K's hand, under his arm, onto the table.
-                let take = keeper_hands_loaf(q);
+                // The bread in its bag: from K's hand, carried at his side,
+                // set on the kitchen table.
+                let take = keeper_hands_bag(q);
                 reach(
                     pose,
                     local,
                     1,
-                    v3(-4.15, 1.15, -2.35),
-                    window(s, take - 0.4, take, take + 0.3, take + 0.7),
+                    HANDOVER,
+                    window(s, take - 0.5, take, take + 0.2, take + 0.7),
                 );
-                let carry = window(s, take + 0.3, take + 0.8, k.bread + 0.2, k.bread + 0.6);
-                hold(pose, 1, v3(-0.24, 0.92, 0.1), carry);
+                let b = k.bread;
+                hold(pose, 1, CARRY, window(s, take + 0.2, take + 0.7, b + 0.1, b + 0.6));
+                pose.lean += 0.2 * window(s, b + 0.1, b + 0.6, b + 1.0, b + 1.5);
                 reach(
                     pose,
                     local,
                     1,
-                    BREAD_AT,
-                    window(
-                        s,
-                        k.bread + 0.1,
-                        k.bread + 0.6,
-                        k.bread + 0.9,
-                        k.bread + 1.3,
-                    ),
+                    BAG_SET + v3(0.0, BAG_DROP, 0.0),
+                    window(s, b + 0.1, b + 0.6, b + 1.0, b + 1.5),
                 );
+                look(pose, local, BAG_SET, window(s, b, b + 0.4, b + 1.0, b + 1.4));
                 look(
                     pose,
                     local,
-                    v3(-2.95, 10.2, -3.0),
-                    window(
-                        s,
-                        k.bread + 1.2,
-                        k.bread + 1.6,
-                        k.bread + 2.0,
-                        k.bread + 2.6,
-                    ),
+                    HER_HEAD,
+                    window(s, b + 1.3, b + 1.7, b + 2.4, b + 3.0),
                 );
                 // The cup: he sees it fall, crouches and catches it.
                 let c = k.catch;
@@ -715,7 +833,7 @@ impl Cast {
                     pose,
                     local,
                     1,
-                    cup_flight(k, s),
+                    cup_flight(k, s) + v3(0.0, KID_HALF, 0.0),
                     window(s, k.trip + 0.05, c - 0.1, c + 0.1, c + 0.2),
                 );
                 let back = v3(4.95, 9.7, -1.58);
@@ -723,7 +841,7 @@ impl Cast {
                     pose,
                     local,
                     1,
-                    lerp3(CATCH, back, smooth(c + 0.3, c + 1.6, s)),
+                    lerp3(CATCH, back, smooth(c + 0.3, c + 1.6, s)) + v3(0.0, KID_HALF, 0.0),
                     window(s, c, c + 0.1, c + 2.0, c + 2.4),
                 );
                 look(
@@ -732,29 +850,48 @@ impl Cast {
                     v3(5.3, 9.6, -1.5),
                     window(s, c + 0.3, c + 0.8, c + 2.2, c + 2.8),
                 );
-                // The desk: typing, the phone, his temples, the calendar.
+                // The desk: typing, the phone buzzes, the call, his
+                // temples, typing again, the screen goes dark.
                 let d = k.desk;
-                let typing = window(s, d + 0.2, d + 0.8, d + 2.4, d + 2.8)
-                    + window(s, d + 4.6, d + 5.0, d + 7.0, d + 7.6);
+                let typing = window(s, d + 0.4, d + 0.9, d + 4.6, d + 5.0)
+                    + window(s, d + 14.3, d + 14.8, d + 18.2, d + 18.7);
                 let tap = |x: f32, ph: f32| {
                     v3(x, 12.8 + 0.02 * (TAU * s / 0.23 + ph).sin().max(0.0), -2.68)
                 };
                 reach(pose, local, 0, tap(4.02, 0.0), typing);
                 reach(pose, local, 1, tap(3.78, 1.7), typing);
-                let phone = window(s, d + 2.5, d + 3.0, d + 4.1, d + 4.5);
+                look(
+                    pose,
+                    local,
+                    v3(3.9, 12.95, -2.45),
+                    window(s, d + 0.1, d + 0.5, d + 4.9, d + 5.2)
+                        + window(s, d + 14.0, d + 14.4, d + 18.8, d + 19.3),
+                );
+                look(
+                    pose,
+                    local,
+                    DESK_PHONE,
+                    window(s, d + 5.0, d + 5.3, d + 6.0, d + 6.4),
+                );
+                let call = window(s, d + 5.6, d + 6.1, d + 10.6, d + 11.2);
                 let ear = local.world(pose.pelvis + v3(0.12, 0.7, 0.05));
                 reach(
                     pose,
                     local,
                     0,
                     lerp3(
-                        DESK_PHONE,
+                        DESK_PHONE + v3(0.0, 0.01, 0.0),
                         ear,
-                        smooth(d + 2.7, d + 3.1, s) - smooth(d + 3.8, d + 4.2, s),
+                        smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s),
                     ),
-                    phone,
+                    call,
                 );
-                let temples = window(s, d + 5.2, d + 5.6, d + 6.4, d + 6.9);
+                // On the call his other hand talks, then rubs his brow.
+                let talk = window(s, d + 7.0, d + 7.4, d + 9.6, d + 10.0);
+                pose.arms[1] += 0.35 * talk * (0.5 + 0.5 * (TAU * s / 1.2).sin());
+                pose.bend[1] += 0.9 * talk;
+                pose.nod += 0.15 * window(s, d + 6.5, d + 7.0, d + 10.0, d + 10.6);
+                let temples = window(s, d + 11.6, d + 12.1, d + 13.5, d + 14.0);
                 reach(
                     pose,
                     local,
@@ -770,112 +907,116 @@ impl Cast {
                     temples,
                 );
                 pose.nod += 0.3 * temples;
-                look(
-                    pose,
-                    local,
-                    v3(5.3, 13.55, -4.58),
-                    window(s, d + 1.2, d + 1.6, d + 2.0, d + 2.4),
-                );
-                look(
-                    pose,
-                    local,
-                    v3(4.0, 12.95, -2.45),
-                    window(s, d + 0.1, d + 0.5, d + 7.4, d + 7.8) * 0.7,
-                );
-                // After the run: hands on knees, then up to the sunset.
+                // Done: he leans back and looks out at the evening.
+                let done = window(s, d + 19.0, d + 19.8, d + 21.0, d + 21.6);
+                pose.lean -= 0.18 * done;
+                look(pose, local, v3(3.9, 13.4, 6.0), done);
+                // After the run: hands on knees, then up to the sky.
                 let e = k.run_end;
                 let blown = window(s, e + 0.5, e + 1.0, e + 3.2, e + 4.0);
                 crouch(pose, 0.28 * blown);
                 let knee = |x: f32| v3(x, 0.52, 0.28);
-                hold(pose, 0, knee(0.11), blown);
-                hold(pose, 1, knee(-0.11), blown);
+                hold_at(pose, 0, knee(0.11), blown);
+                hold_at(pose, 1, knee(-0.11), blown);
                 pose.nod -= 0.25 * smooth(e + 4.0, e + 6.0, s);
+                // Before the run he looks up at the sky.
+                pose.nod -= 0.3 * window(s, k.run - 1.0, k.run - 0.6, k.run - 0.2, k.run + 0.3);
             }
             PARTNER => {
+                // Stirring her pot.
+                let stir = self.stir(s);
+                let a = TAU * s / 1.3;
+                reach(
+                    pose,
+                    local,
+                    0,
+                    POT + v3(0.05 * a.cos(), 0.2, 0.05 * a.sin()),
+                    stir,
+                );
+                look(pose, local, POT, 0.8 * stir);
+                // The argument: she turns to him, her hand talks.
                 let argue = window(s, 2.8, 3.2, 6.0, 6.5);
                 pose.arms[1] += 0.55 * argue * (0.5 + 0.5 * (TAU * s / 0.9).sin());
                 pose.bend[1] += 0.7 * argue;
                 look(
                     pose,
                     local,
-                    v3(-0.75, 10.15, -3.0),
-                    window(s, 2.6, 3.0, 6.3, 6.8),
+                    v3(-0.8, 10.25, -3.0),
+                    window(s, 2.4, 2.9, 6.3, 6.8),
                 );
-                // The teapot: from the table, over his cup, set down.
-                let lift = window(
-                    s,
-                    k.p_rise + 0.6,
-                    k.p_rise + 1.0,
-                    k.pour + 1.3,
-                    k.pour + 1.7,
-                );
-                let tp = self.teapot_path(s);
-                reach(pose, local, 0, tp + v3(0.0, 0.1, 0.0), lift);
-                pose.lean +=
-                    0.25 * window(s, k.pour - 0.2, k.pour + 0.2, k.pour + 1.1, k.pour + 1.5);
-                look(
-                    pose,
-                    local,
-                    CUP,
-                    window(s, k.pour - 0.4, k.pour, k.pour + 1.2, k.pour + 1.6),
-                );
-                // Her hand on his shoulder while he drinks.
-                let shoulder = v3(-0.73, 10.2, -2.82);
+                // The kettle: off the stove, along the counter at her
+                // side, poured over his cup, back and set down.
+                let (kt, pr, ps) = (k.kettle, k.pour, k.p_set);
+                let lift = 0.1 * smooth(kt + 0.6, kt + 1.0, s);
                 reach(
                     pose,
                     local,
                     1,
-                    shoulder,
-                    window(s, k.pour + 1.6, k.pour + 2.1, k.rise - 0.4, k.rise + 0.1),
+                    KETTLE_HOME + v3(0.0, KETTLE_GRIP + lift, 0.0),
+                    window(s, kt, kt + 0.45, kt + 1.0, kt + 1.4),
                 );
-                look(
-                    pose,
-                    local,
-                    v3(-0.73, 10.3, -3.0),
-                    window(s, k.pour + 1.6, k.pour + 2.0, k.rise, k.rise + 0.8),
-                );
-                // The teapot back.
-                let back = window(
-                    s,
-                    k.p_back + 0.2,
-                    k.p_back + 0.6,
-                    k.p_back + 5.6,
-                    k.p_back + 6.1,
-                );
+                let carry = window(s, kt + 1.0, kt + 1.4, pr - 0.6, pr - 0.1)
+                    + window(s, pr + 1.9, pr + 2.4, ps - 0.3, ps + 0.1);
+                hold(pose, 1, v3(-0.2, 0.8, 0.14), carry);
+                let (c, tilt) = self.kettle_pour(s);
+                let up = Y * tilt.cos() + v3(0.0, 0.0, tilt.sin());
                 reach(
                     pose,
                     local,
-                    0,
-                    self.teapot_path(s) + v3(0.0, 0.1, 0.0),
-                    back,
+                    1,
+                    c + up * KETTLE_GRIP,
+                    window(s, pr - 0.6, pr - 0.1, pr + 1.9, pr + 2.4),
+                );
+                let down = 0.1 * (1.0 - smooth(ps + 0.1, ps + 0.5, s));
+                reach(
+                    pose,
+                    local,
+                    1,
+                    KETTLE_HOME + v3(0.0, KETTLE_GRIP + down, 0.0),
+                    window(s, ps - 0.3, ps + 0.1, ps + 0.7, ps + 1.1),
+                );
+                pose.lean += 0.15 * window(s, pr - 0.2, pr + 0.3, pr + 1.4, pr + 1.9);
+                look(pose, local, CUP, window(s, pr - 0.5, pr, pr + 1.5, pr + 2.0));
+                look(
+                    pose,
+                    local,
+                    KETTLE_HOME,
+                    window(s, kt - 0.3, kt, kt + 0.8, kt + 1.2)
+                        + window(s, ps - 0.4, ps, ps + 0.6, ps + 1.0),
                 );
                 // She looks up at him when he brings the bread.
                 look(
                     pose,
                     local,
                     v3(-1.8, 10.6, -2.15),
-                    window(s, k.bread - 0.4, k.bread, k.bread + 2.2, k.bread + 2.8),
+                    window(s, k.bread - 0.4, k.bread, k.bread + 2.6, k.bread + 3.2),
                 );
             }
             CHILD => {
+                pose.head = 1.4;
                 let c0 = k.c0;
-                // Playing on the floor, then up with the cup.
-                let play = 1.0 - window(s, c0 - 0.2, c0 + 0.6, k.catch + 3.6, k.catch + 7.0);
-                crouch(pose, 0.85 * play);
-                let blocks = local.world(v3(0.05 + 0.04 * (TAU * s / 2.3).sin(), 0.3, 0.35));
-                reach(pose, local, 0, blocks, play * 0.8);
+                // Playing at the low table, then up with the cup.
+                let play = 1.0 - window(s, c0 - 0.3, c0 + 0.5, k.catch + 3.6, k.catch + 7.0);
+                squat(pose, play);
+                let blocks = v3(
+                    7.5 + 0.04 * (TAU * s / 2.3).sin(),
+                    9.5 + 0.04 * (TAU * s / 1.7).sin().max(0.0),
+                    -1.66,
+                );
+                reach(pose, local, 0, blocks, 0.85 * play);
+                look(pose, local, blocks, 0.7 * play);
                 reach(
                     pose,
                     local,
                     1,
-                    KID_CUP,
+                    KID_CUP + v3(0.0, KID_HALF, 0.0),
                     window(s, c0 - 0.3, c0 + 0.1, c0 + 0.3, c0 + 0.6),
                 );
-                // Running with it held up.
+                // Running with it held up before her.
                 hold(
                     pose,
                     1,
-                    v3(-0.16, 1.02, 0.32),
+                    v3(-0.16, 1.1, 0.3),
                     window(s, c0 + 0.4, c0 + 0.8, k.trip - 0.05, k.trip + 0.05),
                 );
                 // The trip.
@@ -889,20 +1030,20 @@ impl Cast {
                     pose,
                     local,
                     1,
-                    v3(4.95, 9.7, -1.58),
+                    v3(4.95, 9.7 + KID_HALF, -1.58),
                     window(s, cc + 1.7, cc + 2.0, cc + 2.2, cc + 2.6),
                 );
                 hold(
                     pose,
                     1,
-                    v3(-0.15, 0.95, 0.3),
+                    v3(-0.15, 1.0, 0.3),
                     window(s, cc + 2.2, cc + 2.6, cc + 5.0, cc + 5.6),
                 );
                 reach(
                     pose,
                     local,
                     1,
-                    KID_CUP,
+                    KID_CUP + v3(0.0, KID_HALF, 0.0),
                     window(s, cc + 5.0, cc + 5.6, cc + 6.0, cc + 6.4),
                 );
                 look(
@@ -913,14 +1054,10 @@ impl Cast {
                 );
             }
             KEEPER => {
-                // L's coin to the till, the loaf from the shelf to her.
-                reach(
-                    pose,
-                    local,
-                    0,
-                    TILL,
-                    window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5),
-                );
+                // L's coin to the till; her bag off the shelf, over the
+                // counter to her.
+                let till = window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5);
+                reach(pose, local, 0, TILL, till);
                 reach(
                     pose,
                     local,
@@ -932,12 +1069,12 @@ impl Cast {
                     pose,
                     local,
                     1,
-                    v3(-4.15, 1.15, -2.3),
-                    window(s, q - 1.1, q - 0.7, q - 0.2, q + 0.2),
+                    HANDOVER,
+                    window(s, q - 1.5, q - 0.9, q - 0.3, q + 0.2),
                 );
-                // His coin, his loaf.
+                // His coin, his bag.
                 let coin = window(s, q + 9.5, q + 9.8, q + 10.1, q + 10.4);
-                pose.lean += 0.25 * coin + 0.25 * window(s, q - 4.6, q - 4.2, q - 3.9, q - 3.5);
+                pose.lean += 0.25 * coin + 0.25 * till;
                 reach(
                     pose,
                     local,
@@ -952,13 +1089,13 @@ impl Cast {
                     LOAF_SHELF,
                     window(s, q + 12.0, q + 12.3, q + 12.6, q + 12.9),
                 );
-                let hand = keeper_hands_loaf(q);
+                let hand = keeper_hands_bag(q);
                 reach(
                     pose,
                     local,
                     1,
-                    v3(-4.25, 1.17, -2.35),
-                    window(s, hand - 0.9, hand - 0.4, hand + 0.1, hand + 0.5),
+                    HANDOVER,
+                    window(s, hand - 1.0, hand - 0.4, hand + 0.2, hand + 0.6),
                 );
                 let customer = if s < q + 2.0 {
                     v3(-3.75, 1.6, -2.3)
@@ -975,29 +1112,36 @@ impl Cast {
                     pose,
                     local,
                     1,
-                    v3(-4.15, 1.15, -2.3),
-                    window(s, q - 0.9, q - 0.5, q - 0.2, q + 0.2),
+                    HANDOVER,
+                    window(s, q - 0.8, q - 0.4, q - 0.2, q + 0.3),
                 );
                 hold(
                     pose,
                     1,
-                    v3(-0.22, 0.95, 0.12),
-                    window(s, q + 0.1, q + 0.5, LOOP + 5.0, LOOP + 6.0),
+                    CARRY,
+                    window(s, q - 0.2, q + 0.3, LOOP + 5.0, LOOP + 6.0),
                 );
                 // Aside, she watches him chase his coin.
                 look(
                     pose,
                     local,
-                    coin_floor(k),
+                    coin_floor(),
                     window(s, q + 3.0, q + 3.4, q + 5.4, q + 6.0),
                 );
             }
             YOUTH => {
-                // His thumb on the screen; the horn lifts his eyes from it.
+                // A strap in one hand, his phone in the other; the horn
+                // lifts his eyes from it.
+                reach(
+                    pose,
+                    local,
+                    0,
+                    v3(w.tram_c(s) + STRAPS[1], STRAP_Y, STRAP_Z),
+                    1.0,
+                );
                 pose.carry = Carry::Screen(1.0);
                 let thumb = 0.015 * (TAU * s / 1.7).sin().max(0.0);
                 hold(pose, 1, v3(-0.08, 1.12 + thumb, 0.3), 1.0);
-                hold(pose, 0, v3(0.2, 1.72, 0.05), 1.0);
                 pose.nod = 0.45;
                 pose.turn = -0.2;
                 look(
@@ -1008,8 +1152,9 @@ impl Cast {
                 );
             }
             DRIVER => {
-                hold(pose, 0, v3(0.18, 0.95, 0.42), 1.0);
-                hold(pose, 1, v3(-0.18, 0.95, 0.42), 1.0);
+                let c = w.tram_c(s);
+                reach(pose, local, 0, v3(c + 4.2, 1.16, 4.15), 1.0);
+                reach(pose, local, 1, v3(c + 4.2, 1.16, 4.45), 1.0);
                 look(
                     pose,
                     local,
@@ -1020,11 +1165,12 @@ impl Cast {
             OLD => {
                 pose.turn = -0.3;
                 // He dozes off; the child's fall wakes him for a moment.
-                let start = window(s, k.trip + 0.1, k.trip + 0.35, k.trip + 1.6, k.trip + 3.2);
-                let doze = window(s, 88.0, 92.0, 138.0, 142.0) * (1.0 - start);
+                let t = k.trip;
+                let start = window(s, t + 0.1, t + 0.35, t + 1.6, t + 3.2);
+                let doze = window(s, t - 42.0, t - 38.0, t + 12.0, t + 16.0) * (1.0 - start);
                 pose.nod = 0.45 * doze + 0.04 * (TAU * s / 5.4).sin() * doze;
                 pose.lean += 0.08 * doze;
-                hold(pose, 0, v3(0.16, 0.62, 0.32), 1.0 - doze * 0.3);
+                hold_at(pose, 0, v3(0.16, 0.62, 0.32), 1.0 - doze * 0.3);
             }
             CELLIST => {
                 let u = 0.28 + 0.2 * (TAU * s / 4.0).sin();
@@ -1039,8 +1185,8 @@ impl Cast {
             GARDENER => {
                 let water =
                     window(s, 63.5, 64.5, 72.0, 73.0) + window(s, 103.0, 104.0, 112.0, 113.0);
+                hold(pose, 1, CARRY, 1.0 - water);
                 reach(pose, local, 1, local.world(v3(-0.25, 1.02, 0.42)), water);
-                hold(pose, 1, v3(-0.24, 0.72, 0.05), 1.0 - water);
                 pose.nod += 0.3 * water;
             }
             PAINTER => {
@@ -1069,58 +1215,63 @@ impl Cast {
         }
     }
 
-    /// The teapot in her hand: up off the table, over his cup, set down by
-    /// it; later back to its place.
-    fn teapot_path(&self, s: f32) -> V3 {
-        let k = &self.keys;
-        let up = TEAPOT + v3(0.0, 0.12, 0.0);
-        if s < k.p_back {
-            let a = smooth(k.p_rise + 0.9, k.p_rise + 1.3, s);
-            let walk = smooth(k.p_rise + 1.5, k.pour - 0.3, s);
-            let over = smooth(k.pour - 0.3, k.pour + 0.2, s);
-            let set = smooth(k.pour + 1.1, k.pour + 1.6, s);
-            let p = lerp3(TEAPOT, up, a);
-            let carried = lerp3(p, v3(-1.5, 10.05, -2.6), walk);
-            let poured = lerp3(carried, POUR_AT, over);
-            lerp3(poured, TEAPOT_SET, set)
-        } else {
-            let take = smooth(k.p_back + 0.4, k.p_back + 0.8, s);
-            let walk = smooth(k.p_back + 1.0, k.p_back + 4.6, s);
-            let set = smooth(k.p_back + 5.2, k.p_back + 5.8, s);
-            let p = lerp3(TEAPOT_SET, TEAPOT_SET + v3(0.0, 0.12, 0.0), take);
-            let carried = lerp3(p, up, walk);
-            lerp3(carried, TEAPOT, set)
-        }
-    }
-
     fn place_held(&self, s: f32, bodies: &[Body], held: &mut Held) {
         let k = &self.keys;
         let q = k.queue;
         let h = &bodies[HERO];
-        // The teapot rides in her hand while she holds it.
-        held.teapot = self.teapot_path(s);
-        held.teapot_tilt = 0.9 * window(s, k.pour, k.pour + 0.3, k.pour + 0.8, k.pour + 1.1);
-        // His cup.
-        let sip = window(s, k.sip + 0.35, k.sip + 0.5, k.sip + 1.9, k.sip + 2.05);
-        if sip > 0.0 {
-            held.cup = grip(h, 1) - v3(0.0, 0.05, 0.0);
+        let yaw_of = |b: &Body| b.pelvic.forward.x.atan2(b.pelvic.forward.z);
+
+        // The kettle rides in her hand from the stove and back to it; over
+        // his cup its spout's tip holds over the cup.
+        let pb = &bodies[PARTNER];
+        let (kt, pr, ps) = (k.kettle, k.pour, k.p_set);
+        let held_on = smooth(kt + 0.4, kt + 0.55, s) * (1.0 - smooth(ps + 0.55, ps + 0.7, s));
+        if held_on > 0.0 {
+            let (pc, tilt) = self.kettle_pour(s);
+            let over = window(s, pr - 0.3, pr + 0.1, pr + 1.9, pr + 2.3);
+            let yaw = mix_angle(yaw_of(pb), 0.0, over);
+            let f = v3(yaw.sin(), 0.0, yaw.cos());
+            let up = Y * tilt.cos() + f * tilt.sin();
+            let in_hand = grip(pb, 1) - up * KETTLE_GRIP;
+            held.kettle = KETTLE_HOME.lerp(in_hand.lerp(pc, over), held_on);
+            held.kettle_tilt = tilt;
+            held.kettle_yaw = mix_angle(PI, yaw, held_on);
         }
+        // Her spoon: resting in the pot, or turning in her hand.
+        let stir = self.stir(s);
+        let a = TAU * s / 1.3;
+        let rest = [POT + v3(0.03, 0.0, 0.02), POT + v3(0.1, 0.17, 0.06)];
+        let dip = POT + v3(0.05 * a.cos(), -0.01, 0.05 * a.sin());
+        held.spoon = [
+            rest[0].lerp(dip, stir.min(1.0)),
+            rest[1].lerp(grip(pb, 0), stir.min(1.0)),
+        ];
+
+        // His cup, up to his lips and back.
+        let sip = k.sip;
+        let on = smooth(sip + 0.6, sip + 0.75, s) * (1.0 - smooth(sip + 2.0, sip + 2.1, s));
+        if on > 0.0 {
+            held.cup = CUP.lerp(grip(h, 1) - v3(0.0, CUP_HALF, 0.0), on);
+        }
+
         // The child's cup: in her hand, flying, caught, back.
         let kid = &bodies[CHILD];
         let cc = k.catch;
+        let in_hand = |b: &Body| grip(b, 1) - v3(0.0, KID_HALF, 0.0);
         if s > k.c0 + 0.1 && s < k.trip {
-            held.kid_cup = grip(kid, 1) + v3(0.0, 0.03, 0.0);
+            held.kid_cup = in_hand(kid);
         } else if s >= k.trip && s < cc {
             held.kid_cup = cup_flight(k, s);
             held.kid_cup_spin = 7.0 * (s - k.trip);
         } else if s >= cc && s < cc + 2.1 {
-            held.kid_cup = grip(h, 1) + v3(0.0, 0.03, 0.0);
+            held.kid_cup = in_hand(h);
             held.kid_cup_spin = 7.0 * 0.55;
         } else if s >= cc + 2.1 && s < cc + 5.9 {
-            held.kid_cup = grip(kid, 1) + v3(0.0, 0.03, 0.0);
+            held.kid_cup = in_hand(kid);
         }
+
         // The coin.
-        let fallen = coin_floor(k);
+        let fallen = coin_floor();
         if s > q + 1.3 && s < q + 2.9 {
             held.coin = grip(h, 1);
         } else if s >= q + 2.9 && s < q + 4.45 {
@@ -1129,7 +1280,7 @@ impl Cast {
             let drop = (from.y - 0.012).max(0.0);
             let t_fall = (2.0 * drop / 9.8).sqrt();
             if u < t_fall {
-                held.coin = from.lerp(fallen, u / t_fall) + v3(0.0, 0.0, 0.0);
+                held.coin = from.lerp(fallen, u / t_fall);
                 held.coin.y = from.y - 4.9 * u * u;
             } else {
                 // A bounce and a short roll.
@@ -1144,21 +1295,47 @@ impl Cast {
         } else if s >= q + 9.9 && s < q + 10.3 {
             held.coin = grip(&bodies[KEEPER], 0);
         }
-        // The loaf.
-        let take = keeper_hands_loaf(q);
+
+        // The bags of bread: off the shelf in K's hand, over the counter,
+        // carried by their buyers; his onto the kitchen table.
         let kp = &bodies[KEEPER];
-        if s > q + 12.4 && s < take + 0.3 {
-            held.loaf = grip(kp, 1) + v3(0.0, 0.04, 0.0);
-        } else if s >= take + 0.3 && s < k.bread + 0.8 {
-            held.loaf = grip(h, 1) + v3(0.0, 0.04, 0.0);
-        } else if s >= k.bread + 0.8 {
-            held.loaf = BREAD_AT;
+        let hang = |b: &Body| grip(b, 1) - v3(0.0, BAG_DROP, 0.0);
+        let take = keeper_hands_bag(q);
+        if s > q + 12.3 && s < take + 0.1 {
+            held.bag = hang(kp);
+            held.bag_yaw = yaw_of(kp);
+        } else if s >= take + 0.1 && s < k.bread + 1.1 {
+            held.bag = hang(h);
+            held.bag_yaw = yaw_of(h);
+        } else if s >= k.bread + 1.1 {
+            held.bag = BAG_SET;
+            held.bag_yaw = PI;
         }
-        // The phone at his ear.
+        let lb = &bodies[LADY];
+        if s > q - 2.2 && s < q - 0.3 {
+            held.bag2 = hang(kp);
+            held.bag2_yaw = yaw_of(kp);
+        } else if s >= q - 0.3 && lb.pelvis.x.abs() < 15.6 {
+            held.bag2 = hang(lb);
+            held.bag2_yaw = yaw_of(lb);
+        }
+
+        // His phone: it buzzes on the desk, then at his ear.
         let d = k.desk;
-        if s > d + 2.85 && s < d + 4.25 {
-            held.phone = grip(h, 0);
+        let buzz = window(s, d + 4.9, d + 5.0, d + 5.9, d + 6.0);
+        held.phone = DESK_PHONE
+            + v3(
+                0.004 * (TAU * s * 23.0).sin(),
+                0.0,
+                0.003 * (TAU * s * 31.0).sin(),
+            ) * buzz;
+        let call = smooth(d + 6.05, d + 6.2, s) * (1.0 - smooth(d + 10.75, d + 10.9, s));
+        if call > 0.0 {
+            held.phone = held
+                .phone
+                .lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
         }
+
         // The gardener's can, the painter's brush, the cellist's bow, the
         // mechanic's wrench.
         let g = &bodies[GARDENER];
@@ -1184,6 +1361,9 @@ impl Default for Cast {
     }
 }
 
+/// How long he works at his desk, from sitting down to getting up.
+pub const DESK_SPAN: f32 = 21.5;
+
 /// Each person's hair: its cut and its shade, 0 black … 7 grey.
 const HAIR: [(Hair, u8); PEOPLE] = [
     (Hair::Short, 1),
@@ -1204,13 +1384,13 @@ const CLOTHES: [f32; PEOPLE] = [
     0.32, 0.72, 0.9, 0.55, 0.62, 0.18, 0.4, 0.5, 0.15, 0.68, 0.85, 0.28,
 ];
 
-/// K holds the loaf out to him here.
-fn keeper_hands_loaf(q: f32) -> f32 {
+/// K holds his bag out to him over the counter here.
+fn keeper_hands_bag(q: f32) -> f32 {
     q + 14.5
 }
 
 /// Where his coin lies after it rolled.
-fn coin_floor(_k: &Keys) -> V3 {
+fn coin_floor() -> V3 {
     v3(-3.02, 0.012, -2.18)
 }
 
@@ -1242,15 +1422,23 @@ mod tests {
         let cast = Cast::new();
         let k = cast.keys;
         println!("{k:#?}");
-        assert!(k.run_end < 158.0 + crate::DAY_EXTRA, "{}", k.run_end);
+        println!("tram {:#?}", cast.world.tram);
+        assert!(
+            (k.run_end + FINALE - LOOP).abs() < 0.6,
+            "run_end {} + {FINALE} vs {LOOP}",
+            k.run_end
+        );
         assert!(k.c0 > k.bread, "{} {}", k.c0, k.bread);
         assert!(cast.world.tram.stop1 > k.rails);
+        // She is back at the stove before he walks past it.
+        assert!(k.p_set < k.rise + 3.0, "{} {}", k.p_set, k.rise);
+        assert!(k.p_sit < k.home, "{} {}", k.p_sit, k.home);
     }
 
     #[test]
     fn everyone_stays_finite() {
         let cast = Cast::new();
-        for i in 0..400 {
+        for i in 0..600 {
             let s = i as f32 * 0.45 - 5.0;
             let m = cast.moment(s, 0.5);
             for (n, f) in m.figures.iter().enumerate() {
@@ -1258,6 +1446,42 @@ mod tests {
                     assert!(c.iter().all(|v| v.is_finite()), "{n} at {s}");
                 }
             }
+        }
+    }
+
+    #[test]
+    fn the_spout_pours_into_the_cup() {
+        let cast = Cast::new();
+        let s = cast.keys.pour + 1.0;
+        let m = cast.moment(s, 0.5);
+        let h = &m.held;
+        assert!(h.kettle_tilt > 0.85, "{}", h.kettle_tilt);
+        let f = v3(h.kettle_yaw.sin(), 0.0, h.kettle_yaw.cos());
+        let (st, ct) = h.kettle_tilt.sin_cos();
+        let up = Y * ct + f * st;
+        let fw = f * ct - Y * st;
+        let tip = h.kettle + up * SPOUT[0] + fw * SPOUT[1];
+        let d = tip - CUP;
+        assert!(d.x.abs() < 0.02 && d.z.abs() < 0.02, "{d:?}");
+        // Her hand holds the handle.
+        let g = grip(&m.figures[PARTNER].body, 1);
+        assert!((g - (h.kettle + up * KETTLE_GRIP)).length() < 0.06, "{g:?}");
+    }
+
+    #[test]
+    fn the_bread_stays_at_his_side() {
+        let cast = Cast::new();
+        let k = cast.keys;
+        // Walking home and riding the lift, the bag hangs by his hip.
+        for i in 0..40 {
+            let s = k.shop_out + (k.bread - k.shop_out) * i as f32 / 40.0;
+            let m = cast.moment(s, 0.5);
+            let b = &m.figures[HERO].body;
+            let d = m.held.bag + v3(0.0, BAG_DROP, 0.0) - b.pelvis;
+            assert!(
+                d.length() < 0.5 && d.y < 0.0,
+                "at {s}: {d:?} from the pelvis"
+            );
         }
     }
 }

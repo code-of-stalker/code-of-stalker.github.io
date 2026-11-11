@@ -539,6 +539,7 @@ impl Walk {
             // Nobody in the house wears the long scarf.
             scarf: [0.0, 0.0, 0.0, -1.0],
             hair: Hair::Short,
+            head: 1.0,
         }
     }
 }
@@ -576,6 +577,9 @@ pub struct Pose {
     /// frame), the flutter's phase (cycles) and how hard, 0 it hangs … 1.
     pub scarf: [f32; 4],
     pub hair: Hair,
+    /// The head's size against a grown man's (a child's is bigger for her
+    /// height).
+    pub head: f32,
 }
 
 /// A body part's own left, up and forward.
@@ -726,7 +730,14 @@ pub fn build(pose: &Pose) -> Body {
     let chest = waist + ch.up * 0.2;
     let neck = chest + ch.up * 0.16;
     let head_base = neck + (ch.up + Y * 2.0).normalize() * 0.1;
-    let hd = axes(0.2 * pose.yaw + pose.turn, pose.nod, 0.0);
+    let hd0 = axes(0.2 * pose.yaw + pose.turn, pose.nod, 0.0);
+    // The head's parts sized by `head`: its axes carry the scale.
+    let hs = pose.head;
+    let hd = Axes {
+        left: hd0.left,
+        up: hd0.up * hs,
+        forward: hd0.forward * hs,
+    };
     let jaw = head_base + hd.up * 0.025 + hd.forward * 0.025;
     let crown = head_base + hd.up * 0.105 - hd.forward * 0.005;
     let sides = [1.0f32, -1.0];
@@ -770,42 +781,42 @@ pub fn build(pose: &Pose) -> Body {
     );
     // The head: the skull, the face's ridge from chin to brow (the
     // profile), the hair or a cap, and the collar round the neck.
-    cone(neck, 0.046, head_base, 0.043, None);
-    cone(jaw, 0.066, crown, 0.088, Some((hd.left, 0.84)));
+    cone(neck, 0.046, head_base, 0.043 * hs, None);
+    cone(jaw, 0.066 * hs, crown, 0.088 * hs, Some((hd.left, 0.84)));
     cone(
         jaw + hd.forward * 0.045 - hd.up * 0.012,
-        0.03,
+        0.03 * hs,
         head_base + hd.up * 0.1 + hd.forward * 0.078,
-        0.022,
+        0.022 * hs,
         Some((hd.left, 0.8)),
     );
     match pose.hair {
         Hair::Cap => cone(
             crown - hd.up * 0.05 - hd.forward * 0.014,
-            0.093,
+            0.093 * hs,
             crown + hd.up * 0.012 - hd.forward * 0.024,
-            0.07,
+            0.07 * hs,
             cut(hd.left, 0.88),
         ),
         Hair::Short => cone(
             crown - hd.up * 0.035 - hd.forward * 0.022,
-            0.09,
+            0.09 * hs,
             crown + hd.up * 0.006 - hd.forward * 0.018,
-            0.088,
+            0.088 * hs,
             Some((hd.left, 0.87)),
         ),
         Hair::Long => cone(
             crown - hd.forward * 0.02,
-            0.093,
+            0.093 * hs,
             head_base - hd.up * 0.07 - hd.forward * 0.05,
-            0.07,
+            0.07 * hs,
             Some((hd.left, 0.9)),
         ),
         Hair::Bun => cone(
             crown - hd.forward * 0.078,
-            0.045,
+            0.045 * hs,
             crown - hd.forward * 0.09 + hd.up * 0.012,
-            0.04,
+            0.04 * hs,
             None,
         ),
         Hair::Bald => cone(head_base, 0.001, head_base + Y * 0.01, 0.001, None),
@@ -944,7 +955,7 @@ pub fn build(pose: &Pose) -> Body {
         chest_axes: ch,
         head: crown,
         mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
-        face: hd,
+        face: hd0,
         screen,
         low,
         high,

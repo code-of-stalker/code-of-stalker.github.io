@@ -2,13 +2,13 @@
 //! changes place in a frame (the lift's cage, his chairs, the kettle and
 //! her spoon, the cups, the bags of bread, the coin, the phone, the
 //! neighbours' tools).
-use crate::act::{World, TRAM_GONE};
+use crate::act::{World, BB_Y, CRANK_LEN, GRIP, PEDAL_OUT, SADDLE, TRAM_GONE, WHEEL_R};
 use crate::cast::{Held, KETTLE_GRIP, SPOUT, STRAPS, STRAP_Y, STRAP_Z};
 use crate::house::{
     ball, chair, cube, cyl, flag, kind, mat, slab, tube, Prim, CAGE, CAGE_H, TRACK_Z,
 };
 use crate::math::{v3, V3};
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 /// The tunnels' mouths: past this the tram is inside, out of sight.
 const TUNNEL: f32 = 15.95;
@@ -214,6 +214,8 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
     out.push(tube(mat::METAL, a, b, 0.006).flags(flag::GLOSS).tone(0.7));
     out.push(
         cyl(mat::CERAMIC, held.cup + v3(0.0, 0.045, 0.0), 0.04, 0.045)
+            .yaw(held.cup_yaw)
+            .pitch(held.cup_tilt)
             .flags(flag::GLOSS)
             .tone(0.9),
     );
@@ -254,6 +256,8 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
             held.phone + v3(0.0, 0.006, 0.0),
             v3(0.035, 0.005, 0.072),
         )
+        .yaw(held.phone_yaw)
+        .pitch(held.phone_tilt)
         .tone(0.4),
     );
     // The gardener's can, the painter's brush, the cellist's bow, the
@@ -275,7 +279,126 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
     out.push(tube(mat::WOOD, a, b, 0.006).tone(0.15));
     let [a, b] = held.wrench;
     out.push(tube(mat::METAL, a, b, 0.012).tone(0.6));
+    bicycle(&mut out, s, world);
     out
+}
+
+/// His bicycle at `s`: leaned on the lamp's post, under him in the evening,
+/// on the post again at night. Rear to front, so its groups stay
+/// small.
+fn bicycle(out: &mut Vec<Prim>, s: f32, world: &World) {
+    let b = &world.bike;
+    let roll = b.roll(s);
+    let at = |f: f32, u: f32, r: f32| b.at(s, f, u, r);
+    let mut parts = Vec::new();
+    let frame = |a: V3, c: V3| tube(mat::TRAM, a, c, 0.017).flags(flag::GLOSS).tone(0.45);
+    let steel = |a: V3, c: V3, r: f32| tube(mat::METAL, a, c, r).flags(flag::GLOSS).tone(0.6);
+    let rear = [-0.42f32, WHEEL_R];
+    let front = [0.64f32, WHEEL_R];
+    let bb = [0.0f32, BB_Y];
+    let wheel = |parts: &mut Vec<Prim>, axle: [f32; 2], turn: f32| {
+        parts.push(
+            Prim::new(
+                kind::TORUS,
+                mat::DARK,
+                at(axle[0], axle[1], 0.0),
+                v3(WHEEL_R, WHEEL_R, 0.025),
+            )
+            .ab(0.021, 0.0)
+            .pitch(roll),
+        );
+        for i in 0..3 {
+            let a = turn + i as f32 * PI / 3.0;
+            let (sa, ca) = a.sin_cos();
+            let reach = WHEEL_R - 0.03;
+            parts.push(
+                tube(
+                    mat::METAL,
+                    at(axle[0] + reach * sa, axle[1] + reach * ca, 0.0),
+                    at(axle[0] - reach * sa, axle[1] - reach * ca, 0.0),
+                    0.004,
+                )
+                .tone(0.5),
+            );
+        }
+    };
+    let turn = b.wheel(s);
+    // The rear wheel, the carrier over it, the stays, the chain's guard.
+    wheel(&mut parts, rear, turn);
+    parts.push(
+        cube(mat::METAL, at(-0.38, 0.72, 0.0), v3(0.17, 0.008, 0.07))
+            .pitch(roll)
+            .tone(0.35),
+    );
+    parts.push(frame(at(-0.15, 0.76, 0.0), at(rear[0], rear[1], 0.0)));
+    parts.push(frame(at(bb[0], bb[1], 0.0), at(rear[0], rear[1], 0.0)));
+    parts.push(
+        cube(mat::DARK, at(-0.19, 0.32, 0.06), v3(0.25, 0.04, 0.006))
+            .pitch(roll)
+            .tone(0.5),
+    );
+    // The seat tube, its post, the saddle; the chainring, cranks, pedals.
+    parts.push(frame(at(bb[0], bb[1], 0.0), at(-0.16, 0.8, 0.0)));
+    parts.push(steel(at(-0.16, 0.8, 0.0), at(-0.19, 0.89, 0.0), 0.011));
+    parts.push(
+        ball(mat::FABRIC, at(SADDLE[0], 0.92, 0.0), v3(0.12, 0.035, 0.07))
+            .pitch(roll)
+            .tone(0.12),
+    );
+    parts.push(
+        Prim::new(
+            kind::TORUS,
+            mat::METAL,
+            at(bb[0], bb[1], 0.05),
+            v3(0.09, 0.09, 0.01),
+        )
+        .ab(0.008, 0.0)
+        .pitch(roll)
+        .flags(flag::GLOSS)
+        .tone(0.6),
+    );
+    let crank = b.crank(s);
+    for (side, a, r) in [(0usize, crank + PI, -PEDAL_OUT), (1, crank, PEDAL_OUT)] {
+        let end = [CRANK_LEN * a.sin(), BB_Y + CRANK_LEN * a.cos()];
+        parts.push(steel(
+            at(bb[0], bb[1], 0.6 * r),
+            at(end[0], end[1], 0.6 * r),
+            0.009,
+        ));
+        parts.push(
+            cube(mat::DARK, b.pedal(s, side), v3(0.045, 0.01, 0.04))
+                .pitch(roll)
+                .tone(0.3),
+        );
+    }
+    // The top and down tubes, the head tube, the fork, stem and bars,
+    // the basket.
+    parts.push(frame(at(0.5, 0.8, 0.0), at(-0.15, 0.76, 0.0)));
+    parts.push(frame(at(0.53, 0.76, 0.0), at(bb[0], bb[1], 0.0)));
+    parts.push(frame(at(0.5, 0.92, 0.0), at(0.55, 0.72, 0.0)));
+    parts.push(frame(at(0.55, 0.72, 0.0), at(front[0], front[1], 0.0)));
+    parts.push(steel(at(0.5, 0.92, 0.0), at(0.49, 1.03, 0.0), 0.012));
+    for side in [-1.0f32, 1.0] {
+        parts.push(steel(
+            at(0.49, 1.04, 0.0),
+            at(GRIP[0], GRIP[1], side * GRIP[2]),
+            0.011,
+        ));
+    }
+    parts.push(
+        cube(mat::WOOD, at(0.72, 0.95, 0.0), v3(0.12, 0.09, 0.15))
+            .pitch(roll)
+            .tone(0.55),
+    );
+    // The front wheel and its lamp.
+    wheel(&mut parts, front, turn);
+    let lit = b.lit(s) > 0.5;
+    parts.push(ball(
+        if lit { mat::LAMP } else { mat::METAL },
+        at(0.86, 0.85, 0.0),
+        v3(0.035, 0.035, 0.035),
+    ));
+    out.extend(parts.into_iter().filter(|p| p.c.x.abs() <= 15.5));
 }
 
 #[cfg(test)]

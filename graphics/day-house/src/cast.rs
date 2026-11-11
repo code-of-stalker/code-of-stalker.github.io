@@ -5,11 +5,11 @@
 //! here their hands, heads and the things they carry are added on top.
 //! Times are story times (`story::story_time` slows the cup's fall).
 use crate::act::{
-    flat, turn_between, Gait, Local, Plan, Ride, World, BACK_AFTER, BACK_BRAKE, BRAKE, CLIMBING,
-    RUNNING, STROLL, WALKING,
+    flat, turn_between, Bike, Gait, Local, Plan, Ride, World, BACK_AFTER, BACK_BRAKE, BIKE_HOME,
+    BIKE_IN, BIKE_STOP, BIKE_Z, BRAKE, CLIMBING, GRIP, SADDLE, SEAT_AT, STROLL, WALKING,
 };
-use crate::body::{build, Body, Carry, Hair, Pose, HANDS, STAND};
-use crate::math::{mix, smooth, smooth_integral, v3, window, V3, Y};
+use crate::body::{build, foot_on, Body, Carry, Hair, Pose, HANDS, STAND};
+use crate::math::{min_jerk, mix, smooth, smooth_integral, v3, window, V3, Y};
 use crate::LOOP;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
@@ -27,8 +27,12 @@ pub const PAINTER: usize = 10;
 pub const MECHANIC: usize = 11;
 pub const PEOPLE: usize = 12;
 
-/// One person in a frame: the body, how much of it shows, the hero's
-/// accent, the clothes' shade and the size.
+/// His rim's warm glow; his echoes in the finale glow at 1.
+pub const HERO_ACCENT: f32 = 0.5;
+
+/// One person in a frame: the body, how much of it shows, the accent (0
+/// for the others, `HERO_ACCENT` for him, 1 for his echoes in the finale:
+/// they glow), the clothes' shade and the size.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Figure {
     pub body: Body,
@@ -177,6 +181,13 @@ fn lerp3(a: V3, b: V3, s: f32) -> V3 {
     a.lerp(b, s.clamp(0.0, 1.0))
 }
 
+/// From `a` to `b`, `w` of the way, on a curve whose middle is `over`.
+fn arc(a: V3, b: V3, over: V3, w: f32) -> V3 {
+    let w = w.clamp(0.0, 1.0);
+    let c = over * 2.0 - (a + b) * 0.5;
+    a * ((1.0 - w) * (1.0 - w)) + c * (2.0 * w * (1.0 - w)) + b * (w * w)
+}
+
 /// The angle `w` of the way from `a` to `b`, the short way round.
 fn mix_angle(a: f32, b: f32, w: f32) -> f32 {
     a + turn_between(a, b) * w
@@ -210,11 +221,14 @@ pub struct Keys {
     pub desk: f32,
     pub call: f32,
     pub down: f32,
-    pub run: f32,
-    /// Out of the frame on the right; back in from the left.
+    /// His bicycle: he takes it from the lamp's post, pushes off, is out of the
+    /// frame on the right and back in from the left (the cut), stops by
+    /// the lamp; he stands by it, the night begins.
+    pub take: f32,
+    pub go: f32,
     pub gone: f32,
-    pub again: f32,
-    pub run_end: f32,
+    pub stop: f32,
+    pub rest: f32,
     pub p_sit: f32,
 }
 
@@ -229,6 +243,9 @@ pub struct Held {
     /// Her spoon in the pot: its bowl and its end.
     pub spoon: [V3; 2],
     pub cup: V3,
+    /// How far his cup tips toward his mouth, and which way.
+    pub cup_tilt: f32,
+    pub cup_yaw: f32,
     pub kid_cup: V3,
     pub kid_cup_spin: f32,
     /// His bread in its paper bag (the bag's bottom, its yaw), and the
@@ -239,6 +256,9 @@ pub struct Held {
     pub bag2_yaw: f32,
     pub coin: V3,
     pub phone: V3,
+    /// His phone stood up at his ear: how far, and the way its face looks.
+    pub phone_tilt: f32,
+    pub phone_yaw: f32,
     pub chair: V3,
     pub can: V3,
     pub can_tilt: f32,
@@ -287,13 +307,21 @@ const LOAF_SHELF: V3 = v3(-5.12, 1.32, -2.45);
 const KID_CUP: V3 = v3(7.45, 9.425, -1.46);
 const KID_HALF: f32 = 0.04;
 const CATCH: V3 = v3(4.85, 9.75, -1.45);
-const DESK_PHONE: V3 = v3(4.55, 12.785, -2.3);
+const DESK_PHONE: V3 = v3(4.36, 12.785, -2.64);
 const CRANK: V3 = v3(4.35, 0.66, -2.0);
 /// The tram's straps: the handles' height, their line across, and where
 /// they hang along the car from its middle.
 pub const STRAP_Y: f32 = 1.93;
 pub const STRAP_Z: f32 = 4.45;
 pub const STRAPS: [f32; 4] = [-3.0, -1.3, 0.5, 2.1];
+/// Where he stands by the lamp for the night, and which way he faces.
+pub const REST: [f32; 2] = [1.1, 0.95];
+pub const REST_HEADING: f32 = 0.25;
+/// The bicycle's day starts over this long before the loop's end (it
+/// stands just where it stood in the morning).
+const BIKE_HOME_BEFORE: f32 = 3.0;
+/// A foot's ball this high over the ground it stands on.
+const BALL_Y: f32 = 0.03;
 
 impl Cast {
     pub fn new() -> Cast {
@@ -482,19 +510,35 @@ impl Cast {
         h.mark("down");
         k.down = h.when("down");
 
-        // The evening run along the street: out of the frame on the
-        // right; the camera cuts; back in from the left to the lamp.
-        h.walk(&[[-7.0, -1.0], [-6.8, 0.3], [-6.6, 0.9]], street, WALKING);
-        h.wait(1.2).mark("run");
-        k.run = h.when("run");
-        h.walk(&[[12.5, 0.9]], street, RUNNING);
-        h.mark("gone");
-        k.gone = h.when("gone");
-        h.cut(v3(-16.4, 0.0, 0.9), FRAC_PI_2).mark("again");
-        k.again = h.when("again");
-        h.walk(&[[0.3, 0.9]], flat, RUNNING);
-        h.mark("run_end");
-        k.run_end = h.when("run_end");
+        // The evening ride: out to his bicycle leaning on the lamp's post,
+        // off along the street and out of the frame on the right; the
+        // camera cuts; back in from the left, he brakes by the same lamp,
+        // steps off, leans it on the post again and stands.
+        h.walk(
+            &[[-7.0, -1.0], [-6.8, 0.3], [BIKE_HOME + 0.05, BIKE_Z - 0.36]],
+            street,
+            WALKING,
+        );
+        h.turn_to(FRAC_PI_2).wait(1.2).mark("take");
+        k.take = h.when("take");
+        h.wait(3.0);
+        k.go = h.t;
+        k.gone = k.go + Bike::out_after();
+        k.stop = k.gone + Bike::stop_after();
+        world.bike = Bike {
+            take: k.take,
+            go: k.go,
+            gone: k.gone,
+            stop: k.stop,
+            home: LOOP - BIKE_HOME_BEFORE,
+        };
+        h.ride_until(Ride::Bike, k.gone, &world);
+        h.cut(v3(BIKE_IN + 0.05, 0.0, BIKE_Z - 0.36), FRAC_PI_2);
+        h.ride_until(Ride::Bike, k.stop, &world);
+        h.wait(3.4);
+        h.walk(&[[REST[0], REST[1]]], street, WALKING);
+        h.turn_to(REST_HEADING).mark("rest");
+        k.rest = h.when("rest");
         h.wait_until(LOOP + 10.0);
 
         // The child: plays at the low table, runs to him with the cup and
@@ -610,6 +654,8 @@ impl Cast {
             kettle_yaw: PI,
             spoon: [POT; 2],
             cup: CUP,
+            cup_tilt: 0.0,
+            cup_yaw: 0.0,
             kid_cup: KID_CUP,
             kid_cup_spin: 0.0,
             bag: HIDDEN,
@@ -618,6 +664,8 @@ impl Cast {
             bag2_yaw: 0.0,
             coin: HIDDEN,
             phone: DESK_PHONE,
+            phone_tilt: 0.0,
+            phone_yaw: 0.0,
             chair: v3(-0.75 + 0.3 * smooth(k.rise, k.rise + 1.0, s), 9.0, -3.0),
             can: HIDDEN,
             can_tilt: 0.0,
@@ -650,7 +698,7 @@ impl Cast {
             figures.push(Figure {
                 body,
                 seen,
-                accent: if i == HERO { 1.0 } else { 0.0 },
+                accent: if i == HERO { HERO_ACCENT } else { 0.0 },
                 clothes: CLOTHES[i],
                 scale: plan.k,
                 hair: f32::from(HAIR[i].0.code() * 8 + HAIR[i].1),
@@ -681,6 +729,91 @@ impl Cast {
         (tip - up * SPOUT[0] - fw * SPOUT[1], tilt)
     }
 
+    /// He and his bicycle: a glance at the sky, his hands to its grip and
+    /// saddle, it comes upright off the post; a foot over the low frame
+    /// onto the pedal, astride, the push off and up onto the saddle; the
+    /// ride, his feet round with the pedals; he slides forward off the
+    /// saddle as it brakes, a foot down, steps off it, leans it on the
+    /// lamp's post and lets go.
+    fn on_bike(&self, s: f32, pose: &mut Pose, local: &Local) {
+        let b = &self.world.bike;
+        let (t, g, st) = (b.take, b.go, b.stop);
+        if g == 0.0 || s < t - 1.5 || s > st + 3.6 {
+            return;
+        }
+        let at = |f: f32, u: f32, r: f32| b.at(s, f, u, r);
+        let here = |w: V3| local.local(w);
+        pose.nod -= 0.3 * window(s, t - 1.2, t - 0.8, t - 0.4, t);
+        look(
+            pose,
+            local,
+            at(0.25, 0.6, 0.0),
+            window(s, t - 0.3, t + 0.2, t + 2.0, t + 2.6),
+        );
+        // Astride from off the stand until he steps off; on the saddle
+        // from the push off until it brakes.
+        let astride = min_jerk((s - t - 1.6) / 0.8) * (1.0 - min_jerk((s - st - 0.5) / 0.9));
+        let seated = min_jerk((s - g) / 0.7) * (1.0 - min_jerk((s - st + 1.0) / 0.8));
+        let p = here(at(
+            mix(0.0, SEAT_AT[0], seated),
+            mix(0.9, SEAT_AT[1], seated),
+            0.0,
+        ));
+        pose.pelvis = lerp3(pose.pelvis, p, astride);
+        pose.yaw *= 1.0 - astride;
+        pose.lean += 0.15 * window(s, t, t + 0.5, t + 1.6, t + 2.4)
+            + astride * mix(0.15, 0.5, seated)
+            + 0.12 * window(s, st + 0.5, st + 1.4, st + 2.8, st + 3.3);
+        pose.roll += astride * b.roll(s);
+        // Riding, he looks down the street ahead.
+        look(pose, local, at(7.0, 0.8, 0.0), 0.8 * seated);
+        look(
+            pose,
+            local,
+            at(SADDLE[0], SADDLE[1], 0.3),
+            window(s, st + 1.8, st + 2.2, st + 3.0, st + 3.5),
+        );
+
+        // His feet. The right one over the frame onto its pedal and back.
+        let stand = pose.feet;
+        let pedal = |side: usize| here(b.pedal(s, side) + Y * 0.035);
+        let over = here(at(0.12, 0.62, 0.0));
+        let on = min_jerk((s - t - 1.4) / 0.8) * (1.0 - min_jerk((s - st - 0.7) / 0.8));
+        if on > 0.0 {
+            let ball = arc(stand[1].ball, pedal(1), over, on);
+            pose.feet[1] = foot_on(ball, 0.0, -0.12 * on);
+        }
+        // The left one: astride on the ground, up onto its pedal as he
+        // pushes off, down again as he stops, back beside him.
+        if s > t + 2.4 && s < st + 0.7 {
+            let ground = |x: f32| here(v3(x - 0.02, BALL_Y, BIKE_Z - 0.25));
+            let lift = |a: V3, c: V3, w: f32| arc(a, c, (a + c) * 0.5 + Y * 0.1, w);
+            let (ball, share) = if s < g {
+                let w = min_jerk((s - t - 2.4) / 0.4);
+                (lift(stand[0].ball, ground(BIKE_HOME), w), 0.0)
+            } else if s < st - 1.5 {
+                let w = min_jerk((s - g - 0.3) / 0.6);
+                (lift(ground(BIKE_HOME), pedal(0), w), w)
+            } else if s < st + 0.2 {
+                let w = min_jerk((s - st + 1.0) / 0.8);
+                (lift(pedal(0), ground(BIKE_STOP), w), 1.0 - w)
+            } else {
+                let w = min_jerk((s - st - 0.3) / 0.4);
+                (lift(ground(BIKE_STOP), stand[0].ball, w), 0.0)
+            };
+            pose.feet[0] = foot_on(ball, 0.0, -0.12 * share);
+        }
+
+        // His hands: the left on its grip throughout; the right on the
+        // saddle, on its grip while he rides, on the saddle again.
+        let grip = |r: f32| at(GRIP[0], GRIP[1], r * GRIP[2]);
+        let saddle = at(SADDLE[0] + 0.1, SADDLE[1] + 0.02, 0.0);
+        let held = window(s, t, t + 0.5, st + 2.8, st + 3.3);
+        reach(pose, local, 0, grip(-1.0), held);
+        let riding = smooth(t + 1.8, t + 2.4, s) - smooth(st + 0.5, st + 1.4, s);
+        reach(pose, local, 1, lerp3(saddle, grip(1.0), riding), held);
+    }
+
     fn gestures(&self, i: usize, s: f32, pose: &mut Pose, local: &Local) {
         let k = &self.keys;
         let q = k.queue;
@@ -706,9 +839,12 @@ impl Cast {
                     CUP + v3(0.0, 0.1, 0.0),
                     window(s, k.pour - 0.6, k.pour - 0.1, k.pour + 1.8, k.pour + 2.3),
                 );
-                // The tea: up to his lips and back.
+                // The tea: up to his lips and back. The hand holds the cup
+                // just under his mouth (where his head truly is), its rim at
+                // his lips.
                 let sip = k.sip;
-                let lips = local.world(pose.pelvis + v3(-0.05, 0.62, 0.22));
+                let head = build(pose);
+                let lips = local.world(head.mouth + head.face.forward * 0.06 - Y * 0.035);
                 let up = smooth(sip + 0.8, sip + 1.3, s) - smooth(sip + 1.6, sip + 2.1, s);
                 reach(
                     pose,
@@ -926,16 +1062,9 @@ impl Cast {
                 let done = window(s, d + 19.0, d + 19.8, d + 21.0, d + 21.6);
                 pose.lean -= 0.18 * done;
                 look(pose, local, v3(3.9, 13.4, 6.0), done);
-                // After the run: hands on knees, then up to the sky.
-                let e = k.run_end;
-                let blown = window(s, e + 0.5, e + 1.0, e + 3.2, e + 4.0);
-                crouch(pose, 0.28 * blown);
-                let knee = |x: f32| v3(x, 0.52, 0.28);
-                hold_at(pose, 0, knee(0.11), blown);
-                hold_at(pose, 1, knee(-0.11), blown);
-                pose.nod -= 0.25 * smooth(e + 4.0, e + 6.0, s);
-                // Before the run he looks up at the sky.
-                pose.nod -= 0.3 * window(s, k.run - 1.0, k.run - 0.6, k.run - 0.2, k.run + 0.3);
+                self.on_bike(s, pose, local);
+                // By the lamp, the night: he looks up at the sky.
+                pose.nod -= 0.25 * smooth(k.rest + 4.0, k.rest + 6.0, s);
             }
             PARTNER => {
                 // Stirring her pot.
@@ -1272,6 +1401,11 @@ impl Cast {
         let on = smooth(sip + 0.6, sip + 0.75, s) * (1.0 - smooth(sip + 2.0, sip + 2.1, s));
         if on > 0.0 {
             held.cup = CUP.lerp(grip(h, 1) - v3(0.0, CUP_HALF, 0.0), on);
+            // At his lips it tips toward him.
+            let up = smooth(sip + 0.8, sip + 1.3, s) - smooth(sip + 1.6, sip + 2.1, s);
+            let to = h.mouth - held.cup;
+            held.cup_yaw = to.x.atan2(to.z);
+            held.cup_tilt = 0.5 * up;
         }
 
         // The child's cup: in her hand, flying, caught, back.
@@ -1352,6 +1486,11 @@ impl Cast {
         let call = smooth(d + 6.05, d + 6.2, s) * (1.0 - smooth(d + 10.75, d + 10.9, s));
         if call > 0.0 {
             held.phone = held.phone.lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
+            // At his ear it stands up, its face to his cheek.
+            let ear = smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s);
+            let to = h.head - held.phone;
+            held.phone_yaw = to.x.atan2(to.z);
+            held.phone_tilt = FRAC_PI_2 * ear;
         }
 
         // The gardener's can, the painter's brush, the cellist's bow, the
@@ -1443,10 +1582,12 @@ mod tests {
         println!("{k:#?}");
         println!("tram {:#?}", cast.world.tram);
         assert!(
-            (k.run_end + FINALE - LOOP).abs() < 0.6,
-            "run_end {} + {FINALE} vs {LOOP}",
-            k.run_end
+            (k.rest + FINALE - LOOP).abs() < 0.6,
+            "rest {} + {FINALE} vs {LOOP}",
+            k.rest
         );
+        // The bicycle is back on its stand only once the finale is far.
+        assert!(cast.world.bike.home > k.rest + 20.0);
         assert!(k.c0 > k.bread, "{} {}", k.c0, k.bread);
         assert!(cast.world.tram.stop1 > k.rails);
         // She is back at the stove before he walks past it.

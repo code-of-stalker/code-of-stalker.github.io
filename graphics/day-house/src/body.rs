@@ -201,6 +201,24 @@ fn foot_at(heel: V3, yaw: f32, pitch: f32) -> Foot {
     }
 }
 
+/// The foot with its ball's sphere at `ball` (on a pedal), turned `yaw`
+/// and tipped toes-up by `pitch`, the toes along the sole.
+pub fn foot_on(ball: V3, yaw: f32, pitch: f32) -> Foot {
+    let flat = v3(yaw.sin(), 0.0, yaw.cos());
+    let (s, c) = pitch.sin_cos();
+    let f = flat * c + Y * s;
+    let u = Y * c - flat * s;
+    let at = |q: [f32; 2]| ball + f * (q[0] - BALL[0]) + u * (q[1] - BALL[1]);
+    Foot {
+        heel: at(HEEL),
+        ball,
+        toe: at(TOE),
+        ankle: at(ANKLE),
+        support: 0.0,
+        swing: 0.0,
+    }
+}
+
 /// The foot standing at (`x`, `y`, `z`), `since` seconds after it landed
 /// and `until` seconds before it lifts: rocking flat off its heel, then up
 /// onto its ball.

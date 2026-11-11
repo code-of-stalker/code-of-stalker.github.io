@@ -662,7 +662,12 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
     s.a = 0.04;
     s.gloss = 0.4;
     if (cell == 14) {
-      s.emit = DESK.x * deskScreen(h.lp.xy / vec2(0.2, 0.13));
+      // Only the lid's face toward his chair glows; its back (toward the
+      // street) and his phone lying on the desk are dark metal and glass.
+      float front = step(h.n.z, -0.5) * step(h.lp.z, -0.004);
+      s.emit = front * DESK.x * deskScreen(h.lp.xy / vec2(0.2, 0.13));
+      s.a = mix(0.22, 0.04, front);
+      s.gloss = mix(0.6, 0.4, front);
     } else {
       float on = h.id == CELL_MOVE ? 0.6 : 0.25;
       s.emit = on * vec2(0.9, 0.06) * (0.8 + 0.2 * step(0.5, fract(h.lp.y * 30.0)));
@@ -841,7 +846,9 @@ Surf personSurface(Hit h, vec3 p, vec3 n, vec3 rd) {
     s.warm = 0.1 + 0.6 * fract(clothes * 4.3);
   }
   float rim = pow(1.0 - abs(dot(n, rd)), 3.0);
-  s.emit = accent * vec2(0.05, 0.3) * rim;
+  // His rim glows a little warm; his echoes in the finale (accent above
+  // 0.75) glow through.
+  s.emit = accent * vec2(0.1, 0.6) * rim + smoothstep(0.75, 1.0, accent) * vec2(0.02, 0.22);
   return s;
 }
 
@@ -1025,7 +1032,7 @@ float ringGlow(float e, float t, vec3 rd, float w, float halo) {
 // back, two lines with beads between them; the third, a meridian, turns
 // and leaves the glass it passed lit a little; the second ring hugs his
 // body from the soles to the crown. Each flashes warm when touched: the
-// first by the world, the second (trembling) by the argument and the call,
+// first by the world, the second (glowing) by the argument and the call,
 // the third by what falls. When the three strike together a wave runs out
 // over the floor.
 vec2 rings(vec3 ro, vec3 rd, float T) {
@@ -1056,25 +1063,24 @@ vec2 rings(vec3 ro, vec3 rd, float T) {
       float third = sline(dot(q - C, mer), w);
       float lag = fract((RINGS.z + 0.5 * PI - phi) / PI);
       float trail = 0.015 * exp(-6.0 * lag);
-      float fade = k == 0 ? 1.0 : 0.7;
+      // Glass right at the lens would smear across the frame: it fades.
+      float fade = (k == 0 ? 1.0 : 0.7) * smoothstep(0.45, 1.3, t);
       float cold = 0.005 * graze * RINGVIS.w + RINGVIS.x * (0.45 * first + 0.7 * bead) + RINGVIS.z * (0.4 * third + 2.0 * trail);
       float warm = RINGFX.x * (0.9 * first + 1.2 * bead + 0.02 * graze) + RINGFX.z * (0.9 * third + 6.0 * trail);
       L += vec2(cold + 0.3 * warm, warm) * fade;
     }
   }
   // The second ring: where the ray crosses its plane, or the upright
-  // cylinder it lies on, nearest the ring; it trembles when he is shaken.
+  // cylinder it lies on, nearest the ring. Its shape holds steady; when he
+  // is shaken it only glows warmer, in slow beats.
   vec2 o2 = ro.xz - C.xz;
   float r2 = SECOND_RING_R, y2 = RINGS.y;
-  float shake = 0.028 * min(RINGFX.y, 1.5);
   float best = 1e3, tb = -1.0;
   if (abs(rd.y) > 1e-4) {
     float t = (y2 - ro.y) / rd.y;
     if (t > 0.05 && t < T) {
       vec2 p = o2 + rd.xz * t;
-      float a = atan(p.y, p.x);
-      float rw = r2 * (1.0 + shake * sin(a * 7.0 + TIME * 23.0) * sin(a * 3.0 - TIME * 17.0));
-      float e = abs(length(p) - rw);
+      float e = abs(length(p) - r2);
       if (e < best) { best = e; tb = t; }
     }
   }
@@ -1085,15 +1091,14 @@ vec2 rings(vec3 ro, vec3 rd, float T) {
     for (int k = 0 + ZERO; k < 2; k++) {
       float t = (-bb + (k == 0 ? -sq : sq)) / a;
       if (t <= 0.05 || t > T) continue;
-      vec2 p = o2 + rd.xz * t;
-      float ang = atan(p.y, p.x);
-      float e = abs(ro.y + rd.y * t - y2 - shake * r2 * sin(ang * 7.0 + TIME * 23.0));
+      float e = abs(ro.y + rd.y * t - y2);
       if (e < best) { best = e; tb = t; }
     }
   }
   if (tb > 0.0) {
-    float g = sline(best, max(0.005, 1.2 * pixelAt(tb)));
-    L += vec2(RINGVIS.y * 0.5 + 0.3 * RINGFX.y, 0.9 * RINGFX.y) * g;
+    float g = sline(best, max(0.005, 1.2 * pixelAt(tb))) * smoothstep(0.3, 0.9, tb);
+    float beat = RINGFX.y * (0.75 + 0.25 * sin(TIME * 4.0));
+    L += vec2(RINGVIS.y * 0.5 + 0.3 * beat, 0.9 * beat) * g;
   }
   L *= RINGS.w;
   // The chord: a wave out over the floor from the sphere's foot.

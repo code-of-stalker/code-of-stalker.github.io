@@ -1765,11 +1765,16 @@ fn street(cells: &mut [Vec<Prim>]) {
     }
     {
         let out = &mut cells[cell::STREET_M];
-        out.push(cyl(mat::METAL, v3(-3.3, 1.2, 6.75), 0.03, 1.2).tone(0.3));
-        out.push(cyl(mat::SIGN, v3(-3.3, 2.5, 6.75), 0.22, 0.012).pitch(FRAC_PI_2));
+        // The second stop's sign stands back by the kerb, clear of the door.
+        out.push(cyl(mat::METAL, v3(-4.6, 1.2, 6.95), 0.03, 1.2).tone(0.3));
+        out.push(cyl(mat::SIGN, v3(-4.6, 2.5, 6.95), 0.22, 0.012).pitch(FRAC_PI_2));
         out.push(cube(mat::WOOD, v3(3.0, 0.45, 7.6), v3(0.9, 0.035, 0.2)).tone(0.4));
         legs(out, mat::METAL, v3(3.0, 0.0, 7.6), 0.85, 0.17, 0.42, 0.02);
-        out.push(cyl(mat::METAL, v3(7.6, 0.45, 1.7), 0.2, 0.45).tone(0.2));
+        out.push(
+            cyl(mat::METAL, v3(7.6, 0.45, 1.98), 0.2, 0.45)
+                .flags(flag::NEAR)
+                .tone(0.2),
+        );
     }
     {
         let out = &mut cells[cell::STREET_R];
@@ -1785,7 +1790,7 @@ fn street(cells: &mut [Vec<Prim>]) {
             .tone(0.3),
         );
         out.push(slab(mat::DARK, v3(12.2, 0.0, 6.9), v3(13.4, 0.01, 8.1)).flags(flag::FLAT));
-        out.push(cyl(mat::DARK, v3(10.4, 0.35, 1.4), 0.12, 0.35).tone(0.2));
+        out.push(cyl(mat::DARK, v3(10.4, 0.35, 1.98), 0.12, 0.35).tone(0.2));
     }
     // The tunnel portals the tram comes from and goes into.
     for (c, x) in [(cell::STREET_L, -15.6f32), (cell::STREET_R, 15.6)] {

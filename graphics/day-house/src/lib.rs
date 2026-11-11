@@ -7,7 +7,7 @@
 //! honks at him (the sphere flashes), the tram and the shop through his own
 //! eyes, a coin that slips (the third ring whips round), his child's cup
 //! falling (the world slows, he catches it), the call and the deadlines at
-//! his desk, an evening run along the street. At night the rings come
+//! his desk, an evening bicycle ride down the street. At night the rings come
 //! together round him and strike; the camera draws back; the line of his
 //! day runs through the house and each place lights; the sphere grows over
 //! the whole house, the walls melt, and the globe meets its reflection in
@@ -33,10 +33,10 @@ use math::{v3, V3};
 pub use story::{Figure, Frame, Story};
 use watcher_scene_palette::Palette;
 
-/// One loop: the whole day, three minutes and a little more.
-pub const LOOP: f32 = 271.9;
-/// The finale after he stops running.
-pub const FINALE: f32 = 34.0;
+/// One loop: the whole day, about five minutes.
+pub const LOOP: f32 = 305.4;
+/// The finale after he stands still by the lamp.
+pub const FINALE: f32 = 58.0;
 
 /// The lens: the whole 3:2 frame stays in view on a canvas of any shape.
 pub const FRAME_ASPECT: f32 = 1.5;
@@ -63,8 +63,8 @@ pub const FIGS: usize = 12;
 pub const FIG_TEXELS: usize = 3 * body::PRIMITIVES;
 /// Moving primitives at most (the tram's and the rest's together), and
 /// their groups.
-pub const MOVERS: usize = 96;
-pub const MOVER_GROUPS: usize = 48;
+pub const MOVERS: usize = 128;
+pub const MOVER_GROUPS: usize = 64;
 /// A group's primitives at most, and how wide it may grow (metres).
 const GROUP_MAX: usize = 8;
 const GROUP_SPAN: f32 = 1.8;

@@ -4,7 +4,7 @@
 //! one after another; the lift's and the tram's timetables are written by
 //! the hero's plan as he rides them.
 use crate::body::{build, Body, Pose, Rest, Step, Walk, SWING_SHARE};
-use crate::math::{min_jerk, mix, monotone, rotate, smooth, v3, V3, Y};
+use crate::math::{min_jerk, mix, monotone, rotate, smooth, v3, window, V3, Y};
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 /// The ground's height over a floor at (x, z): a kerb, the tram's floor.
@@ -202,6 +202,7 @@ pub enum Ride {
     Still,
     Lift,
     Tram,
+    Bike,
 }
 
 #[derive(Clone, Debug)]
@@ -380,6 +381,180 @@ pub struct World {
     pub lift_start: f32,
     pub lift: Vec<[f32; 4]>,
     pub tram: Tram,
+    pub bike: Bike,
+}
+
+/// His bicycle's evening, story times: all day it leans on the lamp's
+/// post by the shop; he takes it at `take`, pushes off at `go`, rides out
+/// of the frame on the right, is back in from the left at `gone` (the cut)
+/// and brakes to a stop by the same lamp at `stop`, and leans it on the
+/// post again just as it stood; `home` only starts the next day's count.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Bike {
+    pub take: f32,
+    pub go: f32,
+    pub gone: f32,
+    pub stop: f32,
+    pub home: f32,
+}
+
+/// Its line along the near sidewalk, and its bottom bracket's x by the
+/// lamp, where it stands all day and where he stops it.
+pub const BIKE_Z: f32 = 1.38;
+pub const BIKE_STOP: f32 = -0.3;
+pub const BIKE_HOME: f32 = BIKE_STOP;
+/// Out of the frame on the right; back in from the left.
+const BIKE_OUT: f32 = 15.9;
+pub const BIKE_IN: f32 = -15.9;
+/// Its pace (m/s), and how long it takes to gather it and to brake.
+const BIKE_V: f32 = 3.6;
+pub const BIKE_PUSH: f32 = 2.6;
+pub const BIKE_BRAKE: f32 = 2.8;
+/// Metres one turn of the cranks carries it; the wheels' radius.
+const BIKE_GEAR: f32 = 4.3;
+pub const WHEEL_R: f32 = 0.34;
+/// Its saddle's top (forward, up), where he sits on it (his pelvis), and
+/// the grips' ends (forward, up, out to the side).
+pub const SADDLE: [f32; 2] = [-0.2, 0.955];
+pub const SEAT_AT: [f32; 2] = [-0.15, 1.03];
+pub const GRIP: [f32; 3] = [0.36, 1.05, 0.26];
+/// Its bottom bracket's height, the cranks' length, the pedals' reach out.
+pub const BB_Y: f32 = 0.29;
+pub const CRANK_LEN: f32 = 0.17;
+pub const PEDAL_OUT: f32 = 0.11;
+/// The cranks as it stands: the right pedal up and forward, ready.
+const CRANK0: f32 = 0.8;
+/// Over the last this-many metres of pedalling the cranks ease to a stop.
+const EASE: f32 = 0.6;
+/// How far it leans (to its right) on the lamp's post.
+pub const POST_ROLL: f32 = 0.29;
+
+impl Bike {
+    /// Out of the frame on the right this long after pushing off.
+    pub fn out_after() -> f32 {
+        0.5 * BIKE_PUSH + (BIKE_OUT - BIKE_HOME) / BIKE_V
+    }
+    /// Stopped by the lamp this long after the cut.
+    pub fn stop_after() -> f32 {
+        (BIKE_STOP - 0.5 * BIKE_V * BIKE_BRAKE - BIKE_IN) / BIKE_V + BIKE_BRAKE
+    }
+
+    fn out(&self, t: f32) -> bool {
+        self.go == 0.0 || t < self.go || t >= self.home
+    }
+
+    /// Its bottom bracket's x along the street.
+    pub fn x(&self, t: f32) -> f32 {
+        if self.out(t) {
+            return BIKE_HOME;
+        }
+        if t < self.gone {
+            let u = t - self.go;
+            return if u < BIKE_PUSH {
+                BIKE_HOME + 0.5 * BIKE_V * u * u / BIKE_PUSH
+            } else {
+                BIKE_HOME + BIKE_V * (u - 0.5 * BIKE_PUSH)
+            };
+        }
+        let w = (self.stop - t).max(0.0);
+        if w < BIKE_BRAKE {
+            BIKE_STOP - 0.5 * BIKE_V * w * w / BIKE_BRAKE
+        } else {
+            BIKE_STOP - BIKE_V * (w - 0.5 * BIKE_BRAKE)
+        }
+    }
+
+    /// How far it has rolled, and how far of that he pedalled: he stops
+    /// pedalling as he starts to brake, easing the cranks round to where
+    /// they stood on the stand (a whole number of turns), and coasts in.
+    fn rolled(&self, t: f32) -> (f32, f32) {
+        if self.out(t) {
+            return (0.0, 0.0);
+        }
+        let first = BIKE_OUT - BIKE_HOME;
+        let d = if t < self.gone {
+            self.x(t) - BIKE_HOME
+        } else {
+            first + self.x(t) - BIKE_IN
+        };
+        let coast = first + self.x(self.stop - BIKE_BRAKE + 0.3) - BIKE_IN;
+        let end = BIKE_GEAR * (coast / BIKE_GEAR).floor();
+        let from = end - EASE;
+        let pedalled = if d < from {
+            d
+        } else {
+            from + EASE * (1.0 - (-(d - from) / EASE).exp())
+        };
+        (d, pedalled)
+    }
+
+    /// A point of the bike at `t`: `f` forward of its bottom bracket, `u`
+    /// up and `r` to its right, as it leans.
+    pub fn at(&self, t: f32, f: f32, u: f32, r: f32) -> V3 {
+        let (s, c) = self.roll(t).sin_cos();
+        v3(self.x(t) + f, u * c - r * s, BIKE_Z + u * s + r * c)
+    }
+
+    /// A pedal's middle: 0 the left, 1 the right.
+    pub fn pedal(&self, t: f32, side: usize) -> V3 {
+        let (a, r) = if side == 0 {
+            (self.crank(t) + PI, -PEDAL_OUT)
+        } else {
+            (self.crank(t), PEDAL_OUT)
+        };
+        self.at(t, CRANK_LEN * a.sin(), BB_Y + CRANK_LEN * a.cos(), r)
+    }
+
+    /// Its lamp is lit from the push off until it is leaned on the post.
+    pub fn lit(&self, t: f32) -> f32 {
+        if self.out(t) {
+            return 0.0;
+        }
+        smooth(self.go - 0.3, self.go + 0.2, t)
+            * (1.0 - smooth(self.stop + 2.6, self.stop + 3.2, t))
+    }
+
+    /// The wheels' turn, radians: geared a hair so the whole ride turns
+    /// them a whole number of sixths (three spokes), and they stand at the
+    /// end as they stood at the start.
+    pub fn wheel(&self, t: f32) -> f32 {
+        let whole = (BIKE_OUT - BIKE_HOME + BIKE_STOP - BIKE_IN) / WHEEL_R;
+        let sixth = PI / 3.0;
+        let k = (whole / sixth).round() * sixth / whole;
+        k * self.rolled(t).0 / WHEEL_R
+    }
+
+    /// The cranks' turn: 0 the right pedal straight up, growing forward.
+    pub fn crank(&self, t: f32) -> f32 {
+        CRANK0 + TAU * self.rolled(t).1 / BIKE_GEAR
+    }
+
+    /// How hard he pedals, 0 … 1.
+    pub fn pedalling(&self, t: f32) -> f32 {
+        if self.out(t) {
+            return 0.0;
+        }
+        if t < self.gone {
+            smooth(self.go, self.go + 0.8, t)
+        } else {
+            1.0 - smooth(self.stop - BIKE_BRAKE, self.stop - BIKE_BRAKE + 0.6, t)
+        }
+    }
+
+    /// How far it leans to its right: on the lamp's post, pulled upright,
+    /// a sway with every stroke, onto his left foot as he stops, then on
+    /// the post again.
+    pub fn roll(&self, t: f32) -> f32 {
+        if self.go == 0.0 || t < self.take || t >= self.home {
+            return POST_ROLL;
+        }
+        let up = min_jerk((t - self.take - 0.5) / 0.9);
+        let sway = 0.025 * self.pedalling(t) * self.crank(t).sin();
+        let s = self.stop;
+        let foot = -0.07 * window(t, s - 0.3, s + 0.2, s + 1.3, s + 1.8);
+        let post = POST_ROLL * min_jerk((t - s - 2.0) / 1.1);
+        POST_ROLL * (1.0 - up) + sway + foot + post
+    }
 }
 
 /// The tram's day: it comes out of the left tunnel to the first stop,
@@ -494,6 +669,7 @@ impl World {
             Ride::Still => v3(0.0, 0.0, 0.0),
             Ride::Lift => v3(0.0, self.lift_y(t) - self.lift_y(t0), 0.0),
             Ride::Tram => v3(self.tram_c(t) - self.tram_c(t0), 0.0, 0.0),
+            Ride::Bike => v3(self.bike.x(t) - self.bike.x(t0), 0.0, 0.0),
         }
     }
 }

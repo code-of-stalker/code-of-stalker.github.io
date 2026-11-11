@@ -30,7 +30,7 @@ import { StepFourScreen } from './StepFourScreen';
 import { StepFiveScreen } from './StepFiveScreen';
 import { StepSixScreen } from './StepSixScreen';
 import { StepSevenScreen } from './StepSevenScreen';
-import { fonts } from '../theme';
+import { quietText, softBold } from '../theme';
 import { clearReadingDestination, useReadingDestination } from '../navigation/readingDestination';
 import { productSpacing, useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
@@ -264,10 +264,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                   onReady={presentation.active ? setReady : () => {}} onProgress={presentation.active ? setProgress : () => {}}
                   onAdvance={advance} onRetreat={retreat}>
                   {presentation.textWrapper ? presentation.textWrapper(<ProductText style={styles.explanationText} onLayout={event => presentation.onTextHeight(event.nativeEvent.layout.height)}>
-                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{typeset(run.text)}</Text>)}
+                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={run.bold ? styles.explanationStrong : styles.explanationQuiet}>{typeset(run.text)}</Text>)}
                   </ProductText>) : <Animated.View style={presentation.textStyle ?? { opacity: presentation.text, transform: [{ translateY: presentation.text.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
                     <ProductText style={styles.explanationText} onLayout={event => presentation.onTextHeight(event.nativeEvent.layout.height)}>
-                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={{ fontFamily: run.bold ? fonts.bodyBold : fonts.body }}>{typeset(run.text)}</Text>)}
+                    {firstStepExplanations[index - 1].runs.map((run, runIndex) => <Text key={runIndex} style={run.bold ? styles.explanationStrong : styles.explanationQuiet}>{typeset(run.text)}</Text>)}
                     </ProductText>
                   </Animated.View>}
                   <View style={styles.explanationArt}>
@@ -305,6 +305,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   conclusion: { gap: 6, paddingVertical: 12 }, conclusionSmall: { fontSize: 11, lineHeight: 16 }, conclusionStrong: { fontSize: 15, lineHeight: 21 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   explanationText: { fontSize: 12, lineHeight: 17, textTransform: 'uppercase' },
+  // Art 2026-11-11 (A + C): soft bold emphasis, the plain runs beside it step back.
+  explanationStrong: softBold(colors, 12), explanationQuiet: quietText(colors),
   // Include the selector's 10px top gap when centering between text and button.
   explanationArt: { flex: 1, justifyContent: 'center', paddingTop: 10 },
   compactMenu: { position: 'absolute', left: 16, right: 16, bottom: 16, zIndex: 30 },

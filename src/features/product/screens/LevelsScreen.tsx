@@ -15,6 +15,7 @@ import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { levelActionArtwork } from '../levelArtwork';
 
 import { productLevels } from '../content';
+import { typeset } from '../typeset';
 import type { LevelId } from '../content';
 import { Art } from '../motion/Art';
 import { useProductLayout, useProductSpacing } from '../layout';
@@ -29,6 +30,8 @@ const levelScenes: Record<LevelId, ArtKind> = { basic: 'basic', intensive: 'inte
 export type LevelsScreenProps = {
   /** The plate opened when both do not fit the screen height. */
   selectedLevel: LevelId | null;
+  /** The level the person is on now, marked «ВЫ ЗДЕСЬ»; null before any level is chosen. */
+  currentLevel?: LevelId | null;
   onStart: (level: LevelId) => void;
   onBack: () => void;
   onDiary: () => void;
@@ -36,7 +39,7 @@ export type LevelsScreenProps = {
   effectsActive?: boolean;
 };
 
-export function LevelsScreen({ selectedLevel, onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
+export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
   const styles = useThemeStyles(createStyles);
   const colors = useThemeColors();
   const actions = useMemo(() => Object.fromEntries(productLevels.map(level => [level.id, levelActionArtwork(level.id, colors.accent)])) as Record<LevelId, {uri:string}>, [colors.accent]);
@@ -74,13 +77,13 @@ export function LevelsScreen({ selectedLevel, onStart, onBack, onDiary, reducedM
         <ProductText variant="label" style={[styles.choose, air > 1 && { marginTop: 24 * air, marginBottom: 16 * air }]}>ВЫБЕРИ УРОВЕНЬ</ProductText>
         <View style={[styles.levels, air > 1 && { gap: 24 * air }]}>
           {productLevels.map((level,index) => {
-            const expanded = open.includes(level.id);
+            const expanded = open.includes(level.id), here = level.id === currentLevel;
             return (
               <PanelScan key={level.id} delay={index*100} reducedMotion={reducedMotion} style={styles.level}>
                 <LevelFrame level={level.id} expanded={expanded} width={contentWidth} />
                 <HeightMotion height={expanded?(width>=375?58:52):62} reducedMotion={reducedMotion}><Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={level.title.replace('\n', ' ')}
+                  accessibilityLabel={(here ? 'вы здесь, ' : '') + level.title.replace('\n', ' ')}
                   accessibilityState={{ expanded }}
                   aria-expanded={expanded}
                   onPress={() => toggle(level.id)}
@@ -88,6 +91,7 @@ export function LevelsScreen({ selectedLevel, onStart, onBack, onDiary, reducedM
                 >
                   <ProductText variant="label" numberOfLines={1} maxFontSize={13} style={styles.number}>{level.number}</ProductText>
                   <ProductText variant="title" numberOfLines={1} style={styles.levelTitle}>{level.title}</ProductText>
+                  {here && <View testID="level-here" pointerEvents="none" style={styles.here}><View style={styles.hereMark} /><ProductText numberOfLines={1} style={styles.hereLabel}>ВЫ ЗДЕСЬ</ProductText></View>}
                   <View pointerEvents="none" style={styles.expandIcon}>
                     <View style={styles.expandHorizontal} />
                     {!expanded && <View style={styles.expandVertical} />}
@@ -100,7 +104,7 @@ export function LevelsScreen({ selectedLevel, onStart, onBack, onDiary, reducedM
                     </View>
                     <View style={styles.levelCopy}>
                       <Image pointerEvents="none" source={fade} style={styles.artFade} contentFit="fill" />
-                      <ProductText variant="body" style={styles.description}>{level.description}</ProductText>
+                      <ProductText variant="body" style={styles.description}>{typeset(level.description)}</ProductText>
                       <Pressable accessibilityRole="button" accessibilityLabel={level.action} onPress={() => onStart(level.id)} style={styles.action}>
                         <PanelArtwork source={actions[level.id]} flipY={level.id === 'guidance'} />
                         <ProductText variant="title" style={styles.actionLabel}>{level.action}</ProductText>
@@ -129,6 +133,10 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   levelHeader: { position: 'relative', zIndex: 4, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 13 },
   number: { width: 26, flexShrink: 0, fontSize: 13, lineHeight: 18, letterSpacing: 2.86, color: colors.muted },
   levelTitle: { flex: 1, fontSize: 20, lineHeight: 28, letterSpacing: 2 },
+  // Art 2026-11-11: a laconic «you are here» on the current level: a small diamond and a caption.
+  here: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
+  hereMark: { width: 5, height: 5, backgroundColor: colors.accent, transform: [{ rotate: '45deg' }] },
+  hereLabel: { color: colors.accent, fontSize: 8, lineHeight: 10, letterSpacing: 1.2 },
   expandIcon: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
   expandHorizontal: { width: 11, height: .75, backgroundColor: colors.accent },
   expandVertical: { position: 'absolute', width: .75, height: 11, backgroundColor: colors.accent },

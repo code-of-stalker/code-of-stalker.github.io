@@ -55,7 +55,7 @@ function imprints() {
         <g class="ridge-glints" fill="none" stroke="var(--book-light)" stroke-width=".7">${Array.from({ length: 4 }, () => '<path pathLength="1" stroke-dasharray=".07 .93"/>').join('')}</g>
       </g>
       <path d="M-23-43C-13-57 11-59 24-42" stroke="var(--book-light)" stroke-width=".4" opacity=".4" fill="none"/>
-      <path class="print-detail" d="${i ? 'M-7 5L-2 1L4 6M20 23l4 2' : 'M-7 5L-1 1L5 4M-20 22l3 3'}" stroke="var(--book-light)" stroke-width=".8" fill="none" opacity=".3"/>
+      <!-- Art 2026-11-11: no arrow marks (the former .print-detail carets) on the prints. -->
     </g>`).join('')}
     <g class="comparison-register" stroke="var(--book-ink)" stroke-width=".4" opacity=".35"><path d="M137 78H151M137 84H151"/><path class="difference-stroke" d="M141 89L148 73"/></g>
     <g stroke="var(--book-ink)" stroke-width=".3" opacity=".22"><path d="M35 36V28H43M245 28H253V36M35 125V133H43M245 133H253V125"/></g>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import { AppState, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatrixBackdrop } from '../motion/MatrixBackdrop';
 import { PanelScan } from '../motion/PanelScan';
 import { Accordion } from '../motion/Accordion';
@@ -26,8 +27,8 @@ const arrow = require('../../../../assets/product/levels/arrow.svg');
 const levelScenes: Record<LevelId, ArtKind> = { basic: 'basic', intensive: 'intensive', guidance: 'parallel' };
 
 export type LevelsScreenProps = {
+  /** The plate opened when both do not fit the screen height. */
   selectedLevel: LevelId | null;
-  onSelect: (level: LevelId | null) => void;
   onStart: (level: LevelId) => void;
   onBack: () => void;
   onDiary: () => void;
@@ -35,11 +36,11 @@ export type LevelsScreenProps = {
   effectsActive?: boolean;
 };
 
-export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
+export function LevelsScreen({ selectedLevel, onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
   const styles = useThemeStyles(createStyles);
   const colors = useThemeColors();
   const actions = useMemo(() => Object.fromEntries(productLevels.map(level => [level.id, levelActionArtwork(level.id, colors.accent)])) as Record<LevelId, {uri:string}>, [colors.accent]);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions(), safe = useSafeAreaInsets();
   useBackSwipe(onBack);
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
@@ -51,6 +52,14 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
   const contentWidth = Math.min(width, column) - gutter * 2;
   const artHeight = Math.max(150, contentWidth * 150 / 288);
   const bodyHeight = Math.max(202, artHeight + (width >= 375 ? 94 : 52));
+  // Art 2026-11-11: when the screen is tall enough, both plates stand open at once.
+  // Fixed header (16 + 46), «ВЫБЕРИ УРОВЕНЬ» (24 + 18 + 16), the open plates, the gap, bottom 16.
+  const openHeader = width >= 375 ? 58 : 52, spread = Math.max(1, air);
+  const allOpenHeight = 62 + 58 * spread + productLevels.length * (openHeader + bodyHeight) + 24 * spread * (productLevels.length - 1) + 16;
+  const allFit = allOpenHeight <= height - safe.top - safe.bottom;
+  const [open, setOpen] = useState<readonly LevelId[]>(() => allFit ? productLevels.map(level => level.id) : selectedLevel ? [selectedLevel] : []);
+  // Each plate folds on its own while all fit; on a short screen one plate is open at a time.
+  const toggle = (id: LevelId) => setOpen(current => current.includes(id) ? current.filter(item => item !== id) : allFit ? [...current, id] : [id]);
   const fade = useMemo(() => ({ uri: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="288" height="48"><defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${colors.background}" stop-opacity="0"/><stop offset=".44" stop-color="${colors.background}"/><stop offset="1" stop-color="${colors.background}"/></linearGradient></defs><rect width="288" height="48" fill="url(#fade)"/></svg>`)}` }), [colors.background]);
 
   return (
@@ -65,7 +74,7 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
         <ProductText variant="label" style={[styles.choose, air > 1 && { marginTop: 24 * air, marginBottom: 16 * air }]}>ВЫБЕРИ УРОВЕНЬ</ProductText>
         <View style={[styles.levels, air > 1 && { gap: 24 * air }]}>
           {productLevels.map((level,index) => {
-            const expanded = selectedLevel === level.id;
+            const expanded = open.includes(level.id);
             return (
               <PanelScan key={level.id} delay={index*100} reducedMotion={reducedMotion} style={styles.level}>
                 <LevelFrame level={level.id} expanded={expanded} width={contentWidth} />
@@ -74,7 +83,7 @@ export function LevelsScreen({ selectedLevel, onSelect, onStart, onBack, onDiary
                   accessibilityLabel={level.title.replace('\n', ' ')}
                   accessibilityState={{ expanded }}
                   aria-expanded={expanded}
-                  onPress={() => onSelect(expanded ? null : level.id)}
+                  onPress={() => toggle(level.id)}
                   style={[styles.levelHeader, { paddingHorizontal: inset, flex:1 }]}
                 >
                   <ProductText variant="label" numberOfLines={1} maxFontSize={13} style={styles.number}>{level.number}</ProductText>

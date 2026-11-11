@@ -11,7 +11,6 @@ import { Art } from '../motion/Art';
 import { Reveal } from '../motion/Reveal';
 import { Fade } from '../motion/Fade';
 import { RecordingGesture } from '../motion/RecordingGesture';
-import { Marquee } from '../motion/Marquee';
 import { HintPanel } from '../motion/HintPanel';
 import { UnderlinedText } from '../motion/UnderlinedText';
 import { BottomSheet } from '../motion/BottomSheet';
@@ -276,7 +275,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
           <ProductText variant="label" style={styles.date}>{stamp(selected.createdAt)}</ProductText><ObservationIcon name="chevron" size={12} muted />
         </Pressable>
         <ObservationActionButton label="ДОПОЛНИТЬ ОТВЕТ" icon="lips" onPress={() => void startRecording('toggle')} disabled={busy || !ready} style={styles.addButton} />
-      </View> : <View style={{ opacity: review ? 0 : 1 }}><Marquee text="ЗДЕСЬ НЕТ ПРАВИЛЬНЫХ ОТВЕТОВ, ЕСТЬ ТОЛЬКО ТВОЁ НАБЛЮДЕНИЕ" active={active && effectsActive && !sheet && !review} reducedMotion={settings.reducedMotion} /></View>}
+      </View> : null}
       {!selected && <ProductText variant="label" style={[styles.localNote, { opacity: review ? 0 : 1 }]}>ЗАПИСИ СОХРАНЯЮТСЯ НА ЭТОМ УСТРОЙСТВЕ</ProductText>}
       {progress.step === 1 && question === questions.length - 1 && <StepSignature center active={active && effectsActive && !sheet && !review} reducedMotion={settings.reducedMotion} style={[styles.signature, { opacity: review ? 0 : 1 }]} />}
       </View>
@@ -348,7 +347,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   dateButton: { padding: 12, marginTop: 2, flexDirection: 'row', gap: 8, alignItems: 'center' },
   date: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, color: colors.muted },
   addButton: { width: '80%', maxWidth: 340, marginTop: 8, minHeight: 36 },
-  marquee: { marginTop: 18, marginBottom: 8, fontSize: 8, lineHeight: 12, letterSpacing: 3.5 },
   signature: { marginTop: 14 },
   localNote: { fontSize: 6, lineHeight: 10, marginTop: 8, textAlign: 'center', color: colors.muted, letterSpacing: 0.5 },
   modalBackdrop: { flex: 1, backgroundColor: colors.background === '#000000' ? '#000000cf' : colors.overlay, padding: 16, alignItems: 'center', justifyContent: 'flex-end' },

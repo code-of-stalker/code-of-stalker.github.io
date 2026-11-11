@@ -140,3 +140,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - No arrow beside the plus on the report plate («тупо»): it folds by a drag up and unfolds by a drag down.
 - Bold body text is harsh on the eyes. Art chose A + C: soft bold (dimmer, letter-spaced) and the plain text beside it quieter; never full-strength bold body copy. Art's numbers: plain text 74%, emphasis 90%, on the whole site, not only tasks.
 - Icons (2026-11-11): chose «Характер» (each icon its own springy scene) over subtler variants, and wants every icon animated, none left still («давай всё сделаем классным»).
+- Diary filters (2026-11-11): the chosen option must read at a glance: 100% accent fill, dark text. No text/voice media filters.

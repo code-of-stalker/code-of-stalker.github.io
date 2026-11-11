@@ -68,6 +68,21 @@ export function Loading({ children, center = false, style }: { children: ReactNo
   return <Breathe style={style}><Note center={center}>{children}</Note></Breathe>;
 }
 
+/** List placeholder while a list loads: quiet rows in the list's own rhythm that breathe
+ * (Rust, Breathe) until the content comes. Screen readers hear the loading text. */
+export function Skeleton({ rows = 4, label = 'Загружаю…', style }: { rows?: number; label?: string; style?: StyleProp<ViewStyle> }) {
+  const styles = useThemeStyles(createStyles);
+  return <Breathe style={style}><View accessible accessibilityRole="progressbar" accessibilityLabel={label}>
+    {Array.from({ length: rows }, (_, i) => <View key={i} style={[styles.skeletonRow, i === rows - 1 && styles.skeletonLast]}>
+      <View style={styles.skeletonMark} />
+      <View style={styles.skeletonLines}>
+        <View style={[styles.skeletonBar, { width: `${62 - (i % 3) * 9}%` }]} />
+        <View style={[styles.skeletonBar, styles.skeletonThin, { width: `${38 + (i % 2) * 8}%` }]} />
+      </View>
+    </View>)}
+  </View></Breathe>;
+}
+
 /** `fit` sizes each tab to its label, so longer labels with counts still fit on a phone. */
 export function Tabs<T extends string>({ value, options, onChange, fit = false }: { value: T; options: { id: T; label: string }[]; onChange: (id: T) => void; fit?: boolean }) {
   const colors = useThemeColors();
@@ -149,6 +164,12 @@ export function PinPad({ title, detail, busy = false, error, onComplete }: {
 }
 
 const createStyles = (colors: ProductColors) => StyleSheet.create({
+  skeletonRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 4, borderBottomWidth: .25, borderBottomColor: colors.border },
+  skeletonLast: { borderBottomWidth: 0 },
+  skeletonMark: { width: 32, height: 32, borderWidth: .5, borderColor: colors.border, backgroundColor: colors.subtle },
+  skeletonLines: { flex: 1, gap: 8 },
+  skeletonBar: { height: 9, backgroundColor: colors.subtle, borderWidth: .25, borderColor: colors.border },
+  skeletonThin: { height: 6 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44 },
   heading: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3 },
   title: { fontSize: 20, lineHeight: 28 },

@@ -18,7 +18,7 @@ import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import type { GlyphName } from './chrome';
 import { GlassField, Glyph, ListGroup, ListItem } from './chrome';
-import { formatTime, Loading, Note, problemText, Tabs } from './parts';
+import { formatTime, Note, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
@@ -189,7 +189,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   }, []);
 
   const byId = useMemo(() => new Map((directory ?? []).map(entry => [entry.userId, entry])), [directory]);
-  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Loading center>Загружаю людей…</Loading>}</View>;
+  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Skeleton rows={6} label="Загружаю людей…" />}</View>;
 
   const walkers = directory.filter(entry => !isStaff(entry)).sort(walkerOrder);
   const team = directory.filter(isStaff).sort((a, b) => Number(b.mainAdmin) - Number(a.mainAdmin) || a.name.localeCompare(b.name, 'ru'));

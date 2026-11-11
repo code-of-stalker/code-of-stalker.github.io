@@ -53,6 +53,7 @@ pub mod step_two_tasks;
 pub mod svg_reference;
 pub mod timeline;
 pub mod tracks;
+pub mod ui_motion;
 pub mod uploads;
 pub mod vector_geometry;
 pub mod voice;
@@ -65,6 +66,10 @@ mod svg_motion;
 pub use svg_motion::*;
 #[cfg(target_arch = "wasm32")]
 mod element_motion;
+#[cfg(target_arch = "wasm32")]
+mod voice_wave;
+#[cfg(target_arch = "wasm32")]
+pub use voice_wave::*;
 #[cfg(target_arch = "wasm32")]
 mod text_motion;
 #[cfg(target_arch = "wasm32")]

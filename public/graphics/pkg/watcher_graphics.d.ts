@@ -6,6 +6,10 @@ export class ElementTimeline {
     free(): void;
     [Symbol.dispose](): void;
     active(value: boolean): void;
+    /**
+     * A soft waiting pulse on top of the opacity channel; a period of 0 ends it.
+     */
+    breathe(period: number, low: number): void;
     static create(root: HTMLElement): ElementTimeline;
     dispose(): void;
     frame(at: number): boolean;
@@ -152,6 +156,24 @@ export class TextTimeline {
     resize(): void;
 }
 
+export class VoiceWave {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * `root` holds `[data-wave-played]` (the accent layer) and bars marked
+     * `data-wave-bar="<index>"` in both layers.
+     */
+    static create(root: HTMLElement, position_ms: number, duration_ms: number): VoiceWave;
+    dispose(): void;
+    /**
+     * Returns whether another frame is needed.
+     */
+    frame(at: number): boolean;
+    reduced(value: boolean): void;
+    sync(position_ms: number, duration_ms: number, playing: boolean): void;
+}
+
 export function graphics_diagnostics(): void;
 
 export function level_panel_geometry(root: HTMLElement, width: number, height: number, level: string): void;
@@ -180,7 +202,9 @@ export interface InitOutput {
     readonly __wbg_productstate_free: (a: number, b: number) => void;
     readonly __wbg_svgtimeline_free: (a: number, b: number) => void;
     readonly __wbg_texttimeline_free: (a: number, b: number) => void;
+    readonly __wbg_voicewave_free: (a: number, b: number) => void;
     readonly elementtimeline_active: (a: number, b: number) => void;
+    readonly elementtimeline_breathe: (a: number, b: number, c: number) => void;
     readonly elementtimeline_create: (a: number) => number;
     readonly elementtimeline_dispose: (a: number) => void;
     readonly elementtimeline_frame: (a: number, b: number) => number;
@@ -263,12 +287,17 @@ export interface InitOutput {
     readonly texttimeline_frame: (a: number, b: number) => number;
     readonly texttimeline_reset_clock: (a: number) => void;
     readonly texttimeline_resize: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_2141: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2141_87: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2141_88: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_8019: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_8040: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_2145: (a: number, b: number, c: number) => void;
+    readonly voicewave_create: (a: number, b: number, c: number) => number;
+    readonly voicewave_dispose: (a: number) => void;
+    readonly voicewave_frame: (a: number, b: number) => number;
+    readonly voicewave_reduced: (a: number, b: number) => void;
+    readonly voicewave_sync: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2155: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2155_93: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2155_94: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8033: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_8054: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_2159: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

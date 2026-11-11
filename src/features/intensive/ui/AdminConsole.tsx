@@ -18,7 +18,8 @@ import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import type { GlyphName } from './chrome';
 import { GlassField, Glyph, ListGroup, ListItem } from './chrome';
-import { formatTime, Note, problemText, Tabs } from './parts';
+import { formatTime, Loading, Note, problemText, Tabs } from './parts';
+import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
 
 type Tab = 'walkers' | 'team';
@@ -188,7 +189,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   }, []);
 
   const byId = useMemo(() => new Map((directory ?? []).map(entry => [entry.userId, entry])), [directory]);
-  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Note center>Загружаю людей…</Note>}</View>;
+  if (!directory) return <View style={styles.stack}>{error ? <Note tone="error">{error}</Note> : <Loading center>Загружаю людей…</Loading>}</View>;
 
   const walkers = directory.filter(entry => !isStaff(entry)).sort(walkerOrder);
   const team = directory.filter(isStaff).sort((a, b) => Number(b.mainAdmin) - Number(a.mainAdmin) || a.name.localeCompare(b.name, 'ru'));
@@ -374,7 +375,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     {tabs}
     {search}
     {tab === 'walkers' && pickedRows.length ? bulk : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>{chips}</ScrollView>}
-    <Framed style={styles.table}>{head}{tableRows}</Framed>
+    <Appear key={tab}><Framed style={styles.table}>{head}{tableRows}</Framed></Appear>
     <View style={styles.footer}>{refresh}</View>
     {error ? <Note tone="error">{error}</Note> : null}
     {moveSheet}

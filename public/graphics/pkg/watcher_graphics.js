@@ -24,6 +24,14 @@ export class ElementTimeline {
         wasm.elementtimeline_active(this.__wbg_ptr, value);
     }
     /**
+     * A soft waiting pulse on top of the opacity channel; a period of 0 ends it.
+     * @param {number} period
+     * @param {number} low
+     */
+    breathe(period, low) {
+        wasm.elementtimeline_breathe(this.__wbg_ptr, period, low);
+    }
+    /**
      * @param {HTMLElement} root
      * @returns {ElementTimeline}
      */
@@ -871,6 +879,64 @@ export class TextTimeline {
     }
 }
 if (Symbol.dispose) TextTimeline.prototype[Symbol.dispose] = TextTimeline.prototype.free;
+
+export class VoiceWave {
+    static __wrap(ptr) {
+        const obj = Object.create(VoiceWave.prototype);
+        obj.__wbg_ptr = ptr;
+        VoiceWaveFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        VoiceWaveFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_voicewave_free(ptr, 0);
+    }
+    /**
+     * `root` holds `[data-wave-played]` (the accent layer) and bars marked
+     * `data-wave-bar="<index>"` in both layers.
+     * @param {HTMLElement} root
+     * @param {number} position_ms
+     * @param {number} duration_ms
+     * @returns {VoiceWave}
+     */
+    static create(root, position_ms, duration_ms) {
+        const ret = wasm.voicewave_create(addHeapObject(root), position_ms, duration_ms);
+        return VoiceWave.__wrap(ret);
+    }
+    dispose() {
+        wasm.voicewave_dispose(this.__wbg_ptr);
+    }
+    /**
+     * Returns whether another frame is needed.
+     * @param {number} at
+     * @returns {boolean}
+     */
+    frame(at) {
+        const ret = wasm.voicewave_frame(this.__wbg_ptr, at);
+        return ret !== 0;
+    }
+    /**
+     * @param {boolean} value
+     */
+    reduced(value) {
+        wasm.voicewave_reduced(this.__wbg_ptr, value);
+    }
+    /**
+     * @param {number} position_ms
+     * @param {number} duration_ms
+     * @param {boolean} playing
+     */
+    sync(position_ms, duration_ms, playing) {
+        wasm.voicewave_sync(this.__wbg_ptr, position_ms, duration_ms, playing);
+    }
+}
+if (Symbol.dispose) VoiceWave.prototype[Symbol.dispose] = VoiceWave.prototype.free;
 
 export function graphics_diagnostics() {
     wasm.graphics_diagnostics();
@@ -2044,7 +2110,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8040(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8054(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -3057,27 +3123,27 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2473, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8019);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8033);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000002: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUDevice")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2141);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2155);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUDeviceLostInfo")], shim_idx: 415, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2145);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2159);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000004: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("any")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2141_87);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2155_93);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000005: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("undefined")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2141_88);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2155_94);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000006: function(arg0) {
@@ -3139,18 +3205,18 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2145(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2145(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2159(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2159(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_8040(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8040(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_8054(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8054(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
-function __wasm_bindgen_func_elem_8019(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8033(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_8019(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_8033(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3161,10 +3227,10 @@ function __wasm_bindgen_func_elem_8019(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2141(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2155(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2141(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2155(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3175,10 +3241,10 @@ function __wasm_bindgen_func_elem_2141(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2141_87(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2155_93(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2141_87(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2155_93(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3189,10 +3255,10 @@ function __wasm_bindgen_func_elem_2141_87(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2141_88(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2155_94(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2141_88(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2155_94(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3307,6 +3373,9 @@ const SvgTimelineFinalization = (typeof FinalizationRegistry === 'undefined')
 const TextTimelineFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_texttimeline_free(ptr, 1));
+const VoiceWaveFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_voicewave_free(ptr, 1));
 
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);

@@ -8,6 +8,7 @@ import { BottomSheet } from '../motion/BottomSheet';
 import { Image } from 'expo-image';
 import { MatrixBackdrop } from '../motion/MatrixBackdrop';
 import { HintPanel } from '../motion/HintPanel';
+import { Leave } from '../motion/Leave';
 import { ProductToggle } from '../ProductToggle';
 import { productLevels, productStepNames } from '../content';
 import { useProduct } from '../state/ProductProvider';
@@ -52,6 +53,8 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
   const [filter, setFilter] = useState<DiaryFilter>({ ...emptyDiaryFilter }), [collection, setCollection] = useState(false);
   const [selected, setSelected] = useState<string | null>(null), [expanded, setExpanded] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null), [deleteId, setDeleteId] = useState<string | null>(null);
+  // The entry that is fading out; the data goes only once its gap has closed. `revive` brings it back if that fails.
+  const [leaving, setLeaving] = useState<string | null>(null), [revive, setRevive] = useState(0);
   const [sheetKind, setSheetKind] = useState<Sheet>(null), [editorSession, setEditorSession] = useState(0);
   const [material, setMaterial] = useState<Observation | null>(null);
   const [text, setText] = useState(''), [category, setCategory] = useState<DiaryCategory>('observation');
@@ -136,12 +139,16 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
     catch (problem) { setError(problem instanceof Error ? problem.message : 'Не удалось сохранить отметку.'); }
     finally { marking.current.delete(id); }
   }
-  async function remove() {
-    if (!deleteId || pending.current) return;
-    pending.current = true; setBusy(true); setError('');
-    try { await deleteObservation(deleteId); if (alive.current) { setDeleteId(null); setSheet(null); } }
-    catch (problem) { if (alive.current) setError(problem instanceof Error ? problem.message : 'Не удалось удалить запись.'); }
-    finally { pending.current = false; if (alive.current) setBusy(false); }
+  function remove() {
+    if (!deleteId || pending.current || leaving) return;
+    setError(''); setSheet(null); setLeaving(deleteId);
+  }
+  async function gone(id: string) {
+    if (pending.current) return;
+    pending.current = true; setBusy(true);
+    try { await deleteObservation(id); }
+    catch (problem) { if (alive.current) { setError(problem instanceof Error ? problem.message : 'Не удалось удалить запись.'); setRevive(value => value + 1); } }
+    finally { pending.current = false; if (alive.current) { setBusy(false); setLeaving(null); setDeleteId(null); } }
   }
   function startReport() { setCategory('dynamics'); setSheet(null); }
   async function recordAgain() { voice.player.pause(); await voice.discard(); setSheet(null); }
@@ -187,13 +194,13 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
             if (Platform.OS === 'web') (feedViewport.current as unknown as HTMLElement | null)?.style.setProperty('--diary-fade-top', `${Math.min(24, Math.max(0, offset))}px`);
             else setFeedScrolled(offset > 1);
           }} contentContainerStyle={[styles.feedContent, { paddingHorizontal: gutter, paddingBottom: Math.max(48, gutter) }, !entries.length && styles.emptyFeed]}
-          data={entries} extraData={{ selected, expanded, listenLater }} keyExtractor={record => record.id} initialNumToRender={5} maxToRenderPerBatch={5} windowSize={5}
+          data={entries} extraData={{ selected, expanded, listenLater, leaving, revive }} keyExtractor={record => record.id} initialNumToRender={5} maxToRenderPerBatch={5} windowSize={5}
           onViewableItemsChanged={trackVisibleRecords} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
           renderItem={({ item: entry, index }) => {
             const architecture = isArchitecture(entry), audio = architecture || entry.kind === 'audio', marked = listenLater.includes(entry.id);
             return <View testID={`diary-entry-${entry.id}`}>
               {index === 0 || diaryDay(entries[index - 1].createdAt) !== diaryDay(entry.createdAt) ? <View style={styles.dayRow}><View style={styles.dayLine} /><ProductText style={styles.day}>{dayLabel(entry.createdAt)}</ProductText><View style={styles.dayLine} /></View> : null}
-              <Panel style={[styles.card, {backgroundColor:"transparent"}]}><DiaryGlass shape="card" />
+              <Leave key={`${entry.id}-${revive}`} leaving={leaving === entry.id} onGone={() => { void gone(entry.id); }}><Panel style={[styles.card, {backgroundColor:"transparent"}]}><DiaryGlass shape="card" />
                 <View style={styles.cardMeta}><View style={styles.kindRow}><DiaryEntryIcon kind={architecture ? 'architecture' : entry.category} /><ProductText style={styles.kind}>{architecture ? 'АРХИТЕКТУРА' : entry.category === 'dynamics' ? 'ОТЧЁТ О ДИНАМИКЕ' : 'НАБЛЮДЕНИЕ'}</ProductText></View><ProductText style={styles.time}>{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</ProductText></View>
                 {architecture && <>
                   <View style={styles.stepRow}>
@@ -215,7 +222,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
                   {audio && <Pressable accessibilityRole="button" accessibilityLabel={marked ? 'Убрать из подборки к прослушиванию' : 'Добавить к прослушиванию'} accessibilityState={{ selected: marked }} onPress={() => { void mark(entry.id); }} style={styles.bookmark}><DiaryIcon name="bookmark" filled={marked} size={15} /><ProductText style={styles.bookmarkText}>{marked ? 'В ПОДБОРКЕ' : 'К ПРОСЛУШИВАНИЮ'}</ProductText></Pressable>}
                   <Pressable accessibilityRole="button" accessibilityLabel="Удалить запись" onPress={() => { setDeleteId(entry.id); open('delete'); }} style={styles.delete}><DiaryIcon name="trash" size={16} /></Pressable>
                 </View>
-              </Panel>
+              </Panel></Leave>
             </View>;
           }}
           ListEmptyComponent={<View style={styles.empty}><ProductText variant="title" style={styles.emptyTitle}>{!ready ? 'ОТКРЫВАЕМ ДНЕВНИК' : collection ? 'К ПРОСЛУШИВАНИЮ' : activeFilter || allEntries.length ? 'ЗДЕСЬ ПОКА НЕТ ЗАПИСЕЙ' : 'ЗАПИШИ СВОИ НАБЛЮДЕНИЯ'}</ProductText><ProductText style={styles.emptyCopy}>{collection ? 'ОТМЕЧАЙ ГОЛОСОВЫЕ ЗАПИСИ ЗАКЛАДКОЙ, ЧТОБЫ ВЕРНУТЬСЯ К НИМ.' : activeFilter || allEntries.length ? 'ИЗМЕНИ ФИЛЬТРЫ ИЛИ ДОБАВЬ НОВОЕ НАБЛЮДЕНИЕ.' : 'ИНСАЙТ. ОЩУЩЕНИЕ. МАЛЕНЬКИЙ СДВИГ.\nЗАПИШИ ТЕКСТОМ ИЛИ ГОЛОСОМ.'}</ProductText></View>}
@@ -276,7 +283,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
         </View> : undefined}>
 
             {sheetKind === 'filters' && <DiaryFilters value={filter} onApply={next => { setFilter(next); setSelected(null); setSheet(null); if (next.category === 'architecture' || next.level !== 'all') void changeSettings({ diaryShowArchitecture: true }); list.current?.scrollToOffset({ offset: 0, animated: false }); }} />}
-            {sheetKind === 'delete' && <View style={styles.sheetStack}><ProductText style={styles.bodyCopy}>Запись будет удалена с этого устройства{observations.some(entry => entry.id === deleteId) ? ', в том числе из ответов на задание' : ''}.</ProductText>{!!error && <ProductText accessibilityRole="alert" style={styles.error}>{error}</ProductText>}<ProductButton label={busy ? 'УДАЛЯЕМ…' : 'УДАЛИТЬ'} disabled={busy} onPress={() => { void remove(); }} /><ProductButton label="ОСТАВИТЬ" kind="ghost" disabled={busy} onPress={() => setSheet(null)} /></View>}
+            {sheetKind === 'delete' && <View style={styles.sheetStack}><ProductText style={styles.bodyCopy}>Запись будет удалена с этого устройства{observations.some(entry => entry.id === deleteId) ? ', в том числе из ответов на задание' : ''}.</ProductText>{!!error && <ProductText accessibilityRole="alert" style={styles.error}>{error}</ProductText>}<ProductButton label={busy ? 'УДАЛЯЕМ…' : 'УДАЛИТЬ'} disabled={busy} onPress={remove} /><ProductButton label="ОСТАВИТЬ" kind="ghost" disabled={busy} onPress={() => setSheet(null)} /></View>}
             {sheetKind === 'info' && <View style={styles.sheetStack}>
               <ProductText style={styles.bodyCopy}>Записи хранятся на этом устройстве. Ответы на задания тоже попадают в дневник. На других устройствах они не появятся автоматически.</ProductText>
               <ProductText style={styles.bodyCopy}>Если очистить данные {Platform.OS === 'web' ? 'сайта или браузера' : 'приложения'}, записи исчезнут.</ProductText>

@@ -29,6 +29,7 @@ import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
 import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
 import { RoleMark } from './RoleMark';
+import { Breathe } from '../../product/motion/Breathe';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -526,7 +527,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
           onScroll={onScroll} scrollEventThrottle={32} onContentSizeChange={onContentSize}
           onLayout={event => { metrics.current.height = event.nativeEvent.layout.height; }}
           keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
-          {phase === 'loading' ? <ProductText maxFontSize={10} style={styles.loading}>{error || 'ОТКРЫВАЮ ПЕРЕПИСКУ…'}</ProductText> : null}
+          {phase === 'loading' ? error ? <ProductText maxFontSize={10} style={styles.loading}>{error}</ProductText> : <Breathe><ProductText maxFontSize={10} style={styles.loading}>ОТКРЫВАЮ ПЕРЕПИСКУ…</ProductText></Breathe> : null}
           {phase === 'no-key' ? <Plate glyph="key" title="Ждём ключ переписки">Он придёт, когда кто-то из участников откроет чат. Обычно это пара минут.</Plate> : null}
           {empty && reportsOnly ? <Plate glyph="lock" title="Отчётов пока нет">Отчёт о динамике видят только участники переписки.</Plate> : null}
           {empty && !reportsOnly ? <Plate glyph="lock" title="Сообщений пока нет">{say('Напиши первым.', 'Напишите первым.')} Переписку видят только её участники.</Plate> : null}
@@ -716,9 +717,9 @@ function LoadedVoice({ voice, levels, source }: { voice: VoiceMeta; levels: numb
         disabled={!problem && !player.loaded}
         onPress={() => { if (problem) { started.current = false; setUri(null); setError(''); setAttempt(value => value + 1); } else void player.toggle(); }} style={styles.play}>
         <DiaryGlass /><PanelBorder />
-        {problem || !player.loaded ? <ProductText color={colors.text}>{problem ? '↻' : '···'}</ProductText> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
+        {problem ? <ProductText color={colors.text}>↻</ProductText> : !player.loaded ? <Breathe><ProductText color={colors.text}>···</ProductText></Breathe> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
       </Pressable>
-      <DiaryWaveform waveform={levels} durationMs={voice.durationMs} positionMs={player.positionMs} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
+      <DiaryWaveform waveform={levels} durationMs={voice.durationMs} positionMs={player.positionMs} playing={player.playing} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
     </View>
     {problem ? <ProductText accessibilityRole="alert" maxFontSize={10} style={styles.voiceProblem}>{problem}</ProductText> : null}
   </View>;

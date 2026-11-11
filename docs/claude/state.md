@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-09. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-11. Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -402,6 +402,16 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
+- Art's fixes of 11.11 (`claude/art-fixes-1111-569d08`, shipped 2026-11-11): the diary's
+  daily report plate folds and remembers it (`settings.diaryReportCollapsed`; shared component
+  `src/features/product/diary/DiaryReportPrompt.tsx`, meant for reuse by the Intensive diary);
+  in recorded tasks the scroll cue sits centered at the very bottom under the step selector,
+  never beside it (Art: «он не должен быть сбоку»), hidden while the selector is open; no
+  marquee in tasks; levels: 2 plates, «Водительство» is now «ИНТЕНСИВ» (keeps the `guidance`
+  id and art) and opens `/intensive`, the old Intensive plate is gone; both plates start open
+  when they fit the screen height (Art), otherwise only the chosen one; Step 1 imprints have no
+  arrow marks (`stepOneInserts.ts`, reading assets regenerated, engine rebuilt); Step 5 «хотя
+  бы 3 — 5 минут»; Step 6 titles without numbers, no comma on page 9.
 - App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,
   выкладывай»): an exit-sign runner as a solid black pictogram goes into a lit doorway; the
   code rain is all around outside; the back foot still outside gets a light rim. Files
@@ -453,6 +463,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   2026-10-31 at the end of block 2 page 08.
 
 ## Open decisions and ideas (nothing promised)
+- Bold text is harsh on the eyes (Art, 11.11): 2–3 variants shown as screenshots (Матрица,
+  Тишина); implement only the one Art picks. Disket Mono has Regular and Bold only.
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.
 - Never enable GitHub Pages on another `code-of-stalker` repo: same origin means full access
   to diaries. (Hence no prototypes site.)

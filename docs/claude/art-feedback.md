@@ -128,3 +128,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 ## App icon (2026-11-07)
 - The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).
 - A stick figure of thin capsules with a black outline was rejected; the runner is a bold pictogram like the exit sign (broad shoulders, thick limbs, straight cuts), solid, no dark outline.
+
+## UI fixes (2026-11-11)
+- A scroll cue never sits beside a control: in tasks it is centered at the very bottom, under the step selector («он не должен быть сбоку»).
+- If the screen height allows, both level plates are open at once.
+- Bold text is harsh on the eyes; how to soften it waits for Art's pick among variants.

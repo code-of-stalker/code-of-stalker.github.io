@@ -12,6 +12,7 @@ export type ProductSettings = {
   testUnlockAll?: boolean;
   diaryShowArchitecture?: boolean;
   diaryNewestFirst?: boolean;
+  diaryReportCollapsed?: boolean;
   lastBackupAt?: number;
 };
 export type PracticeStage = 0 | 1 | 2 | 3 | 4;
@@ -163,6 +164,7 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
       (settings.testUnlockAll !== undefined && typeof settings.testUnlockAll !== 'boolean') ||
       (settings.diaryShowArchitecture !== undefined && typeof settings.diaryShowArchitecture !== 'boolean') ||
       (settings.diaryNewestFirst !== undefined && typeof settings.diaryNewestFirst !== 'boolean') ||
+      (settings.diaryReportCollapsed !== undefined && typeof settings.diaryReportCollapsed !== 'boolean') ||
       (settings.lastBackupAt !== undefined && !whole(settings.lastBackupAt, 1)) ||
       (progress.selectedLevel !== null && !validLevel(progress.selectedLevel)) ||
       !whole(progress.step, 1, 7) || !whole(progress.questionIndex, 0, 999) ||

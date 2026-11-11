@@ -132,4 +132,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A scroll cue never sits beside a control: in tasks it is centered at the very bottom, under the step selector («он не должен быть сбоку»).
 - If the screen height allows, both level plates are open at once.
 - No arrow beside the plus on the report plate («тупо»): it folds by a drag up and unfolds by a drag down.
-- Bold body text is harsh on the eyes. Art chose A + C: soft bold (dimmer, letter-spaced) and the plain text beside it quieter; never full-strength bold body copy.
+- Bold body text is harsh on the eyes. Art chose A + C: soft bold (dimmer, letter-spaced) and the plain text beside it quieter; never full-strength bold body copy. Art's numbers: plain text 74%, emphasis 90%, on the whole site, not only tasks.

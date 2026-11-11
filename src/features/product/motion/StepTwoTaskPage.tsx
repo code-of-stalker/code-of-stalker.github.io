@@ -4,7 +4,8 @@ import { secondStepClosing, secondStepTasks } from '../content';
 import { typeset } from '../typeset';
 import { ProductText } from '../ui';
 import { StepSignature } from './StepSignature';
-import { fonts } from '../theme';
+import { softBold } from '../theme';
+import { useThemeColors } from '../ProductTheme';
 import { Art } from './Art';
 import { ContentSwap } from './ContentSwap';
 import { ScrollGate } from './ScrollGate';
@@ -19,7 +20,7 @@ export function StepTwoTaskPage({ part, active, enabled, width, reducedMotion, s
   onBackReady(value: (() => void) | null): void;
 }) {
   const [position, setPosition] = useState({ index: part === 4 && startAtEnd ? secondStepClosing.length - 1 : 0, end: startAtEnd }), [moving, setMoving] = useState(true), [finishing, setFinishing] = useState(false);
-  const index = position.index;
+  const index = position.index, colors = useThemeColors();
   const lock = useRef(true), saving = useRef(false);
   const pages = part === 4 ? secondStepClosing : [secondStepTasks[part - 1]];
   const finishMotion = useCallback((value: number) => { if (value === index) { lock.current = false; setMoving(false); } }, [index]);
@@ -55,7 +56,7 @@ export function StepTwoTaskPage({ part, active, enabled, width, reducedMotion, s
           contentStyle={styles.content}>
           {part === 4 && <ProductText variant="label" style={styles.count}>{value + 1} / {pages.length}</ProductText>}
           {!!block.title && <ProductText variant="title" style={styles.title}>{typeset(block.title)}</ProductText>}
-          <ProductText testID="step-two-task-copy" style={[styles.text, { fontSize, lineHeight: fontSize + 9 }, block.art === 'body-senses' && styles.emphasis]}>{typeset(block.text)}</ProductText>
+          <ProductText testID="step-two-task-copy" style={[styles.text, { fontSize, lineHeight: fontSize + 9 }, block.art === 'body-senses' && [styles.emphasis, softBold(colors, 24)]]}>{typeset(block.text)}</ProductText>
           <View style={[styles.art, { paddingTop: 24 + extra, paddingBottom: 12 + extra }]} pointerEvents="none"><Art kind={block.art} webScene={block.art === 'author-intention' ? 'hero-labyrinth' : undefined} {...art(block.art)} active={playing} reducedMotion={reducedMotion} /></View>
           {part === 4 && value === pages.length - 1 && <StepSignature active={playing} reducedMotion={reducedMotion} style={styles.signature} />}
         </ScrollGate>
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, paddingTop: 18, paddingBottom: 12 },
   count: { fontSize: 9, lineHeight: 13, letterSpacing: 1.8, marginBottom: 16 },
   title: { fontSize: 21, lineHeight: 29, marginBottom: 20, textTransform: 'uppercase' },
-  text: { textTransform: 'uppercase' }, emphasis: { fontFamily: fonts.bodyBold, fontSize: 24, lineHeight: 34 },
+  text: { textTransform: 'uppercase' }, emphasis: { fontSize: 24, lineHeight: 34 },
   art: { flexGrow: 1, minHeight: 0, justifyContent: 'center', paddingTop: 24, paddingBottom: 12 },
   signature: { marginTop: 12 },
 });

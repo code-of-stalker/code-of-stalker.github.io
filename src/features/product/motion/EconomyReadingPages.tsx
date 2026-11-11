@@ -52,7 +52,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
     <ContentSwap value={index} fill reducedMotion={reducedMotion} duration={520} exitDuration={220} onComplete={finish}
       render={value => {
         const page = pages[value], kind = page.art, selected = value === index, playing = selected && active;
-        const plain = page.bold?.length || page.spoken?.length || page.statement || page.conclusion ? quiet : textStyle;
+        const plain = page.bold?.length || page.spoken?.length || page.statement || page.emphasis || page.conclusion ? quiet : textStyle;
         const wider = kind === 'identity-imprints' ? 1.15 : 1;
         const artWidth = Math.max(1, width - 16) * wider, artHeight = step >= 4 ? artWidth * 2 / 3 : kind ? (step === 3 ? artWidth * (kind === 'thought-loop' ? 210 / 288 : 192 / 320) : kind === 'dreamer' ? artWidth * 0.92 : artWidth * (kind === 'book' || kind === 'dream-world' || kind === 'dream-wake' ? 206 : kind === 'cells' ? 156 : kind === 'identity-imprints' || kind === 'lived-paths' ? 176 : kind.startsWith('dream') ? 136 : 104) / (kind === 'reflections' || kind === 'single-hero' || kind === 'lived-paths' ? 248 : 288)) : 1;
         return <View testID={`reading-page-${page.id}`} accessibilityElementsHidden={!selected} importantForAccessibility={selected ? 'auto' : 'no-hide-descendants'} aria-hidden={!selected} style={styles.fill}>
@@ -70,7 +70,7 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
               {page.spoken?.map(text => <ProductText key={text} style={strong}>{typeset(text)}</ProductText>)}
               {page.after?.map(text => <ProductText key={text} style={plain}>{typeset(text)}</ProductText>)}
               {page.statement && <ProductText style={strong}>{typeset(page.statement)}</ProductText>}
-              {page.emphasis && <DreamRealityText text={page.emphasis} style={textStyle} active={playing} reducedMotion={reducedMotion} />}
+              {page.emphasis && <DreamRealityText text={page.emphasis} style={strong} active={playing} reducedMotion={reducedMotion} />}
               {page.conclusion && <DreamConclusion text={page.conclusion} style={strong} active={playing} reducedMotion={reducedMotion} />}
             </View>
             {page.firstStepConclusion && <StepOneConclusion active={playing} reducedMotion={reducedMotion} />}

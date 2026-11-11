@@ -84,5 +84,5 @@ export function fade(hex: string, alpha: number) {
  * Use `quietText` only next to an emphasised run, never on a page without one.
  */
 export const softBold = (colors: ProductColors, fontSize: number) =>
-  ({ fontFamily: fonts.bodyBold, color: fade(colors.text, 0.78), letterSpacing: fontSize * 0.06 });
-export const quietText = (colors: ProductColors) => ({ color: fade(colors.text, 0.62) });
+  ({ fontFamily: fonts.bodyBold, color: fade(colors.text, 0.9), letterSpacing: fontSize * 0.06 });
+export const quietText = (colors: ProductColors) => ({ color: fade(colors.text, 0.74) });

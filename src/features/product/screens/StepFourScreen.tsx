@@ -50,7 +50,7 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onNextStep, onClo
   const [reviewing, setReviewing] = useState(false), [recordingCue, setRecordingCue] = useState<ScrollCueState | null>(null);
   const { gutter } = productSpacing(viewport.width), { inset } = useProductSpacing();
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
-  const sceneHeight = Math.max(1, viewport.height - gutter - (questions ? gutter : bottomInset));
+  const sceneHeight = Math.max(1, viewport.height - gutter - bottomInset);
   // Larger screens leave more air between the hero and the panel below it.
   // An illustration spans the plate below it at every size; its height follows the width.
   const { air } = useProductLayout(), heroWidth = Math.max(1, viewport.width - gutter * 2), hero = { width: heroWidth, height: heroWidth * 2 / 3 };
@@ -101,10 +101,10 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onNextStep, onClo
   const close = () => { flush(); onClose(); };
   const lastPage = page.index >= page.count - 1;
   const questionCue = <ScrollCue visible={!!recordingCue?.visible && !open && !scanning} progress={recordingCue?.progress ?? 0}
-    label={recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ'} reducedMotion={reducedMotion} style={{ left: 0, right: 0, bottom: 5 }} />;
+    label={recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ'} reducedMotion={reducedMotion} style={{ left: gutter + 28, right: gutter + 28 }} />;
   return <ProductScreen scroll={false} contentStyle={styles.fill} layout="reading">
     <View testID="step-four-reading" style={styles.fill} onLayout={event => setViewport(event.nativeEvent.layout)}>
-      <View style={[styles.fill, { padding: gutter, paddingBottom: questions ? gutter : bottomInset }]}>
+      <View style={[styles.fill, { padding: gutter, paddingBottom: bottomInset }]}>
         <PracticeEntryTransition showTask={questions} scanning={scanning} height={sceneHeight} reducedMotion={reducedMotion}
           onComplete={() => setScanning(false)} intro={<ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
           reducedMotion={reducedMotion} enabled={!open && !questions} onClose={close} onExpandedChange={setExpanded}
@@ -145,11 +145,11 @@ export function StepFourScreen({ onSelectStep, onPreviousStep, onNextStep, onClo
           </View>
           <View pointerEvents={reviewing ? 'none' : 'auto'} style={{ opacity: reviewing ? 0 : 1, zIndex: 20 }}>
             <TaskStepSelector step={4} availableAt={availableAt} testUnlockAll={testUnlockAll} open={open} onToggle={() => setOpen(value => !value)}
-              onSelect={select} reducedMotion={reducedMotion} inset={inset} maxHeight={Math.max(120, sceneHeight - 56)} trailing={questionCue} />
+              onSelect={select} reducedMotion={reducedMotion} inset={inset} maxHeight={Math.max(120, sceneHeight - 56)} />
           </View>
         </PracticeEntryTransition>
       </View>
-      {!questions && <ScrollCue visible={ready && !open && (!lastPage || reading.block === 0 || !!onNextStep || progress < 0)} progress={progress} reducedMotion={reducedMotion}
+      {questions ? questionCue : <ScrollCue visible={ready && !open && (!lastPage || reading.block === 0 || !!onNextStep || progress < 0)} progress={progress} reducedMotion={reducedMotion}
         label={progress < 0 ? page.index > 0 || reading.block === 1 ? 'ПРОКРУТИ НАЗАД' : 'ПРОКРУТИ К ШАГУ 3' : lastPage ? reading.block === 0 ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ К ШАГУ 5' : 'ПРОКРУТИ ДАЛЬШЕ'}
         style={{ left: gutter + 28, right: gutter + 28 }} />}
     </View>

@@ -100,7 +100,8 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   }, []);
   const deadline = availableAt ?? 0, coolingDown = currentStep === 2 && deadline > now && !testUnlockAll;
   const { gutter } = productSpacing(viewport.width);
-  const bottomInset = stage > 0 ? gutter : Math.max(gutter, scrollCueFooterInset);
+  // Art 2026-11-11: the cue sits centered at the very bottom on every stage, under the step selector.
+  const bottomInset = Math.max(gutter, scrollCueFooterInset);
   const sceneHeight = Math.max(1, viewport.height - gutter - bottomInset);
   const { inset } = useProductSpacing();
   const illustrationWidth = Math.max(1, viewport.width - gutter * 2);
@@ -197,10 +198,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
     onClose={() => setSelectorOpen(false)} onSelect={value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); }} />;
   const explanationStage = Math.max(1, Math.min(3, stage));
   const hasNextReadingPage = stage === 0 && economyPage.index < economyPage.count - 1;
-  const cue = <ScrollCue visible={stage === questionStage ? !!recordingCue?.visible && !changing && !selectorOpen : ready && canNavigate && (canAdvance || hasNextReadingPage || progress < 0)}
+  const cue = <ScrollCue visible={stage === questionStage ? !!recordingCue?.visible && !changing && !selectorOpen : ready && canNavigate && !selectorOpen && (canAdvance || hasNextReadingPage || progress < 0)}
     progress={stage === questionStage ? recordingCue?.progress ?? 0 : progress} reducedMotion={reducedMotion}
     label={stage === questionStage ? recordingCue?.label ?? 'ПРОКРУТИ ДАЛЬШЕ' : progress < 0 ? stage === 0 && economyPage.index > 0 ? 'ПРОКРУТИ НАЗАД' : stage === 0 ? readingChapter === 1 ? 'ПРОКРУТИ К КНИГЕ' : currentStep === 2 ? 'ПРОКРУТИ К ШАГУ 1' : 'ПРОКРУТИ К ВЫБОРУ УРОВНЯ' : 'ПРОКРУТИ НАЗАД' : hasNextReadingPage ? 'ПРОКРУТИ ДАЛЬШЕ' : currentStep === 2 ? 'ПРОКРУТИ К ПРОДОЛЖЕНИЮ' : stage === 3 ? 'ПРОКРУТИ К ЗАПИСИ' : 'ПРОКРУТИ ДАЛЬШЕ'}
-    style={stage > 0 ? { left: 0, right: 0, bottom: 5 } : { left: gutter + 28, right: gutter + 28 }} />;
+    style={{ left: gutter + 28, right: gutter + 28 }} />;
 
   return <>
     {motion.clock}
@@ -286,10 +287,10 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
             </View>
             <View pointerEvents={reviewing ? 'none' : 'auto'} style={{ opacity: reviewing ? 0 : 1, zIndex: 20 }}><TaskStepSelector step={currentStep} availableAt={availableAt} testUnlockAll={testUnlockAll} open={selectorOpen} onToggle={() => setSelectorOpen(value => !value)}
               onSelect={value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); }} reducedMotion={reducedMotion} inset={inset}
-              maxHeight={Math.max(120, sceneHeight - 56)} trailing={cue} /></View>
+              maxHeight={Math.max(120, sceneHeight - 56)} /></View>
           </PracticeEntryTransition>
         </View>
-        {stage === 0 && cue}
+        {cue}
       </View>
     </ProductScreen>
 

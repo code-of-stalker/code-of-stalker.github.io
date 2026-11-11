@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-11. Step 7 page 10 «Дом в разрезе» (`graphics/day-house`, 271.9 s) reworked after Art's notes on branch `claude/step-7-dynamic-0682ec`, shown in Матрица, waiting for Art's notes. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-12. Step 7 page 10 «Дом в разрезе» (`graphics/day-house`, 305.4 s) round 4 after Art's round-3 notes on branch `claude/step-7-dynamic-0682ec` (commit 3ca0c5b), shown in Матрица, waiting for Art's notes. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -317,9 +317,17 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   first-person shots in the tram, the shop and at the desk (typed page on the screen); bread at
   his side; a proper child; an evening street jog; finale: the rings sync and strike a chord,
   the line of his day lights its places, the sphere grows into a globe over the house and
-  meets its reflection, dawn. Beats in the crate README. build.ps1 (31 tests), tsc, lint,
-  export:web clean. Shown in Матрица (`output/prototypes/day-house/index.html`); waiting for
-  Art's notes; other themes only after his OK; no push without his «пушим».
+  meets its reflection, dawn. Round 3 notes (2026-11-11, see art-feedback.md) led to round 4,
+  loop 305.4 s (commit 3ca0c5b): rings steady up close, the mug to his mouth, a smooth ease
+  out of the tram POV, no walk into the sign, the phone by his hand, no see-through laptop, no
+  camera jerk on stops (`steady()` ignores cuts); the jog became a bicycle ride (the bike
+  leans on the lamp's post all day; out right, back in from the left, leaned on the same
+  post); finale 58 s (house sleeps window by window, the rings return one by one, chord,
+  the line of his day with a glowing echo of him at each place, globe, dawn). Beats in the
+  crate README. build.ps1 (31 tests), tsc, lint, export:web, app at 1440/390 clean. Shown in
+  Матрица (`output/prototypes/day-house/index.html`, storyboard
+  `output/prototypes/day-house/storyboard-round4.jpg`); waiting for Art's notes; other
+  themes only after his OK; no push without his «пушим».
 - Next: Art's notes on page 10. A stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)

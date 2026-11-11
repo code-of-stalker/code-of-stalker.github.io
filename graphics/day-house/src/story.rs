@@ -1,29 +1,31 @@
 //! Page 10's loop as numbers: one day of one man through the house.
 //!
-//! 0–3 s     the house on the lacquer table at dawn; the camera comes in to
+//! Story seconds (the beats in the prototype follow them):
+//! 0–6       the house on the lacquer table at dawn; the camera comes in to
 //!           his kitchen;
-//! 3–15 s    the argument at the table: his second ring (breath, heart)
+//! 6–19      the argument at the table: his second ring (breath, heart)
 //!           trembles; she pours him tea, a hand on his shoulder; it steadies;
-//! 15–30 s   along the corridor to the lift and down;
-//! 30–45 s   the street: the kerb, he crosses, the tram brakes and honks,
-//!           his first ring (the world) flashes and holds; the ride;
-//! 45–75 s   the shop: the queue, the coin slips, he picks it up, pays,
-//!           the loaf;
-//! 75–95 s   home with the bread; the child runs to him with her cup and
-//!           trips; the third ring (the act) flashes, the world slows, he
-//!           catches it;
-//! 95–120 s  up the inner stair to his desk: deadlines, the phone, his
-//!           temples;
-//! 120–158 s the roof at sunset: a run round the track, then the sun;
-//! 158–170 s night: a line of light draws his day through the house, a bead
+//! 19–39     along the corridor to the lift and down;
+//! 39–62     the street: the kerb, the tram brakes and honks, his first ring
+//!           (the world) flashes; he boards and rides along the house;
+//! 62–95     the shop: the queue, the coin slips, he picks it up, pays, the
+//!           loaf;
+//! 95–128    home with the bread: along the sidewalk to his door, up in the
+//!           lift, the loaf on the kitchen table, to the child's room;
+//! 128–137   the child trips with her cup; the world slows, the third ring
+//!           (the step) flashes, he catches it;
+//! 137–165   up the inner stair to his desk: deadlines, his breath;
+//! 165–187   through the bedroom to the stairwell, the lift to the roof;
+//! 187–197   the roof at sunset: a run round the track;
+//! 197–209   night: a line of light draws his day through the house, a bead
 //!           at each of the six places; the three rings strike together;
-//! 170–180 s the walls melt into one space, the table's lacquer takes the
+//! 209–219   the walls melt into one space, the table's lacquer takes the
 //!           house; dawn again.
 use crate::cast::{Cast, Held, Keys, HERO};
 use crate::house::{cell, lamp_at};
 use crate::math::{monotone, pulse, smooth, v3, window, window_integral, V3, Y};
 use crate::props;
-use crate::{Chapter, LAMPS, LOOP, PATH_POINTS};
+use crate::{Chapter, DAY_EXTRA, LAMPS, LOOP, PATH_POINTS};
 use std::f32::consts::{PI, TAU};
 
 pub use crate::cast::Figure;
@@ -31,7 +33,12 @@ use crate::house::Prim;
 
 /// Reduced motion holds this moment: the line of his day drawn, the three
 /// rings striking together.
-pub const STILL: f32 = 169.6;
+pub const STILL: f32 = late(169.6);
+
+/// A moment of the evening or the finale, given as in the first cut.
+const fn late(t: f32) -> f32 {
+    t + DAY_EXTRA
+}
 
 /// One breath: in for `INHALE` s, out for the rest of `BREATH`.
 pub const BREATH: f32 = 4.0;
@@ -43,7 +50,7 @@ pub const BEADS: usize = 6;
 pub const ROUTE: usize = PATH_POINTS - BEADS;
 
 /// The three rings strike together here.
-pub const CHORD: f32 = 168.6;
+pub const CHORD: f32 = late(168.6);
 
 /// The slow fall of the cup: story time runs `1 - SLOW` as fast for
 /// `SLOW_SPAN` round the catch, a little faster elsewhere to keep the loop.
@@ -223,7 +230,8 @@ impl Story {
         let moment = self.cast.moment(s, b);
         let held: Held = moment.held;
         let mut figures = moment.figures;
-        let fade = (1.0 - smooth(170.0, 173.0, s)) + smooth(176.5, 179.5, s);
+        let fade =
+            (1.0 - smooth(late(170.0), late(173.0), s)) + smooth(late(176.5), late(179.5), s);
         for (i, f) in figures.iter_mut().enumerate() {
             if i != HERO {
                 f.seen *= fade.min(1.0);
@@ -250,22 +258,28 @@ impl Story {
         let up = right.cross(forward);
         let focus = (look - eye).length().max(0.3);
 
-        // The day: dawn, noon, the golden hour, sunset, night, dawn.
-        let u = if s < 158.0 {
-            (s / 158.0).clamp(0.0, 1.0)
+        // The day: dawn, noon, the golden hour, sunset, night, dawn. The
+        // evening sun sets low in front, a little left, so the machine
+        // room's shadow falls behind the roof, not over its track.
+        let u = if s < late(158.0) {
+            (s / late(158.0)).clamp(0.0, 1.0)
         } else {
-            1.0 - smooth(162.0, 176.0, s)
+            1.0 - smooth(late(162.0), late(176.0), s)
         };
-        let az = 1.15 - 2.4 * u;
+        let az = 1.15 - 1.6 * u;
         let el = 0.05 + 0.85 * (PI * u).sin();
         let sun = v3(az.sin() * el.cos(), el.sin(), az.cos() * el.cos());
-        let sun_amount =
-            smooth(-2.0, 8.0, s) * (1.0 - smooth(150.0, 159.0, s)) + 0.25 * smooth(174.0, 180.0, s);
-        let sky = (0.25 + 0.75 * smooth(0.0, 12.0, s)) * (1.0 - 0.85 * smooth(150.0, 162.0, s))
-            + 0.2 * smooth(172.0, 180.0, s);
-        let golden = window(s, 120.0, 140.0, 156.0, 162.0);
-        let night = window(s, 152.0, 162.0, 174.0, 180.0);
-        let gloss = window(s, 168.0, 172.0, 177.0, 180.0);
+        let sun_amount = smooth(-2.0, 8.0, s) * (1.0 - smooth(late(150.0), late(159.0), s))
+            + 0.25 * smooth(late(174.0), late(180.0), s);
+        let sky = (0.25 + 0.75 * smooth(0.0, 12.0, s))
+            * (1.0 - 0.85 * smooth(late(150.0), late(162.0), s))
+            + 0.2 * smooth(late(172.0), late(180.0), s);
+        // The low sun is warm twice: in the morning (and again as the loop
+        // comes back to it) and in the golden hour.
+        let morning = 0.55 * (1.0 - smooth(6.0, 22.0, s) + smooth(late(175.0), late(180.0), s));
+        let golden = window(s, late(120.0), late(140.0), late(156.0), late(162.0)).max(morning);
+        let night = window(s, late(152.0), late(162.0), late(174.0), late(180.0));
+        let gloss = window(s, late(168.0), late(172.0), late(177.0), late(180.0));
         let day = [sky, golden, night, gloss];
         let lamps = lamps(s, &k);
 
@@ -278,10 +292,12 @@ impl Story {
         let catch = pulse(s - (k.catch - 0.55));
         let chord = pulse(s - CHORD) + 0.4 * pulse(s - CHORD - 0.9);
         let run = window(s, k.run, k.run + 1.0, k.run_end, k.run_end + 1.0);
-        let lit = 0.35 + 0.25 * run + 0.4 * window(s, 158.0, 160.0, 172.0, 175.0);
+        let lit =
+            0.5 + 0.2 * run + 0.3 * window(s, late(158.0), late(160.0), late(172.0), late(175.0));
         let ring1 = [1.5, 0.05, lit, 0.0];
         let ring1b = [
-            honk.max(coin * 0.6) + chord,
+            // The first ring answers the world: the tram's horn.
+            honk + chord,
             (TAU * s / 40.0).rem_euclid(TAU),
             1.0,
             0.0,
@@ -290,11 +306,17 @@ impl Story {
         let ring2b = [hb * 0.5 + chord, b, 1.0 + hurried, 0.0];
         let ring3 = [0.75, 0.02, lit, 0.0];
         let track = self.cast.plans[HERO].act_at(s).walk.track(s);
-        let ring3b = [catch + chord, (-track / 0.75).rem_euclid(TAU), 1.0, 0.0];
+        // The step's ring answers what falls: the coin, the cup.
+        let ring3b = [
+            catch.max(coin) + chord,
+            (-track / 0.75).rem_euclid(TAU),
+            1.0,
+            0.0,
+        ];
         let events = [
+            (3.2, 2.0),
             (k.honk, 1.0),
-            (k.queue + 2.9, 1.0),
-            (k.sip, 2.0),
+            (k.queue + 2.9, 3.0),
             (k.catch - 0.55, 3.0),
             (k.desk + 6.0, 2.0),
         ];
@@ -309,9 +331,20 @@ impl Story {
         let rings_seen = 1.0 - 0.5 * window(s, 0.0, 0.1, 2.0, 3.0);
 
         // The line of his day.
-        let drawn = smooth(158.5, 167.5, s) * (1.0 - smooth(176.0, 179.0, s));
-        let path = [drawn, 0.6 + 0.6 * chord, smooth(159.0, 168.0, s), 0.0];
-        let melt = [window(s, 170.0, 172.5, 175.5, 178.5), gloss, 0.0, 0.0];
+        let drawn =
+            smooth(late(158.5), late(167.5), s) * (1.0 - smooth(late(176.0), late(179.0), s));
+        let path = [
+            drawn,
+            0.6 + 0.6 * chord,
+            smooth(late(159.0), late(168.0), s),
+            0.0,
+        ];
+        let melt = [
+            window(s, late(170.0), late(174.5), late(176.5), late(179.3)),
+            gloss,
+            0.0,
+            0.0,
+        ];
 
         let desk_on = window(s, k.desk - 2.0, k.desk, k.desk + 8.5, k.desk + 10.5);
         let sparks = [
@@ -404,7 +437,7 @@ impl Story {
 /// Each cell's lamp, 0 … 1.
 fn lamps(s: f32, k: &Keys) -> [f32; LAMPS] {
     let mut l = [0.0; LAMPS];
-    let evening = smooth(145.0, 155.0, s) * (1.0 - smooth(174.0, 179.0, s));
+    let evening = smooth(late(145.0), late(155.0), s) * (1.0 - smooth(late(174.0), late(179.0), s));
     let dawn = 1.0 - smooth(4.0, 9.0, s);
     for floor in 0..crate::house::FLOORS {
         l[cell::room(0, floor)] = 0.55;
@@ -422,8 +455,10 @@ fn lamps(s: f32, k: &Keys) -> [f32; LAMPS] {
     l[cell::room(1, 4)] = 0.4 * evening;
     l[cell::room(2, 4)] =
         window(s, k.desk - 3.0, k.desk - 1.0, k.desk + 9.0, k.desk + 12.0).max(evening);
-    l[cell::ROOF] = smooth(150.0, 156.0, s) * (1.0 - smooth(174.0, 179.0, s));
-    let street = dawn.max(smooth(150.0, 154.0, s) * (1.0 - smooth(176.0, 179.5, s)));
+    l[cell::ROOF] =
+        smooth(late(150.0), late(156.0), s) * (1.0 - smooth(late(174.0), late(179.0), s));
+    let street =
+        dawn.max(smooth(late(150.0), late(154.0), s) * (1.0 - smooth(late(176.0), late(179.5), s)));
     for c in [cell::STREET_L, cell::STREET_M, cell::STREET_R] {
         l[c] = street;
     }
@@ -459,8 +494,9 @@ fn shots(k: &Keys) -> Vec<Key> {
         ),
         // Out to the lift and down with it.
         follow(k.rise + 1.6, v3(1.6, 2.0, 7.0), v3(-0.6, 1.0, -1.0), 2.1),
-        follow(k.press, v3(2.4, 1.8, 7.5), v3(-0.3, 1.1, -0.5), 2.1),
-        follow(k.lift0 + 4.0, v3(2.6, 1.6, 8.0), v3(0.0, 1.1, 0.0), 2.1),
+        follow(k.press, v3(1.6, 1.7, 6.2), v3(-0.3, 1.1, -0.5), 2.1),
+        // Down in the cage, its front posts framing him.
+        follow(k.lift0 + 4.0, v3(0.7, 1.4, 5.4), v3(0.0, 1.1, 0.0), 2.1),
         // The street: the kerb, then wide for the tram.
         follow(k.kerb, v3(1.5, 2.0, 8.5), v3(0.0, 1.0, 0.0), 2.0),
         key(
@@ -500,10 +536,11 @@ fn shots(k: &Keys) -> Vec<Key> {
             0.005,
             0.0,
         ),
+        // He rises with the coin: the camera draws back to hold all of him.
         key(
             k.queue + 5.6,
-            v3(-2.15, 1.25, -0.75),
-            v3(-2.9, 0.75, -2.25),
+            v3(-1.4, 1.6, 0.6),
+            v3(-2.9, 1.05, -2.3),
             2.0,
             0.005,
             0.0,
@@ -522,8 +559,10 @@ fn shots(k: &Keys) -> Vec<Key> {
             v3(0.0, 1.0, -0.5),
             2.0,
         ),
-        // Home: a cut to the landing on his floor.
-        follow(k.home + 0.05, v3(2.4, 1.8, 7.5), v3(0.5, 1.0, -0.5), 2.1),
+        // Home: along the sidewalk to his door, then up in the lift.
+        follow(k.home - 2.0, v3(2.0, 1.9, 7.8), v3(-0.3, 1.0, -0.5), 2.1),
+        follow(k.home + 0.9, v3(2.4, 1.8, 7.5), v3(-0.3, 1.1, -0.5), 2.1),
+        follow(k.home + 5.6, v3(2.6, 1.6, 8.0), v3(0.0, 1.1, 0.0), 2.1),
         key(
             k.bread,
             v3(-0.8, 10.6, 5.4),
@@ -576,9 +615,12 @@ fn shots(k: &Keys) -> Vec<Key> {
             0.006,
             0.0,
         ),
+        // Out through the bedroom to the lift, up to the roof.
+        follow(k.desk + 10.0, v3(0.8, 1.5, 5.8), v3(0.2, 1.1, -0.5), 2.0),
+        follow(k.call + 2.0, v3(2.0, 1.6, 6.2), v3(-0.3, 1.1, -0.5), 2.0),
         // The roof.
         follow(k.roof, v3(2.0, 3.0, 9.0), v3(0.0, 1.0, -0.5), 2.0),
-        follow(k.run + 2.0, v3(0.5, 4.0, 12.0), v3(0.0, 1.0, -1.0), 1.9),
+        follow(k.run + 2.0, v3(0.0, 2.2, 7.5), v3(0.0, 1.2, -1.0), 2.1),
         key(
             k.run_end,
             v3(3.0, 18.5, 11.0),
@@ -588,7 +630,7 @@ fn shots(k: &Keys) -> Vec<Key> {
             0.0,
         ),
         key(
-            (k.run_end + 2.5).min(158.5),
+            (k.run_end + 2.5).min(late(158.5)),
             v3(2.6, 17.4, 7.5),
             v3(2.3, 16.3, -2.4),
             2.2,
@@ -596,8 +638,15 @@ fn shots(k: &Keys) -> Vec<Key> {
             0.0,
         ),
         // Night: the house whole, the line of his day; the rings strike.
-        wide(160.0),
-        key(167.0, v3(0.0, 7.3, 29.5), v3(0.0, 6.5, 0.0), 2.0, 0.0, 0.0),
+        wide(late(160.0)),
+        key(
+            late(167.0),
+            v3(0.0, 7.3, 29.5),
+            v3(0.0, 6.5, 0.0),
+            2.0,
+            0.0,
+            0.0,
+        ),
         key(
             CHORD + 1.0,
             v3(0.0, 7.1, 27.5),
@@ -606,9 +655,33 @@ fn shots(k: &Keys) -> Vec<Key> {
             0.0,
             0.0,
         ),
-        // The walls melt; the camera sinks to the table's lacquer.
-        key(175.0, v3(0.0, 0.4, 26.0), v3(0.0, 5.6, 0.0), 1.9, 0.0, 0.0),
-        wide(180.0),
+        // The walls melt; the camera sinks to the table's lacquer, where the
+        // house and its reflection meet at the horizon.
+        key(
+            late(172.5),
+            v3(0.0, 3.0, 31.0),
+            v3(0.0, 2.5, 0.0),
+            1.85,
+            0.0,
+            0.0,
+        ),
+        key(
+            late(175.0),
+            v3(0.0, -0.75, 34.0),
+            v3(0.0, -0.95, 0.0),
+            1.7,
+            0.0,
+            0.0,
+        ),
+        key(
+            late(176.8),
+            v3(0.0, -0.7, 33.0),
+            v3(0.0, -0.9, 0.0),
+            1.7,
+            0.0,
+            0.0,
+        ),
+        wide(late(180.0)),
     ];
     // Monotone keys need rising times.
     v.sort_by(|a, b| a.at.total_cmp(&b.at));
@@ -616,39 +689,16 @@ fn shots(k: &Keys) -> Vec<Key> {
     v
 }
 
-/// His way through the house as a line: sampled along his plan, joined
-/// through the lift and the stairwell where the camera cut away; the six
-/// beads at its end.
+/// His way through the house as a line: sampled along his plan (he walks
+/// and rides every metre of it); the six beads at its end.
 fn route(cast: &Cast) -> [[f32; 4]; PATH_POINTS] {
     let k = cast.keys;
     let plan = &cast.plans[HERO];
     let world = &cast.world;
     let mut pts: Vec<V3> = Vec::new();
-    let lift = |y: f32| v3(-8.25, y, -1.25);
     let mut t = k.rise;
     while t < k.run_end {
         let p = plan.anchor(t, world);
-        if t > k.shop_out && t < k.home + 0.2 {
-            t = k.home + 0.2;
-            // Back to the stairwell and up in the lift.
-            pts.extend([
-                v3(-6.6, 0.0, 2.0),
-                v3(-7.0, 0.0, -1.0),
-                lift(0.0),
-                lift(9.0),
-            ]);
-            continue;
-        }
-        if t > k.desk + 8.0 && t < k.roof + 0.4 {
-            t = k.roof + 0.4;
-            pts.extend([
-                v3(1.6, 12.0, -1.5),
-                v3(-5.6, 12.0, -1.5),
-                v3(-7.0, 12.0, -1.5),
-                v3(-7.0, 15.0, -1.5),
-            ]);
-            continue;
-        }
         if pts.last().is_none_or(|q| (*q - p).length() > 0.05) {
             pts.push(p);
         }

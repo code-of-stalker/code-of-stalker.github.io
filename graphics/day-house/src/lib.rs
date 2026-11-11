@@ -32,8 +32,12 @@ use math::{v3, V3};
 pub use story::{Figure, Frame, Story};
 use watcher_scene_palette::Palette;
 
-/// One loop: the whole day, three minutes.
-pub const LOOP: f32 = 180.0;
+/// What the day grew by once he stopped skipping places (he walks home
+/// from the shop, and from his desk up to the roof): every moment of the
+/// evening and the finale comes this much later than in the first cut.
+pub const DAY_EXTRA: f32 = 39.0;
+/// One loop: the whole day, three minutes and a little more.
+pub const LOOP: f32 = 180.0 + DAY_EXTRA;
 
 /// The lens: the whole 3:2 frame stays in view on a canvas of any shape.
 pub const FRAME_ASPECT: f32 = 1.5;
@@ -396,7 +400,14 @@ impl Scene {
                 b.low.z,
                 base + 0.9 * fig.accent.clamp(0.0, 1.0),
             ];
-            s[4 * i + 1] = [b.high.x, b.high.y, b.high.z, fig.clothes];
+            // The hair's code in the whole part, the clothes' shade in the
+            // fraction.
+            s[4 * i + 1] = [
+                b.high.x,
+                b.high.y,
+                b.high.z,
+                fig.hair + 0.9 * fig.clothes.clamp(0.0, 1.0),
+            ];
             let feet = v3(b.pelvis.x, b.low.y + 0.15, b.pelvis.z);
             let head = v3(b.head.x, b.head.y - 0.12, b.head.z);
             s[4 * i + 2] = [feet.x, feet.y, feet.z, 0.2 * fig.scale];

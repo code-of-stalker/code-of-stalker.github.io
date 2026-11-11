@@ -31,6 +31,8 @@ pub const FEET: [usize; 2] = [15, 16];
 pub const TOES: [usize; 2] = [17, 18];
 pub const HANDS: [usize; 2] = [23, 24];
 pub const SCARF: usize = 25;
+/// The legs' cones, thighs to shins: what the trousers cover (with the hips).
+pub const LEGS: [usize; 2] = [9, 14];
 pub const SCARF_LINKS: usize = 6;
 pub const PROP: usize = 31;
 /// One link of the scarf's tail, metres.
@@ -38,6 +40,34 @@ const SCARF_LINK: f32 = 0.11;
 /// A cone's squash keep below zero marks it flat-ended (cut square, its
 /// edge rounded this much) instead of capped by spheres.
 pub const CUT_ROUND: f32 = 0.008;
+
+/// How the hair is cut; the cone over the skull takes its shape.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Hair {
+    /// A knit or a peaked cap.
+    Cap,
+    #[default]
+    Short,
+    /// Down to the shoulders.
+    Long,
+    /// Gathered in a knot at the back.
+    Bun,
+    /// Only a fringe round the back.
+    Bald,
+}
+
+impl Hair {
+    /// Its number for the shader.
+    pub const fn code(self) -> u8 {
+        match self {
+            Hair::Cap => 0,
+            Hair::Short => 1,
+            Hair::Long => 2,
+            Hair::Bun => 3,
+            Hair::Bald => 4,
+        }
+    }
+}
 
 /// What a figure carries in its right hand, if anything.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -508,6 +538,7 @@ impl Walk {
             carry: Carry::Nothing,
             // Nobody in the house wears the long scarf.
             scarf: [0.0, 0.0, 0.0, -1.0],
+            hair: Hair::Short,
         }
     }
 }
@@ -544,6 +575,7 @@ pub struct Pose {
     /// The wind on the scarf's tail: which way it blows (x, z in the walk's
     /// frame), the flutter's phase (cycles) and how hard, 0 it hangs … 1.
     pub scarf: [f32; 4],
+    pub hair: Hair,
 }
 
 /// A body part's own left, up and forward.
@@ -736,8 +768,8 @@ pub fn build(pose: &Pose) -> Body {
         0.058,
         None,
     );
-    // The head: the skull, the face's ridge from chin to brow (his profile),
-    // a knit cap, and the scarf wound round the neck.
+    // The head: the skull, the face's ridge from chin to brow (the
+    // profile), the hair or a cap, and the collar round the neck.
     cone(neck, 0.046, head_base, 0.043, None);
     cone(jaw, 0.066, crown, 0.088, Some((hd.left, 0.84)));
     cone(
@@ -747,13 +779,37 @@ pub fn build(pose: &Pose) -> Body {
         0.022,
         Some((hd.left, 0.8)),
     );
-    cone(
-        crown - hd.up * 0.05 - hd.forward * 0.014,
-        0.093,
-        crown + hd.up * 0.012 - hd.forward * 0.024,
-        0.07,
-        cut(hd.left, 0.88),
-    );
+    match pose.hair {
+        Hair::Cap => cone(
+            crown - hd.up * 0.05 - hd.forward * 0.014,
+            0.093,
+            crown + hd.up * 0.012 - hd.forward * 0.024,
+            0.07,
+            cut(hd.left, 0.88),
+        ),
+        Hair::Short => cone(
+            crown - hd.up * 0.035 - hd.forward * 0.022,
+            0.09,
+            crown + hd.up * 0.006 - hd.forward * 0.018,
+            0.088,
+            Some((hd.left, 0.87)),
+        ),
+        Hair::Long => cone(
+            crown - hd.forward * 0.02,
+            0.093,
+            head_base - hd.up * 0.07 - hd.forward * 0.05,
+            0.07,
+            Some((hd.left, 0.9)),
+        ),
+        Hair::Bun => cone(
+            crown - hd.forward * 0.078,
+            0.045,
+            crown - hd.forward * 0.09 + hd.up * 0.012,
+            0.04,
+            None,
+        ),
+        Hair::Bald => cone(head_base, 0.001, head_base + Y * 0.01, 0.001, None),
+    }
     cone(
         neck - ch.up * 0.045,
         0.074,

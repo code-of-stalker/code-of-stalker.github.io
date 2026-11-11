@@ -222,14 +222,19 @@ float coneT(vec3 o, vec3 d, vec3 hs, float top, out vec3 n) {
   return t < 1e8 ? t : -1.0;
 }
 
-// The walls and slabs melting in the finale: what is left of them at p.
-float meltField(vec3 p) {
-  return 0.65 * noise3(p * 0.7, 7u) + 0.35 * noise3(p * 2.1 + 3.1, 9u);
+// The finale's dissolve: one level sweeps down the house from over its
+// roof to the table (and back up at dawn), its line wavering a little.
+// Walls, floors, the street and the plinth above it are gone; what he
+// lived among stays in the air. Positive under the level, negative over.
+float meltFront() {
+  return mix(ROOF_Y + 3.4, TABLE_Y - 0.3, MELT.x);
+}
+float meltLevel(vec3 p) {
+  return meltFront() + 0.3 * (noise3(p * vec3(0.4, 0.15, 0.4), 7u) - 0.5) - p.y;
 }
 bool melted(vec3 p, int flags) {
   if (MELT.x < 0.001 || (flags & (F_WALL | F_SLAB)) == 0) return false;
-  float k = (flags & F_SLAB) != 0 ? 0.75 : 1.1;
-  return meltField(p) < MELT.x * k;
+  return meltLevel(p) < 0.0;
 }
 
 // Primitive `at` (its three texels) against the ray; a nearer hit wins.
@@ -259,6 +264,7 @@ void primHit(int at, vec3 ro, vec3 rd, int cell, inout Hit h, bool shadow) {
     t = b.x <= b.y ? b.x : -1.0;
   }
   if (t <= 1e-4 || t >= h.t) return;
+  if (!shadow && (flags & F_NEAR) != 0 && t < 3.5) return;
   vec3 lp = o + d * t;
   if (kind == KIND_WINDOW) {
     // The glass lets the eye and the sun through; the frame and its
@@ -579,16 +585,28 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
     s.a = 0.4 + 0.3 * (tone - 0.5) + 0.04 * (noise2(tc * 2.5, 3u) - 0.5);
     s.warm = 0.12;
   } else if (m == M_TILE) {
+    // Every tile its own glaze, a little worn where feet go.
     vec2 g = abs(fract(tc / 0.2) - 0.5);
-    s.a = (max(g.x, g.y) > 0.46 ? 0.22 : 0.6) * (0.8 + 0.4 * tone);
+    vec2 c = floor(tc / 0.2);
+    float v = hash1(int(c.x) * 73 + int(c.y) * 151, 7u);
+    float glaze = (0.34 + 0.13 * v) * (0.93 + 0.1 * noise2(tc * 2.5, 13u));
+    s.a = (max(g.x, g.y) > 0.46 ? 0.16 : glaze) * (0.8 + 0.4 * tone);
     s.gloss = 0.25;
   } else if (m == M_BOARDS) {
+    // Planks of a metre or so, their ends staggered row by row, each its
+    // own tone and grain.
     float row = floor(tc.y / 0.16);
+    float run = tc.x + 0.9 * hash1(int(row), 9u);
+    float plank = floor(run / 0.9);
     float seam = abs(fract(tc.y / 0.16) - 0.5) > 0.46 ? 0.45 : 1.0;
-    s.a = (0.22 + 0.1 * hash1(int(row), 5u) + 0.03 * sin(tc.x * 30.0 + row)) * seam * (0.8 + 0.5 * tone);
+    seam *= abs(fract(run / 0.9) - 0.5) > 0.493 ? 0.55 : 1.0;
+    float pv = hash1(int(row) * 31 + int(plank), 5u);
+    float grain = 0.03 * sin(tc.x * (24.0 + 14.0 * pv) + row + 4.0 * noise2(vec2(tc.x * 3.0, row), 17u));
+    s.a = (0.19 + 0.14 * pv + grain) * seam * (0.8 + 0.5 * tone);
     s.warm = 0.75;
   } else if (m == M_WOOD) {
-    s.a = 0.16 + 0.35 * tone + 0.03 * sin(tc.x * 40.0 + 6.0 * noise2(tc * 4.0, 11u));
+    s.a = 0.16 + 0.35 * tone + 0.03 * sin(tc.x * 40.0 + 6.0 * noise2(tc * 4.0, 11u))
+      + 0.04 * (noise2(tc * vec2(1.2, 9.0), 19u) - 0.5);
     s.warm = 0.7;
   } else if (m == M_FABRIC) {
     s.a = 0.12 + 0.5 * tone;
@@ -709,26 +727,64 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
   return s;
 }
 
-// A person's surface: skin, cap, shoes, clothes; his outline warm.
-Surf personSurface(Hit h, vec3 n, vec3 rd) {
+// A person's surface: skin and a face, the hair, shoes, a top and
+// trousers; his outline warm.
+Surf personSurface(Hit h, vec3 p, vec3 n, vec3 rd) {
   Surf s;
   s.gloss = 0.0;
   s.emit = vec2(0.0);
   int part = int(h.part + 0.5);
   vec4 lo = u_fig[4 * h.id], hi = u_fig[4 * h.id + 1];
+  int base = int(lo.w);
   float accent = fract(lo.w) / 0.9;
-  float clothes = hi.w;
-  if (part == CONE_NECK || part == CONE_HEAD || part == CONE_FACE || part == HAND_L || part == HAND_R) {
+  float clothes = fract(hi.w) / 0.9;
+  int code = int(hi.w);
+  int cut = code / 8;
+  float hairA = 0.035 + 0.06 * float(code - cut * 8);
+  if (part == CONE_NECK || part == CONE_HEAD || part == CONE_FACE || part == CONE_CAP) {
+    // The head's own frame from its skull cone (chin to crown, tilted
+    // back): x to its left, y up, z where it looks; the eyes at 0.
+    vec4 a = tx(base + 3 * CONE_HEAD), b = tx(base + 3 * CONE_HEAD + 1);
+    vec3 l = normalize(tx(base + 3 * CONE_HEAD + 2).xyz);
+    vec3 v = b.xyz - a.xyz, w = cross(l, v);
+    vec3 up = normalize(0.08 * v + 0.03 * w), fwd = normalize(0.08 * w - 0.03 * v);
+    float k = max(b.w / 0.088, 0.3);
+    vec3 q = (p - a.xyz) / k - up * 0.039 + fwd * 0.025;
+    float x = dot(q, l), y = dot(q, up), z = dot(q, fwd);
     s.a = 0.48;
     s.warm = 0.6;
-  } else if (part == CONE_CAP) {
-    s.a = 0.07;
-    s.warm = 0.2;
+    // The hair, its line soft over a pixel.
+    float px = pixelAt(h.t) / k;
+    float hm = part == CONE_CAP ? 1.0 : 0.0;
+    if (cut == 4) {
+      hm = max(hm, step(z, -0.02) * smoothstep(-0.06 - px, -0.06 + px, y) * smoothstep(0.02 + px, 0.02 - px, y));
+    } else if (part != CONE_FACE && part != CONE_NECK) {
+      hm = max(hm, smoothstep(-px, px, y - 0.06 + 1.2 * max(0.03 - z, 0.0)));
+    }
+    if (cut == 2 && z < 0.0 && y > -0.14) hm = 1.0;
+    if (hm < 1.0 && part != CONE_NECK) {
+      // The eyes, the brows and the mouth, where the pixels can hold them.
+      float vis = smoothstep(0.02, 0.006, px) * smoothstep(0.015, 0.04, z);
+      float eye = length(vec2(abs(x) - 0.03, y)) - 0.0085;
+      float brow = max(abs(y - 0.021) - 0.0035, abs(abs(x) - 0.032) - 0.016);
+      float mouth = max(abs(y + 0.044) - 0.003, abs(x) - 0.017);
+      float dark = 0.8 * smoothstep(px, -px, eye) + 0.5 * smoothstep(px, -px, brow) + 0.35 * smoothstep(px, -px, mouth);
+      s.a *= 1.0 - min(dark, 0.85) * vis;
+    }
+    s.a = mix(s.a, hairA, hm);
+    s.warm = mix(s.warm, 0.35, hm);
+  } else if (part == HAND_L || part == HAND_R) {
+    s.a = 0.48;
+    s.warm = 0.6;
   } else if (part >= FOOT_L && part <= TOE_R) {
-    s.a = 0.06;
+    s.a = 0.05;
     s.warm = 0.3;
+  } else if (part == 0 || (part >= LEG_A && part <= LEG_B)) {
+    // Trousers: darker than the top.
+    s.a = 0.06 + 0.2 * fract(clothes * 2.7 + 0.3);
+    s.warm = 0.15 + 0.3 * fract(clothes * 5.1);
   } else {
-    s.a = 0.1 + 0.45 * clothes;
+    s.a = 0.12 + 0.45 * clothes;
     s.warm = 0.1 + 0.6 * fract(clothes * 4.3);
   }
   float rim = pow(1.0 - abs(dot(n, rd)), 3.0);
@@ -736,24 +792,54 @@ Surf personSurface(Hit h, vec3 n, vec3 rd) {
   return s;
 }
 
-// The painted sky on the backdrop: the day's light, the clouds, the sun
-// crossing it, the stars and the moon at night.
+// The painted backdrop: the sky (the day's light, the clouds, the sun
+// crossing it, the stars and the moon at night) and in front of it a town,
+// two rows of roofs, the nearer darker, their windows lit while the sky is
+// dark.
 vec2 backdrop(vec3 p) {
   float hgt = clamp(p.y / 21.0, 0.0, 1.0);
-  vec2 L = vec2(DAY.x * mix(0.42, 0.24, hgt), DAY.y * 0.5 * (1.0 - hgt) * (1.0 - hgt));
+  // The golden hour takes the sky's cold away and fills its foot warm.
+  vec2 L = vec2(DAY.x * mix(0.25, 0.16, hgt) * (1.0 - 0.5 * DAY.y), DAY.y * (0.32 * (1.0 - hgt) * (1.0 - hgt) + 0.2 * (1.0 - hgt) + 0.04));
   float cl = fbm(vec2(p.x * 0.11 + 0.015 * STORY, p.y * 0.22), 3, 21u);
-  L += vec2(DAY.x * 0.1, DAY.y * 0.12) * smoothstep(0.55, 0.72, cl);
+  L += vec2(DAY.x * 0.07, DAY.y * 0.12) * smoothstep(0.55, 0.72, cl);
   vec2 sp = vec2(SUN.x * 12.0, 2.0 + max(SUN.y, -0.3) * 18.0);
   float d = length(p.xy - sp);
   float disc = smoothstep(1.05, 0.95, d);
-  L += SUN.w * (vec2(0.5 * (1.0 - DAY.y), 0.4 + 1.2 * DAY.y) * disc + vec2(0.06, 0.12 + 0.2 * DAY.y) * exp(-d / 3.0));
-  // Night: stars, and the moon over the left.
-  vec2 g = floor(p.xy * 2.2);
-  float star = hash2(int(g.x), int(g.y), 71u);
-  vec2 f = fract(p.xy * 2.2) - 0.5;
-  L.x += DAY.z * step(0.965, star) * exp(-dot(f, f) * 60.0) * 0.6 * (0.6 + 0.4 * sin(TIME * 2.0 + star * 40.0));
-  float md = length(p.xy - vec2(-9.0, 16.0));
-  L += DAY.z * (vec2(0.55, 0.06) * smoothstep(0.85, 0.78, md) + vec2(0.04, 0.0) * exp(-md / 2.5));
+  L += SUN.w * (vec2(0.4 * (1.0 - DAY.y), 0.4 + 1.2 * DAY.y) * disc + vec2(0.05, 0.1 + 0.2 * DAY.y) * exp(-d / 3.0));
+  float lit = clamp(1.25 - 1.4 * DAY.x, 0.0, 0.75);
+  // The far row, pale in the air.
+  float x = p.x + 40.0;
+  float i1 = floor(x / 1.9);
+  float h1 = 7.0 + 6.0 * hash1(int(i1), 91u);
+  // The near row: flat roofs and gables, a chimney here and there.
+  float x2 = x + 1.1;
+  float i2 = floor(x2 / 2.7);
+  float r2 = hash1(int(i2), 93u);
+  float fx = fract(x2 / 2.7) - 0.5;
+  float h2 = 3.4 + 4.2 * r2 + (r2 > 0.55 ? 1.1 * (1.0 - 2.0 * abs(fx)) : 0.0);
+  if (hash1(int(i2), 95u) > 0.6 && abs(fx - 0.22) < 0.05) h2 += 0.7;
+  if (p.y < h2) {
+    L = vec2(0.02 + 0.05 * DAY.x, 0.015 * DAY.y);
+    vec2 cell = vec2(x2 / 0.55, (p.y - 0.5) / 0.75);
+    vec2 g = fract(cell);
+    if (p.y > 0.5 && p.y < h2 - 0.5 && abs(fx) < 0.42 && g.x > 0.3 && g.x < 0.7 && g.y > 0.25 && g.y < 0.75) {
+      float on = step(hash2(int(floor(cell.x)), int(floor(cell.y)), 97u), lit);
+      L = mix(L * 0.6, vec2(0.02, 0.42), on);
+    }
+  } else if (p.y < h1) {
+    L = mix(L, vec2(0.03 + 0.07 * DAY.x, 0.08 * DAY.y), 0.55);
+    vec2 cell = vec2(x / 0.4, p.y / 0.55);
+    vec2 g = fract(cell);
+    if (g.x > 0.35 && g.x < 0.65 && g.y > 0.3 && g.y < 0.7 && hash2(int(floor(cell.x)), int(floor(cell.y)), 99u) < 0.6 * lit) L += vec2(0.0, 0.18);
+  } else {
+    // Night over the roofs: stars, and the moon high over the left.
+    vec2 gs = floor(p.xy * 2.2);
+    float star = hash2(int(gs.x), int(gs.y), 71u);
+    vec2 f = fract(p.xy * 2.2) - 0.5;
+    L.x += DAY.z * step(0.965, star) * exp(-dot(f, f) * 60.0) * 0.6 * (0.6 + 0.4 * sin(TIME * 2.0 + star * 40.0));
+    float md = length(p.xy - vec2(-13.5, 18.5));
+    L += DAY.z * (vec2(0.55, 0.06) * smoothstep(0.85, 0.78, md) + vec2(0.04, 0.0) * exp(-md / 2.5));
+  }
   // Painted only round the house: toward its sides and top the backdrop
   // goes into the dark of the room.
   float edge = (1.0 - smoothstep(17.0, BACKDROP_HALF - 1.0, abs(p.x))) * (1.0 - smoothstep(22.0, BACKDROP_TOP - 1.0, p.y));
@@ -762,7 +848,7 @@ vec2 backdrop(vec3 p) {
 
 // What the light of the sun and the sky is at this moment.
 vec2 sunLight() {
-  return vec2(1.0 - 0.6 * DAY.y, 0.1 + 0.95 * DAY.y) * SUN.w * 1.1;
+  return vec2(1.0 - 0.6 * DAY.y, 0.1 + 0.95 * DAY.y) * SUN.w * 0.9;
 }
 
 vec2 shadeSurface(Hit h, vec3 ro, vec3 rd, bool full) {
@@ -773,9 +859,11 @@ vec2 shadeSurface(Hit h, vec3 ro, vec3 rd, bool full) {
   if (h.kind == K_PRIM && h.mat == M_BACKDROP) return backdrop(p);
   Surf s;
   if (h.kind == K_FIG) {
-    s = personSurface(h, n, rd);
+    s = personSurface(h, p, n, rd);
   } else {
     s = surface(h, p, n, cell);
+    // The walls' cut faces, dimmer than the rooms they open.
+    if ((h.flags & F_WALL) != 0 && n.z > 0.7 && p.z > -0.25 && p.y < ROOF_Y - 0.05) s.a *= 0.6;
   }
   // The sun through the open front.
   vec3 sd = normalize(SUN.xyz);
@@ -793,7 +881,7 @@ vec2 shadeSurface(Hit h, vec3 ro, vec3 rd, bool full) {
   // The sky's light, less of it deep in the rooms.
   float ao = 1.0;
   if (p.x > -SIDE_X && p.x < SIDE_X && p.y > -0.2 && p.y < ROOF_Y && p.z < 0.3) {
-    ao = mix(0.3, 1.0, smoothstep(BACK_Z, 0.4, p.z));
+    ao = mix(0.45, 1.0, smoothstep(BACK_Z, 0.4, p.z));
   }
   vec2 sky = vec2(DAY.x * (0.2 + 0.07 * n.y + 0.07 * n.z) + 0.016, 0.05 * DAY.y) * ao;
   vec2 lamp = lampLight(cell, p, n);
@@ -807,12 +895,12 @@ vec2 shadeSurface(Hit h, vec3 ro, vec3 rd, bool full) {
   }
   L += s.emit;
   // When the rings strike together, the rooms of his day flash.
-  if (CHORD.x > 0.001 && hisRoom(cell)) L += s.a * CHORD.x * vec2(0.15, 0.6);
-  // The walls' melting edges glow; what is left of the floors is light.
+  if (CHORD.x > 0.001 && hisRoom(cell)) L += s.a * CHORD.x * vec2(0.05, 0.3);
+  // Where the level cuts the walls and floors: a line of light, and a
+  // glow fading down from it.
   if (MELT.x > 0.001 && (h.flags & (F_WALL | F_SLAB)) != 0) {
-    float e = meltField(p) - MELT.x * ((h.flags & F_SLAB) != 0 ? 0.75 : 1.1);
-    L += vec2(0.25, 1.1) * MELT.x * smoothstep(0.06, 0.0, e);
-    if ((h.flags & F_SLAB) != 0) L += vec2(0.18, 0.08) * MELT.x;
+    float e = meltLevel(p);
+    L += vec2(0.2, 1.4) * (smoothstep(0.045, 0.0, e) + 0.18 * exp(-e / 0.6));
   }
   return L;
 }
@@ -831,7 +919,7 @@ vec2 shadeTable(Hit h, vec3 ro, vec3 rd) {
   vec2 L = 0.03 * (sky + sunLight() * max(normalize(SUN.xyz).y, 0.0));
 #ifdef PASS_LIGHT
   float fres = 0.04 + 0.96 * pow(1.0 - abs(rd.y), 5.0);
-  float g = (fres * 0.7 + 0.08 + 0.5 * MELT.y) * far;
+  float g = (fres * 0.7 + 0.08 + 0.8 * MELT.y) * far;
   if (u_res.w < MIRROR - 0.5) L += g * texture(u_refl, gl_FragCoord.xy / u_res.xy).xy;
 #endif
   return L * far;
@@ -852,15 +940,16 @@ vec2 rayPoint(vec3 ro, vec3 rd, vec3 c) {
   float t = dot(v, rd);
   return vec2(length(v - rd * t), t);
 }
-// The eye's ray and segment ab: how near they pass, and how far along it.
-vec2 raySegment(vec3 ro, vec3 rd, vec3 a, vec3 b) {
+// The eye's ray and segment ab: how near they pass, how far along the
+// ray, and where on the segment (0 at a, 1 at b).
+vec3 raySegment(vec3 ro, vec3 rd, vec3 a, vec3 b) {
   vec3 ab = b - a, ao = ro - a;
   float abab = max(dot(ab, ab), 1e-8), abrd = dot(ab, rd), abao = dot(ab, ao), rdao = dot(rd, ao);
   float den = abab - abrd * abrd;
   float s = den > 1e-7 ? clamp((abao - abrd * rdao) / den, 0.0, 1.0) : 0.0;
   float t = max(dot(a + ab * s - ro, rd), 0.0);
   s = clamp(dot(ro + rd * t - a, ab) / abab, 0.0, 1.0);
-  return vec2(length(ro + rd * t - a - ab * s), t);
+  return vec3(length(ro + rd * t - a - ab * s), t, s);
 }
 // Where the ray crosses the level y round c: offset there and how far.
 bool level(vec3 ro, vec3 rd, float T, vec3 c, out vec2 q, out float t) {
@@ -925,14 +1014,22 @@ vec2 rings(vec3 ro, vec3 rd, float T) {
 vec2 route(vec3 ro, vec3 rd, float T) {
   vec2 L = vec2(0.0);
   if (PATHS.x > 0.001) {
+    // A thin line with a soft halo; light runs along it the way he went,
+    // and while it is being drawn its head burns like a comet.
     float g = 0.0;
+    float drawing = 1.0 - smoothstep(0.96, 1.0, PATHS.x);
     for (int i = 0 + ZERO; i < ROUTE - 1; i++) {
       vec4 a = ROUTE_AT(i), b = ROUTE_AT(i + 1);
       if (a.w >= PATHS.x) break;
+      float bw = min(b.w, PATHS.x);
       vec3 bb = b.w > PATHS.x ? mix(a.xyz, b.xyz, (PATHS.x - a.w) / max(b.w - a.w, 1e-5)) : b.xyz;
-      vec2 dt = raySegment(ro, rd, a.xyz, bb);
-      float k = lineK(dt.x, 0.022, pixelAt(dt.y)) + 0.16 * sline(dt.x, 0.16);
-      g = max(g, k * (dt.y > T + 0.05 ? 0.25 : 1.0));
+      vec3 d = raySegment(ro, rd, a.xyz, bb);
+      float f = mix(a.w, bw, d.z);
+      float head = exp(-(PATHS.x - f) * 45.0) * drawing;
+      float flow = 0.75 + 0.25 * sin(f * 90.0 - STORY * 2.2);
+      float px = pixelAt(d.y);
+      float k = lineK(d.x, 0.018 + 0.03 * head, px) * flow + (0.14 + 0.5 * head) * sline(d.x, 0.14 + 0.2 * head);
+      g = max(g, k * (1.0 + 2.0 * head) * (d.y > T + 0.05 ? 0.25 : 1.0));
     }
     L += vec2(0.35, 1.0) * g * PATHS.y;
   }
@@ -961,6 +1058,16 @@ vec2 moments(vec3 ro, vec3 rd, float T) {
         float f = fract(STORY * 1.4 + float(k) / 3.0);
         L += HONK.w * (1.0 - f) * vec2(0.5, 0.6) * lineK(abs(dt.x - 0.2 - 2.6 * f), 0.02, px);
       }
+    }
+  }
+  // The dissolve's level: one wide ring round the house, sweeping it.
+  if (MELT.x > 0.001 && MELT.x < 0.999) {
+    vec2 q;
+    float t;
+    if (level(ro, rd, T, vec3(0.0, meltFront(), -2.3), q, t)) {
+      float r = length(q / vec2(12.5, 7.5));
+      float g = ringGlow(abs(r - 1.0) * 7.5, t, rd, 0.02, 0.3);
+      L += vec2(0.25, 1.1) * g * smoothstep(0.0, 0.06, MELT.x) * smoothstep(1.0, 0.94, MELT.x);
     }
   }
   // The coin's glint: a star.

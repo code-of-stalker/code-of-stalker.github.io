@@ -12,7 +12,7 @@
 //! the air (the rings, the line of his day). One program for all of it takes
 //! Windows' shader compiler too long; each part takes it a few seconds, and
 //! with KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{BLEND, CAP, CUT_ROUND, FACE, FEET, HANDS, HEAD, NECK, PRIMITIVES, TOES};
+use crate::body::{BLEND, CAP, CUT_ROUND, FACE, FEET, HANDS, HEAD, LEGS, NECK, PRIMITIVES, TOES};
 use crate::house::{self, cell, flag, kind, mat};
 use crate::story::{BEADS, ROUTE};
 use crate::{
@@ -145,6 +145,8 @@ fn defines() -> String {
         ("CONE_HEAD", n(HEAD)),
         ("CONE_FACE", n(FACE)),
         ("CONE_CAP", n(CAP)),
+        ("LEG_A", n(LEGS[0])),
+        ("LEG_B", n(LEGS[1])),
         ("HAND_L", n(HANDS[0])),
         ("HAND_R", n(HANDS[1])),
         ("FOOT_L", n(FEET[0])),
@@ -169,6 +171,7 @@ fn defines() -> String {
         ("F_SLAB", u(flag::SLAB)),
         ("F_FLAT", u(flag::FLAT)),
         ("F_GLOSS", u(flag::GLOSS)),
+        ("F_NEAR", u(flag::NEAR)),
         ("STOREY", f(house::STOREY)),
         ("FLOORS", n(house::FLOORS)),
         ("SIDE_X", f(house::SIDE)),

@@ -5,7 +5,7 @@
 //! here their hands, heads and the things they carry are added on top.
 //! Times are story times (`story::story_time` slows the cup's fall).
 use crate::act::{flat, Gait, Local, Plan, Ride, World, CLIMBING, RUNNING, STROLL, WALKING};
-use crate::body::{build, Body, Carry, Pose, HANDS};
+use crate::body::{build, Body, Carry, Hair, Pose, HANDS};
 use crate::math::{mix, smooth, smooth_integral, v3, window, V3};
 use crate::LOOP;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
@@ -33,6 +33,9 @@ pub struct Figure {
     pub accent: f32,
     pub clothes: f32,
     pub scale: f32,
+    /// The hair's cut and shade for the shader: cut × 8 + shade (0 black …
+    /// 7 grey).
+    pub hair: f32,
 }
 
 // ---- the ground under the feet ----
@@ -164,6 +167,7 @@ pub struct Keys {
     pub catch: f32,
     pub stairs: f32,
     pub desk: f32,
+    pub call: f32,
     pub roof: f32,
     pub run: f32,
     pub run_end: f32,
@@ -308,11 +312,29 @@ impl Cast {
         h.mark("shop_out");
         k.shop_out = h.when("shop_out");
 
-        // Home: the lift has brought him up while we were elsewhere.
-        k.home = k.shop_out;
-        world.lift.push([k.home - 4.2, k.home - 0.2, 0.0, 9.0]);
-        h.cut(v3(-7.3, 9.0, -1.15), FRAC_PI_2).wait(0.3);
-        h.walk(&[[-6.4, -1.4], [-5.0, -1.55], [-1.8, -2.15]], flat, WALKING);
+        // Home: along the sidewalk to his door, into the lobby, the lift
+        // (still on the ground floor since the morning) up to his floor.
+        h.walk(
+            &[
+                [-1.3, 0.8],
+                [-6.0, 0.9],
+                [-6.8, 0.3],
+                [-7.0, -1.0],
+                [-8.25, -1.25],
+            ],
+            street,
+            WALKING,
+        );
+        h.turn_to(FRAC_PI_2).mark("home").wait(0.7);
+        k.home = h.when("home");
+        world.lift.push([k.home + 0.9, k.home + 4.9, 0.0, 9.0]);
+        h.wait_until(k.home + 0.9);
+        h.ride_until(Ride::Lift, k.home + 4.9, &world).wait(0.6);
+        h.walk(
+            &[[-7.1, -1.1], [-6.4, -1.4], [-5.0, -1.55], [-1.8, -2.15]],
+            flat,
+            WALKING,
+        );
         h.turn_to(PI).mark("bread").wait(1.8);
         k.bread = h.when("bread");
         h.walk(
@@ -340,11 +362,39 @@ impl Cast {
         k.desk = h.when("desk");
         h.wait_until(k.desk + 7.0).rise(1.2);
 
+        // Out through the bedroom to the stairwell. On the landing he
+        // presses the call (the cage waits on his floor below), walks to the
+        // gate as it comes up, steps in and rides to the roof.
+        h.walk(
+            &[
+                [2.8, -3.0],
+                [2.3, -1.6],
+                [1.6, -1.5],
+                [1.3, -2.1],
+                [-4.6, -2.1],
+                [-5.6, -1.5],
+            ],
+            flat,
+            WALKING,
+        );
+        h.mark("call");
+        k.call = h.when("call");
+        world.lift.push([k.call + 0.3, k.call + 2.1, 9.0, 12.0]);
+        h.walk(&[[-6.6, -1.3], [-7.15, -1.1]], flat, WALKING);
+        h.wait_until(h.t.max(k.call + 2.3));
+        h.walk(&[[-8.25, -1.25]], flat, WALKING);
+        h.turn_to(FRAC_PI_2);
+        let up = h.t + 0.2;
+        h.wait_until(up);
+        world.lift.push([up, up + 2.2, 12.0, 15.0]);
+        h.ride_until(Ride::Lift, up + 2.2, &world).wait(0.3);
+
         // The roof: a run round the track at sunset.
-        h.cut(v3(-6.3, 15.0, -1.2), FRAC_PI_2)
-            .mark("roof")
-            .wait(0.3);
+        h.walk(&[[-7.0, -1.2], [-6.3, -1.2]], flat, WALKING);
+        h.mark("roof");
         k.roof = h.when("roof");
+        // Someone below calls the empty cage back down.
+        world.lift.push([k.roof + 6.0, k.roof + 10.0, 15.0, 9.0]);
         let mut lap = vec![[-2.3, -1.25], [6.5, -1.25]];
         for i in 1..=7 {
             let a = PI * i as f32 / 8.0;
@@ -492,6 +542,7 @@ impl Cast {
                 0.5 + 0.5 * (TAU * s / (3.6 + 0.37 * i as f32) + i as f32).sin()
             };
             let mut pose = act.pose(s, breath);
+            pose.hair = HAIR[i].0;
             self.gestures(i, s, &mut pose, &local);
             let body = act.body(s, &pose, carried);
             bodies.push(body);
@@ -509,6 +560,7 @@ impl Cast {
                 accent: if i == HERO { 1.0 } else { 0.0 },
                 clothes: CLOTHES[i],
                 scale: plan.k,
+                hair: f32::from(HAIR[i].0.code() * 8 + HAIR[i].1),
             });
         }
         Moment { figures, held }
@@ -941,11 +993,19 @@ impl Cast {
                 );
             }
             YOUTH => {
+                // His thumb on the screen; the horn lifts his eyes from it.
                 pose.carry = Carry::Screen(1.0);
-                hold(pose, 1, v3(-0.08, 1.12, 0.3), 1.0);
+                let thumb = 0.015 * (TAU * s / 1.7).sin().max(0.0);
+                hold(pose, 1, v3(-0.08, 1.12 + thumb, 0.3), 1.0);
                 hold(pose, 0, v3(0.2, 1.72, 0.05), 1.0);
                 pose.nod = 0.45;
                 pose.turn = -0.2;
+                look(
+                    pose,
+                    local,
+                    v3(-4.0, 1.4, 6.4),
+                    window(s, k.honk - 0.1, k.honk + 0.4, k.honk + 1.8, k.honk + 2.6),
+                );
             }
             DRIVER => {
                 hold(pose, 0, v3(0.18, 0.95, 0.42), 1.0);
@@ -959,7 +1019,9 @@ impl Cast {
             }
             OLD => {
                 pose.turn = -0.3;
-                let doze = window(s, 88.0, 92.0, 138.0, 142.0);
+                // He dozes off; the child's fall wakes him for a moment.
+                let start = window(s, k.trip + 0.1, k.trip + 0.35, k.trip + 1.6, k.trip + 3.2);
+                let doze = window(s, 88.0, 92.0, 138.0, 142.0) * (1.0 - start);
                 pose.nod = 0.45 * doze + 0.04 * (TAU * s / 5.4).sin() * doze;
                 pose.lean += 0.08 * doze;
                 hold(pose, 0, v3(0.16, 0.62, 0.32), 1.0 - doze * 0.3);
@@ -969,9 +1031,10 @@ impl Cast {
                 let (frog, _) = bow_at(u);
                 reach(pose, local, 1, frog, 1.0);
                 reach(pose, local, 0, v3(5.27, 4.12, -2.6), 1.0);
-                pose.lean += 0.15;
-                pose.turn = 0.15;
-                pose.nod = 0.2;
+                // Swaying with the bow.
+                pose.lean += 0.15 + 0.04 * (TAU * s / 4.0).sin();
+                pose.turn = 0.15 + 0.06 * (TAU * s / 8.0).sin();
+                pose.nod = 0.2 + 0.05 * (TAU * s / 4.0 + 1.0).sin();
             }
             GARDENER => {
                 let water =
@@ -990,6 +1053,9 @@ impl Cast {
                 reach(pose, local, 1, at, paint);
                 hold(pose, 0, v3(0.22, 1.0, 0.18), 1.0);
                 look(pose, local, v3(5.3, 7.25, -2.24), 1.0);
+                // A step back from the canvas, the head on one side.
+                pose.lean -= 0.12 * (1.0 - paint);
+                pose.turn += 0.15 * (1.0 - paint);
             }
             MECHANIC => {
                 crouch(pose, 0.45);
@@ -1118,6 +1184,22 @@ impl Default for Cast {
     }
 }
 
+/// Each person's hair: its cut and its shade, 0 black … 7 grey.
+const HAIR: [(Hair, u8); PEOPLE] = [
+    (Hair::Short, 1),
+    (Hair::Long, 2),
+    (Hair::Short, 4),
+    (Hair::Short, 5),
+    (Hair::Bun, 6),
+    (Hair::Short, 0),
+    (Hair::Cap, 1),
+    (Hair::Bald, 7),
+    (Hair::Long, 0),
+    (Hair::Cap, 3),
+    (Hair::Bun, 2),
+    (Hair::Cap, 1),
+];
+
 const CLOTHES: [f32; PEOPLE] = [
     0.32, 0.72, 0.9, 0.55, 0.62, 0.18, 0.4, 0.5, 0.15, 0.68, 0.85, 0.28,
 ];
@@ -1160,7 +1242,7 @@ mod tests {
         let cast = Cast::new();
         let k = cast.keys;
         println!("{k:#?}");
-        assert!(k.run_end < 158.0, "{}", k.run_end);
+        assert!(k.run_end < 158.0 + crate::DAY_EXTRA, "{}", k.run_end);
         assert!(k.c0 > k.bread, "{} {}", k.c0, k.bread);
         assert!(cast.world.tram.stop1 > k.rails);
     }

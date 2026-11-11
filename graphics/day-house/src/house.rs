@@ -140,6 +140,9 @@ pub mod flag {
     pub const FLAT: u32 = 4;
     /// Glossy: lamps and the sky show in it.
     pub const GLOSS: u32 = 8;
+    /// Street furniture the eye passes through when it is this near: a
+    /// pole across the lens would only be a blurred bar over the frame.
+    pub const NEAR: u32 = 16;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -337,11 +340,14 @@ pub fn build() -> Vec<Vec<Prim>> {
     lift_shaft(&mut cells[cell::LIFT]);
     street(&mut cells);
     yard(&mut cells[cell::YARD]);
-    cells[cell::PLINTH].push(slab(
-        mat::PLINTH,
-        v3(PLINTH[0], TABLE, PLINTH[2]),
-        v3(PLINTH[1], ROAD_Y, PLINTH[3]),
-    ));
+    cells[cell::PLINTH].push(
+        slab(
+            mat::PLINTH,
+            v3(PLINTH[0], TABLE, PLINTH[2]),
+            v3(PLINTH[1], ROAD_Y, PLINTH[3]),
+        )
+        .flags(flag::SLAB),
+    );
     cells
         .into_iter()
         .map(|c| c.into_iter().flat_map(lower).collect())
@@ -626,7 +632,7 @@ fn stairwell(cells: &mut [Vec<Prim>]) {
                     v3(p - 0.06, 0.0, -0.14),
                     v3(p + 0.06, 2.35, 0.0),
                 )
-                .flags(flag::WALL)
+                .flags(flag::WALL | flag::NEAR)
                 .tone(0.2),
             );
         }
@@ -650,12 +656,12 @@ fn stairwell(cells: &mut [Vec<Prim>]) {
     shop.push(
         Prim::new(
             kind::BOX,
-            mat::CLOTH,
+            mat::FABRIC,
             v3(-2.0, 2.66, 0.52),
             v3(3.5, 0.015, 0.56),
         )
         .pitch(0.38)
-        .tone(0.9),
+        .tone(0.45),
     );
     let gate = &mut cells[cell::room(2, 0)];
     gate.push(
@@ -1653,13 +1659,18 @@ fn street(cells: &mut [Vec<Prim>]) {
     ];
     for &(c, x0, x1) in &parts {
         let out = &mut cells[c];
-        out.push(slab(mat::PAVING, v3(x0, ROAD_Y, 0.0), v3(x1, 0.0, NEAR_WALK)).tone(0.4));
+        out.push(
+            slab(mat::PAVING, v3(x0, ROAD_Y, 0.0), v3(x1, 0.0, NEAR_WALK))
+                .flags(flag::SLAB)
+                .tone(0.4),
+        );
         out.push(
             slab(
                 mat::PAVING,
                 v3(x0, ROAD_Y, FAR_WALK),
                 v3(x1, 0.0, PLINTH[3]),
             )
+            .flags(flag::SLAB)
             .tone(0.4),
         );
         for z in [TRACK_Z - 0.5 * GAUGE, TRACK_Z + 0.5 * GAUGE] {
@@ -1672,26 +1683,48 @@ fn street(cells: &mut [Vec<Prim>]) {
                 .flags(flag::FLAT),
             );
         }
-        out.push(slab(
-            mat::DARK,
-            v3(x0, 5.18, TRACK_Z - 0.008),
-            v3(x1, 5.196, TRACK_Z + 0.008),
-        ));
+        out.push(
+            slab(
+                mat::DARK,
+                v3(x0, 5.18, TRACK_Z - 0.008),
+                v3(x1, 5.196, TRACK_Z + 0.008),
+            )
+            .flags(flag::WALL),
+        );
     }
     // Poles holding the wire, on the far sidewalk.
     for x in [-13.4f32, -4.4, 4.6, 13.4] {
         let c = street_cell(x);
         let out = &mut cells[c];
-        out.push(cyl(mat::METAL, v3(x, 2.75, 6.95), 0.07, 2.75).tone(0.25));
-        out.push(cube(mat::METAL, v3(x, 5.3, 5.6), v3(0.03, 0.03, 1.38)).tone(0.25));
+        out.push(
+            cyl(mat::METAL, v3(x, 2.75, 6.95), 0.07, 2.75)
+                .flags(flag::WALL | flag::NEAR)
+                .tone(0.25),
+        );
+        out.push(
+            cube(mat::METAL, v3(x, 5.3, 5.6), v3(0.03, 0.03, 1.38))
+                .flags(flag::WALL | flag::NEAR)
+                .tone(0.25),
+        );
     }
     // Lamps on the near sidewalk.
     for x in [-11.5f32, -0.5, 11.5] {
         let c = street_cell(x);
         let out = &mut cells[c];
-        out.push(cyl(mat::METAL, v3(x, 1.55, 1.75), 0.05, 1.55).tone(0.15));
-        out.push(tube(mat::METAL, v3(x, 3.0, 1.75), v3(x, 3.15, 1.4), 0.025).tone(0.15));
-        out.push(ball(mat::STREETLAMP, v3(x, 3.05, 1.4), v3(0.16, 0.1, 0.16)).flags(flag::GLOSS));
+        out.push(
+            cyl(mat::METAL, v3(x, 1.55, 1.75), 0.05, 1.55)
+                .flags(flag::NEAR)
+                .tone(0.15),
+        );
+        out.push(
+            tube(mat::METAL, v3(x, 3.0, 1.75), v3(x, 3.15, 1.4), 0.025)
+                .flags(flag::NEAR)
+                .tone(0.15),
+        );
+        out.push(
+            ball(mat::STREETLAMP, v3(x, 3.05, 1.4), v3(0.16, 0.1, 0.16))
+                .flags(flag::GLOSS | flag::NEAR),
+        );
     }
     // The stop: its shelter on the far sidewalk, the sign; the second
     // stop's sign by the shop's crossing.
@@ -1791,11 +1824,14 @@ pub fn street_cell(x: f32) -> usize {
 /// The yard behind the house: grass, two trees, a fence; the painted
 /// backdrop at the plinth's back edge.
 fn yard(out: &mut Vec<Prim>) {
-    out.push(slab(
-        mat::GRASS,
-        v3(PLINTH[0], ROAD_Y, PLINTH[2]),
-        v3(PLINTH[1], 0.0, BACK_OUT),
-    ));
+    out.push(
+        slab(
+            mat::GRASS,
+            v3(PLINTH[0], ROAD_Y, PLINTH[2]),
+            v3(PLINTH[1], 0.0, BACK_OUT),
+        )
+        .flags(flag::SLAB),
+    );
     for &(x, z, h, s, t) in &[
         (-5.5f32, -6.6f32, 7.5f32, 2.3f32, 0.2f32),
         (6.0, -6.9, 9.0, 2.7, 0.55),

@@ -27,27 +27,24 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define SUN     u_d[5]   // toward the sun, how much of it is out
 #define DAY     u_d[6]   // the sky's light, the golden hour, the night, the table's gloss
 #define SX (SLOT_LAMPS + LAMP_SLOTS)
-#define HERO    u_d[SX]       // his feet, how much the rings show
-#define RING1   u_d[SX + 1]   // the outer ring: radius, height, lit
-#define RING1B  u_d[SX + 2]   // its flash, its turn
-#define RING2   u_d[SX + 3]   // the inner: radius, height, lit, tremble
-#define RING2B  u_d[SX + 4]   // its flash (heartbeat), breath, hurry
-#define RING3   u_d[SX + 5]   // the step's: radius, height, lit
-#define RING3B  u_d[SX + 6]   // its flash, its roll
-#define RINGEV  u_d[SX + 7]   // the newest touch: which ring, age; the one before
-#define CHORD   u_d[SX + 8]   // the three rings striking together, since
-#define PATHS   u_d[SX + 9]   // the line of his day: drawn, bright, the beads
-#define MELT    u_d[SX + 10]  // the walls melting, the table's gloss
-#define SPARKS  u_d[SX + 11]  // the deadlines' sparks
-#define SPARK_TO u_d[SX + 12] // where they burn
-#define DESK    u_d[SX + 13]  // his screen
-#define TRAM    u_d[SX + 14]  // the tram's place, its doors
-#define MOTION  u_d[SX + 15]  // story time, slowness, the lift's floor, moving
-#define CUP     u_d[SX + 16]  // the child's cup, slowness
-#define STEAM   u_d[SX + 17]  // over his tea, how much
-#define HONK    u_d[SX + 18]  // the tram's horn, how much
-#define COIN    u_d[SX + 19]  // the coin's glint, how much
-#define LIFT    u_d[SX + 20]  // the lift's floor, moving
+#define SPHERE  u_d[SX]       // the sphere round him: its centre, its radius
+#define RINGS   u_d[SX + 1]   // the first ring's height, the second's, the meridian's turn, how plainly
+#define RINGVIS u_d[SX + 2]   // how much of the first, second, third ring shows; the glass
+#define RINGFX  u_d[SX + 3]   // the flashes: first, second (its tremble), third; the floor under it
+#define HEROP   u_d[SX + 4]   // his head, how much the eye is his own
+#define CHORD   u_d[SX + 5]   // the three rings striking together, since
+#define PATHS   u_d[SX + 6]   // the line of his day: drawn, bright, the beads
+#define MELT    u_d[SX + 7]   // the walls melting, the table's gloss
+#define SPARKS  u_d[SX + 8]   // the deadlines' sparks
+#define SPARK_TO u_d[SX + 9]  // where they burn
+#define DESK    u_d[SX + 10]  // his screen, the desk lamp, how much he typed, the bad news
+#define TRAM    u_d[SX + 11]  // the tram's place, its doors
+#define MOTION  u_d[SX + 12]  // story time, slowness, the lift's floor, moving
+#define CUP     u_d[SX + 13]  // the child's cup, slowness
+#define STEAM   u_d[SX + 14]  // over his tea, how much
+#define HONK    u_d[SX + 15]  // the tram's horn, how much
+#define COIN    u_d[SX + 16]  // the coin's glint, how much
+#define LIFT    u_d[SX + 17]  // the lift's floor, moving
 #define ROUTE_AT(i) u_d[SLOT_PATH + (i)]
 
 #define TIME     RIGHT.w

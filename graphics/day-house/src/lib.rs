@@ -1,16 +1,17 @@
 //! «Дом в разрезе»: Step 7 page 10 «В быту», the last scene. A model of a
 //! five-storey house cut open along its front stands on a black lacquer
 //! table: a stairwell with a lift, a shop and a workshop below, neighbours
-//! in their rooms, a tram stop in the street, a running track on the roof.
-//! One man goes through the house and through one day: an argument in the
-//! kitchen (his second ring trembles and steadies), a tram that honks at
-//! him (the first ring holds), the queue in the shop, his child knocking a
-//! cup off the table (the third ring flashes, he catches it), deadlines
-//! burning over his desk, a run on the roof at sunset. Then a line of light
-//! draws his way through the house with a bead at each of the six places,
-//! the three rings strike together and the rooms he passed through flash;
-//! the walls melt into one space; the camera sinks to the table and the
-//! house and its reflection join into one.
+//! in their rooms, a tram line in the street. One man goes through the
+//! house and through one day inside his sphere of three rings: an argument
+//! in the kitchen (his second ring trembles and steadies), a tram that
+//! honks at him (the sphere flashes), the tram and the shop through his own
+//! eyes, a coin that slips (the third ring whips round), his child's cup
+//! falling (the world slows, he catches it), the call and the deadlines at
+//! his desk, an evening run along the street. At night the rings come
+//! together round him and strike; the camera draws back; the line of his
+//! day runs through the house and each place lights; the sphere grows over
+//! the whole house, the walls melt, and the globe meets its reflection in
+//! the lacquer.
 //!
 //! The pure core lives here, in `house.rs` (the model) and `story.rs` (the
 //! day): every number the shaders read. `browser.rs` only binds them to
@@ -32,10 +33,6 @@ use math::{v3, V3};
 pub use story::{Figure, Frame, Story};
 use watcher_scene_palette::Palette;
 
-/// What the day grew by once he stopped skipping places (he walks home
-/// from the shop, and from his desk up to the roof): every moment of the
-/// evening and the finale comes this much later than in the first cut.
-pub const DAY_EXTRA: f32 = 39.0;
 /// One loop: the whole day, three minutes and a little more.
 pub const LOOP: f32 = 271.9;
 /// The finale after he stops running.
@@ -84,7 +81,7 @@ pub const PATH_POINTS: usize = 48;
 /// The uniform slots the shaders read (common.glsl names them).
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_LAMPS: usize = 7;
-pub const SLOT_PATH: usize = SLOT_LAMPS + LAMPS.div_ceil(4) + 21;
+pub const SLOT_PATH: usize = SLOT_LAMPS + LAMPS.div_ceil(4) + 18;
 pub const SLOTS: usize = SLOT_PATH + PATH_POINTS;
 // Every uniform of the world's programs fits the 224 vectors WebGL2
 // promises a fragment shader, with room for ANGLE's own.
@@ -105,8 +102,8 @@ impl Chapter {
         LOOP
     }
     /// Reduced motion holds this moment: the night house, the line of his
-    /// day drawn through it, the three rings striking together round him on
-    /// the roof and the rooms he went through lit.
+    /// day drawn through it, the places of his day lit and the three rings
+    /// together round him at the lamp.
     pub fn still(self) -> f32 {
         story::STILL
     }
@@ -169,27 +166,8 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     }
     let mut k = SLOT_LAMPS + LAMPS.div_ceil(4);
     for slot in [
-        v(f.hero, f.rings_seen),
-        f.ring1,
-        f.ring1b,
-        f.ring2,
-        f.ring2b,
-        f.ring3,
-        f.ring3b,
-        f.ring_events,
-        f.chord,
-        f.path,
-        f.melt,
-        f.sparks,
-        f.spark_to,
-        f.desk,
-        f.tram,
-        f.motion,
-        f.cup,
-        f.steam,
-        f.honk,
-        f.coin,
-        f.lift,
+        f.sphere, f.rings, f.ring_vis, f.ring_fx, f.pov, f.chord, f.path, f.melt, f.sparks,
+        f.spark_to, f.desk, f.tram, f.motion, f.cup, f.steam, f.honk, f.coin, f.lift,
     ] {
         s[k] = slot;
         k += 1;
@@ -482,7 +460,7 @@ mod tests {
     fn the_moving_cells_and_the_people_fit() {
         let scene = Scene::new();
         let story = Story::new(Chapter::Everyday);
-        for i in 0..360 {
+        for i in 0..(LOOP * 2.0) as usize {
             let f = story.compose(i as f32 * 0.5);
             assert!(f.figures.len() <= FIGS, "{}", f.figures.len());
             let n: usize = f.movers.iter().map(|m| m.len()).sum();

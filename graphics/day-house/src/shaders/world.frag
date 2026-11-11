@@ -446,7 +446,10 @@ Hit trace(vec3 ro, vec3 rd, float tmax) {
     if (++j < CONES) continue;
     j = 0;
     steps++;
-    if (d < 0.0012) {
+    // Through his own eyes his head is not there (his hands and body are).
+    bool own = fi == 0 && HEROP.w > 0.01 && dot(ro - HEROP.xyz, ro - HEROP.xyz) < 0.2
+        && dot(q - HEROP.xyz, q - HEROP.xyz) < 0.045;
+    if (d < 0.0012 && !own) {
       h.t = t;
       h.kind = K_FIG;
       h.id = fi;
@@ -455,7 +458,7 @@ Hit trace(vec3 ro, vec3 rd, float tmax) {
       end = 0.0;
       continue;
     }
-    t += max(d, 0.0008);
+    t += own ? max(abs(d), 0.02) : max(d, 0.0008);
   }
   if (fig >= 0) {
     vec3 p = ro + rd * h.t;
@@ -546,10 +549,41 @@ vec2 lampLight(int c, vec3 p, vec3 n) {
   float ndl = max(dot(n, v * inversesqrt(d2)), 0.0) * 0.75 + 0.25;
   return vec2(0.2, 1.0) * k * 1.5 * ndl / (1.0 + 0.5 * d2);
 }
+// His laptop's screen (u: -1..1 over its face): a page of text that
+// fills row by row as he types, the cursor blinking at its end; when the
+// call's news comes, a warm banner across the top and the page dims.
+vec2 deskScreen(vec2 u) {
+  vec2 p = vec2(-u.x, u.y); // the screen's right is the world's -x
+  float face = step(abs(p.x), 0.95) * step(abs(p.y), 0.93);
+  float rows = 12.0, rowH = 0.12;
+  float r = (0.66 - p.y) / rowH;
+  float row = floor(r + 0.5);
+  float off = abs(r - row) * rowH;
+  float x = (p.x + 0.78) / 1.56;
+  float typed = DESK.z * rows;
+  // A paragraph's last row is short.
+  float len = fract(row * 0.618 + 0.21) < 0.3 ? 0.35 + 0.4 * fract(row * 0.37) : 1.0;
+  float shown = min(clamp(typed - row, 0.0, 1.0), len);
+  float word = step(0.16, fract(x * 6.5 + 0.43 * row + 0.25 * sin(floor(x * 6.5) * 2.3 + row)));
+  float inRow = step(0.0, row) * step(row, rows - 1.0) * step(0.0, x) * step(x, 1.0);
+  float ink = inRow * word * step(x, shown) * (1.0 - smoothstep(0.018, 0.026, off));
+  // The cursor after the last letter.
+  float cr = min(floor(typed), rows - 1.0);
+  float cx = min(typed - cr, 1.0);
+  vec2 cp = vec2(cx * 1.56 - 0.78 + 0.02, 0.66 - cr * rowH);
+  float cursor = step(abs(p.x - cp.x), 0.008) * step(abs(p.y - cp.y), 0.045) * step(0.5, fract(TIME * 1.7));
+  // The title bar and the margin.
+  float bar = step(0.8, p.y);
+  float page = mix(0.3, 0.025, max(ink, cursor)) * (1.0 - bar) + 0.12 * bar;
+  vec2 c = vec2(page * (1.0 - 0.45 * DESK.w), 0.03);
+  c += DESK.w * bar * vec2(0.05, 1.1) * (0.75 + 0.25 * sin(TIME * 9.0));
+  return mix(vec2(0.05, 0.01), c, face);
+}
+
 // The rooms of his day, which flash when the rings strike together.
 bool hisRoom(int c) {
   return c == 0 || c == 1 || c == 3 || c == 6 || c == 9 || c == 10 || c == 11 || c == 12 || c == 14
-      || c == CELL_ROOF || c == CELL_LIFT || c == CELL_TRAM;
+      || c == CELL_STREET_L || c == CELL_STREET_M || c == CELL_LIFT || c == CELL_TRAM;
 }
 
 struct Surf {
@@ -627,8 +661,12 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
   } else if (m == M_SCREEN) {
     s.a = 0.04;
     s.gloss = 0.4;
-    float on = cell == 14 ? DESK.x : (h.id == CELL_MOVE ? 0.6 : 0.25);
-    s.emit = on * vec2(0.9, 0.06) * (0.8 + 0.2 * step(0.5, fract(h.lp.y * 30.0)));
+    if (cell == 14) {
+      s.emit = DESK.x * deskScreen(h.lp.xy / vec2(0.2, 0.13));
+    } else {
+      float on = h.id == CELL_MOVE ? 0.6 : 0.25;
+      s.emit = on * vec2(0.9, 0.06) * (0.8 + 0.2 * step(0.5, fract(h.lp.y * 30.0)));
+    }
   } else if (m == M_PAPER) {
     s.a = 0.72;
     s.warm = 0.1;
@@ -702,8 +740,23 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
   } else if (m == M_SIGN) {
     s.a = 0.15;
     s.warm = 0.5;
-    float letters = step(0.5, noise2(h.lp.xy * vec2(9.0, 14.0), 67u));
-    s.emit = vec2(0.05, 0.9) * letters * max(lampOf(cell), 0.15);
+    // Five block letters across the middle, each a few strokes of a
+    // segment display: read as a word from the street, never as noise.
+    vec2 q = h.lp.xy;
+    float k = floor(q.x / 0.3 + 0.5);
+    vec2 u = vec2(q.x / 0.3 - k + 0.5, q.y / 0.17 + 0.5);
+    float bits = floor(hash1(int(k) + 3, 71u) * 31.0) + 1.0;
+    float b0 = mod(bits, 2.0), b1 = mod(floor(bits / 2.0), 2.0);
+    float b2 = mod(floor(bits / 4.0), 2.0), b3 = mod(floor(bits / 8.0), 2.0);
+    float b4 = mod(floor(bits / 16.0), 2.0);
+    float w = 0.17;
+    float segL = step(u.x, 0.15 + w), segR = step(0.85 - w, u.x);
+    float segT = step(1.0 - w, u.y), segM = step(abs(u.y - 0.5), 0.5 * w), segB = step(u.y, w);
+    // The stem always on the left, so no letter reads mirrored.
+    float ink = max(max(segL, segR * b1), max(max(segT * max(b2, b0), segM * b3), segB * b4));
+    float letters = ink * step(0.15, u.x) * step(u.x, 0.85) * step(0.0, u.y) * step(u.y, 1.0)
+        * step(abs(k), 2.0);
+    s.emit = vec2(0.03, 0.75) * letters * max(lampOf(cell), 0.15);
   } else if (m == M_DARK) {
     s.a = 0.03;
   } else if (m == M_GLASS) {
@@ -967,48 +1020,92 @@ float ringGlow(float e, float t, vec3 rd, float w, float halo) {
   return lineK(e, w, px) + 0.22 * sline(e, halo);
 }
 
+// The sphere round him, as on pages 06-08: its glass shows only where the
+// eye grazes it; the first ring runs over it from the top to the floor and
+// back, two lines with beads between them; the third, a meridian, turns
+// and leaves the glass it passed lit a little; the second ring hugs his
+// body from the soles to the crown. Each flashes warm when touched: the
+// first by the world, the second (trembling) by the argument and the call,
+// the third by what falls. When the three strike together a wave runs out
+// over the floor.
 vec2 rings(vec3 ro, vec3 rd, float T) {
-  if (HERO.w < 0.01) return vec2(0.0);
+  if (RINGS.w < 0.01) return vec2(0.0);
+  vec3 C = SPHERE.xyz;
+  float R = SPHERE.w;
   vec2 L = vec2(0.0);
-  vec3 c = HERO.xyz;
-  vec2 q;
-  float t;
-  // The outer ring: the world round him, its dashes slowly turning.
-  float r1 = RING1.x * (1.0 + 0.08 * RING1B.x);
-  if (level(ro, rd, T, c + vec3(0.0, RING1.y, 0.0), q, t)) {
-    float a = atan(q.y, q.x) + RING1B.y;
-    float dash = 0.45 + 0.55 * smoothstep(0.1, 0.3, abs(fract(a * 18.0 / TAU) - 0.5));
-    float g = ringGlow(abs(length(q) - r1), t, rd, 0.012, 0.09 + 0.12 * RING1B.x);
-    L += (vec2(RING1.z, 0.06) + vec2(0.5, 1.4) * RING1B.x) * g * dash;
-  }
-  // The inner ring at his chest: it breathes, trembles, beats with his heart.
-  if (level(ro, rd, T, c + vec3(0.0, RING2.y, 0.0), q, t)) {
-    float a = atan(q.y, q.x);
-    float r2 = RING2.x + RING2.w * 0.035 * sin(a * 7.0 + TIME * 23.0) * sin(a * 3.0 - TIME * 17.0);
-    float g = ringGlow(abs(length(q) - r2), t, rd, 0.008, 0.06 + 0.06 * RING2B.x);
-    L += (vec2(RING2.z, 0.1) + vec2(0.4, 1.2) * RING2B.x) * g;
-  }
-  // The step's ring at his feet, its ticks rolling as he walks.
-  if (level(ro, rd, T, c + vec3(0.0, RING3.y, 0.0), q, t)) {
-    float a = atan(q.y, q.x) + RING3B.y;
-    float r = length(q);
-    float tick = smoothstep(0.42, 0.47, abs(fract(a * 12.0 / TAU) - 0.5)) * step(RING3.x, r) * step(r, RING3.x + 0.08);
-    float g = ringGlow(abs(r - RING3.x), t, rd, 0.01, 0.07 + 0.1 * RING3B.x) + 0.6 * tick;
-    L += (vec2(RING3.z, 0.06) + vec2(0.5, 1.4) * RING3B.x) * g;
-  }
-  // The newest touches run out from the ring they touched.
-  for (int k = 0 + ZERO; k < 2; k++) {
-    float which = k == 0 ? RINGEV.x : RINGEV.z;
-    float age = k == 0 ? RINGEV.y : RINGEV.w;
-    if (which < 0.5 || age > 3.0) continue;
-    float y = which < 1.5 ? RING1.y : (which < 2.5 ? RING2.y : RING3.y);
-    float r0 = which < 1.5 ? RING1.x : (which < 2.5 ? RING2.x : RING3.x);
-    if (level(ro, rd, T, c + vec3(0.0, y, 0.0), q, t)) {
-      float g = ringGlow(abs(length(q) - (r0 + 1.3 * age)), t, rd, 0.01, 0.08);
-      L += vec2(0.3, 0.7) * exp(-1.8 * age) * g;
+  vec3 oc = ro - C;
+  float b = dot(oc, rd);
+  float disc = b * b - (dot(oc, oc) - R * R);
+  if (disc > 0.0) {
+    float sq = sqrt(disc);
+    vec3 mer = vec3(cos(RINGS.z), 0.0, sin(RINGS.z));
+    for (int k = 0 + ZERO; k < 2; k++) {
+      float t = k == 0 ? -b - sq : -b + sq;
+      if (t <= 0.05 || t > T) continue;
+      vec3 q = ro + rd * t;
+      if (q.y < RINGFX.w) continue;
+      vec3 nr = (q - C) / R;
+      float w = max(0.006, 1.2 * pixelAt(t));
+      float graze = 1.0 / max(abs(dot(rd, nr)), 0.15);
+      float dy = q.y - RINGS.x;
+      float first = sline(abs(dy) - 0.02, w);
+      float phi = atan(nr.z, nr.x);
+      float rr = length(q.xz - C.xz);
+      float arc = abs(fract((phi + TAU * STORY / 16.0) * (24.0 / TAU)) - 0.5) * (TAU / 24.0) * rr;
+      float bead = sline(length(vec2(arc, dy)), max(0.011, w));
+      float third = sline(dot(q - C, mer), w);
+      float lag = fract((RINGS.z + 0.5 * PI - phi) / PI);
+      float trail = 0.015 * exp(-6.0 * lag);
+      float fade = k == 0 ? 1.0 : 0.7;
+      float cold = 0.005 * graze * RINGVIS.w + RINGVIS.x * (0.45 * first + 0.7 * bead) + RINGVIS.z * (0.4 * third + 2.0 * trail);
+      float warm = RINGFX.x * (0.9 * first + 1.2 * bead + 0.02 * graze) + RINGFX.z * (0.9 * third + 6.0 * trail);
+      L += vec2(cold + 0.3 * warm, warm) * fade;
     }
   }
-  return L * HERO.w;
+  // The second ring: where the ray crosses its plane, or the upright
+  // cylinder it lies on, nearest the ring; it trembles when he is shaken.
+  vec2 o2 = ro.xz - C.xz;
+  float r2 = SECOND_RING_R, y2 = RINGS.y;
+  float shake = 0.028 * min(RINGFX.y, 1.5);
+  float best = 1e3, tb = -1.0;
+  if (abs(rd.y) > 1e-4) {
+    float t = (y2 - ro.y) / rd.y;
+    if (t > 0.05 && t < T) {
+      vec2 p = o2 + rd.xz * t;
+      float a = atan(p.y, p.x);
+      float rw = r2 * (1.0 + shake * sin(a * 7.0 + TIME * 23.0) * sin(a * 3.0 - TIME * 17.0));
+      float e = abs(length(p) - rw);
+      if (e < best) { best = e; tb = t; }
+    }
+  }
+  float a = dot(rd.xz, rd.xz), bb = dot(o2, rd.xz), cc = dot(o2, o2) - r2 * r2;
+  float dd = bb * bb - a * cc;
+  if (dd > 0.0 && a > 1e-6) {
+    float sq = sqrt(dd);
+    for (int k = 0 + ZERO; k < 2; k++) {
+      float t = (-bb + (k == 0 ? -sq : sq)) / a;
+      if (t <= 0.05 || t > T) continue;
+      vec2 p = o2 + rd.xz * t;
+      float ang = atan(p.y, p.x);
+      float e = abs(ro.y + rd.y * t - y2 - shake * r2 * sin(ang * 7.0 + TIME * 23.0));
+      if (e < best) { best = e; tb = t; }
+    }
+  }
+  if (tb > 0.0) {
+    float g = sline(best, max(0.005, 1.2 * pixelAt(tb)));
+    L += vec2(RINGVIS.y * 0.5 + 0.3 * RINGFX.y, 0.9 * RINGFX.y) * g;
+  }
+  L *= RINGS.w;
+  // The chord: a wave out over the floor from the sphere's foot.
+  if (CHORD.y > 0.0 && CHORD.y < 4.0) {
+    vec2 q;
+    float t;
+    if (level(ro, rd, T, vec3(C.x, RINGFX.w + 0.02, C.z), q, t)) {
+      float g = ringGlow(abs(length(q) - (R + 9.0 * CHORD.y)), t, rd, 0.02, 0.15);
+      L += vec2(0.35, 0.9) * exp(-0.8 * CHORD.y) * g;
+    }
+  }
+  return L;
 }
 
 vec2 route(vec3 ro, vec3 rd, float T) {

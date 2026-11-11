@@ -348,8 +348,8 @@ impl Story {
         let el = 0.05 + 0.85 * (PI * u).sin();
         let sun = v3(az.sin() * el.cos(), el.sin(), az.cos() * el.cos());
         // Every light comes back to its dawn value at the loop's end.
-        let sun_amount =
-            smooth(-2.0, 8.0, s) * (1.0 - smooth(F - 8.0, F + 1.0, s)) + smooth(-2.0, 8.0, s - LOOP);
+        let sun_amount = smooth(-2.0, 8.0, s) * (1.0 - smooth(F - 8.0, F + 1.0, s))
+            + smooth(-2.0, 8.0, s - LOOP);
         let sky = (0.25 + 0.75 * smooth(0.0, 12.0, s)) * (1.0 - 0.85 * smooth(F - 8.0, F + 4.0, s))
             + 0.1 * smooth(F + 27.0, F + 34.0, s);
         let morning = 0.55 * (1.0 - smooth(6.0, 22.0, s) + smooth(F + 29.0, F + 34.0, s));
@@ -651,7 +651,13 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // Cut: the street wide; the tram goes off to the right and comes
         // back in from the left to the second stop.
         fixed(go1 + 5.47, v3(0.0, 3.0, 24.0), v3(0.0, 2.2, 2.0), 1.9, 0.0),
-        fixed(stop2 + 0.5, v3(-1.0, 2.8, 21.0), v3(-3.0, 1.8, 2.5), 1.95, 0.001),
+        fixed(
+            stop2 + 0.5,
+            v3(-1.0, 2.8, 21.0),
+            v3(-3.0, 1.8, 2.5),
+            1.95,
+            0.001,
+        ),
         fixed(
             k.alight - 1.0,
             v3(-2.0, 2.2, 13.0),
@@ -681,18 +687,12 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             2.0,
             0.005,
         ),
-        fixed(
-            q + 7.6,
-            v3(0.2, 1.7, -0.7),
-            v3(-3.9, 1.1, -2.4),
-            2.1,
-            0.004,
-        ),
+        fixed(q + 7.6, v3(0.2, 1.7, -0.7), v3(-3.9, 1.1, -2.4), 2.1, 0.004),
         // His eyes at the counter: his hand with the coin, her hands, the
         // loaf from the shelf.
-        eyes(q + 8.5, v3(-3.7, 1.65, -2.3), v3(-4.82, 1.2, -2.45)),
-        eyes(q + 11.4, v3(-3.7, 1.65, -2.3), v3(-5.2, 1.45, -2.6)),
-        eyes(q + 14.5, v3(-3.7, 1.65, -2.3), v3(-4.6, 1.1, -2.4)),
+        eyes(q + 8.5, v3(-3.7, 1.65, -2.3), v3(-4.7, 1.0, -2.45)),
+        eyes(q + 11.4, v3(-3.7, 1.65, -2.3), v3(-5.1, 1.28, -2.6)),
+        eyes(q + 14.5, v3(-3.7, 1.65, -2.3), v3(-4.5, 0.98, -2.4)),
         // Cut: out with the bread.
         fixed(
             q + 14.58,
@@ -701,7 +701,12 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             2.0,
             0.004,
         ),
-        follow(k.shop_out - 0.05, v3(1.5, 2.0, 8.0), v3(0.0, 1.0, -0.5), 2.0),
+        follow(
+            k.shop_out - 0.05,
+            v3(1.5, 2.0, 8.0),
+            v3(0.0, 1.0, -0.5),
+            2.0,
+        ),
         // Home: along the sidewalk to his door, then up in the lift.
         follow(k.home - 2.0, v3(2.0, 1.9, 7.8), v3(-0.3, 1.0, -0.5), 2.1),
         follow(k.home + 0.9, v3(2.4, 1.8, 7.5), v3(-0.3, 1.1, -0.5), 2.1),
@@ -722,13 +727,7 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             2.3,
             0.006,
         ),
-        fixed(
-            k.catch,
-            v3(5.4, 10.0, 2.8),
-            v3(4.95, 9.7, -1.5),
-            2.5,
-            0.008,
-        ),
+        fixed(k.catch, v3(5.4, 10.0, 2.8), v3(4.95, 9.7, -1.5), 2.5, 0.008),
         fixed(
             k.catch + 2.6,
             v3(5.5, 10.2, 3.4),
@@ -739,13 +738,7 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // Up the stair to the desk.
         follow(k.stairs, v3(0.4, 1.8, 7.8), v3(0.3, 1.2, -0.5), 2.0),
         follow(k.stairs + 10.0, v3(-0.6, 1.4, 6.5), v3(0.4, 1.3, -0.5), 2.0),
-        fixed(
-            d - 2.0,
-            v3(6.4, 13.7, 3.4),
-            v3(4.2, 12.9, -2.8),
-            2.0,
-            0.004,
-        ),
+        fixed(d - 2.0, v3(6.4, 13.7, 3.4), v3(4.2, 12.9, -2.8), 2.0, 0.004),
         fixed(
             d + 0.3,
             v3(5.4, 13.5, 1.2),
@@ -814,8 +807,20 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // stops, he runs past and out on the right.
         follow(k.run - 0.8, v3(1.6, 1.4, 5.5), v3(0.6, 1.1, 0.0), 2.0),
         follow(k.run + 2.5, v3(0.2, 0.75, 4.2), v3(1.2, 1.15, 0.0), 2.0),
-        fixed(k.run + 5.0, v3(5.0, 1.2, 6.4), v3(5.5, 1.1, 0.9), 2.0, 0.003),
-        fixed(k.gone - 0.03, v3(5.2, 1.2, 6.4), v3(5.7, 1.1, 0.9), 2.0, 0.003),
+        fixed(
+            k.run + 5.0,
+            v3(5.0, 1.2, 6.4),
+            v3(5.5, 1.1, 0.9),
+            2.0,
+            0.003,
+        ),
+        fixed(
+            k.gone - 0.03,
+            v3(5.2, 1.2, 6.4),
+            v3(5.7, 1.1, 0.9),
+            2.0,
+            0.003,
+        ),
         // Cut: in from the left.
         fixed(
             k.again + 0.03,
@@ -845,7 +850,13 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // where the globe meets its reflection.
         fixed(f + 25.0, v3(0.0, 3.0, 38.0), v3(0.0, 2.0, 0.0), 1.8, 0.0),
         fixed(f + 28.0, v3(0.0, -0.7, 40.0), v3(0.0, -0.9, 0.0), 1.6, 0.0),
-        fixed(f + 30.5, v3(0.0, -0.65, 39.0), v3(0.0, -0.85, 0.0), 1.6, 0.0),
+        fixed(
+            f + 30.5,
+            v3(0.0, -0.65, 39.0),
+            v3(0.0, -0.85, 0.0),
+            1.6,
+            0.0,
+        ),
         wide(LOOP),
     ];
     // Monotone keys need rising times.

@@ -14,7 +14,7 @@
 //! with KHR_parallel_shader_compile the page keeps running while it works.
 use crate::body::{BLEND, CAP, CUT_ROUND, FACE, FEET, HANDS, HEAD, LEGS, NECK, PRIMITIVES, TOES};
 use crate::house::{self, cell, flag, kind, mat};
-use crate::story::{BEADS, ROUTE};
+use crate::story::{BEADS, ROUTE, SECOND_RING_R};
 use crate::{
     look, pack, recolor_code, Chapter, Look, Scene, Story, BLOOM, BLUR_MAX, BYTE_KEEP, DATA_W,
     DYN_ROWS, EXPOSURE, FIGS, FRAME_ASPECT, LAMPS, LOOP, PATH_POINTS, RAD_SCALE, SLOTS, SLOT_LAMPS,
@@ -134,6 +134,7 @@ fn defines() -> String {
         ("SLOT_LAMPS", n(SLOT_LAMPS)),
         ("LAMP_SLOTS", n(LAMPS.div_ceil(4))),
         ("SLOT_PATH", n(SLOT_PATH)),
+        ("SECOND_RING_R", f(SECOND_RING_R)),
         ("PATH_POINTS", n(PATH_POINTS)),
         ("ROUTE", n(ROUTE)),
         ("BEADS", n(BEADS)),

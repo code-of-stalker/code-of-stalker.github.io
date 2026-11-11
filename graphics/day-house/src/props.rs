@@ -131,9 +131,14 @@ pub fn tram(c: f32, doors: f32) -> Vec<Prim> {
             .tone(0.15),
         );
         out.push(
-            Prim::new(kind::TORUS, mat::DARK, v3(x, STRAP_Y, STRAP_Z), v3(r, r, 0.012))
-                .ab(0.009, 0.0)
-                .tone(0.6),
+            Prim::new(
+                kind::TORUS,
+                mat::DARK,
+                v3(x, STRAP_Y, STRAP_Z),
+                v3(r, r, 0.012),
+            )
+            .ab(0.009, 0.0)
+            .tone(0.6),
         );
     }
     out.into_iter().filter_map(clip).collect()
@@ -230,7 +235,14 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
         let paper = cube(mat::PAPER, bag + v3(0.0, 0.14, 0.0), v3(0.09, 0.14, 0.06)).yaw(yaw);
         let [side, _, _] = paper.axes();
         out.push(paper.tone(0.75));
-        out.push(ball(mat::BREAD, bag + side * 0.04 + v3(0.0, 0.3, 0.0), v3(0.045, 0.13, 0.04)).yaw(yaw));
+        out.push(
+            ball(
+                mat::BREAD,
+                bag + side * 0.04 + v3(0.0, 0.3, 0.0),
+                v3(0.045, 0.13, 0.04),
+            )
+            .yaw(yaw),
+        );
     }
     // The coin, his phone.
     if held.coin.y > -30.0 {

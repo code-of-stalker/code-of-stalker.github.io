@@ -10,7 +10,7 @@ use crate::act::{
 };
 use crate::body::{build, Body, Carry, Hair, Pose, HANDS, STAND};
 use crate::math::{mix, smooth, smooth_integral, v3, window, V3, Y};
-use crate::{FINALE, LOOP};
+use crate::LOOP;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 pub const HERO: usize = 0;
@@ -124,7 +124,12 @@ fn reach(pose: &mut Pose, local: &Local, side: usize, target: V3, a: f32) {
 /// walk's origin): it goes where the body goes, walking, riding, turning.
 fn hold(pose: &mut Pose, side: usize, at: V3, a: f32) {
     let p = pose.pelvis;
-    aim(pose, side, v3(p.x + at.x, p.y + at.y - STAND, p.z + at.z), a);
+    aim(
+        pose,
+        side,
+        v3(p.x + at.x, p.y + at.y - STAND, p.z + at.z),
+        a,
+    );
 }
 
 /// The hand on `side` at a fixed point of the walk's frame (a seated
@@ -801,7 +806,12 @@ impl Cast {
                     window(s, take - 0.5, take, take + 0.2, take + 0.7),
                 );
                 let b = k.bread;
-                hold(pose, 1, CARRY, window(s, take + 0.2, take + 0.7, b + 0.1, b + 0.6));
+                hold(
+                    pose,
+                    1,
+                    CARRY,
+                    window(s, take + 0.2, take + 0.7, b + 0.1, b + 0.6),
+                );
                 pose.lean += 0.2 * window(s, b + 0.1, b + 0.6, b + 1.0, b + 1.5);
                 reach(
                     pose,
@@ -810,7 +820,12 @@ impl Cast {
                     BAG_SET + v3(0.0, BAG_DROP, 0.0),
                     window(s, b + 0.1, b + 0.6, b + 1.0, b + 1.5),
                 );
-                look(pose, local, BAG_SET, window(s, b, b + 0.4, b + 1.0, b + 1.4));
+                look(
+                    pose,
+                    local,
+                    BAG_SET,
+                    window(s, b, b + 0.4, b + 1.0, b + 1.4),
+                );
                 look(
                     pose,
                     local,
@@ -976,7 +991,12 @@ impl Cast {
                     window(s, ps - 0.3, ps + 0.1, ps + 0.7, ps + 1.1),
                 );
                 pose.lean += 0.15 * window(s, pr - 0.2, pr + 0.3, pr + 1.4, pr + 1.9);
-                look(pose, local, CUP, window(s, pr - 0.5, pr, pr + 1.5, pr + 2.0));
+                look(
+                    pose,
+                    local,
+                    CUP,
+                    window(s, pr - 0.5, pr, pr + 1.5, pr + 2.0),
+                );
                 look(
                     pose,
                     local,
@@ -1331,9 +1351,7 @@ impl Cast {
             ) * buzz;
         let call = smooth(d + 6.05, d + 6.2, s) * (1.0 - smooth(d + 10.75, d + 10.9, s));
         if call > 0.0 {
-            held.phone = held
-                .phone
-                .lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
+            held.phone = held.phone.lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
         }
 
         // The gardener's can, the painter's brush, the cellist's bow, the
@@ -1416,6 +1434,7 @@ fn cup_flight(k: &Keys, s: f32) -> V3 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FINALE;
 
     #[test]
     fn the_day_fits_the_loop() {

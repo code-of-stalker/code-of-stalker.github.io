@@ -1254,7 +1254,11 @@ fn kitchen(out: &mut Vec<Prim>) {
     out.push(cube(mat::METAL, v3(-5.0, y + 0.945, -4.3), v3(0.34, 0.006, 0.27)).tone(0.15));
     // Her pot on the hob.
     out.push(cyl(mat::METAL, v3(-5.14, y + 1.026, -4.3), 0.12, 0.075).tone(0.45));
-    out.push(cube(mat::DARK, v3(-5.3, y + 1.08, -4.3), v3(0.06, 0.008, 0.012)));
+    out.push(cube(
+        mat::DARK,
+        v3(-5.3, y + 1.08, -4.3),
+        v3(0.06, 0.008, 0.012),
+    ));
     out.push(
         cube(mat::METAL, v3(-3.8, y + 0.9, -4.3), v3(0.3, 0.03, 0.2))
             .tone(0.6)
@@ -1295,7 +1299,10 @@ fn living(out: &mut Vec<Prim>) {
     sofa(out, v3(9.05, y, -1.95), 0.95, -FRAC_PI_2, 0.7);
     out.push(cube(mat::WOOD, v3(7.65, y + 0.4, -1.95), v3(0.32, 0.025, 0.55)).tone(0.3));
     // The tower of blocks she builds on it.
-    for (i, (x, z)) in [(7.52f32, -1.72f32), (7.6, -1.8), (7.55, -1.76)].into_iter().enumerate() {
+    for (i, (x, z)) in [(7.52f32, -1.72f32), (7.6, -1.8), (7.55, -1.76)]
+        .into_iter()
+        .enumerate()
+    {
         let lift = if i == 2 { 0.07 } else { 0.0 };
         out.push(
             cube(mat::TOY, v3(x, y + 0.46 + lift, z), v3(0.035, 0.035, 0.035))
@@ -1604,7 +1611,11 @@ fn roof(out: &mut Vec<Prim>) {
     // A bench and pots of herbs where the neighbours sit out in summer.
     out.push(cube(mat::WOOD, v3(1.6, y + 0.42, -2.9), v3(0.8, 0.03, 0.2)).tone(0.45));
     legs(out, mat::METAL, v3(1.6, y, -2.9), 0.74, 0.16, 0.4, 0.02);
-    for (x, z, hgt) in [(0.2f32, -3.2f32, 0.5f32), (3.0, -3.3, 0.7), (3.5, -1.6, 0.4)] {
+    for (x, z, hgt) in [
+        (0.2f32, -3.2f32, 0.5f32),
+        (3.0, -3.3, 0.7),
+        (3.5, -1.6, 0.4),
+    ] {
         plant(out, v3(x, y, z), hgt, 0.3);
     }
     for x in [6.4f32, 8.6] {

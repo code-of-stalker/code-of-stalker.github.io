@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import type { NativeScrollEvent, NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent, TextInputKeyPressEventData, ViewStyle } from 'react-native';
 import { useIsFocused } from 'expo-router';
 
 import { DiaryWaveform } from '../../product/diary/DiaryAudio';
@@ -34,6 +34,9 @@ const MAX_LENGTH = 4000;
 const PAGE = 150;
 /** Messages closer than this from one person form one group. */
 const GROUP_MS = 5 * 60_000;
+/** The feed melts under the header over this height once it has scrolled that far (the diary's value). */
+const FADE = 24;
+const feedFade = { maskImage: 'linear-gradient(to bottom, transparent, #000 var(--chat-fade-top, 0px), #000)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 var(--chat-fade-top, 0px), #000)' } as ViewStyle;
 /** Edits and deletions are asked for with this overlap, so a slow write is not missed. */
 const CHANGE_OVERLAP_MS = 2 * 60_000;
 /** The message menu closes before the next sheet or the keyboard opens. */
@@ -171,6 +174,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const composerHeight = width >= 375 ? 48 : 44;
   const [inputHeight, setInputHeight] = useState(composerHeight);
   const scroll = useRef<ScrollView>(null);
+  const feedViewport = useRef<View>(null);
   const input = useRef<TextInput>(null);
   /** The highest message id seen, deleted ones included: new messages are asked for after it. */
   const lastId = useRef<number | undefined>(undefined);
@@ -294,6 +298,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
     metrics.current = { offset: contentOffset.y, height: layoutMeasurement.height, content: contentSize.height };
+    // As in the diary feed: text that scrolls under the header melts away instead of a hard edge.
+    if (Platform.OS === 'web') (feedViewport.current as unknown as HTMLElement | null)?.style.setProperty('--chat-fade-top', `${Math.min(FADE, Math.max(0, contentOffset.y))}px`);
     const near = contentSize.height - contentOffset.y - layoutMeasurement.height < 64;
     if (near !== bottom.current) { bottom.current = near; setAtBottom(near); }
     if (near) setBelow(0);
@@ -478,7 +484,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
         </Pressable>
         {action ?? <View style={styles.headerSpacer} />}
       </View>
-      <View style={styles.feedWindow}>
+      <View ref={feedViewport} style={[styles.feedWindow, Platform.OS === 'web' && feedFade]}>
         <ScrollView ref={scroll} style={styles.feed} contentContainerStyle={[styles.feedContent, { paddingHorizontal: gutter }, (empty || !ready) && styles.feedCentered]}
           onScroll={onScroll} scrollEventThrottle={32} onContentSizeChange={onContentSize}
           onLayout={event => { metrics.current.height = event.nativeEvent.layout.height; }}
@@ -678,7 +684,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   unreadMark: { width: 8, height: 8, backgroundColor: colors.accent, transform: [{ rotate: '45deg' }], marginRight: 4 },
   nothing: { fontSize: 10, lineHeight: 16, color: colors.muted, paddingVertical: 16, textAlign: 'center' },
   chat: { flex: 1, minHeight: 0 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 16, paddingBottom: 10, borderBottomWidth: .25, borderBottomColor: colors.border, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 16, paddingBottom: 10 },
   headerMiddle: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   headerCopy: { flex: 1, minWidth: 0, gap: 2 },
   headerTitle: { fontSize: 16, lineHeight: 22, fontWeight: '500' },

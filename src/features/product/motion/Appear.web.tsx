@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { webStyle } from './webStyle';
 import type { PropsWithChildren } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { RustMotion, shown } from './RustMotion.web';
@@ -10,5 +10,5 @@ export function Appear({ children, rise = uiShift, delay = 0, duration = uiDurat
 }>) {
   const reduced = useUiReduced();
   return <RustMotion initial={reduced ? shown : [0, 0, rise, 1, 0, 100]} target={shown} duration={reduced ? 0 : duration} delay={reduced ? 0 : delay} curve={uiCurve}
-    style={{ display: 'flex', flexDirection: 'column', ...StyleSheet.flatten(style) } as React.CSSProperties}>{children}</RustMotion>;
+    style={{ display: 'flex', flexDirection: 'column', ...webStyle(style) } as React.CSSProperties}>{children}</RustMotion>;
 }

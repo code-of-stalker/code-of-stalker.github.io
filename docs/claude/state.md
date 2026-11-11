@@ -1,11 +1,22 @@
 # Project state
 
-Updated 2026-11-11. Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-11. Icon tap animations «Характер» (branch `claude/icon-motion`) shipped to `main` 2026-11-11 (Art: «Пушим»). Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
+
+## Icon motion «Характер» (branch `claude/icon-motion`, on `main` 2026-11-11)
+Art asked for Telegram-like icon animations and chose «Характер»: every icon plays its own
+short spring scene on tap. Rust: `graphics/product-engine/engine/src/icon_motion.rs` (glyphs,
+scenes, on/off states: Fill, Select for radios, Slide for toggles) and `icon_dom.rs` (SVG in a
+host div). Bridge `motion/RustIcon.web.tsx` listens to the nearest pressable ancestor;
+`autoplay` plays once on mount for glyphs that are not pressable (arrows, entry kinds, lock,
+section headings, sparkle); `ground` colors a control's track. Native keeps the still glyph.
+Known gaps: the top diary bookmark swaps Pressables, so it changes without motion; the step
+selector and recording player were checked only in code, not in the app. The unused diary
+illustration has no scene.
 
 ## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, on `main` 2026-11-07)
 Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly

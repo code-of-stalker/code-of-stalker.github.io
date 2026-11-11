@@ -27,10 +27,14 @@ import type { ChatSummary, Member, Place } from '../backend';
 import { draftFor, keepDraft, keepPreview, keepReportFolded, markSeen, previewFor, reportFolded, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
-import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
+import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, Plate, useIntensiveFrames } from './chrome';
 import { RoleMark } from './RoleMark';
 import { Breathe } from '../../product/motion/Breathe';
 import { Leave } from '../../product/motion/Leave';
+import { EditBar } from '../../product/messages/EditBar';
+import { canCopy, finePointer, useMenuAnchor } from '../../product/messages/menu';
+import type { MenuItem, MenuRect } from '../../product/messages/menu';
+import { MessageMenu } from '../../product/messages/MessageMenu';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -46,8 +50,6 @@ const feedFade = { maskImage: 'linear-gradient(to bottom, transparent, #000 var(
 const CHANGE_OVERLAP_MS = 2 * 60_000;
 /** The message menu closes before the next sheet or the keyboard opens. */
 const SHEET_GAP_MS = 280;
-const finePointer = () => Platform.OS === 'web' && typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
-const canCopy = () => Platform.OS === 'web' && typeof navigator !== 'undefined' && !!navigator.clipboard?.writeText;
 
 export const shortPlace: Record<Place, string> = { walker: 'ИДУЩИЙ', guide: 'ПРОВОДНИК', admin: 'АДМИН', main: 'ГЛАВНЫЙ АДМИН' };
 
@@ -142,7 +144,9 @@ export function ChatList({ session, chats, onOpen }: { session: IntensiveSession
 type Pending = { key: string; createdAt: string; failed: boolean; report: boolean } & ({ kind: 'text'; text: string } | { kind: 'voice'; voice: VoiceDraft });
 /** A sheet keeps its message while it slides away. */
 type Sheet = { message: DecodedMessage; open: boolean } | null;
-const closed = (sheet: Sheet): Sheet => sheet && { ...sheet, open: false };
+const closed = <T extends Sheet>(sheet: T): T => sheet && { ...sheet, open: false };
+/** The message menu opens beside the message it was called on. */
+type Menu = { message: DecodedMessage; open: boolean; anchor: MenuRect } | null;
 
 export function ChatView({ session, chat, onBack, action }: { session: IntensiveSession; chat: ChatSummary; onBack: () => void; action?: ReactNode }) {
   const colors = useThemeColors();
@@ -170,7 +174,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const [atBottom, setAtBottom] = useState(true);
   const [info, setInfo] = useState(false);
   const [placed, setPlaced] = useState(false);
-  const [menu, setMenu] = useState<Sheet>(null);
+  const [menu, setMenu] = useState<Menu>(null);
   const [doomed, setDoomed] = useState<Sheet>(null);
   const [removing, setRemoving] = useState(false);
   // A deleted message folds away first (Rust, Leave); the server call runs when it is gone.
@@ -482,8 +486,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     const actions = actionsFor(message);
     feed.push(<Leave key={`${message.id}-${revive}`} leaving={leaving === message.id} onGone={() => { void removeMessage(message.id); }}><Bubble own={own} first={first} frame={(own ? frames.own : frames.roles[message.senderRole] ?? frames.other)[bubbleSpot(first, last)]}
       author={!own && first ? { name: author?.name ?? 'Бывший участник', role: message.senderRole, ink: frames.inks[message.senderRole] } : undefined}
-      time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id || (!!menu?.open && menu.message.id === message.id)}
-      onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'} report={message.report}>
+      time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id}
+      onMenu={actions.copy || actions.edit || actions.remove ? anchor => setMenu({ message, open: true, anchor }) : undefined} holdsControls={message.kind === 'voice'} report={message.report}>
       {message.kind === 'voice' && message.voice
         ? <VoiceBody voice={message.voice} active={activeVoice === message.id} onActivate={() => setActiveVoice(message.id)} source={{ session, chatId, message }} />
         : <MessageText text={message.text} />}
@@ -504,7 +508,17 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const showSend = !voice.capturing && (!!editingNow || !voiceReady || !!value.trim());
   const sendDisabled = !ready || !value.trim() || saving;
   const hint = error && ready ? '' : voice.error || voice.hint || notice;
-  const menuActions = menu ? actionsFor(menu.message) : null;
+  const menuItems = useMemo<MenuItem[]>(() => {
+    if (!menu) return [];
+    const message = menu.message, actions = actionsFor(message);
+    return [
+      ...(actions.edit ? [{ key: 'edit', label: 'Изменить', icon: 'edit' as const, onPress: () => afterMenu(() => startEditing(message)) }] : []),
+      ...(actions.copy ? [{ key: 'copy', label: 'Копировать', icon: 'copy' as const, onPress: () => copy(message.text ?? '') }] : []),
+      ...(actions.remove ? [{ key: 'remove', label: 'Удалить', icon: 'trash' as const, tone: 'error' as const, onPress: () => afterMenu(() => setDoomed({ message, open: true })) }] : []),
+    ];
+    // The items belong to the message the menu was opened on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menu?.message]);
   return <>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
       style={[styles.chat, keyboard.visible && { paddingBottom: keyboard.bottomInset }]}>
@@ -557,14 +571,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
           <ProductText maxFontSize={10} style={styles.reportDraftText}>{diaryReport.draft}</ProductText>
           <Pressable accessibilityRole="button" accessibilityLabel="Писать обычное сообщение" disabled={voice.capturing} onPress={() => setReportMode(false)} style={styles.editClose}><DiaryIcon name="close" size={16} /></Pressable>
         </View> : null}
-        {editingNow ? <View style={styles.editBar}>
-          <Glyph name="edit" size={18} />
-          <View style={styles.editCopy}>
-            <ProductText maxFontSize={10} style={styles.editLabel}>ИЗМЕНЕНИЕ СООБЩЕНИЯ</ProductText>
-            <ProductText numberOfLines={1} style={styles.editQuote}>{(editingNow.text ?? '').replace(/\s+/g, ' ')}</ProductText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Отменить изменение" disabled={saving} onPress={stopEditing} style={styles.editClose}><DiaryIcon name="close" size={16} /></Pressable>
-        </View> : null}
+        {editingNow ? <EditBar key={editingNow.id} quote={editingNow.text ?? ''} disabled={saving} onCancel={stopEditing} /> : null}
         <View style={styles.composerRow}>
           <View style={styles.inputWrap}>
             <DiaryGlass shape="input" /><PanelArtwork source={frames.input} />
@@ -588,18 +595,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
         </View>
       </View>
     </KeyboardAvoidingView>
-    <BottomSheet open={!!menu?.open} onClose={closeMenu} reducedMotion={settings.reducedMotion} bottomInset={keyboard.bottomInset}>
-      {menu && menuActions ? <DiaryDesignPanel title="СООБЩЕНИЕ" onClose={closeMenu}>
-        <View>
-          {menuActions.copy ? <ListItem glyph="copy" title="Копировать" chevron={false} last={!menuActions.edit && !menuActions.remove}
-            onPress={() => copy(menu.message.text ?? '')} /> : null}
-          {menuActions.edit ? <ListItem glyph="edit" title="Изменить" chevron={false} last={!menuActions.remove}
-            onPress={() => afterMenu(() => startEditing(menu.message))} /> : null}
-          {menuActions.remove ? <ListItem glyph="trash" title="Удалить" tone="error" chevron={false} last
-            onPress={() => afterMenu(() => setDoomed({ message: menu.message, open: true }))} /> : null}
-        </View>
-      </DiaryDesignPanel> : null}
-    </BottomSheet>
+    <MessageMenu open={!!menu?.open} anchor={menu?.anchor ?? null} side={menu?.message.senderId === session.id ? 'end' : 'start'} items={menuItems} onClose={closeMenu} />
     <BottomSheet open={reportGuide} onClose={() => setReportGuide(false)} reducedMotion={settings.reducedMotion} bottomInset={keyboard.bottomInset}>
       <DiaryReportGuide onWrite={startReport} onView={() => showReports(true)} />
     </BottomSheet>
@@ -630,18 +626,21 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
 
 function Bubble({ own, first, frame, author, time: sentAt, edited = false, status, marked = false, holdsControls = false, report = false, onMenu, onRetry, onDrop, children }: {
   own: boolean; first: boolean; frame: { uri: string }; author?: { name: string; role: Place; ink: string }; time: string; edited?: boolean; report?: boolean;
-  status?: 'sending' | 'sent' | 'failed'; marked?: boolean; holdsControls?: boolean; onMenu?: () => void; onRetry?: () => void; onDrop?: () => void; children: ReactNode;
+  status?: 'sending' | 'sent' | 'failed'; marked?: boolean; holdsControls?: boolean; onMenu?: (anchor: MenuRect) => void; onRetry?: () => void; onDrop?: () => void; children: ReactNode;
 }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const failed = status === 'failed';
+  // A tap or long-press, or a right-click with a mouse (as in Telegram); the menu opens beside the bubble.
+  const anchor = useRef<View>(null);
+  const openMenu = useMenuAnchor(anchor, onMenu);
   return <View style={[styles.bubbleRow, own ? styles.ownRow : styles.otherRow, { marginTop: first ? 12 : 3 }]}>
     {/* A voice bubble holds its own play button, and a button cannot sit inside a button on the web:
         the bubble then offers its menu as an accessibility action instead of a role. */}
     <Pressable accessibilityRole={onMenu && !holdsControls ? 'button' : undefined} accessibilityHint={onMenu && !holdsControls ? 'Действия с сообщением' : undefined}
       accessibilityActions={onMenu && holdsControls ? [{ name: 'menu', label: 'Действия с сообщением' }] : undefined}
-      onAccessibilityAction={onMenu && holdsControls ? () => onMenu() : undefined} disabled={!onMenu}
-      onPress={onMenu} onLongPress={onMenu} delayLongPress={350}
+      onAccessibilityAction={onMenu && holdsControls ? openMenu : undefined} disabled={!onMenu}
+      ref={anchor} onPress={onMenu ? openMenu : undefined} onLongPress={onMenu ? openMenu : undefined} delayLongPress={350}
       style={({ pressed }) => [styles.bubble, report && styles.reportBubble, status === 'sending' && { opacity: .75 }, (pressed || marked) && { opacity: .7 }]}>
       <PanelArtwork source={frame} />
       {author ? <View accessible accessibilityLabel={`${author.name}, ${shortPlace[author.role].toLowerCase()}`} style={styles.authorRow}>
@@ -652,7 +651,7 @@ function Bubble({ own, first, frame, author, time: sentAt, edited = false, statu
       {report ? <View style={styles.reportTag}><DiaryEntryIcon kind="dynamics" /><ProductText maxFontSize={10} style={styles.reportKind}>{diaryReport.kind}</ProductText></View> : null}
       {children}
       <View style={styles.meta}>
-        <ProductText maxFontSize={10} style={styles.time}>{edited ? `ИЗМЕНЕНО ${sentAt}` : sentAt}</ProductText>
+        <ProductText maxFontSize={10} style={styles.time}>{edited ? `ИЗМ. ${sentAt}` : sentAt}</ProductText>
         {status ? <Glyph name={status === 'sending' ? 'clock' : status === 'failed' ? 'alert' : 'check'} size={12} color={failed ? colors.error : colors.accent} /> : null}
       </View>
     </Pressable>
@@ -802,10 +801,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   notice: { fontSize: 10, lineHeight: 16, color: colors.muted },
   reportDraft: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40, paddingLeft: 2 },
   reportDraftText: { flex: 1, fontSize: 8, lineHeight: 13, color: colors.muted, letterSpacing: .8 },
-  editBar: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingLeft: 10, borderLeftWidth: .75, borderLeftColor: colors.accent },
-  editCopy: { flex: 1, minWidth: 0, gap: 2 },
-  editLabel: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8 },
-  editQuote: { fontFamily: fonts.title, fontWeight: '400', fontSize: 13, lineHeight: 18, color: colors.muted },
   editClose: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   sheetStack: { gap: 18 },
   member: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },

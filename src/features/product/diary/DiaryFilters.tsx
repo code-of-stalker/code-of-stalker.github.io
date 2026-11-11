@@ -36,7 +36,7 @@ export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(f
   // Art 2026-11-11: the chosen option is filled solid with the accent and its text turns dark.
   function face(label: string, selected: boolean) {
     return <>{selected ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.accent }]} /> : <DiaryGlass />}
-      <PanelBorder color={selected ? colors.accent : colors.border} /><ProductText style={[styles.option, selected && { color: colors.onAccent }]}>{label}</ProductText></>;
+      <PanelBorder color={selected ? colors.accent : colors.border} /><ProductText color={colors.text} style={[styles.option, selected && { color: colors.onAccent }]}>{label}</ProductText></>;
   }
   function choice(label: string, selected: boolean, action: () => void) {
     return <Pressable key={label} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: selected }} onPress={action} style={styles.choice}>{face(label, selected)}</Pressable>;
@@ -50,7 +50,7 @@ export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(f
     <View style={styles.range}>{(['from', 'to'] as const).map((key, index) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={index ? 'Дата окончания' : 'Дата начала'} accessibilityState={{ expanded: activeDate === key }} onPress={() => { setActiveDate(activeDate === key ? null : key); setError(''); }} style={[styles.dateField, activeDate === key && { backgroundColor: colors.subtle }]}>
       <DiaryGlass /><PanelBorder color={activeDate === key ? colors.accent : colors.border} />
       <ProductText style={[styles.dateCaption, { color: colors.muted }]}>{index ? 'ПО ДАТУ' : 'С ДАТЫ'}</ProductText>
-      <ProductText style={styles.dateValue}>{format(key === 'from' ? from : to) || 'ВЫБРАТЬ'}</ProductText>
+      <ProductText color={colors.text} style={styles.dateValue}>{format(key === 'from' ? from : to) || 'ВЫБРАТЬ'}</ProductText>
     </Pressable>)}</View>
     {activeDate && <DiaryDatePicker key={activeDate} value={activeDate === 'from' ? from : to} from={from} to={to} initialDate={(activeDate === 'from' ? from : to) || from || to} minimum={activeDate === 'to' ? from : ''} onSelect={selectDate} />}
     <View testID="diary-filter-records-title" style={styles.heading}><DiaryEntryIcon kind="observation" /><ProductText variant="title" style={styles.title}>ЗАПИСИ</ProductText></View>

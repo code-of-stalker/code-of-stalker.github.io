@@ -80,8 +80,9 @@ export function fade(hex: string, alpha: number) {
 /**
  * Body emphasis (Art 2026-11-11 chose variants A + C: full-strength bold body text is harsh
  * on the eyes). An emphasised run keeps the bold face but is softer and letter-spaced;
- * the plain text beside it steps back, so the emphasis still leads.
- * Use `quietText` only next to an emphasised run, never on a page without one.
+ * plain body text is quiet everywhere, with or without bold beside it (Art 2026-11-11:
+ * «обычный текст нужно везде сделать таким же приглушенным»). `ProductText` applies both
+ * to body text in the theme's plain ink; titles, labels, buttons and accent ink stay full.
  */
 export const softBold = (colors: ProductColors, fontSize: number) =>
   ({ fontFamily: fonts.bodyBold, color: fade(colors.text, 0.9), letterSpacing: fontSize * 0.06 });

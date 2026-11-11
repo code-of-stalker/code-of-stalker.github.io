@@ -576,7 +576,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
           {showSend ? <Pressable accessibilityRole="button" accessibilityLabel={editingNow ? 'Сохранить изменение' : 'Отправить'} accessibilityState={{ disabled: sendDisabled, busy: saving }} disabled={sendDisabled}
             onPress={send} style={[styles.sendButton, { width: composerHeight, height: composerHeight }, sendDisabled && !saving && { opacity: .4 }]}>
             <DiaryGlass /><PanelBorder color={colors.accent} />
-            {saving ? <ProductText>···</ProductText> : editingNow ? <Glyph name="check" size={20} /> : <DiaryIcon name="send" size={20} />}
+            {saving ? <ProductText color={colors.text}>···</ProductText> : editingNow ? <Glyph name="check" size={20} /> : <DiaryIcon name="send" size={20} />}
           </Pressable> : <DiaryRecordButton voice={voice} size={composerHeight} disabled={!ready} />}
         </View>
       </View>
@@ -691,6 +691,7 @@ function VoiceBody({ voice, active, onActivate, source }: { voice: VoiceMeta; ac
 }
 
 function LoadedVoice({ voice, levels, source }: { voice: VoiceMeta; levels: number[]; source: VoiceSource }) {
+  const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [uri, setUri] = useState<string | null>(null), [error, setError] = useState(''), [attempt, setAttempt] = useState(0);
   const player = useObservationPlayer(uri), started = useRef(false);
@@ -715,7 +716,7 @@ function LoadedVoice({ voice, levels, source }: { voice: VoiceMeta; levels: numb
         disabled={!problem && !player.loaded}
         onPress={() => { if (problem) { started.current = false; setUri(null); setError(''); setAttempt(value => value + 1); } else void player.toggle(); }} style={styles.play}>
         <DiaryGlass /><PanelBorder />
-        {problem || !player.loaded ? <ProductText>{problem ? '↻' : '···'}</ProductText> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
+        {problem || !player.loaded ? <ProductText color={colors.text}>{problem ? '↻' : '···'}</ProductText> : <DiaryIcon name={player.playing ? 'pause' : 'play'} />}
       </Pressable>
       <DiaryWaveform waveform={levels} durationMs={voice.durationMs} positionMs={player.positionMs} onSeek={player.loaded ? ms => { void player.seekTo(ms / 1000); } : undefined} />
     </View>

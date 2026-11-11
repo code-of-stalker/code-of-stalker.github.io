@@ -59,7 +59,7 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
           {group.items.map((item, index) => <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={item.title} disabled={busy}
             hitSlop={{ top: 4, bottom: 4 }} onPress={() => onSection(item.destination)} style={styles.sectionRow}>
             <ProductText numberOfLines={1} color={colors.muted} style={styles.sectionNumber}>{String(index + 1).padStart(2, '0')}</ProductText>
-            <ProductText style={styles.sectionText}>{item.title}</ProductText>
+            <ProductText color={colors.text} style={styles.sectionText}>{item.title}</ProductText>
           </Pressable>)}
         </View>)}
       </Animated.View>

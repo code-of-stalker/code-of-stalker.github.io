@@ -1,11 +1,12 @@
 /**
- * Per-device chat state that is not a secret: the last message id read in each chat.
+ * Per-device chat state that is not a secret: the last message id read in each chat
+ * and whether the report plate is folded.
  * Drafts and decrypted previews stay in memory only and leave it when the session locks.
  */
 const SEEN_KEY = 'intensive.seen.v1';
 
 /** `editedAt` tells a stored preview from the text after an edit. */
-type Preview = { messageId: number; editedAt: string | null; senderId: string; senderRole: string; text: string | null };
+type Preview = { messageId: number; editedAt: string | null; senderId: string; senderRole: string; text: string | null; report?: boolean };
 
 const drafts = new Map<string, string>();
 const previews = new Map<string, Preview>();
@@ -50,4 +51,18 @@ export const keepPreview = (chatId: string, preview: Preview) => { previews.set(
 export function clearChatMemory() {
   drafts.clear();
   previews.clear();
+}
+
+const REPORT_FOLDED_KEY = 'intensive.report-folded.v1';
+
+/** Whether the walker folded the daily report plate above the chat (per device, like the diary's). */
+export function reportPlateFolded(): boolean {
+  try { return globalThis.localStorage?.getItem(REPORT_FOLDED_KEY) === '1'; } catch { return false; }
+}
+
+export function keepReportPlateFolded(folded: boolean) {
+  try {
+    if (folded) globalThis.localStorage?.setItem(REPORT_FOLDED_KEY, '1');
+    else globalThis.localStorage?.removeItem(REPORT_FOLDED_KEY);
+  } catch { /* Storage may be blocked; the plate then opens unfolded. */ }
 }

@@ -7,9 +7,10 @@ import { useIsFocused } from 'expo-router';
 import { DiaryWaveform } from '../../product/diary/DiaryAudio';
 import { DiaryGlass } from '../../product/diary/DiaryGlass';
 import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
-import { DiaryIcon } from '../../product/diary/DiaryIcons';
+import { DiaryEntryIcon, DiaryIcon } from '../../product/diary/DiaryIcons';
 import { DiaryRecordButton } from '../../product/diary/DiaryRecordButton';
-import { diaryClock } from '../../product/diary/feed';
+import { DiaryReportGuide, diaryReport } from '../../product/diary/DiaryReportGuide';
+import { diaryClock, diaryDay } from '../../product/diary/feed';
 import { useDiaryKeyboard } from '../../product/diary/useDiaryKeyboard';
 import { useObservationPlayer } from '../../product/hooks/useObservationPlayer';
 import { useProductSpacing } from '../../product/layout';
@@ -22,7 +23,7 @@ import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductIconButton, ProductText } from '../../product/ui';
 import type { ChatSummary, Member, Place } from '../backend';
-import { draftFor, keepDraft, keepPreview, markSeen, previewFor, seenId } from '../chatMemory';
+import { draftFor, keepDraft, keepPreview, keepReportPlateFolded, markSeen, previewFor, reportPlateFolded, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
 import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
@@ -81,7 +82,7 @@ function useChatPreviews(session: IntensiveSession, chats: ChatSummary[]) {
           if (!await session.chatCipher(chat.chatId)) continue;
           const rows = await session.messages(chat.chatId, chat.lastMessageId - 1);
           const last = rows.find(m => m.id === chat.lastMessageId);
-          if (last) keepPreview(chat.chatId, { messageId: last.id, editedAt: chat.lastEditedAt, senderId: last.senderId, senderRole: last.senderRole, text: last.voice ? voiceLabel(last.voice) : last.text });
+          if (last) keepPreview(chat.chatId, { messageId: last.id, editedAt: chat.lastEditedAt, senderId: last.senderId, senderRole: last.senderRole, text: last.voice ? voiceLabel(last.voice) : last.text, report: last.report });
           if (alive) setVersion(current => current + 1);
         } catch { /* The row keeps its plain line; the next refresh tries again. */ }
       }
@@ -110,7 +111,7 @@ export function ChatList({ session, chats, onOpen }: { session: IntensiveSession
         const author = !preview ? '' : own ? 'Ты' : preview.senderId === chat.guideId ? chat.guideName : preview.senderId === chat.adminId ? chat.adminName
           : preview.senderId === chat.walkerId ? chat.walkerName : shortPlace[preview.senderRole as Place];
         const line = !chat.lastMessageId ? (chat.guideName ? `Проводник: ${chat.guideName}` : 'Проводник не назначен')
-          : !preview ? 'Сообщение' : preview.text === null ? `${author}: не удалось расшифровать` : `${author}: ${preview.text.replace(/\s+/g, ' ')}`;
+          : !preview ? 'Сообщение' : preview.text === null ? `${author}: не удалось расшифровать` : `${author}: ${preview.report ? 'отчёт · ' : ''}${preview.text.replace(/\s+/g, ' ')}`;
         return <Pressable key={chat.chatId} accessibilityRole="button" accessibilityLabel={`${chat.walkerName}${unread ? ', есть новые сообщения' : ''}`} onPress={() => onOpen(chat)}
           style={({ pressed }) => [styles.chatRow, pressed && { backgroundColor: colors.subtle }]}>
           <Avatar name={chat.walkerName} size={48} accent={unread} />
@@ -133,7 +134,8 @@ export function ChatList({ session, chats, onOpen }: { session: IntensiveSession
 
 // ------------------------------------------------------------------ chat
 
-type Pending = { key: string; createdAt: string; failed: boolean } & ({ kind: 'text'; text: string } | { kind: 'voice'; voice: VoiceDraft });
+/** `report`: the walker's daily report, sealed with its mark. */
+type Pending = { key: string; createdAt: string; failed: boolean; report: boolean } & ({ kind: 'text'; text: string } | { kind: 'voice'; voice: VoiceDraft });
 /** A sheet keeps its message while it slides away. */
 type Sheet = { message: DecodedMessage; open: boolean } | null;
 const closed = (sheet: Sheet): Sheet => sheet && { ...sheet, open: false };
@@ -171,6 +173,14 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeVoice, setActiveVoice] = useState<number | null>(null);
+  // The diary's daily report: the plate opens the guide sheet, which starts report mode or shows the reports.
+  const [reportMode, setReportMode] = useState(false);
+  const [reportsOnly, setReportsOnly] = useState(false);
+  const [reportGuide, setReportGuide] = useState(false);
+  const [plateFolded, setPlateFolded] = useState(reportPlateFolded);
+  // As in the diary: «today» moves at midnight while the chat stays open.
+  const [today, setToday] = useState(() => diaryDay(Date.now()));
+  useEffect(() => { const timer = setInterval(() => setToday(diaryDay(Date.now())), 60000); return () => clearInterval(timer); }, []);
   const composerHeight = width >= 375 ? 48 : 44;
   const [inputHeight, setInputHeight] = useState(composerHeight);
   const scroll = useRef<ScrollView>(null);
@@ -334,7 +344,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const deliver = async (item: Pending) => {
     setPending(current => current.map(p => p.key === item.key ? { ...p, failed: false } : p));
     try {
-      const message = item.kind === 'voice' ? await session.sendVoice(chatId, item.voice) : await session.send(chatId, item.text);
+      const message = item.kind === 'voice' ? await session.sendVoice(chatId, item.voice, item.report) : await session.send(chatId, item.text, item.report);
       setPending(current => current.filter(p => p.key !== item.key));
       if (item.kind === 'voice') item.voice.audio.fill(0);
       merge([message]);
@@ -360,7 +370,7 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   const ready = phase === 'ready';
   const voice = useChatVoice({
     active: focused && ready, enabled: ready && !editingNow,
-    onRecorded: recorded => queue({ key: newKey(), kind: 'voice', voice: recorded, createdAt: new Date().toISOString(), failed: false }),
+    onRecorded: recorded => { queue({ key: newKey(), kind: 'voice', voice: recorded, createdAt: new Date().toISOString(), failed: false, report: reportMode }); afterSend(); },
   });
   const voiceReady = Platform.OS === 'web' && voice.recorder.supported;
 
@@ -384,8 +394,17 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     const text = draft.trim();
     if (!text) return;
     setDraft(''); setInputHeight(composerHeight);
-    queue({ key: newKey(), kind: 'text', text, createdAt: new Date().toISOString(), failed: false });
+    queue({ key: newKey(), kind: 'text', text, createdAt: new Date().toISOString(), failed: false, report: reportMode });
+    afterSend();
   };
+  // As the diary does after a save: back to ordinary messages and the whole feed.
+  function afterSend() { setReportMode(false); setReportsOnly(false); }
+  const startReport = () => {
+    setReportGuide(false); setReportsOnly(false);
+    setTimeout(() => { setReportMode(true); input.current?.focus(); }, SHEET_GAP_MS);
+  };
+  const showReports = (on: boolean) => { followNext.current = true; setReportsOnly(on); setReportGuide(false); };
+  const foldPlate = (folded: boolean) => { setPlateFolded(folded); keepReportPlateFolded(folded); };
   const onKey = (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
     const native = event.nativeEvent as TextInputKeyPressEventData & { shiftKey?: boolean; isComposing?: boolean };
     if (native.key === 'Escape' && editingNow) { event.preventDefault(); stopEditing(); return; }
@@ -424,18 +443,22 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     : titleId ? [shortPlace[titlePlace], ...rest].join(' · ') : rest.length ? rest.join(' · ') : 'ТОЛЬКО ТЫ';
 
   // ------------------------------------------------------------- feed
-  const shown = messages.slice(-limit);
-  const hidden = messages.length - shown.length;
+  const reports = messages.filter(m => m.report);
+  const visible = reportsOnly ? reports : messages;
+  const shown = visible.slice(-limit);
+  const hidden = visible.length - shown.length;
+  const reportedToday = [...messages, ...pending].some(m => m.report && ('senderId' in m ? m.senderId === session.id : true) && diaryDay(Date.parse(m.createdAt)) === today);
   const dividerShown = unreadFrom != null && shown.some(m => m.id === unreadFrom);
   // Read by place() from layout callbacks, which run after this commit.
   useLayoutEffect(() => { expectDivider.current = dividerShown; }, [dividerShown]);
   const feed: ReactNode[] = [];
   // A message opens a new run after another writer, a day row, the «new» divider or a pause.
-  const opensRun = (message: DecodedMessage, previous?: DecodedMessage) => !previous || dayKey(previous.createdAt) !== dayKey(message.createdAt)
+  const opensRun = (message: DecodedMessage, previous?: DecodedMessage) => !previous || message.report || previous.report || dayKey(previous.createdAt) !== dayKey(message.createdAt)
     || message.id === unreadFrom || previous.senderId !== message.senderId || Date.parse(message.createdAt) - Date.parse(previous.createdAt) > GROUP_MS;
   const lastShown = shown[shown.length - 1];
   // Pending messages are this writer's own and go out now.
-  const pendingOpens = !lastShown || lastShown.senderId !== session.id || (!!pending.length && dayKey(lastShown.createdAt) !== dayKey(pending[0].createdAt));
+  const waiting = reportsOnly ? pending.filter(p => p.report) : pending;
+  const pendingOpens = !lastShown || lastShown.senderId !== session.id || lastShown.report || (!!waiting.length && (waiting[0].report || dayKey(lastShown.createdAt) !== dayKey(waiting[0].createdAt)));
   shown.forEach((message, index) => {
     const previous = shown[index - 1], next = shown[index + 1];
     const own = message.senderId === session.id;
@@ -444,28 +467,29 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
     if (newDay) feed.push(<DayRow key={`day-${message.id}`} label={dayLabel(message.createdAt)} />);
     if (divider) feed.push(<View key="unread" onLayout={event => { dividerY.current = event.nativeEvent.layout.y; place(); }}><DayRow accent label="НОВЫЕ СООБЩЕНИЯ" /></View>);
     const first = opensRun(message, previous);
-    const last = next ? opensRun(next, message) : !pending.length || pendingOpens;
+    const last = next ? opensRun(next, message) : !waiting.length || pendingOpens;
     const author = names.get(message.senderId);
     const actions = actionsFor(message);
     feed.push(<Bubble key={message.id} own={own} first={first} frame={(own ? frames.own : frames.other)[bubbleSpot(first, last)]}
       author={!own && first ? `${author?.name ?? 'Бывший участник'} · ${shortPlace[message.senderRole]}` : undefined}
       time={time(message.createdAt)} edited={!!message.editedAt} status={own ? 'sent' : undefined} marked={editingNow?.id === message.id || (!!menu?.open && menu.message.id === message.id)}
-      onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'}>
+      onMenu={actions.copy || actions.edit || actions.remove ? () => setMenu({ message, open: true }) : undefined} holdsControls={message.kind === 'voice'} report={message.report}>
       {message.kind === 'voice' && message.voice
         ? <VoiceBody voice={message.voice} active={activeVoice === message.id} onActivate={() => setActiveVoice(message.id)} source={{ session, chatId, message }} />
         : <MessageText text={message.text} />}
     </Bubble>);
   });
-  pending.forEach((item, index) => {
-    const first = index === 0 && pendingOpens;
+  waiting.forEach((item, index) => {
+    const first = index === 0 ? pendingOpens : item.report || waiting[index - 1].report;
+    const last = index === waiting.length - 1 || item.report || waiting[index + 1].report;
     if (index === 0 && lastShown && dayKey(lastShown.createdAt) !== dayKey(item.createdAt)) feed.push(<DayRow key="day-pending" label="СЕГОДНЯ" />);
-    feed.push(<Bubble key={item.key} own first={first} frame={frames.own[bubbleSpot(first, index === pending.length - 1)]} time={time(item.createdAt)} holdsControls={item.kind === 'voice'}
+    feed.push(<Bubble key={item.key} own first={first} frame={frames.own[bubbleSpot(first, last)]} time={time(item.createdAt)} holdsControls={item.kind === 'voice'} report={item.report}
       status={item.failed ? 'failed' : 'sending'} onRetry={() => { void deliver(item); }} onDrop={() => drop(item)}>
       {item.kind === 'voice' ? <VoiceBody voice={item.voice} active={false} /> : <MessageText text={item.text} />}
     </Bubble>);
   });
 
-  const empty = phase === 'ready' && !messages.length && !pending.length;
+  const empty = phase === 'ready' && !visible.length && !waiting.length;
   const value = editingNow ? editText : draft;
   const showSend = !voice.capturing && (!!editingNow || !voiceReady || !!value.trim());
   const sendDisabled = !ready || !value.trim() || saving;
@@ -482,8 +506,15 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
             <ProductText numberOfLines={1} maxFontSize={10} style={[styles.headerSubtitle, error && phase !== 'ready' && { color: colors.error }]}>{subtitle}</ProductText>
           </View>
         </Pressable>
+        {!walker && reports.length ? <Pressable accessibilityRole="button" accessibilityLabel={reportsOnly ? 'Вся переписка' : `Отчёты идущего: ${reports.length}`}
+          accessibilityState={{ selected: reportsOnly }} onPress={() => showReports(!reportsOnly)} style={[styles.reportsButton, reportsOnly && styles.reportsButtonOn]}>
+          <DiaryEntryIcon kind="dynamics" />
+        </Pressable> : null}
         {action ?? <View style={styles.headerSpacer} />}
       </View>
+      {reportsOnly ? <Pressable accessibilityRole="button" accessibilityLabel="Показать всю переписку" onPress={() => showReports(false)} style={[styles.applied, { marginHorizontal: gutter }]}>
+        <ProductText maxFontSize={10} style={styles.appliedText}>{`ТОЛЬКО ОТЧЁТЫ · ${reports.length}`}</ProductText><DiaryIcon name="close" size={14} />
+      </Pressable> : null}
       <View ref={feedViewport} style={[styles.feedWindow, Platform.OS === 'web' && feedFade]}>
         <ScrollView ref={scroll} style={styles.feed} contentContainerStyle={[styles.feedContent, { paddingHorizontal: gutter }, (empty || !ready) && styles.feedCentered]}
           onScroll={onScroll} scrollEventThrottle={32} onContentSizeChange={onContentSize}
@@ -491,7 +522,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
           keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
           {phase === 'loading' ? <ProductText maxFontSize={10} style={styles.loading}>{error || 'ОТКРЫВАЮ ПЕРЕПИСКУ…'}</ProductText> : null}
           {phase === 'no-key' ? <Plate glyph="key" title="Ждём ключ переписки">Он придёт, когда кто-то из участников откроет чат. Обычно это пара минут.</Plate> : null}
-          {empty ? <Plate glyph="lock" title="Сообщений пока нет">{say('Напиши первым.', 'Напишите первым.')} Переписку видят только её участники.</Plate> : null}
+          {empty && reportsOnly ? <Plate glyph="lock" title="Отчётов пока нет">Отчёт о динамике видят только участники переписки.</Plate> : null}
+          {empty && !reportsOnly ? <Plate glyph="lock" title="Сообщений пока нет">{say('Напиши первым.', 'Напишите первым.')} Переписку видят только её участники.</Plate> : null}
           {hidden > 0 ? <Pressable accessibilityRole="button" onPress={() => { holdOffset.current = metrics.current.offset; setLimit(current => current + PAGE); }} style={styles.earlier}>
             <ProductText maxFontSize={10} style={styles.earlierText}>{`ПОКАЗАТЬ РАНЬШЕ · ${hidden}`}</ProductText>
           </Pressable> : null}
@@ -507,6 +539,11 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
       <View style={[styles.composer, { paddingHorizontal: gutter }]}>
         {error && ready ? <ProductText accessibilityRole="alert" maxFontSize={12} style={styles.error}>{error}</ProductText> : null}
         {hint ? <ProductText accessibilityRole={voice.error ? 'alert' : undefined} maxFontSize={12} style={[styles.notice, !!voice.error && { color: colors.error }]}>{hint}</ProductText> : null}
+        {reportMode && !editingNow ? <View style={styles.reportDraft}>
+          <DiaryEntryIcon kind="dynamics" />
+          <ProductText maxFontSize={10} style={styles.reportDraftText}>{diaryReport.draft}</ProductText>
+          <Pressable accessibilityRole="button" accessibilityLabel="Писать обычное сообщение" disabled={voice.capturing} onPress={() => setReportMode(false)} style={styles.editClose}><DiaryIcon name="close" size={16} /></Pressable>
+        </View> : null}
         {editingNow ? <View style={styles.editBar}>
           <Glyph name="edit" size={18} />
           <View style={styles.editCopy}>
@@ -525,8 +562,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
                 : voice.locked ? 'ЗАПИСЬ ЗАКРЕПЛЕНА' : voice.cancelProgress === 1 ? say('ОТПУСТИ — ОТМЕНА', 'ОТПУСТИТЕ — ОТМЕНА') : '← ОТМЕНА'}</ProductText>
               {voice.locked ? <Pressable accessibilityRole="button" accessibilityLabel="Отменить голосовое сообщение" onPress={() => { void voice.discard(); }} style={styles.cancelRecord}><DiaryIcon name="trash" size={16} /></Pressable> : null}
             </View> : <TextInput ref={input} value={value} onChangeText={editingNow ? setEditText : setDraft} multiline scrollEnabled maxLength={MAX_LENGTH} editable={ready && !saving}
-              placeholder={ready ? 'Сообщение' : say('Подожди немного…', 'Подождите немного…')} placeholderTextColor={colors.faint} selectionColor={colors.accent}
-              onKeyPress={onKey} accessibilityLabel={editingNow ? 'Текст сообщения' : 'Сообщение'}
+              placeholder={!ready ? say('Подожди немного…', 'Подождите немного…') : reportMode && !editingNow ? 'Отчёт за день' : 'Сообщение'} placeholderTextColor={colors.faint} selectionColor={colors.accent}
+              onKeyPress={onKey} accessibilityLabel={editingNow ? 'Текст сообщения' : reportMode ? 'Текст отчёта о динамике' : 'Сообщение'}
               onContentSizeChange={event => setInputHeight(Math.max(composerHeight, Math.min(132, event.nativeEvent.contentSize.height)))}
               style={[styles.field, { paddingVertical: (composerHeight - 22) / 2, height: value ? Math.max(composerHeight, inputHeight) : composerHeight }]} />}
           </View>
@@ -549,6 +586,9 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
             onPress={() => afterMenu(() => setDoomed({ message: menu.message, open: true }))} /> : null}
         </View>
       </DiaryDesignPanel> : null}
+    </BottomSheet>
+    <BottomSheet open={reportGuide} onClose={() => setReportGuide(false)} reducedMotion={settings.reducedMotion} bottomInset={keyboard.bottomInset}>
+      <DiaryReportGuide onWrite={startReport} onView={() => showReports(true)} />
     </BottomSheet>
     <ConfirmSheet open={!!doomed?.open} title="УДАЛИТЬ СООБЩЕНИЕ?" text="Сообщение исчезнет у всех участников переписки." confirmLabel="УДАЛИТЬ"
       busy={removing} onConfirm={() => { void removeMessage(); }} onClose={() => setDoomed(closed)} />
@@ -575,8 +615,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
   </>;
 }
 
-function Bubble({ own, first, frame, author, time: sentAt, edited = false, status, marked = false, holdsControls = false, onMenu, onRetry, onDrop, children }: {
-  own: boolean; first: boolean; frame: { uri: string }; author?: string; time: string; edited?: boolean;
+function Bubble({ own, first, frame, author, time: sentAt, edited = false, status, marked = false, holdsControls = false, report = false, onMenu, onRetry, onDrop, children }: {
+  own: boolean; first: boolean; frame: { uri: string }; author?: string; time: string; edited?: boolean; report?: boolean;
   status?: 'sending' | 'sent' | 'failed'; marked?: boolean; holdsControls?: boolean; onMenu?: () => void; onRetry?: () => void; onDrop?: () => void; children: ReactNode;
 }) {
   const colors = useThemeColors();
@@ -589,9 +629,10 @@ function Bubble({ own, first, frame, author, time: sentAt, edited = false, statu
       accessibilityActions={onMenu && holdsControls ? [{ name: 'menu', label: 'Действия с сообщением' }] : undefined}
       onAccessibilityAction={onMenu && holdsControls ? () => onMenu() : undefined} disabled={!onMenu}
       onPress={onMenu} onLongPress={onMenu} delayLongPress={350}
-      style={({ pressed }) => [styles.bubble, status === 'sending' && { opacity: .75 }, (pressed || marked) && { opacity: .7 }]}>
+      style={({ pressed }) => [styles.bubble, report && styles.reportBubble, status === 'sending' && { opacity: .75 }, (pressed || marked) && { opacity: .7 }]}>
       <PanelArtwork source={frame} />
       {author ? <ProductText numberOfLines={1} maxFontSize={10} style={styles.author}>{author}</ProductText> : null}
+      {report ? <View style={styles.reportTag}><DiaryEntryIcon kind="dynamics" /><ProductText maxFontSize={10} style={styles.reportKind}>{diaryReport.kind}</ProductText></View> : null}
       {children}
       <View style={styles.meta}>
         <ProductText maxFontSize={10} style={styles.time}>{edited ? `ИЗМЕНЕНО ${sentAt}` : sentAt}</ProductText>
@@ -690,6 +731,10 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   headerTitle: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
   headerSubtitle: { fontSize: 8, lineHeight: 12, color: colors.muted, letterSpacing: .8 },
   headerSpacer: { width: 8 },
+  reportsButton: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
+  reportsButtonOn: { borderBottomWidth: .75, borderBottomColor: colors.accent },
+  applied: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 },
+  appliedText: { fontSize: 8, lineHeight: 13, color: colors.accent, letterSpacing: .8 },
   feedWindow: { flex: 1, minHeight: 0 },
   feed: { flex: 1, minHeight: 0 },
   feedContent: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 8, paddingBottom: 12 },
@@ -702,6 +747,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   otherRow: { alignSelf: 'flex-start', alignItems: 'flex-start' },
   bubble: { minWidth: 76, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6, gap: 2 },
   author: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8, marginBottom: 2 },
+  reportBubble: { minWidth: 216, paddingTop: 10 },
+  reportTag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  reportKind: { fontFamily: fonts.bodyBold, fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8 },
   // Disket Mono has capitals only; people's own words need lowercase, so messages use Tektur.
   text: { fontFamily: fonts.title, fontWeight: '400', fontSize: 15, lineHeight: 21, letterSpacing: .2, color: colors.text },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 14 },
@@ -732,6 +780,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   sendButton: { justifyContent: 'center', alignItems: 'center' },
   error: { fontSize: 10, lineHeight: 16, color: colors.error },
   notice: { fontSize: 10, lineHeight: 16, color: colors.muted },
+  reportDraft: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40, paddingLeft: 2 },
+  reportDraftText: { flex: 1, fontSize: 8, lineHeight: 13, color: colors.muted, letterSpacing: .8 },
   editBar: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingLeft: 10, borderLeftWidth: .75, borderLeftColor: colors.accent },
   editCopy: { flex: 1, minWidth: 0, gap: 2 },
   editLabel: { fontSize: 8, lineHeight: 12, color: colors.accent, letterSpacing: .8 },

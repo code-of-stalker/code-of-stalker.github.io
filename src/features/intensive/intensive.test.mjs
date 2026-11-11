@@ -144,10 +144,10 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
   assert.equal(chat.adminName, 'Олег Ветров');
   await alex.chatCipher(chat.chatId);
   const history = await alex.messages(chat.chatId);
-  assert.ok(history.length >= 6);
+  assert.ok(history.length >= 7);
   assert.ok(history.every(m => typeof m.text === 'string'));
-  assert.deepEqual(history.slice(0, 5).map(m => m.senderRole), ['walker', 'guide', 'walker', 'guide', 'admin']);
-  assert.deepEqual(history.map(m => m.report), [true, false, false, false, false, false]);
+  assert.deepEqual(history.slice(0, 6).map(m => m.senderRole), ['walker', 'walker', 'guide', 'walker', 'guide', 'admin']);
+  assert.deepEqual(history.map(m => m.report), [true, true, false, false, false, false, false]);
   const sent = await alex.send(chat.chatId, 'Сегодня слушал дождь.');
   assert.equal(sent.text, 'Сегодня слушал дождь.');
 

@@ -7,7 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import type { StyleProp, TextProps, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fonts } from './theme';
+import { fonts, quietText, softBold } from './theme';
 import { useProductLayout, useProductSpacing } from './layout';
 import { GlassHost } from './motion/GlassHost';
 import { cutPanelPath, productIconPath, productIconSize } from './motion/glassShape';
@@ -39,10 +39,15 @@ export function ProductTypography({ section, children }: PropsWithChildren<{
 export function ProductText({ variant = 'body', style, color, maxFontSize, fitToWidth = false, minFontSize = 12, ...props }: TextProps & {
   variant?: 'title' | 'body' | 'label'; color?: string; maxFontSize?: number; fitToWidth?: boolean; minFontSize?: number;
 }) {
-  const styles = useThemeStyles(createStyles);
+  const styles = useThemeStyles(createStyles), colors = useThemeColors();
   const { width } = useWindowDimensions();
   const section = useContext(TypographySection);
-  const resolved = StyleSheet.flatten<TextStyle>([styles.text, typography[variant], color ? { color } : undefined, style]);
+  const flat = StyleSheet.flatten<TextStyle>([styles.text, typography[variant], color ? { color } : undefined, style]);
+  // Body text in the theme's plain ink is quiet everywhere and bold runs are soft (Art
+  // 2026-11-11, as on «ЗАДАНИЕ»). Titles, labels (buttons, tabs) and any other ink stay as set.
+  const plainInk = variant === 'body' && !color && flat.color === colors.text;
+  const softRun = plainInk && flat.fontFamily === fonts.bodyBold;
+  const resolved = plainInk ? { ...flat, ...(softRun ? { color: softBold(colors, 0).color } : flat.fontFamily === fonts.body ? quietText(colors) : null) } : flat;
   const baseSize = resolved.fontSize!;
   // Resolve the family and original size once; 20 -> 24 must not become 32.
   const adaptiveSize = largeScreenFontSizes[resolved.fontFamily ?? '']?.[baseSize] ?? (baseSize === 12 ? 14 : baseSize);
@@ -58,7 +63,7 @@ export function ProductText({ variant = 'body', style, color, maxFontSize, fitTo
   return <Text {...props} {...(fitToWidth ? { ref: fitted.ref, numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: minFontSize / fontSize } : {})} style={[resolved, titleFace && { fontFamily: titleFace, fontWeight: '400' }, fontSize !== baseSize && {
     fontSize,
     lineHeight: resolved.lineHeight === undefined ? undefined : Math.ceil(resolved.lineHeight * fontSize / baseSize),
-  }, fitted.letterSpacing !== undefined && { letterSpacing: fitted.letterSpacing }]} />;
+  }, softRun && flat.letterSpacing === undefined && { letterSpacing: softBold(colors, fontSize).letterSpacing }, fitted.letterSpacing !== undefined && { letterSpacing: fitted.letterSpacing }]} />;
 }
 
 // A measured SVG outline keeps the small corner cuts and hairlines crisp at any width.

@@ -162,8 +162,8 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
           <Pressable accessibilityRole="button" accessibilityLabel="Архитектура наблюдения" onPress={() => leave(onArchitecture)} style={[styles.architectureButton, { width: icon.width, height: icon.buttonHeight }]}><DiaryGlass shape="icon" style={{top:1,bottom:1}} /><DiaryAsset name="collection" transparentBackground size={icon} /></Pressable>
         </View>
         {!keyboard.visible && <><View style={[styles.tools, { marginHorizontal: gutter }, air > 1 && { marginBottom: (air - 1) * 16 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Выбрать даты записей" onPress={() => open('filters')} style={styles.dates}><DiaryAsset name="calendar" /><ProductText style={styles.dateLabel}>{filter.from || filter.to ? 'ПЕРИОД' : 'ВСЕ ДАТЫ'}</ProductText></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={newest ? 'Сначала новые. Показать сначала старые' : 'Сначала старые. Показать сначала новые'} onPress={() => { void changeSettings({ diaryNewestFirst: !newest }); }} style={styles.sort}><DiaryGlass /><PanelBorder color={colors.accent} /><DiaryAsset name="chevron" /><ProductText style={styles.sortLabel}>{newest ? 'СНАЧАЛА НОВЫЕ' : 'СНАЧАЛА СТАРЫЕ'}</ProductText></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Выбрать даты записей" onPress={() => open('filters')} style={styles.dates}><DiaryAsset name="calendar" /><ProductText color={colors.text} style={styles.dateLabel}>{filter.from || filter.to ? 'ПЕРИОД' : 'ВСЕ ДАТЫ'}</ProductText></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={newest ? 'Сначала новые. Показать сначала старые' : 'Сначала старые. Показать сначала новые'} onPress={() => { void changeSettings({ diaryNewestFirst: !newest }); }} style={styles.sort}><DiaryGlass /><PanelBorder color={colors.accent} /><DiaryAsset name="chevron" /><ProductText color={colors.text} style={styles.sortLabel}>{newest ? 'СНАЧАЛА НОВЫЕ' : 'СНАЧАЛА СТАРЫЕ'}</ProductText></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Фильтры дневника" accessibilityState={{ expanded: sheet === 'filters' }} onPress={() => open('filters')} style={styles.filterButton}><DiaryIcon name="filter" size={18} />{activeFilter && <View style={styles.filterDot} />}</Pressable>
           <View style={styles.toolLine} />
         </View>
@@ -180,7 +180,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
           foldedLabel={reportsToday ? 'ДОПОЛНИТЬ ОТЧЁТ О ДИНАМИКЕ' : 'ДОБАВИТЬ ОТЧЁТ ДИНАМИКИ'} collapsed={settings.diaryReportCollapsed === true}
           onCollapsedChange={next => { updateSettings({ diaryReportCollapsed: next }).catch(problem => setError(problem instanceof Error ? problem.message : 'Не удалось сохранить настройку.')); }}
           style={[{ marginHorizontal: gutter }, air > 1 && { marginTop: (air - 1) * 16, marginBottom: 8 * air }]} />}
-        {activeFilter && <Pressable accessibilityRole="button" accessibilityLabel="Сбросить активные фильтры" onPress={() => { setFilter({ ...emptyDiaryFilter }); setSelected(null); }} style={[styles.applied, { marginHorizontal: gutter }]}><ProductText style={styles.small}>ФИЛЬТРЫ · {entries.length} ЗАПИСЕЙ</ProductText><DiaryIcon name="close" size={14} /></Pressable>}</>}
+        {activeFilter && <Pressable accessibilityRole="button" accessibilityLabel="Сбросить активные фильтры" onPress={() => { setFilter({ ...emptyDiaryFilter }); setSelected(null); }} style={[styles.applied, { marginHorizontal: gutter }]}><ProductText color={colors.text} style={styles.small}>ФИЛЬТРЫ · {entries.length} ЗАПИСЕЙ</ProductText><DiaryIcon name="close" size={14} /></Pressable>}</>}
         <View ref={feedViewport} testID="diary-feed-viewport" style={[styles.feed, Platform.OS === 'web' && { maskImage: 'linear-gradient(to bottom, transparent, #000 var(--diary-fade-top, 0px), #000 calc(100% - 24px), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 var(--diary-fade-top, 0px), #000 calc(100% - 24px), transparent)' } as ViewStyle]}>
         <FlatList ref={list} testID="diary-feed" style={styles.feed} removeClippedSubviews={false} scrollEventThrottle={16}
           onScroll={event => { const offset = event.nativeEvent.contentOffset.y;
@@ -199,14 +199,14 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
                   <View style={styles.stepRow}>
                     <ProductText style={styles.level}>{productLevels.find(level => level.id === entry.level)?.title} ·</ProductText>
                     {entry.level === 'basic' && entry.step <= 2 ? <Pressable accessibilityRole="link" accessibilityLabel={`Открыть шаг ${entry.step}`} disabled={busy || !ready}
-                      onPress={() => leave(() => { void visitStep(entry); })} style={styles.stepLink}><ProductText style={[styles.level, styles.linkText]}>ШАГ {entry.step}</ProductText></Pressable> : <ProductText style={styles.level}>ШАГ {entry.step}</ProductText>}
+                      onPress={() => leave(() => { void visitStep(entry); })} style={styles.stepLink}><ProductText color={colors.text} style={[styles.level, styles.linkText]}>ШАГ {entry.step}</ProductText></Pressable> : <ProductText style={styles.level}>ШАГ {entry.step}</ProductText>}
                   </View>
                   {entry.level === 'basic' && productStepNames[entry.step as keyof typeof productStepNames] && <ProductText style={styles.step}>{productStepNames[entry.step as keyof typeof productStepNames]}</ProductText>}
                   <Pressable accessibilityRole="button" accessibilityLabel={`${expanded === entry.id ? 'Скрыть' : 'Раскрыть'} вопрос ${entry.questionIndex + 1}`} accessibilityState={{ expanded: expanded === entry.id }} onPress={() => setExpanded(expanded === entry.id ? null : entry.id)} style={styles.questionToggle}><ProductText style={styles.questionLabel}>ВОПРОС {entry.questionIndex + 1}</ProductText><View style={expanded === entry.id && { transform: [{ rotate: '180deg' }] }}><DiaryAsset name="chevron" /></View></Pressable>
                   {expanded === entry.id && <View style={styles.questionMaterial}>
                     <ProductText style={styles.question}>{diaryQuestion(entry)}</ProductText>
                     {diaryMaterial(entry) && <Pressable accessibilityRole="button" accessibilityLabel={`Посмотреть материал шага ${entry.step}`} onPress={() => { setMaterial(entry); open('material'); }} style={styles.materialLink}>
-                      <ProductText style={[styles.small, styles.linkText]}>ПОСМОТРЕТЬ МАТЕРИАЛ</ProductText>
+                      <ProductText color={colors.text} style={[styles.small, styles.linkText]}>ПОСМОТРЕТЬ МАТЕРИАЛ</ProductText>
                     </Pressable>}
                   </View>}
                 </>}
@@ -241,7 +241,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
               <Pressable accessibilityRole="button" accessibilityLabel="Раскрыть редактор текста" accessibilityState={{ expanded: sheet === 'editor' }} disabled={!ready || busy || resetting} onPress={() => open('editor')} style={styles.expandInput}><DiaryIcon name="expand" size={16} /></Pressable>
             </>}
             </View>
-            {text.trim() && !voice.capturing ? <Pressable accessibilityRole="button" accessibilityLabel="Сохранить текст" accessibilityState={{ disabled: busy || !ready || resetting, busy }} disabled={!ready || busy || resetting} onPress={() => { void sendText(); }} style={[styles.voiceButton, { width: composerHeight, height: composerHeight }]}><DiaryGlass /><PanelBorder color={colors.accent} />{busy ? <ProductText>···</ProductText> : <DiaryIcon name="send" size={20} />}</Pressable>
+            {text.trim() && !voice.capturing ? <Pressable accessibilityRole="button" accessibilityLabel="Сохранить текст" accessibilityState={{ disabled: busy || !ready || resetting, busy }} disabled={!ready || busy || resetting} onPress={() => { void sendText(); }} style={[styles.voiceButton, { width: composerHeight, height: composerHeight }]}><DiaryGlass /><PanelBorder color={colors.accent} />{busy ? <ProductText color={colors.text}>···</ProductText> : <DiaryIcon name="send" size={20} />}</Pressable>
               : <DiaryRecordButton voice={voice} size={composerHeight} disabled={!ready || busy || resetting || sheet !== null} />}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="О локальном хранении дневника" onPress={() => open('info')} style={styles.storageNote}><ProductText style={styles.storageText}>ДНЕВНИК ЛОКАЛЬНЫЙ</ProductText><DiaryAsset name="info" dim /></Pressable>

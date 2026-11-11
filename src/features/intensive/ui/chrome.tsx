@@ -44,10 +44,6 @@ export const glyphs = {
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5',
   close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
   refresh: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4',
-  // Role marks: the walker's steps, the guide's compass, the admin's shield, the main admin's crown.
-  steps: 'M8 16.5c-1.5 0-2.5-2-2.5-4.5S6.5 7.5 8 7.5s2.5 2 2.5 4.5-1 4.5-2.5 4.5ZM6.5 19.5h3M16 12.5c-1.5 0-2.5-2-2.5-4.5S14.5 3.5 16 3.5s2.5 2 2.5 4.5-1 4.5-2.5 4.5ZM14.5 15.5h3',
-  compass: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0ZM15 9l-1.8 4.2L9 15l1.8-4.2Z',
-  crown: 'M4.5 19h15M5 15.5 3.5 7l5 4L12 4.5l3.5 6.5 5-4-1.5 8.5Z',
 };
 export type GlyphName = keyof typeof glyphs;
 
@@ -78,8 +74,6 @@ const OTHER_CONTOURS: Record<BubbleSpot, string> = {
 };
 const spots: BubbleSpot[] = ['alone', 'head', 'middle', 'tail'];
 
-/** The small mark by a writer's role in the chat. */
-export const roleGlyph: Record<Place, GlyphName> = { walker: 'steps', guide: 'compass', admin: 'shield', main: 'crown' };
 // The guide's side gets its own bubble tint per role. A theme without a set keeps plain bubbles
 // and the accent marks: Тишина goes to Art first, the other themes after his OK.
 const ROLE_TINTS: Partial<Record<string, Partial<Record<Place, string>>>> = {

@@ -27,7 +27,8 @@ import type { ChatSummary, Member, Place } from '../backend';
 import { draftFor, keepDraft, keepPreview, keepReportFolded, markSeen, previewFor, reportFolded, seenId } from '../chatMemory';
 import type { VoiceMeta } from '../crypto';
 import type { DecodedMessage, IntensiveSession, VoiceDraft } from '../session';
-import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, roleGlyph, useIntensiveFrames } from './chrome';
+import { Avatar, bubbleSpot, ConfirmSheet, DayRow, Glyph, GlassField, ListItem, Plate, useIntensiveFrames } from './chrome';
+import { RoleMark } from './RoleMark';
 import { problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
@@ -639,7 +640,7 @@ function Bubble({ own, first, frame, author, time: sentAt, edited = false, statu
       {author ? <View accessible accessibilityLabel={`${author.name}, ${shortPlace[author.role].toLowerCase()}`} style={styles.authorRow}>
         <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, styles.authorName, { color: author.ink }]}>{`${author.name} ·`}</ProductText>
         <ProductText numberOfLines={1} maxFontSize={10} style={[styles.author, { color: author.ink }]}>{shortPlace[author.role]}</ProductText>
-        <Glyph name={roleGlyph[author.role]} size={12} color={author.ink} />
+        <RoleMark role={author.role} ink={author.ink} />
       </View> : null}
       {report ? <View style={styles.reportTag}><DiaryEntryIcon kind="dynamics" /><ProductText maxFontSize={10} style={styles.reportKind}>{diaryReport.kind}</ProductText></View> : null}
       {children}

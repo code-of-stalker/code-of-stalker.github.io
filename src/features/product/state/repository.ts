@@ -181,6 +181,23 @@ export class ProductRepository {
       return { snapshot: await this.commit(next), entry };
     });
   }
+  /** Replaces a text entry's words in place; it keeps its day, place and category. */
+  editDiaryText(id: string, text: string, format?: DiaryTextRun[]) {
+    const body = text.trim();
+    if (format !== undefined) validateTextRuns(format, text);
+    const styled = format ? trimTextRuns(text, format) : undefined;
+    return this.serial(async () => {
+      validateDiaryText(body);
+      const next = await this.current();
+      const index = next.diaryEntries?.findIndex(item => item.id === id) ?? -1;
+      const old = index < 0 ? undefined : next.diaryEntries![index];
+      if (!old || old.kind !== 'text') throw new Error('Эта запись уже удалена.');
+      const { format: _old, ...rest } = old;
+      const entry: DiaryEntry = { ...rest, text: body, editedAt: Math.max(Date.now(), old.createdAt), ...(styled?.some(run => Object.keys(run.style).length) ? { format: styled } : {}) };
+      next.diaryEntries = next.diaryEntries!.map((item, at) => at === index ? entry : item);
+      return { snapshot: await this.commit(next), entry };
+    });
+  }
   saveDiaryVoice(draft: ObservationDraft, category: DiaryCategory) {
     const capture = { ...draft, waveform: [...draft.waveform] };
     return this.serial(async () => {

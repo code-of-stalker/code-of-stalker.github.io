@@ -57,20 +57,15 @@ export const productLevels: {
     id: 'basic',
     number: '01',
     title: 'БАЗОВЫЙ',
-    description: 'ПЕРВЫЕ ШАГИ ПО ВЫСТРАИВАНИЮ\nНАБЛЮДЕНИЯ',
+    description: 'ПЕРВЫЕ ШАГИ ПО ВЫСТРАИВАНИЮ НАБЛЮДЕНИЯ',
     action: 'НАЧАТЬ',
   },
-  {
-    id: 'intensive',
-    number: '02',
-    title: 'ИНТЕНСИВ',
-    description: '30 ДНЕВНЫЙ ИНТЕНСИВ,\nС КОРРЕКТИРОВКАМИ ОТ ПРОВОДНИКА',
-    action: 'ПОДРОБНЕЕ',
-  },
+  // Art 2026-11-11: the former «ВОДИТЕЛЬСТВО» plate (its art and frame) is now
+  // the Intensive and opens /intensive; the old Intensive plate is gone.
   {
     id: 'guidance',
-    number: '03',
-    title: 'ВОДИТЕЛЬСТВО',
+    number: '02',
+    title: 'ИНТЕНСИВ',
     description: '30 ДНЕВНЫЙ ИНТЕНСИВ,\nПОД ЧУТКИМ РУКОВОДСТВОМ ПРОВОДНИКА',
     action: 'ПОДРОБНЕЕ',
   },

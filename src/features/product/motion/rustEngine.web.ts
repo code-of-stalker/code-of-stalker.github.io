@@ -23,13 +23,17 @@ export type ElementTimeline = { active(value: boolean): void; reset_clock(): voi
   initial_height(value: number): void; target_height(value: number, duration: number): void;
   target_height_curve(value: number, duration: number, curve: Float64Array): void;
   scan_reveal(duration: number, delay: number): void;
-  loop(width: number, speed: number): void; frame(at: number): boolean; moving(): boolean; dispose(): void };
+  loop(width: number, speed: number): void; breathe(period: number, low: number): void; frame(at: number): boolean; moving(): boolean; dispose(): void };
+export type VoiceWave = { sync(positionMs: number, durationMs: number, playing: boolean): void; reduced(value: boolean): void; frame(at: number): boolean; dispose(): void };
+export type IconMotion = { set_name(name: string): void; set_filled(filled: boolean): void; play(): void; reduced(value: boolean): void; frame(at: number): boolean; dispose(): void };
 type Wasm = { default(options: { module_or_path: string }): Promise<unknown>; ProductRenderer: { create(canvas: HTMLCanvasElement, forceGl: boolean): Promise<Renderer> };
   TextTimeline: { create(root: HTMLElement, text: string, effect: number): { active(active: boolean, reduced: boolean): void; frame(at: number): boolean; resize(): void; reset_clock(): void; dispose(): void } };
   panel_reveal(root: HTMLElement, progress: number, reduced: boolean): void;
   level_panel_geometry(root: HTMLElement, width: number, height: number, level: string): void;
   panel_geometry(path: string, fromWidth: number, fromHeight: number, width: number, height: number): string;
   SvgTimeline: { create(root: Element, kind: string, card: boolean): SvgTimeline }; ElementTimeline: { create(root: HTMLElement): ElementTimeline };
+  IconMotion: { create(root: Element, name: string, filled: boolean, round: boolean, stroke: number, width: number): IconMotion };
+  VoiceWave: { create(root: HTMLElement, positionMs: number, durationMs: number): VoiceWave };
   scene_assets(kind: string, palette: number): string[]; provide_asset(file: string, bytes: Uint8Array): void };
 let runtime: Promise<Wasm> | undefined;
 type EngineState = 'idle' | 'loading' | 'ready' | 'failed';

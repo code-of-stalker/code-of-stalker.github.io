@@ -10,6 +10,7 @@ import { PanelBorder } from './PanelBorder';
 import { PanelArtwork } from './motion/PanelArtwork';
 import { voiceIconPaths } from './audio/voice-icons';
 import { iconSource, notebookPath } from './icon-source';
+import { RustIcon } from './motion/RustIcon';
 
 const paths = {
   play: 'M7 4v16l13-8z',
@@ -21,10 +22,12 @@ const paths = {
   arrow: 'M3 12h18m-7-7 7 7-7 7',
   lock: 'M7 10V7a5 5 0 0 1 10 0v3M4 10h16v11H4zM12 14v3',
 };
-export function ObservationIcon({ name, size = 16, muted = false }: { name: keyof typeof paths; size?: number; muted?: boolean }) {
+/** `animated` plays the glyph's Rust tap scene when its pressable is tapped. */
+export function ObservationIcon({ name, size = 16, muted = false, animated = true }: { name: keyof typeof paths; size?: number; muted?: boolean; animated?: boolean }) {
   const colors = useThemeColors(), color = muted ? colors.muted : colors.accent;
   const source = useMemo(() => iconSource(paths[name], color, size, name === 'lips' ? '104 91 32 32' : '0 0 24 24', false, name === 'lips' ? 'round' : 'butt'), [color, name, size]);
-  return <Image pointerEvents="none" source={source} style={{ width: size, height: size, flexShrink: 0 }} contentFit="contain" />;
+  const still = <Image pointerEvents="none" source={source} style={{ width: size, height: size, flexShrink: 0 }} contentFit="contain" />;
+  return animated ? <RustIcon name={name} width={size} height={size} color={color} round={name === 'lips'} fallback={still} /> : still;
 }
 
 /** The cooldown uses the exact Figma contour and note glyph; the saved answer

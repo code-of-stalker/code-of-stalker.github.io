@@ -32,22 +32,6 @@
     }
   },
   {
-    "kind": "identity-imprints",
-    "duration": 16,
-    "sourceSha256": "05840bfa9787f22d55080feecb2ef1c0eb444eb64d021ddc8fcf5c48b191412e",
-    "svgBytes": 32331,
-    "full": {
-      "fields": 26,
-      "knots": 7180,
-      "bytes": 112286
-    },
-    "soft": {
-      "fields": 26,
-      "knots": 6606,
-      "bytes": 105398
-    }
-  },
-  {
     "kind": "lived-paths",
     "duration": 16,
     "sourceSha256": "b40e6ccdb6687a71a2380cd4769ec5d79dd27cc4fabc07feccd1527a2627f296",
@@ -141,6 +125,22 @@
       "fields": 162,
       "knots": 8902,
       "bytes": 3063447
+    }
+  },
+  {
+    "kind": "identity-imprints",
+    "duration": 16,
+    "sourceSha256": "c9368a25cc207da86ad169c4bfbf750742f97defcc459f301b7bf547e88fba9d",
+    "svgBytes": 32196,
+    "full": {
+      "fields": 24,
+      "knots": 6560,
+      "bytes": 104776
+    },
+    "soft": {
+      "fields": 24,
+      "knots": 5986,
+      "bytes": 97888
     }
   }
 ]

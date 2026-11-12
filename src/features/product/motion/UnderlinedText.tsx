@@ -32,7 +32,7 @@ export function UnderlinedText({ children, style }: { children: string; style?: 
   }, [children]);
   const color = StyleSheet.flatten(style)?.color ?? colors.text;
   return <View ref={root} testID="custom-underlined-text" style={styles.root}>
-    <ProductText style={style} onTextLayout={event => {
+    <ProductText color={colors.text} style={style} onTextLayout={event => {
       if (Platform.OS !== 'web') update(event.nativeEvent.lines.map(line => ({ x: line.x, y: line.y + line.height - line.descender + 1, width: line.width })));
     }}>{children}</ProductText>
     {lines.map((line, index) => <View key={index} pointerEvents="none" aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants"

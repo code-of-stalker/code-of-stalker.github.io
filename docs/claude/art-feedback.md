@@ -129,6 +129,13 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Admin page: no avatars at all (letters in frames read as noise in a table); plain square check boxes, not the diary's cut icon frame; refresh line left of the search.
 - Two framed panes side by side: the corners that face each other stay square («вернуть углы»), the outer cuts stay.
 - The same in a run of chat bubbles: no cuts where two bubbles of one writer meet, only the outer corners of the run.
+- Chat header: no line under it; text that scrolls under it melts in a soft fade, never a hard cut («не резкий срез а мягкий фейд»).
+- Daily report plate in the Intensive chat folds by a drag like the diary's (up folds, down unfolds; Art 2026-11-11 reversed his earlier «нельзя свернуть» once the drag gesture existed). It still leaves once today's report is written.
+- Role marks in the chat (Art 2026-11-11): a role tint on the bubble plus a small icon to the RIGHT of the role word. A tint that is bright on one side drowns the white text («слева слишком ярко… белый теряется»): keep it faint (≈5–15 %). Plain line icons read as cheap: he wants them «дорогие премиум и анимированные».
+- Role marks round 1 (Art 2026-11-11): metal, gem and gradient icons were «мимо нашего стиля»; he liked Б's motion logic (each mark acts its meaning). «Premium» here means our own language, not jewelry: one ink, the app's thin line, faint fill, a running pale dash, no gradients or bevels.
+- Role marks round 2 (Art 2026-11-11): his subjects, not mine: walker = feet (the footprints of round 1 Б), guide = «огонёк света», admin = eye, main admin = wrench.
+- Role marks round 3 (Art 2026-11-11): «Знаки 16 делай в раст»: the marks sit at 16 px in the chat (the static icon was 12), same motion as the prototype.
+- Role tints (Art 2026-11-11, Матрица): «заливка одна и та же что у админа что у проводника?» Roles must differ at a glance: shades of one hue (lime vs aqua on black) merge, so every theme uses the same hues by role. Check the fills by pixel, not by the code: a shared SVG gradient id had painted all role bubbles alike.
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).
@@ -136,3 +143,11 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 ## App icon (2026-11-07)
 - The figure must enter the door, not run away from it: he flees the matrix, so the code rain is around the door and the doorway is light («матрица должна быть вокруг а не внутри»).
 - A stick figure of thin capsules with a black outline was rejected; the runner is a bold pictogram like the exit sign (broad shoulders, thick limbs, straight cuts), solid, no dark outline.
+
+## UI fixes (2026-11-11)
+- A scroll cue never sits beside a control: in tasks it is centered at the very bottom, under the step selector («он не должен быть сбоку»).
+- If the screen height allows, both level plates are open at once.
+- No arrow beside the plus on the report plate («тупо»): it folds by a drag up and unfolds by a drag down.
+- Bold body text is harsh on the eyes. Art chose A + C: soft bold (dimmer, letter-spaced) and the plain text beside it quieter; never full-strength bold body copy. Art's numbers: plain text 74%, emphasis 90%, on the whole site, not only tasks. 2026-11-11, Art: «дело не только в жирном, обычный текст нужно везде сделать таким же приглушенным»: every plain body text is quiet (74%), not only beside emphasis; one shared rule in `ProductText`, titles, buttons and accent stay full.
+- Icons (2026-11-11): chose «Характер» (each icon its own springy scene) over subtler variants, and wants every icon animated, none left still («давай всё сделаем классным»).
+- Diary filters (2026-11-11): the chosen option must read at a glance: 100% accent fill, dark text. No text/voice media filters.

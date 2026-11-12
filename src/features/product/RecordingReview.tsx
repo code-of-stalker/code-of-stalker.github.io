@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
+import { RustIcon } from './motion/RustIcon';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { useThemeColors, useThemeStyles } from './ProductTheme';
@@ -51,8 +52,10 @@ export function RecordingReview({ waveform, positionMs, durationMs, playing, loa
           <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Приостановить запись' : 'Прослушать запись'} disabled={!loaded || saving}
             accessibilityState={{ disabled: !loaded || saving }} onPress={onPlay} hitSlop={2} style={[styles.iconButton, !loaded && styles.disabled]}>
             <PanelBorder color={colors.accent} />
-            {playing ? <View style={styles.pause}><View style={styles.pauseBar} /><View style={styles.pauseBar} /></View>
-              : <Image source={require('../../../assets/product/review/play.svg')} tintColor={colors.accent} contentFit="contain" style={styles.icon} />}
+            {/* One Rust glyph morphs play into pause and back. */}
+            <RustIcon name={playing ? 'review-pause' : 'review-play'} width={32} height={32} color={colors.accent}
+              fallback={playing ? <View style={styles.pause}><View style={styles.pauseBar} /><View style={styles.pauseBar} /></View>
+                : <Image source={require('../../../assets/product/review/play.svg')} tintColor={colors.accent} contentFit="contain" style={styles.icon} />} />
           </Pressable>
           <View ref={timeline} style={styles.timeline} onLayout={event => setWidth(event.nativeEvent.layout.width)}>
             <Pressable accessibilityRole="button" accessibilityLabel="Перемотать запись" disabled={!loaded || saving}
@@ -65,14 +68,16 @@ export function RecordingReview({ waveform, positionMs, durationMs, playing, loa
           <Pressable accessibilityRole="button" accessibilityLabel="Громкость" accessibilityState={{ expanded: volumeOpen }}
             disabled={saving} hitSlop={2} onPress={()=>setVolumeOpen(value=>!value)} style={styles.iconButton}>
             <PanelBorder color={colors.accent} />
-            <Image source={require('../../../assets/product/review/speaker.svg')} tintColor={colors.accent} contentFit="contain" style={[styles.icon, muted && styles.disabled]} />
+            <RustIcon name="speaker" width={32} height={32} color={colors.accent} opacity={muted ? .45 : 1}
+              fallback={<Image source={require('../../../assets/product/review/speaker.svg')} tintColor={colors.accent} contentFit="contain" style={styles.icon} />} />
           </Pressable>
         </View>
         <View testID="recording-volume" pointerEvents={volumeOpen ? 'auto' : 'none'} accessibilityElementsHidden={!volumeOpen}
           importantForAccessibility={volumeOpen ? 'auto' : 'no-hide-descendants'} aria-hidden={!volumeOpen}
           style={[styles.volumeRow, { opacity: volumeOpen ? 1 : 0 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel={muted?'Включить звук записи':'Выключить звук записи'} disabled={saving || !volumeOpen} onPress={onMute} style={styles.volumeMute}>
-            <Image source={require('../../../assets/product/review/speaker.svg')} tintColor={colors.accent} style={[styles.icon,muted&&styles.disabled]}/>
+            <RustIcon name="speaker" width={32} height={32} color={colors.accent} opacity={muted ? .45 : 1}
+              fallback={<Image source={require('../../../assets/product/review/speaker.svg')} tintColor={colors.accent} style={styles.icon}/>} />
           </Pressable>
           <View style={styles.volumeTrack}><VolumeSlider value={volume} onChange={value=>{onVolume(value);if(muted&&value>0)onMute();}} disabled={saving || !volumeOpen}/></View>
           <ProductText variant="label" numberOfLines={1} style={styles.volumeValue}>{Math.round(volume*100)}%</ProductText>

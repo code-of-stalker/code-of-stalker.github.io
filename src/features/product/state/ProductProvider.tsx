@@ -22,6 +22,7 @@ export type ProductContextValue = ProductSnapshot & {
   saveObservation(draft: ObservationDraft, metadata?: ObservationMeta): Promise<Observation>;
   deleteObservation(id: string): Promise<void>;
   saveDiaryText(text: string, category: DiaryCategory, format?: import('../diary/text-format').DiaryTextRun[]): Promise<void>;
+  editDiaryText(id: string, text: string, format?: import('../diary/text-format').DiaryTextRun[]): Promise<void>;
   saveDiaryVoice(draft: ObservationDraft, category: DiaryCategory): Promise<void>;
   setListenLater(id: string, marked: boolean): Promise<void>;
   loadPlayback(id: string): Promise<string>;
@@ -103,6 +104,7 @@ export function ProductProvider({ children }: PropsWithChildren) {
   }, [reportError, progress]);
   const deleteObservation = useCallback((id: string) => apply(() => productStorage.delete(id)), [apply]);
   const saveDiaryText = useCallback((text: string, category: DiaryCategory, format?: import('../diary/text-format').DiaryTextRun[]) => apply(async () => (await productStorage.saveDiaryText(text, category, format)).snapshot), [apply]);
+  const editDiaryText = useCallback((id: string, text: string, format?: import('../diary/text-format').DiaryTextRun[]) => apply(async () => (await productStorage.editDiaryText(id, text, format)).snapshot), [apply]);
   const saveDiaryVoice = useCallback((draft: ObservationDraft, category: DiaryCategory) => apply(async () => (await productStorage.saveDiaryVoice(draft, category)).snapshot), [apply]);
   const setListenLater = useCallback((id: string, marked: boolean) => apply(() => productStorage.setListenLater(id, marked)), [apply]);
   const createBackup = useCallback(async () => {
@@ -124,10 +126,14 @@ export function ProductProvider({ children }: PropsWithChildren) {
   // Withdrawn switches remain readable in old snapshots. Test screen previews
   // now belong to a route, rather than overriding the user's earned progress.
   return <ProductContext.Provider value={{ ...snapshot, progress, settings: { ...snapshot.settings, reducedMotion: false }, ready, resetting, sessionRevision, error, resetProduct, updateSettings, updateProgress, completeFirstStep, completeSecondStep, saveObservation,
-    deleteObservation, saveDiaryText, saveDiaryVoice, setListenLater, loadPlayback, discardPlayback, retryLoad, createBackup, restoreBackup }}>{children}</ProductContext.Provider>;
+    deleteObservation, saveDiaryText, editDiaryText, saveDiaryVoice, setListenLater, loadPlayback, discardPlayback, retryLoad, createBackup, restoreBackup }}>{children}</ProductContext.Provider>;
 }
 export function useProduct() {
   const value = useContext(ProductContext);
   if (!value) throw new Error('ProductProvider должен находиться над экраном приложения.');
   return value;
+}
+/** For shared parts (icons) that may also render outside the product screens. */
+export function useOptionalProduct() {
+  return useContext(ProductContext);
 }

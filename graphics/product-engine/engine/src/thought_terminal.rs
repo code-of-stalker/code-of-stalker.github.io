@@ -10,7 +10,7 @@ const EAT: &str = "НУЖНО ПОЕСТЬ";
 const BILL: &str = "НУЖНО ОПЛАТИТЬ СЧЕТА";
 const AVOID1: &str = "ЧЁРТ, НЕ ХОЧУ";
 const AVOID2: &str = "ОБ ЭТОМ ДУМАТЬ";
-const THIRD: [&str; 3] = ["ЧЁРТ, КАК ВСЁ ДОСТАЛО.", "У МЕНЯ НЕТ НИКАКОГО", "ВЫБОРА"];
+const THIRD: [&str; 3] = ["КАК ЖЕ ВСЁ ДОСТАЛО.", "У МЕНЯ НЕТ НИКАКОГО", "ВЫБОРА"];
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Phase {
     Input,

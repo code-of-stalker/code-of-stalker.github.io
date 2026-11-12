@@ -9,6 +9,7 @@ import { textEditorDocument } from './text-editor-document';
 import { validateTextRuns } from './text-format';
 import type { DiaryTextEditorProps } from './DiaryTextEditor.types';
 import { diaryTextColors } from './text-colors';
+import { quietText, softBold } from '../theme';
 
 let fonts: Promise<string[]> | undefined;
 function editorFonts() {
@@ -19,7 +20,7 @@ function editorFonts() {
   })).catch(error => { fonts = undefined; throw error; });
 }
 export function DiaryTextEditor({ text, runs, onChange, size }: DiaryTextEditorProps) {
-  const colors = diaryTextColors(useThemeColors()), [initial] = useState({ text, runs, colors, size }), [html, setHtml] = useState(''), [error, setError] = useState('');
+  const theme = useThemeColors(), colors = { ...diaryTextColors(theme), text: quietText(theme).color, strong: softBold(theme, 0).color }, [initial] = useState({ text, runs, colors, size }), [html, setHtml] = useState(''), [error, setError] = useState('');
   useEffect(() => {
     let mounted = true;
     editorFonts().then(([regular, bold]) => { if (mounted) setHtml(textEditorDocument({ runs: initial.runs.length ? initial.runs : initial.text ? [{ text: initial.text, style: {} }] : [], colors: initial.colors, size: initial.size, limit: DIARY_TEXT_LIMIT }, regular, bold)); })

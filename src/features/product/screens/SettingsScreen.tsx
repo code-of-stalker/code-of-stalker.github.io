@@ -1,6 +1,7 @@
 import { useThemeColors, useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { MotionModal } from '../motion/MotionModal';
+import { RustIcon } from '../motion/RustIcon';
 import { Image } from 'expo-image';
 import type { ImageSource } from 'expo-image';
 import { useState } from 'react';
@@ -40,12 +41,12 @@ const assets = {
   radioOff: require('../../../../assets/product/settings-radio-off.svg'),
 };
 
-function SectionHeading({ title, icon }: { title: string; icon: ImageSource }) {
+function SectionHeading({ title, icon, glyph }: { title: string; icon: ImageSource; glyph: 'theme' | 'startup' }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   return (
     <View style={styles.sectionHeading}>
-      <Image source={icon} tintColor={colors.iconTint} style={styles.sectionIcon} contentFit="contain" />
+      <RustIcon name={glyph} width={15} height={15} color={colors.iconTint ?? '#F5DD07'} autoplay fallback={<Image source={icon} tintColor={colors.iconTint} style={styles.sectionIcon} contentFit="contain" />} />
         <ProductText variant="title" numberOfLines={1} style={styles.sectionTitle}>{title}</ProductText>
     </View>
   );
@@ -56,7 +57,8 @@ function RadioRow({ label, detail, selected, onPress, disabled = false }: { labe
   const styles = useThemeStyles(createStyles);
   return (
     <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected, disabled }} aria-checked={selected} aria-disabled={disabled} accessibilityLabel={label} onPress={onPress} disabled={disabled} style={[styles.radioRow, disabled && styles.disabledRow]}>
-      <Image source={selected ? assets.radioOn : assets.radioOff} tintColor={colors.iconTint} style={styles.radioImage} contentFit="contain" />
+      <RustIcon name="radio" width={14} height={16} stroke={1.2} filled={selected} color={colors.iconTint ?? (selected ? '#F5DD07' : '#B69D4B')}
+        fallback={<Image source={selected ? assets.radioOn : assets.radioOff} tintColor={colors.iconTint} style={styles.radioImage} contentFit="contain" />} />
       <View style={styles.optionCopy}>
         <ProductText variant="label" style={[styles.optionLabel, { color: selected ? colors.text : colors.muted }]}>{label}</ProductText>
         {detail ? <ProductText variant="label" style={styles.optionDetail}>{detail}</ProductText> : null}
@@ -103,7 +105,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
       <View style={[styles.settings, air > 1 && { marginTop: 8 * air * 2, gap: 16 * air }]}>
         <View style={styles.divider} />
         <View style={styles.section}>
-          <SectionHeading title="Тема" icon={assets.theme} />
+          <SectionHeading title="Тема" icon={assets.theme} glyph="theme" />
           <View accessibilityRole="radiogroup" accessibilityLabel="Тема приложения">
             <RadioRow label="МАТРИЦА" selected={settings.theme === 'matrix'} onPress={() => onChange({ theme: 'matrix' })} />
             <RadioRow label="ТИШИНА" selected={settings.theme === 'neutral'} onPress={() => onChange({ theme: 'neutral' })} />
@@ -113,7 +115,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
         </View>
         <View style={styles.divider} />
         <View style={styles.section}>
-          <SectionHeading title="При открытии приложения" icon={assets.startup} />
+          <SectionHeading title="При открытии приложения" icon={assets.startup} glyph="startup" />
           <View accessibilityRole="radiogroup" accessibilityLabel="При открытии приложения">
             <RadioRow label="ГЛАВНАЯ" selected={settings.startAt === 'home'} onPress={() => onChange({ startAt: 'home' })} />
             <RadioRow label="ПОСЛЕДНИЙ ШАГ АРХИТЕКТУРЫ" detail="ПРОДОЛЖИТЬ С МЕСТА ОСТАНОВКИ" selected={settings.startAt === 'architecture'} onPress={() => onChange({ startAt: 'architecture' })} />

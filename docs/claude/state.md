@@ -1,11 +1,29 @@
 # Project state
 
-Updated 2026-11-12. Step 7 page 10 «Дом в разрезе» (`graphics/day-house`, 402.5 s) round 9 after Art's round-8 note on branch `claude/step-7-dynamic-0682ec`, shown in Матрица, waiting for Art's notes. Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-12. Step 7 page 10 «Дом в разрезе» (`graphics/day-house`, 402.5 s, round 9, branch `claude/step-7-dynamic-0682ec`) shipped to `main` 2026-11-12 in all 4 dark themes (Art: «Пушим»). Telegram-style message edit/delete (branch `claude/message-edit`) shipped to `main` 2026-11-12 (Art: «Пушим»). Step 2 edits (branch `claude/step-2-edits`, 00888c3) still wait for Art's «пушим» (ship them first). Step 3 edits stage 5 fixes (branch `claude/step-3-edits`) shipped to `main` 2026-11-12 (Art: «Сначала пушим правки»); the hero (`voice-presence`) and screen 6 (`voice-witness`) reworks wait for Art's direction (rule 7). Quiet body text everywhere + soft bold (branch `claude/quiet-text`) shipped to `main` 2026-11-11. Diary filters fix (branch `claude/diary-filters-fill`) shipped to `main` 2026-11-11: chosen option filled with the accent, dark text, text/voice filters removed. UI motion leftovers (chat delete, skeleton lists; branch `claude/motion-leftovers`) shipped to `main` 2026-11-11. UI animations set (branch `claude/ui-motion`) shipped to `main` 2026-11-11 (Art: «пушить сразу», without a preview). Icon tap animations «Характер» (branch `claude/icon-motion`) shipped to `main` 2026-11-11 (Art: «Пушим»). Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Intensive daily reports and Rust role marks shipped 2026-11-11. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
 as animations stay local until he says to ship them. Unsure which it is: ask.
+## Step 3 edits, stage 5 (branch `claude/step-3-edits`, on `main` 2026-11-12)
+Done: reading 1 repeated «чёрт» → «КАК ЖЕ ВСЁ ДОСТАЛО.» (`thought_terminal.rs` + svg); father
+and trinity light at the jugular notch (`FATHER_NOTCH`, `UNSEAL_NOTCH`); trinity arm gaps filled
+by trunk-masked copies (`unseal_pit_defs`, `Look.pit`) so no cut shows as the arms open; girl
+on stage: the voice hits the belly (`practice_shadow.rs` `BELLY`); last screen: standing legs
+half-turned like the torso, crossfading to profile legs as the walk starts (`heroine_walking`).
+Checked in Тишина and Матрица. Open: hero and screen 6 reworks need a direction from Art.
 Keep this file short: replace stale lines instead of appending history (`/handoff`).
+
+## Icon motion «Характер» (branch `claude/icon-motion`, on `main` 2026-11-11)
+Art asked for Telegram-like icon animations and chose «Характер»: every icon plays its own
+short spring scene on tap. Rust: `graphics/product-engine/engine/src/icon_motion.rs` (glyphs,
+scenes, on/off states: Fill, Select for radios, Slide for toggles) and `icon_dom.rs` (SVG in a
+host div). Bridge `motion/RustIcon.web.tsx` listens to the nearest pressable ancestor;
+`autoplay` plays once on mount for glyphs that are not pressable (arrows, entry kinds, lock,
+section headings, sparkle); `ground` colors a control's track. Native keeps the still glyph.
+Known gaps: the top diary bookmark swaps Pressables, so it changes without motion; the step
+selector and recording player were checked only in code, not in the app. The unused diary
+illustration has no scene.
 
 ## Step 2 last page «Лабиринт» (branch `claude/step-2-final-scene-85869e`, on `main` 2026-11-07)
 Closing page 3/3 (art kind `author-intention`). Art asked for a richer scene and a properly
@@ -445,11 +463,78 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   bubbles of one run cut only the outer corners (`BubbleSpot` alone/head/middle/tail in
   `ui/chrome.tsx`). Voice cap raised to 5 min on Art's word (shipped 2026-11-08): one sealed row
   (`message_media.body` ≤ 1.5 M chars ≈ 1.1 MB, 5 min ≈ 0.9 MB at 24 kbit/s); longer needs a schema change.
-- Next: the other dark themes after Art's OK. Walker screens still name Яна («Яна назначит…»)
-  while Art is the main admin; asked him whether to say «главный админ». Small idea left: the list preview names a main admin by place
+- Chat top (Art 2026-11-11, shipped 2026-11-11 as a small fix): no line and no solid fill under the
+  header; the feed melts over 24 px under it once scrolled (diary's mask, `--chat-fade-top` in `ChatView.tsx`).
+- Daily reports + role marks, shipped to `main` 2026-11-11 (Art: «Ок, пушим»). Daily reports in
+  Intensive «как в дневнике», into the chat with the guide (Art: «В чат с проводником»): the report mark sealed inside the message
+  (no server change), report mode for text and voice, report cards, reports-only view (header
+  icon), the diary's guide sheet shared as `DiaryReportGuide` (the diary uses it too), and the
+  walker's plate above the chat (shared `DiaryReportPrompt`): folds by the diary's drag (up folds,
+  down unfolds), kept per device (`intensive.reportFolded.v1` in `chatMemory.ts`), leaves after
+  today's report. Role marks: faint role tint on bubbles (`ROLE_TINTS`/`ROLE_WASH` in
+  `ui/chrome.tsx`, all 4 dark themes, same hues by role: guide gold, admin blue, main violet,
+  walker = accent; 3c5e25d also fixed a shared gradient id that gave every role bubble the
+  first role's fill) and a live 16 px sign right of the role word. Rounds 1–2 rejected (see
+  art-feedback). Round 3 = Art's subjects (prototype `output/prototypes/role-marks/index.html`):
+  walker footprints, guide flame, admin eye, main admin wrench. Art: «Знаки 16 делай в раст» →
+  built in Rust (110448f): crate `graphics/role-marks` (beats and build in its `README.txt`),
+  bridge `ui/RoleMark.web.tsx`, native still `ui/RoleMark.tsx` + generated
+  `ui/roleMarks.generated.ts`; replaced the static `roleGlyph`. Checked in the demo (Тишина, PC
+  and 390 px phone, reduced motion). A person has one role per chat (`private.chat_role`:
+  walker > guide > admin > main), so Яна leading a walker is ПРОВОДНИК (flame) in that chat.
+  Art OK'd the marks in Тишина («Ок, другие темы») and the 4-theme tints (`output/role-themes.png`).
+- Next: nothing waits on this branch. Walker screens keep naming Яна («Яна назначит…»)
+  even while Art is the main admin (Art 2026-11-08: «Оставь Яну»). Small idea left: the list preview names a main admin by place
   («ГЛАВНЫЙ АДМИН: …») when she is not a chat role.
 
 ## Shipped features (all on main)
+- Message edit/delete «как в телеграмме» (2026-11-12, branch `claude/message-edit`): one shared
+  piece in `src/features/product/messages/` (`MessageMenu` with a Rust-driven appear and a soft
+  dim that leaves the message bright via a clip-path hole, `EditBar`, `useMenuAnchor`:
+  long-press, right-click, a11y action) used by the Intensive chat (replaced its BottomSheet
+  menu) and the Diary (text entries: `editDiaryText`, `DiaryText.editedAt`, «ИЗМ.» before the
+  time; delete for all entries through the old confirm and `Leave`). AI/others' messages copy
+  only; voice has no «Изменить». Checked in the Diary in Тишина (menu, edit, mark, delete); the
+  chat only by typecheck (the demo login asks a TOTP code). Other dark themes not looked at.
+- UI motion set (2026-11-11, Art: «приятные анимации переключения табов, экранов, прогрузки…»):
+  one style, 150–300 ms on `uiCurve` (`motion/uiMotion.ts`), Rust-driven via `RustMotion`
+  (`ui_motion.rs`, `voice_wave.rs`, `element_motion` breathe). Screens fade and rise on focus
+  (`ScreenTransition`); tab content `Appear`s and the tab underline slides (`SlideMark`); loading
+  text breathes (`Breathe`, `Loading`); the diary report plate folds with `AutoHeight`; a deleted
+  diary card collapses (`Leave`); voice playback glides the played wash and lifts bars near the
+  playhead (`VoiceWaveBars`); the chosen diary filter fades in its accent fill. Reduced motion
+  (system or app) snaps. RN shorthands go through `motion/webStyle.ts` on these DOM wrappers.
+  Leftovers (branch `claude/motion-leftovers`, on `main` 2026-11-11): a deleted Intensive chat
+  message leaves through `Leave` (data removed after the motion, comes back on error); Intensive
+  chat list and admin people lists show a breathing `Skeleton` (`intensive/ui/parts.tsx`).
+  `Leave.web` pins the real DOM height (onLayout gave 0, so the gap snapped shut).
+- Soft emphasis (Art 11.11 chose variants A + C, shipped 2026-11-11): bold body text was harsh.
+  Emphasis keeps Disket Mono Bold but at 90% of the text colour with 0.06em tracking; on a page
+  or task text with an emphasis, the plain copy beside it is at 74% (`softBold`, `quietText`,
+  `fade` in `theme.ts`; Art set 74/90). Site-wide: task explanations, reading pages (bold
+  paragraphs, spoken, statement, emphasis, conclusion), Step 1 conclusion, Step 2 emphasis, diary
+  labels. Quiet body text everywhere (branch `claude/quiet-text`, shipped 2026-11-11; Art: «обычный
+  текст нужно везде сделать таким же приглушенным»): `ProductText` body in the plain text ink is
+  74% on every screen and its bold runs are soft (90%, tracked), the diary's own bold included
+  (editor `strong` colour). Titles, labels, buttons, accent and other inks stay as set; tappable
+  body-variant labels (diary date/sort/filters, step menu, task question, glyph buttons) pass
+  `color={colors.text}` to stay full. Not changed: the insight decoder (`.mx-decoder`, an animated
+  effect) and the Matrix diagnostics pages (network, recovery, sdk).
+- Levels screen «ВЫ ЗДЕСЬ» (2026-11-11): a small accent diamond and caption in the current level's
+  header. Current = ИНТЕНСИВ if this device joined the Intensive (`hasDevice`) or progress chose it,
+  else БАЗОВЫЙ once a level was started; nothing before any level is chosen.
+- Art's fixes of 11.11 (`claude/art-fixes-1111-569d08`, shipped 2026-11-11): the diary's
+  daily report plate folds by a drag up and unfolds by a drag down on its thin strip (Art: an
+  arrow beside the plus is clumsy), tap still opens the report; the state is remembered
+  (`settings.diaryReportCollapsed`; gesture rule `diary/report-fold-gesture.ts`; shared component
+  `src/features/product/diary/DiaryReportPrompt.tsx`, meant for reuse by the Intensive diary);
+  in recorded tasks the scroll cue sits centered at the very bottom under the step selector,
+  never beside it (Art: «он не должен быть сбоку»), hidden while the selector is open; no
+  marquee in tasks; levels: 2 plates, «Водительство» is now «ИНТЕНСИВ» (keeps the `guidance`
+  id and art) and opens `/intensive`, the old Intensive plate is gone; both plates start open
+  when they fit the screen height (Art), otherwise only the chosen one; Step 1 imprints have no
+  arrow marks (`stepOneInserts.ts`, reading assets regenerated, engine rebuilt); Step 5 «хотя
+  бы 3 — 5 минут»; Step 6 titles without numbers, no comma on page 9.
 - App icon and favicon «Выход» (branch `claude/app-icon-exit`, shipped 2026-11-07, Art: «Да,
   выкладывай»): an exit-sign runner as a solid black pictogram goes into a lit doorway; the
   code rain is all around outside; the back foot still outside gets a light rim. Files

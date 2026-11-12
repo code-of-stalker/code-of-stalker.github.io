@@ -24,6 +24,14 @@ export class ElementTimeline {
         wasm.elementtimeline_active(this.__wbg_ptr, value);
     }
     /**
+     * A soft waiting pulse on top of the opacity channel; a period of 0 ends it.
+     * @param {number} period
+     * @param {number} low
+     */
+    breathe(period, low) {
+        wasm.elementtimeline_breathe(this.__wbg_ptr, period, low);
+    }
+    /**
      * @param {HTMLElement} root
      * @returns {ElementTimeline}
      */
@@ -129,6 +137,104 @@ export class ElementTimeline {
     }
 }
 if (Symbol.dispose) ElementTimeline.prototype[Symbol.dispose] = ElementTimeline.prototype.free;
+
+export class IconMotion {
+    static __wrap(ptr) {
+        const obj = Object.create(IconMotion.prototype);
+        obj.__wbg_ptr = ptr;
+        IconMotionFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        IconMotionFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_iconmotion_free(ptr, 0);
+    }
+    /**
+     * `stroke` is the approved line width in layout pixels and `width` the glyph's
+     * rendered width, so the still glyph matches the former raster exactly. Hair
+     * outlines stay 0.25 layout pixels; ground parts take the host's `--icon-ground`.
+     * @param {Element} root
+     * @param {string} name
+     * @param {boolean} filled
+     * @param {boolean} round
+     * @param {number} stroke
+     * @param {number} width
+     * @returns {IconMotion}
+     */
+    static create(root, name, filled, round, stroke, width) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(name, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.iconmotion_create(retptr, addHeapObject(root), ptr0, len0, filled, round, stroke, width);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return IconMotion.__wrap(r0);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    dispose() {
+        wasm.iconmotion_dispose(this.__wbg_ptr);
+    }
+    /**
+     * Advances to `at` (ms). Returns whether another frame is needed.
+     * @param {number} at
+     * @returns {boolean}
+     */
+    frame(at) {
+        const ret = wasm.iconmotion_frame(this.__wbg_ptr, at);
+        return ret !== 0;
+    }
+    /**
+     * Plays the glyph's tap scene from its start on the next frame.
+     */
+    play() {
+        wasm.iconmotion_play(this.__wbg_ptr);
+    }
+    /**
+     * @param {boolean} value
+     */
+    reduced(value) {
+        wasm.iconmotion_reduced(this.__wbg_ptr, value);
+    }
+    /**
+     * @param {boolean} filled
+     */
+    set_filled(filled) {
+        wasm.iconmotion_set_filled(this.__wbg_ptr, filled);
+    }
+    /**
+     * Swaps the glyph. Play and pause morph into each other; any other change redraws.
+     * @param {string} name
+     */
+    set_name(name) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(name, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.iconmotion_set_name(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+}
+if (Symbol.dispose) IconMotion.prototype[Symbol.dispose] = IconMotion.prototype.free;
 
 export class ProductRenderer {
     static __wrap(ptr) {
@@ -773,6 +879,64 @@ export class TextTimeline {
     }
 }
 if (Symbol.dispose) TextTimeline.prototype[Symbol.dispose] = TextTimeline.prototype.free;
+
+export class VoiceWave {
+    static __wrap(ptr) {
+        const obj = Object.create(VoiceWave.prototype);
+        obj.__wbg_ptr = ptr;
+        VoiceWaveFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        VoiceWaveFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_voicewave_free(ptr, 0);
+    }
+    /**
+     * `root` holds `[data-wave-played]` (the accent layer) and bars marked
+     * `data-wave-bar="<index>"` in both layers.
+     * @param {HTMLElement} root
+     * @param {number} position_ms
+     * @param {number} duration_ms
+     * @returns {VoiceWave}
+     */
+    static create(root, position_ms, duration_ms) {
+        const ret = wasm.voicewave_create(addHeapObject(root), position_ms, duration_ms);
+        return VoiceWave.__wrap(ret);
+    }
+    dispose() {
+        wasm.voicewave_dispose(this.__wbg_ptr);
+    }
+    /**
+     * Returns whether another frame is needed.
+     * @param {number} at
+     * @returns {boolean}
+     */
+    frame(at) {
+        const ret = wasm.voicewave_frame(this.__wbg_ptr, at);
+        return ret !== 0;
+    }
+    /**
+     * @param {boolean} value
+     */
+    reduced(value) {
+        wasm.voicewave_reduced(this.__wbg_ptr, value);
+    }
+    /**
+     * @param {number} position_ms
+     * @param {number} duration_ms
+     * @param {boolean} playing
+     */
+    sync(position_ms, duration_ms, playing) {
+        wasm.voicewave_sync(this.__wbg_ptr, position_ms, duration_ms, playing);
+    }
+}
+if (Symbol.dispose) VoiceWave.prototype[Symbol.dispose] = VoiceWave.prototype.free;
 
 export function graphics_diagnostics() {
     wasm.graphics_diagnostics();
@@ -1946,7 +2110,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8012(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8056(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2049,6 +2213,9 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).reason;
             return (__wbindgen_enum_GpuDeviceLostReason.indexOf(ret) + 1 || 3) - 1;
         },
+        __wbg_removeAttribute_2f2700a6f933a6be: function() { return handleError(function (arg0, arg1, arg2) {
+            getObject(arg0).removeAttribute(getStringFromWasm0(arg1, arg2));
+        }, arguments); },
         __wbg_renderbufferStorageMultisample_ed16f3ef446e3bc7: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).renderbufferStorageMultisample(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
         },
@@ -2057,6 +2224,12 @@ function __wbg_get_imports() {
         },
         __wbg_renderbufferStorage_bca487b0dea425b8: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).renderbufferStorage(arg1 >>> 0, arg2 >>> 0, arg3, arg4);
+        },
+        __wbg_replaceChildren_4835f53836f6b5db: function(arg0, arg1) {
+            getObject(arg0).replaceChildren(getObject(arg1));
+        },
+        __wbg_replaceChildren_e096fc1c87b7b836: function(arg0) {
+            getObject(arg0).replaceChildren();
         },
         __wbg_requestAdapter_a539af006419f2e9: function(arg0, arg1) {
             const ret = getObject(arg0).requestAdapter(getObject(arg1));
@@ -2950,27 +3123,27 @@ function __wbg_get_imports() {
         }, arguments); },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2473, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_7991);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8035);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000002: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUDevice")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2116);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2157);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUDeviceLostInfo")], shim_idx: 415, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2120);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2161);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000004: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("any")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2116_80);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2157_93);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000005: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("undefined")], shim_idx: 411, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2116_81);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_2157_94);
             return addHeapObject(ret);
         },
         __wbindgen_generic_0000000000000006: function(arg0) {
@@ -3032,18 +3205,18 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_2120(arg0, arg1, arg2) {
-    wasm.__wasm_bindgen_func_elem_2120(arg0, arg1, addHeapObject(arg2));
+function __wasm_bindgen_func_elem_2161(arg0, arg1, arg2) {
+    wasm.__wasm_bindgen_func_elem_2161(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wasm_bindgen_func_elem_8012(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8012(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+function __wasm_bindgen_func_elem_8056(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8056(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
-function __wasm_bindgen_func_elem_7991(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8035(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_7991(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_8035(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3054,10 +3227,10 @@ function __wasm_bindgen_func_elem_7991(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2116(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2157(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2116(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2157(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3068,10 +3241,10 @@ function __wasm_bindgen_func_elem_2116(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2116_80(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2157_93(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2116_80(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2157_93(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3082,10 +3255,10 @@ function __wasm_bindgen_func_elem_2116_80(arg0, arg1, arg2) {
     }
 }
 
-function __wasm_bindgen_func_elem_2116_81(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_2157_94(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.__wasm_bindgen_func_elem_2116_81(retptr, arg0, arg1, addHeapObject(arg2));
+        wasm.__wasm_bindgen_func_elem_2157_94(retptr, arg0, arg1, addHeapObject(arg2));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {
@@ -3185,6 +3358,9 @@ const __wbindgen_enum_GpuVertexStepMode = ["vertex", "instance"];
 const ElementTimelineFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_elementtimeline_free(ptr, 1));
+const IconMotionFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_iconmotion_free(ptr, 1));
 const ProductRendererFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_productrenderer_free(ptr, 1));
@@ -3197,6 +3373,9 @@ const SvgTimelineFinalization = (typeof FinalizationRegistry === 'undefined')
 const TextTimelineFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_texttimeline_free(ptr, 1));
+const VoiceWaveFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_voicewave_free(ptr, 1));
 
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);

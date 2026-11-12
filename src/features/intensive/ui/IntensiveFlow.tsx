@@ -21,7 +21,8 @@ import { AdminPanel } from './AdminPanel';
 import { ChatList, ChatView } from './ChatView';
 import { ConfirmSheet, GlassIconButton, Plate } from './chrome';
 import { ConfirmWords, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
-import { FormalTone, Header, Note, PinPad, problemText, Tabs } from './parts';
+import { FormalTone, Header, Loading, Note, PinPad, problemText, Skeleton, Tabs } from './parts';
+import { Appear } from '../../product/motion/Appear';
 
 /** Locks the account when the page stays hidden this long. */
 const LOCK_AFTER_MS = 5 * 60_000;
@@ -155,7 +156,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   const accountButton = <ProductIconButton icon="settings" onPress={() => go({ kind: 'account' })} />;
 
   switch (step.kind) {
-    case 'loading': body = <Note>Загружаю…</Note>; break;
+    case 'loading': body = <Loading>Загружаю…</Loading>; break;
     case 'unavailable': subtitle = adminPage ? 'АДМИНКА' : ''; body = <Unavailable title={step.title} lines={step.lines} onBack={onExit} />; break;
     case 'welcome':
       body = <View style={styles.stack}>
@@ -273,12 +274,12 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
       subtitle = status.mainAdmin && homeTab === 'people' ? 'ЛЮДИ' : 'ПЕРЕПИСКИ';
       body = <View style={styles.stack}>
         {status.mainAdmin ? <Tabs value={homeTab} onChange={setHomeTab} options={[{ id: 'chats', label: 'ПЕРЕПИСКИ' }, { id: 'people', label: 'ЛЮДИ' }]} /> : null}
-        {status.mainAdmin && homeTab === 'people'
+        <Appear key={homeTab}>{status.mainAdmin && homeTab === 'people'
           ? <AdminPanel session={session!} onOpenChat={chatId => { void run(async () => {
             const chat = (await session!.myChats()).find(item => item.chatId === chatId);
             if (chat) go({ kind: 'chat', chat });
           }); }} />
-          : <StaffChats session={session!} onOpen={chat => go({ kind: 'chat', chat })} />}
+          : <StaffChats session={session!} onOpen={chat => go({ kind: 'chat', chat })} />}</Appear>
         {error ? <Note tone="error">{error}</Note> : null}
       </View>;
       break;
@@ -305,7 +306,8 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     <ProductScreen scroll={!bare && !workspace} headerStyle={{ paddingTop: 16 }} background={backdrop} layout={adminPage && step.kind === 'home' ? 'wide' : 'column'}
       contentStyle={bare ? styles.bare : workspace ? styles.workspace : styles.content}
       header={bare ? undefined : <Header subtitle={subtitle} onBack={back} action={action} />}>
-      <View style={bare || workspace ? styles.fillBody : styles.body}>{body}</View>
+      {/* Each step of the flow arrives softly instead of snapping in. */}
+      <Appear key={step.kind} style={bare || workspace ? styles.fillBody : styles.body}>{body}</Appear>
     </ProductScreen>
   </FormalTone>;
 }
@@ -331,7 +333,7 @@ function WalkerHome({ session, account, onExit, onRecheck }: { session: Intensiv
   if (chat) return <ChatView session={session} chat={chat} onBack={onExit} action={account} />;
   return <ScrollView style={styles.fillBody} contentContainerStyle={[styles.waiting, { padding: gutter }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <Header subtitle={chat === undefined ? 'ВХОД' : 'ОЖИДАНИЕ'} onBack={onExit} action={account} />
-    {chat === undefined ? (error ? <Note tone="error">{error}</Note> : <Note>Загружаю…</Note>) : <Waiting name={session.status!.name ?? ''} code={shortCode(session.id)} busy={busy} onRefresh={() => {
+    {chat === undefined ? (error ? <Note tone="error">{error}</Note> : <Loading>Загружаю…</Loading>) : <Waiting name={session.status!.name ?? ''} code={shortCode(session.id)} busy={busy} onRefresh={() => {
       setBusy(true);
       void session.refresh()
         .then(status => { if (status.roles.length || status.mainAdmin) onRecheck(); else setVersion(current => current + 1); })
@@ -354,7 +356,7 @@ function StaffChats({ session, onOpen }: { session: IntensiveSession; onOpen: (c
     return () => { alive = false; clearInterval(timer); };
   }, [session]);
   if (error && !chats) return <Note tone="error">{error}</Note>;
-  if (!chats) return <Note>Загружаю…</Note>;
+  if (!chats) return <Skeleton />;
   return <ChatList session={session} chats={chats} onOpen={onOpen} />;
 }
 

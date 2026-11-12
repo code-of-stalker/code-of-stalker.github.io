@@ -7,7 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import type { StyleProp, TextProps, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fonts } from './theme';
+import { fonts, quietText, softBold } from './theme';
 import { useProductLayout, useProductSpacing } from './layout';
 import { GlassHost } from './motion/GlassHost';
 import { cutPanelPath, productIconPath, productIconSize } from './motion/glassShape';
@@ -16,7 +16,8 @@ import { usePanelSize } from './motion/usePanelSize';
 import { ProductScroll } from './motion/ProductScroll';
 import { PanelBorder } from './PanelBorder';
 import { Fade } from './motion/Fade';
-import { iconSource, notebookPath } from './icon-source';
+import { iconSource, iconStroke, notebookPath } from './icon-source';
+import { RustIcon } from './motion/RustIcon';
 import { useFittedText } from './useFittedText';
 export { ScreenTransition } from './motion/ScreenTransition';
 
@@ -38,10 +39,15 @@ export function ProductTypography({ section, children }: PropsWithChildren<{
 export function ProductText({ variant = 'body', style, color, maxFontSize, fitToWidth = false, minFontSize = 12, ...props }: TextProps & {
   variant?: 'title' | 'body' | 'label'; color?: string; maxFontSize?: number; fitToWidth?: boolean; minFontSize?: number;
 }) {
-  const styles = useThemeStyles(createStyles);
+  const styles = useThemeStyles(createStyles), colors = useThemeColors();
   const { width } = useWindowDimensions();
   const section = useContext(TypographySection);
-  const resolved = StyleSheet.flatten<TextStyle>([styles.text, typography[variant], color ? { color } : undefined, style]);
+  const flat = StyleSheet.flatten<TextStyle>([styles.text, typography[variant], color ? { color } : undefined, style]);
+  // Body text in the theme's plain ink is quiet everywhere and bold runs are soft (Art
+  // 2026-11-11, as on «ЗАДАНИЕ»). Titles, labels (buttons, tabs) and any other ink stay as set.
+  const plainInk = variant === 'body' && !color && flat.color === colors.text;
+  const softRun = plainInk && flat.fontFamily === fonts.bodyBold;
+  const resolved = plainInk ? { ...flat, ...(softRun ? { color: softBold(colors, 0).color } : flat.fontFamily === fonts.body ? quietText(colors) : null) } : flat;
   const baseSize = resolved.fontSize!;
   // Resolve the family and original size once; 20 -> 24 must not become 32.
   const adaptiveSize = largeScreenFontSizes[resolved.fontFamily ?? '']?.[baseSize] ?? (baseSize === 12 ? 14 : baseSize);
@@ -57,7 +63,7 @@ export function ProductText({ variant = 'body', style, color, maxFontSize, fitTo
   return <Text {...props} {...(fitToWidth ? { ref: fitted.ref, numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: minFontSize / fontSize } : {})} style={[resolved, titleFace && { fontFamily: titleFace, fontWeight: '400' }, fontSize !== baseSize && {
     fontSize,
     lineHeight: resolved.lineHeight === undefined ? undefined : Math.ceil(resolved.lineHeight * fontSize / baseSize),
-  }, fitted.letterSpacing !== undefined && { letterSpacing: fitted.letterSpacing }]} />;
+  }, softRun && flat.letterSpacing === undefined && { letterSpacing: softBold(colors, fontSize).letterSpacing }, fitted.letterSpacing !== undefined && { letterSpacing: fitted.letterSpacing }]} />;
 }
 
 // A measured SVG outline keeps the small corner cuts and hairlines crisp at any width.
@@ -103,6 +109,8 @@ const icons = {
   diary: require('../../../assets/product/diary-glyph.svg'),
   notes: require('../../../assets/product/levels/notes-glyph.svg'),
 };
+/** Rust tap-scene glyphs (`icon_motion.rs`) for the button icons. */
+const glyphNames = { back: 'back-button', close: 'close-button', settings: 'settings', diary: 'notes', notes: 'notes' } as const;
 const iconLabels = { back: 'Назад', close: 'Закрыть', settings: 'Настройки', diary: 'Дневник', notes: 'Дневник' };
 export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons; onPress: () => void }) {
   const colors = useThemeColors();
@@ -115,12 +123,15 @@ export function ProductIconButton({ icon, onPress }: { icon: keyof typeof icons;
   // screen is hidden. Scope that presentation cache to the current palette,
   // including the return to an untinted source; leave the button and GPU face alive.
   const imageIdentity = icon + ':' + (colors.iconTint ?? 'source') + ':' + colors.accent;
+  const glyph = complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale };
   return <Pressable accessibilityRole="button" accessibilityLabel={iconLabels[icon]} onPress={onPress}
     style={[styles.iconButton, { width: size.width, minHeight: size.buttonHeight }]} hitSlop={2}>
     {icon === 'diary' ?
       <Image key={imageIdentity} source={icons.diary} tintColor={colors.iconTint} style={{ width: 42 * scale, height: 28 * scale }} contentFit="contain" /> :
       <GlassHost style={[styles.iconPanel, { width: size.width, height: size.height, alignItems: 'center', justifyContent: 'center' }]} contour={productIconPath} scanOnMount={false} touchEnabled={false}>
-        <Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={complete ? { width: size.width, height: size.height } : icon === 'notes' ? { width: 16 * scale, height: 16 * scale } : { width: 24 * scale, height: 24 * scale }} contentFit="contain" />
+        <RustIcon name={glyphNames[icon]} width={glyph.width} height={glyph.height} stroke={iconStroke * scale} round={icon !== 'back'}
+          color={icon === 'notes' ? colors.accent : colors.iconTint ?? (icon === 'settings' ? '#E7E100' : '#F5DD07')}
+          fallback={<Image key={imageIdentity} source={icon === 'notes' ? note : icons[icon]} tintColor={icon === 'notes' ? undefined : colors.iconTint} style={glyph} contentFit="contain" />} />
       </GlassHost>}
   </Pressable>;
 }

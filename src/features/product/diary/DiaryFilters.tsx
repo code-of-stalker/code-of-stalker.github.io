@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { productLevels } from '../content';
 import { ProductButton, ProductText } from '../ui';
 import { DiaryGlass } from './DiaryGlass';
@@ -11,8 +13,23 @@ import { DiaryDatePicker } from './DiaryDatePicker';
 import { DiaryAsset, DiaryEntryIcon, DiaryIcon } from './DiaryIcons';
 import { diaryDay, emptyDiaryFilter, type DiaryFilter } from './feed';
 
+/**
+ * A chosen option reads at a glance (Art 2026-11-11): it is filled solid with the accent and its
+ * text turns dark. The fill and its dark copy fade in together over the plain option (Rust,
+ * uiDuration). `content` draws the option's copy, once plain and once with the dark ink; `fillStyle`
+ * gives the filled copy the same padding and layout as the option. Shared with the Intensive admin.
+ */
+export function DiaryChoiceFace({ selected, content, fillStyle }: { selected: boolean; content: (ink?: string) => ReactNode; fillStyle?: StyleProp<ViewStyle> }) {
+  const colors = useThemeColors(), reduced = useUiReduced();
+  return <><DiaryGlass />{content()}
+    <Fade opacity={selected ? 1 : 0} duration={reduced ? 0 : uiDuration} style={[StyleSheet.absoluteFill, styles.fill, fillStyle, { backgroundColor: colors.accent }]}>
+      {content(colors.onAccent)}
+    </Fade>
+    <PanelBorder color={selected ? colors.accent : colors.border} /></>;
+}
+
 export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(filter: DiaryFilter): void }) {
-  const colors = useThemeColors(), reduced = useUiReduced(), [draft, setDraft] = useState(value), [error, setError] = useState('');
+  const colors = useThemeColors(), [draft, setDraft] = useState(value), [error, setError] = useState('');
   const format = (date: string) => date ? date.split('-').reverse().join('.') : '';
   const [from, setFrom] = useState(value.from), [to, setTo] = useState(value.to);
   const [activeDate, setActiveDate] = useState<'from' | 'to' | null>(null);
@@ -35,17 +52,10 @@ export function DiaryFilters({ value, onApply }: { value: DiaryFilter; onApply(f
     const now = new Date(), start = new Date(now); start.setDate(now.getDate() - days + 1);
     return { start: diaryDay(start.getTime()), end: diaryDay(now.getTime()) };
   }
-  // Art 2026-11-11: the chosen option is filled solid with the accent and its text turns dark.
-  function face(label: string, selected: boolean) {
-    // The fill and its dark label fade in together over the plain option (Rust, uiDuration).
-    return <><DiaryGlass /><ProductText color={colors.text} style={styles.option}>{label}</ProductText>
-      <Fade opacity={selected ? 1 : 0} duration={reduced ? 0 : uiDuration} style={[StyleSheet.absoluteFill, styles.fill, { backgroundColor: colors.accent }]}>
-        <ProductText style={[styles.option, { color: colors.onAccent }]}>{label}</ProductText>
-      </Fade>
-      <PanelBorder color={selected ? colors.accent : colors.border} /></>;
-  }
   function choice(label: string, selected: boolean, action: () => void) {
-    return <Pressable key={label} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: selected }} onPress={action} style={styles.choice}>{face(label, selected)}</Pressable>;
+    return <Pressable key={label} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: selected }} onPress={action} style={styles.choice}>
+      <DiaryChoiceFace selected={selected} content={ink => <ProductText color={ink ?? colors.text} style={styles.option}>{label}</ProductText>} />
+    </Pressable>;
   }
   return <View style={styles.root}>
     <View testID="diary-filter-dates-title" style={styles.heading}><DiaryAsset name="calendar" /><ProductText variant="title" style={styles.title}>ДАТЫ</ProductText></View>

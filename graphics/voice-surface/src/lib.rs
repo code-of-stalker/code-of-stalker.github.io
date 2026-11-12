@@ -1,14 +1,16 @@
 //! «Всплытие»: Step 3, page 6 «Проговоренное — уже не скрытое».
 //!
-//! The camera sits exactly at the surface of a dark sea of code: the upper
-//! half of the frame is clear air, the lower half is murky water where the
-//! code drifts down. A woman drawn by level lines of light surfaces until the
-//! water reaches the hollow of her throat. Each time she speaks, the voice
-//! calls a knot of light up from the depth; it breaks the surface in front of
-//! her and opens, stroke by stroke, into a word in the air: БОЛЬ, ВИНА, МЫСЛЬ.
-//! Each word moves off and hangs apart over the water, where she can see it;
-//! the sea below grows calm. Then the words dissolve upward, she sinks back,
-//! and the loop begins again.
+//! A woman drawn by level lines of light stands still in a dark sea of
+//! matrix code, the water over her eyes. The lens is half in the water: its
+//! waterline is the water's level, so when the level falls the line slides
+//! down the frame and uncovers her. She never moves up; only her speaking
+//! moves the water. Each time she speaks, her lips move and the voice leaves
+//! her mouth as a ray down into the depth; there it lights a knot and draws it
+//! up. The knot breaks the surface and opens, stroke by stroke, into a word in
+//! the air (БОЛЬ, ВИНА, МЫСЛЬ), and as it opens the water falls a step: off
+//! her mouth, off her throat, off her breast. Each word moves off and hangs
+//! apart over the water; the sea grows calm. In the silence at the end the
+//! words dissolve upward, the water comes back, and the loop begins again.
 //!
 //! This module is the choreography: pure functions of loop time, tested here.
 //! `browser.rs` hands every value to one full-screen shader pass.
@@ -28,15 +30,14 @@ pub const LENS: f32 = 0.3057;
 /// The camera's two eyes: the air half above the water, the water half under it (m).
 pub const AIR_EYE: f32 = 0.022;
 pub const WATER_EYE: f32 = -0.028;
-/// Where the waterline crosses the lens, as a tangent (just under the centre).
-pub const SPLIT: f32 = -0.02;
+/// The lens's waterline meets the world's at this distance, hers: what lies
+/// above the level there is seen through the air, below it through the water.
+pub const DOME: f32 = 1.57;
 /// Water magnifies what lies under it, so the body breaks at the waterline.
 pub const ZOOM: f32 = 1.12;
 
-/// Her feet when she stands surfaced, the water at the hollow of her throat.
+/// Her feet. She stands here the whole loop.
 pub const STAND: [f32; 3] = [-0.28, -1.36, -1.55];
-/// Her feet at the bottom of the loop, the crown well under the water.
-pub const DEEP: f32 = -2.08;
 /// She stands turned toward the words, in three-quarters to the camera (radians).
 pub const YAW: f32 = 1.0;
 /// Her height, from the soles to the crown.
@@ -50,23 +51,34 @@ pub const EYES: [f32; 3] = [0.0, 1.534, 0.074];
 /// Her body is drawn by level lines this far apart (m).
 pub const LINE: f32 = 0.0085;
 
-/// She surfaces, her crown breaks the water, she sinks back.
-pub const RISE: [f32; 2] = [0.0, 5.6];
-pub const SINK: [f32; 2] = [38.5, 44.0];
+/// Where her lips meet, in her head's frame: the voice leaves here.
+pub const MOUTH: [f32; 3] = [0.0, 1.468, 0.1];
 pub const BREATH_SECONDS: f32 = 5.5;
 pub const BREATH: f32 = 0.004;
 
 /// Each word: the voice starts, after CALL the knot starts to rise from
 /// KNOT_DEPTH, ASCENT later it breaks the surface, then UNFOLDs into letters.
 pub const WORDS: usize = 3;
-pub const WORD_AT: [f32; WORDS] = [6.0, 13.5, 21.0];
+pub const WORD_AT: [f32; WORDS] = [3.0, 11.0, 19.0];
 pub const CALL: f32 = 0.35;
 pub const ASCENT: f32 = 2.9;
 pub const UNFOLD: f32 = 2.1;
 pub const KNOT_DEPTH: f32 = -0.78;
 pub const KNOT_RADIUS: f32 = 0.05;
-/// Where each word opens, in front of her and nearer the camera.
+/// Syllables: how often her mouth opens while she speaks, per loop (3.2 a second).
+pub const SYLLABLES: f32 = 140.0;
+/// The water's level (world y) before the first word and after each: over
+/// her eyes (she says the first word under the water), then at her neck,
+/// over her breast, under her breast.
+pub const LEVELS: [f32; WORDS + 1] = [0.21, 0.03, -0.1, -0.26];
+/// How long the water takes to fall a step once the knot is out.
+pub const DROP: f32 = 2.6;
+/// In the silence at the end the water comes back.
+pub const RETURN: [f32; 2] = [37.0, 43.6];
+/// Where each word opens, in front of her and nearer the camera, and the
+/// height it opens at: above the water as it was when she said it.
 pub const FORM: [f32; 3] = [0.24, 0.14, -1.2];
+pub const WORD_Y: [f32; WORDS] = [0.3, 0.17, 0.14];
 /// Where each word comes to rest, apart over the water, and its size there:
 /// a word that moves off grows, so it still reads.
 pub const REST: [[f32; 3]; WORDS] = [[-0.02, 0.72, -3.6], [0.55, 0.47, -2.3], FORM];
@@ -75,10 +87,10 @@ pub const REST_LIGHT: [f32; WORDS] = [0.62, 0.72, 1.0];
 /// After the next word's voice: when a word starts and ends moving off.
 pub const DRIFT: [f32; 2] = [0.2, 3.2];
 /// All three hang apart and the sea calms; then they dissolve upward.
-pub const CALM: [f32; 2] = [28.5, 36.0];
-pub const FADE: [f32; 2] = [36.0, 40.0];
+pub const CALM: [f32; 2] = [26.5, 34.0];
+pub const FADE: [f32; 2] = [34.0, 38.0];
 /// Reduced motion holds this moment: three words over a calm sea.
-pub const STILL: f32 = 33.0;
+pub const STILL: f32 = 31.0;
 
 /// Rings on the water: how many at once, how fast they run (m/s), how long they live.
 pub const RINGS: usize = 4;
@@ -196,8 +208,11 @@ pub struct Frame {
     pub body: [f32; 4],
     /// Her head turned (yaw) and lifted (pitch) on the neck, radians.
     pub head: [f32; 2],
-    /// The jugular notch in the world and the light of the voice there.
+    /// Her mouth in the world and the light of the voice there.
     pub voice: [f32; 4],
+    /// The water's level, the waterline on the lens (a tangent), how open
+    /// her mouth is.
+    pub water: [f32; 4],
     /// What lights her face (the word she looks at), and how strongly.
     pub lamp: [f32; 4],
     /// The voice reaching down to the knot: x, z, its lower end, its light.
@@ -288,15 +303,38 @@ pub fn head_to_body(head: [f32; 2], p: [f32; 3]) -> [f32; 3] {
     )
 }
 
-/// Her feet over the loop: she surfaces, breathes, sinks back.
+/// Her feet over the loop: she stands and breathes, nothing more.
 pub fn feet(t: f32) -> [f32; 3] {
-    let up = smooth(RISE[0], RISE[1], t) * (1.0 - smooth(SINK[0], SINK[1], t));
-    let breath = BREATH * (TAU * t / BREATH_SECONDS).sin() * up;
-    [STAND[0], mix(DEEP, STAND[1], up) + breath, STAND[2]]
+    let breath = BREATH * (TAU * t / BREATH_SECONDS).sin();
+    [STAND[0], STAND[1] + breath, STAND[2]]
 }
-/// Her crown, for when it crosses the water.
-pub fn crown(t: f32) -> f32 {
-    feet(t)[1] + HEIGHT
+
+/// When knot `w` breaks the surface.
+pub fn surfaces(w: usize) -> f32 {
+    WORD_AT[w] + CALL + ASCENT
+}
+/// The water's level: a step down after each word is out, back up in the
+/// silence at the end.
+pub fn level(t: f32) -> f32 {
+    let mut l = LEVELS[0];
+    for w in 0..WORDS {
+        l += (LEVELS[w + 1] - LEVELS[w]) * smooth(surfaces(w), surfaces(w) + DROP, t);
+    }
+    l + (LEVELS[0] - LEVELS[WORDS]) * smooth(RETURN[0], RETURN[1], t)
+}
+/// Where the waterline crosses the lens, as a tangent.
+pub fn split(t: f32) -> f32 {
+    (level(t) - AIR_EYE) / DOME
+}
+/// While she speaks word `w` (0..1): from the voice's start until its knot is out.
+fn speaking(w: usize, t: f32) -> f32 {
+    let at = WORD_AT[w];
+    smooth(at, at + 0.5, t) * (1.0 - smooth(surfaces(w) - 0.4, surfaces(w) + 0.4, t))
+}
+/// How far her mouth opens: syllable by syllable while she speaks.
+pub fn mouth(t: f32) -> f32 {
+    let on = (0..WORDS).map(|w| speaking(w, t)).fold(0.0f32, f32::max);
+    on * (0.5 - 0.5 * (TAU * SYLLABLES * t / LOOP_SECONDS).cos())
 }
 
 /// The strokes of word `w`, centred, in letter units.
@@ -343,9 +381,10 @@ fn word_state(w: usize, t: f32) -> WordState {
     let rise = smooth(start + CALL, surfaced, t);
     let open = smooth(surfaced, opened, t);
     let bob = 0.004 * (TAU * 4.0 * t / LOOP_SECONDS + w as f32 * 2.1).sin() * open;
+    // Up to the water as it is when she speaks, then out and up to its line.
     let mut centre = [
         FORM[0],
-        mix(KNOT_DEPTH, -0.02, rise) + (FORM[1] + 0.02) * open + bob,
+        mix(KNOT_DEPTH, LEVELS[w] - 0.02, rise) + (WORD_Y[w] - LEVELS[w] + 0.02) * open + bob,
         FORM[2],
     ];
     let mut size = 1.0;
@@ -491,39 +530,35 @@ pub fn head(t: f32) -> [f32; 2] {
     let d = sub(gaze(t), eyes);
     let yaw = d[0].atan2(d[2]) - YAW;
     let pitch = d[1].atan2((d[0] * d[0] + d[2] * d[2]).sqrt());
-    [soft(yaw * 0.75, 0.6), soft(pitch * 0.75, 0.38)]
+    // She looks down at a knot with her eyes more than her head, so her
+    // mouth stays clear of the water once it is out.
+    let limit = if pitch < 0.0 { 0.2 } else { 0.38 };
+    [soft(yaw * 0.75, 0.6), soft(pitch * 0.75, limit)]
 }
 /// Toward `x`, but easing off before `limit`.
 fn soft(x: f32, limit: f32) -> f32 {
     x / (1.0 + (x / limit).powi(2)).sqrt()
 }
 
-/// The light at her throat: each phrase spoken, a low glow once all are said.
+/// The light at her mouth: it swells with each syllable while she speaks,
+/// and a low glow stays while the words hang in the calm.
 pub fn voice(t: f32) -> f32 {
-    let mut v: f32 = 0.0;
-    for (w, at) in WORD_AT.iter().enumerate() {
-        let on = smooth(*at, at + 0.3, t)
-            * (1.0 - smooth(at + CALL + ASCENT, at + CALL + ASCENT + 1.2, t));
-        let speech = 0.72
-            + 0.18 * (TAU * 37.0 * t / LOOP_SECONDS + w as f32).sin().abs()
-            + 0.1 * (TAU * 59.0 * t / LOOP_SECONDS).sin();
-        v = v.max(on * speech);
-    }
-    let surfaced = smooth(RISE[1] - 1.0, RISE[1], t) * (1.0 - smooth(SINK[0], SINK[0] + 2.0, t));
-    v.max(
-        0.12 * surfaced
-            + 0.1 * smooth(CALM[0], CALM[0] + 2.0, t) * (1.0 - smooth(FADE[0], FADE[1], t)),
-    )
+    let on = (0..WORDS).map(|w| speaking(w, t)).fold(0.0f32, f32::max);
+    let calm = smooth(CALM[0], CALM[0] + 2.0, t) * (1.0 - smooth(FADE[0], FADE[1], t));
+    (0.65 * on + 0.3 * mouth(t)).max(0.1 * calm)
 }
 
-/// Ripples: the crown breaking the water, each phrase from the throat, each
-/// knot breaking the surface, the crown going under again.
+/// Ripples: the voice going into the water (once her mouth is out of it),
+/// and each knot breaking the surface.
 pub fn ripples(t: f32) -> [[f32; 4]; RINGS] {
-    let head = [STAND[0], STAND[2]];
-    let mut events: Vec<(f32, [f32; 2], f32)> = vec![(BREAK, head, 1.0), (SUBMERGE, head, 0.7)];
-    for at in WORD_AT {
-        events.push((at + 0.1, head, 0.8));
-        events.push((at + CALL + ASCENT, [FORM[0], FORM[2]], 0.9));
+    // Where the voice, on its way from her mouth down to the depth, enters the water.
+    let entry = [mix(STAND[0], FORM[0], 0.35), mix(STAND[2], FORM[2], 0.35)];
+    let mut events: Vec<(f32, [f32; 2], f32)> = Vec::new();
+    for (w, at) in WORD_AT.iter().enumerate() {
+        if w > 0 {
+            events.push((at + 0.2, entry, 0.7));
+        }
+        events.push((surfaces(w), [FORM[0], FORM[2]], 0.9));
     }
     let mut live: Vec<[f32; 4]> = events
         .iter()
@@ -545,14 +580,11 @@ pub fn ripples(t: f32) -> [[f32; 4]; RINGS] {
     }
     out
 }
-/// When her crown breaks the surface and when it goes under.
-pub const BREAK: f32 = 3.0;
-pub const SUBMERGE: f32 = 41.0;
-
-/// How busy the code in the water is: calmer once the words are out.
+/// How busy the code in the water is: calmer once the words are out, busy
+/// again as the water comes back.
 pub fn sea(t: f32) -> f32 {
-    1.0 - 0.15 * smooth(6.0, 8.0, t) - 0.4 * smooth(CALM[0], CALM[0] + 3.0, t)
-        + 0.55 * smooth(SINK[0], SINK[1] - 0.5, t)
+    1.0 - 0.15 * smooth(surfaces(0), surfaces(0) + 2.0, t) - 0.4 * smooth(CALM[0], CALM[0] + 3.0, t)
+        + 0.55 * smooth(RETURN[0], RETURN[1] - 0.5, t)
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -564,7 +596,7 @@ pub fn compose(t: f32) -> Frame {
     let right = [a.cos(), 0.0, a.sin()];
     let base = feet(t);
     let head = head(t);
-    let notch = to_world(base, YAW, NOTCH);
+    let lips = to_world(base, YAW, head_to_body(head, MOUTH));
     let mut segments = [[0.0; 8]; SEGMENTS];
     let mut words = [[0.0; 4]; WORDS];
     for (w, bound) in words.iter_mut().enumerate() {
@@ -578,11 +610,11 @@ pub fn compose(t: f32) -> Frame {
         })
         .fold(0.0f32, f32::max);
     let g = gaze(t);
-    // The voice reaches down to the knot while it rises.
+    // The voice reaches from her mouth down to the knot and draws it up.
     let mut beam = [FORM[0], FORM[2], 0.0, 0.0];
     for (w, at) in WORD_AT.iter().enumerate() {
-        let on = smooth(at + CALL, at + CALL + 0.6, t)
-            * (1.0 - smooth(at + CALL + ASCENT - 0.3, at + CALL + ASCENT + 0.4, t));
+        let on = smooth(*at, at + CALL + 0.3, t)
+            * (1.0 - smooth(surfaces(w) - 0.3, surfaces(w) + 0.4, t));
         if on > beam[3] {
             beam = [FORM[0], FORM[2], word_state(w, t).centre[1], on];
         }
@@ -595,7 +627,8 @@ pub fn compose(t: f32) -> Frame {
         forward,
         body: [base[0], base[1], base[2], YAW],
         head,
-        voice: [notch[0], notch[1], notch[2], voice(t)],
+        voice: [lips[0], lips[1], lips[2], voice(t)],
+        water: [level(t), split(t), mouth(t), 0.0],
         lamp: [g[0], g[1], g[2], 0.7 * lit],
         beam,
         rings: ripples(t),
@@ -719,26 +752,51 @@ mod tests {
     }
 
     #[test]
-    fn she_surfaces_to_the_notch_and_sinks_back() {
-        assert!(crown(0.0) < -0.3);
-        assert!(crown(LOOP_SECONDS - 0.001) < -0.3);
-        assert!(
-            near(crown(BREAK), 0.0, 0.03),
-            "crown at BREAK: {}",
-            crown(BREAK)
-        );
-        assert!(
-            near(crown(SUBMERGE), 0.0, 0.03),
-            "crown at SUBMERGE: {}",
-            crown(SUBMERGE)
-        );
-        // While she speaks, the notch is just above the water.
-        let mut t = RISE[1];
-        while t < SINK[0] {
-            let notch = compose(t).voice[1];
-            assert!((0.006..0.03).contains(&notch), "notch {notch} at {t}");
-            t += 0.25;
+    fn she_stands_and_the_water_falls_as_she_speaks() {
+        // She never moves but for her breath.
+        for i in 0..440 {
+            let t = i as f32 * 0.1;
+            assert!((feet(t)[1] - STAND[1]).abs() <= BREATH + 1e-6);
         }
+        let mouth_y = |t: f32| compose(t).voice[1];
+        // The first word she says under the water.
+        let first = mouth_y(WORD_AT[0] + 1.0);
+        assert!(level(WORD_AT[0] + 1.0) > first + 0.05, "mouth {first}");
+        for w in 0..WORDS {
+            // The water stands while she speaks the word, falls a step once it is out.
+            assert!(near(level(WORD_AT[w]), LEVELS[w], 1e-4), "before word {w}");
+            assert!(near(level(surfaces(w) - 0.01), LEVELS[w], 1e-4), "word {w}");
+            assert!(
+                near(level(surfaces(w) + DROP), LEVELS[w + 1], 1e-4),
+                "after word {w}"
+            );
+            // The others she says with her mouth out of the water.
+            if w > 0 {
+                let mut t = WORD_AT[w];
+                while t < surfaces(w) {
+                    let m = mouth_y(t);
+                    assert!(m > level(t) + 0.025, "word {w}: mouth {m} at {t}");
+                    t += 0.1;
+                }
+            }
+        }
+        // It only falls until the silence at the end, then comes back.
+        let mut last = level(0.0);
+        let mut t = 0.0;
+        while t < RETURN[0] {
+            assert!(level(t) <= last + 1e-6, "the water rose at {t}");
+            last = level(t);
+            t += 0.05;
+        }
+        assert!(near(level(LOOP_SECONDS - 0.001), LEVELS[0], 1e-3));
+        // Her mouth moves only while she speaks, and opens and closes then.
+        assert!(mouth(1.0) < 1e-4 && mouth(STILL) < 1e-4);
+        let (lo, hi) = (0..40)
+            .map(|k| mouth(WORD_AT[1] + 1.0 + k as f32 * 0.05))
+            .fold((1.0f32, 0.0f32), |(a, b), m| (a.min(m), b.max(m)));
+        assert!(lo < 0.1 && hi > 0.9, "mouth {lo}..{hi}");
+        // The lens's waterline follows the water.
+        assert!(split(WORD_AT[0]) > 0.1 && split(STILL) < -0.15);
     }
 
     #[test]
@@ -752,7 +810,7 @@ mod tests {
                 assert!(a[1] < -0.6 && a[5] < -0.6, "word {w} stroke {i} not deep");
                 assert!(a[3] > 0.0, "word {w}'s knot is dark when called");
                 assert!(
-                    b[1] > 0.07 && b[5] > 0.07,
+                    b[1] > LEVELS[w] + 0.02 && b[5] > LEVELS[w] + 0.02,
                     "word {w} stroke {i} under water"
                 );
                 // Open: the strokes stand where the letters say.
@@ -818,6 +876,9 @@ mod tests {
         }
         assert!(near(a.head[0], b.head[0], 2e-3) && near(a.head[1], b.head[1], 2e-3));
         assert!(near(a.voice[3], b.voice[3], 2e-3) && near(a.sea, b.sea, 2e-3));
+        for i in 0..3 {
+            assert!(near(a.water[i], b.water[i], 2e-3), "water {i}");
+        }
         assert!(a
             .segments
             .iter()
@@ -840,6 +901,11 @@ mod tests {
             assert!((f.head[1] - prev.head[1]).abs() < 0.03, "head pitch at {t}");
             assert!((f.voice[3] - prev.voice[3]).abs() < 0.12, "voice at {t}");
             assert!((f.sea - prev.sea).abs() < 0.01, "sea at {t}");
+            assert!((f.water[0] - prev.water[0]).abs() < 0.004, "level at {t}");
+            assert!((f.water[2] - prev.water[2]).abs() < 0.25, "mouth at {t}");
+            for c in 0..3 {
+                assert!((f.voice[c] - prev.voice[c]).abs() < 0.01, "lips at {t}");
+            }
             for (s, p) in f.segments.iter().zip(prev.segments.iter()) {
                 if s[3] > 0.01 && p[3] > 0.01 {
                     for c in [0, 1, 2, 4, 5, 6] {

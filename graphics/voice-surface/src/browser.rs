@@ -6,7 +6,7 @@
 //! is two-toned, so it does not go through the monochrome theme recolor.
 use crate::{
     compose, look, Look, EYES, FRAME_ASPECT, LENS, LINE, LOOP_SECONDS, NECK, RINGS, RING_SPEED,
-    SEGMENTS, SPLIT, STILL, WATER_EYE, WORDS, WORD_STARTS, ZOOM,
+    SEGMENTS, STILL, WATER_EYE, WORDS, WORD_STARTS, ZOOM,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -20,7 +20,7 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 19] = [
+const NAMES: [&str; 20] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -29,6 +29,7 @@ const NAMES: [&str; 19] = [
     "u_body",
     "u_head",
     "u_voice",
+    "u_water",
     "u_lamp",
     "u_beam",
     "u_rings",
@@ -51,7 +52,6 @@ fn defines() -> String {
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
         ("FRAME_ASPECT", f(FRAME_ASPECT)),
         ("WATER_EYE", f(WATER_EYE)),
-        ("SPLIT", f(SPLIT)),
         ("ZOOM", f(ZOOM)),
         ("LINE", f(LINE)),
         ("NECK", v3(NECK)),
@@ -311,6 +311,7 @@ impl VoiceSurface {
         gl.uniform4fv_with_f32_array(p.at("u_body"), &f.body);
         gl.uniform4f(p.at("u_head"), f.head[0], f.head[1], f.sea, 0.0);
         gl.uniform4fv_with_f32_array(p.at("u_voice"), &f.voice);
+        gl.uniform4fv_with_f32_array(p.at("u_water"), &f.water);
         gl.uniform4fv_with_f32_array(p.at("u_lamp"), &f.lamp);
         gl.uniform4fv_with_f32_array(p.at("u_beam"), &f.beam);
         gl.uniform4fv_with_f32_array(p.at("u_rings"), &rings);

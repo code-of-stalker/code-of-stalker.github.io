@@ -52,7 +52,8 @@ export type Observation = ObservationMeta & {
 };
 export type DiaryCategory = 'observation' | 'dynamics';
 type DiaryBase = { id: string; createdAt: number; category: DiaryCategory };
-export type DiaryText = DiaryBase & { kind: 'text'; text: string; format?: DiaryTextRun[] };
+/** `editedAt`: the last change of the text after it was saved. */
+export type DiaryText = DiaryBase & { kind: 'text'; text: string; format?: DiaryTextRun[]; editedAt?: number };
 export type DiaryAudio = DiaryBase & { kind: 'audio'; localRef: string; durationMs: number; waveform: number[]; mimeType: string };
 export type DiaryEntry = DiaryText | DiaryAudio;
 export type AudioRecord = Observation | DiaryAudio;
@@ -205,7 +206,10 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
   for (const entry of value.diaryEntries ?? []) {
     if (!entry || !/^[a-f0-9]{32}$/.test(entry.id) || ids.has(entry.id) || !whole(entry.createdAt, 1)) throw new Error('Некорректная запись дневника.');
     validateDiaryCategory(entry.category);
-    if (entry.kind === 'text') { validateDiaryText(entry.text); if (entry.format !== undefined) validateTextRuns(entry.format, entry.text); }
+    if (entry.kind === 'text') {
+      validateDiaryText(entry.text); if (entry.format !== undefined) validateTextRuns(entry.format, entry.text);
+      if (entry.editedAt !== undefined && !whole(entry.editedAt, entry.createdAt)) throw new Error('Некорректная запись дневника.');
+    }
     else if (entry.kind === 'audio') {
       validateObservationDraft({ ...entry, uri: entry.localRef }, DIARY_LIMIT_SECONDS);
       if (entry.localRef !== entry.id || !validAudioMime(entry.mimeType)) throw new Error('Некорректная голосовая запись дневника.');

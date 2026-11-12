@@ -19,7 +19,7 @@ pub const REST: f64 = 23.5;
 const HER: W = [0.05, 0., 0.];
 const HEIGHT: f64 = 1.68;
 /// Where her tone strikes the shadow: its belly, in her art units.
-const BELLY: P = (510., 650.);
+const BELLY: P = (508., 550.);
 /// The back wall; the follow-spot close below the stage lip, and where it
 /// aims. So near and so low, it throws her three times her size: the shadow
 /// rises from the floor at her knees and reaches the top of the opening.

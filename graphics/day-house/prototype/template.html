@@ -1,0 +1,344 @@
+<title>Дом в разрезе</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* One column like the app's step page: the scene on the plate, its clock under it, then the beats of the page text. Tokens are the app's theme colours; Матрица until a theme is chosen. */
+@font-face { font-family: "Disket Mono"; src: url(data:font/ttf;base64,__DISKET__) format("truetype"); font-display: swap; }
+@font-face { font-family: "Tektur"; src: url(data:font/ttf;base64,__TEKTUR__) format("truetype"); font-weight: 500; font-display: swap; }
+:root {
+  --page: #000000;
+  --surface: #000A03;
+  --accent: #00FF41;
+  --text: #00FF41;
+  --muted: #4FB868;
+  --faint: #3F6B4A;
+  --border: #0A5C22;
+  --title: "Tektur", "Arial Narrow", system-ui, sans-serif;
+  --body: "Disket Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html { background: var(--page); }
+[hidden] { display: none !important; }
+body {
+  background: var(--page); color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; max-width: 720px; }
+.eyebrow { color: var(--faint); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+h1 { font-family: var(--title); font-weight: 500; font-size: clamp(24px, 4.2vw, 36px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.note { color: var(--muted); margin: 0; max-width: 64ch; }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 3 / 2; }
+canvas { display: block; width: 100%; height: 100%; }
+.status {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+  color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.status.error { text-transform: none; letter-spacing: 0; color: var(--text); font-size: 13px; }
+.status.error p { max-width: 52ch; margin: 0; }
+.transport { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
+button {
+  font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#play { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; }
+#play svg { width: 16px; height: 16px; fill: var(--accent); }
+.clock { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.track { position: relative; height: 28px; display: grid; align-items: center; }
+.beats-bar { position: absolute; left: 0; right: 0; top: 50%; height: 4px; transform: translateY(-50%); }
+.beats-bar span { position: absolute; top: 0; height: 100%; background: var(--border); border-radius: 2px; }
+.beats-bar span.on { background: var(--accent); }
+input[type="range"] { position: relative; width: 100%; margin: 0; background: transparent; appearance: none; -webkit-appearance: none; height: 28px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+input[type="range"]::-moz-range-track { height: 4px; background: transparent; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--text); border: 2px solid var(--page); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 2px solid var(--page); }
+ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+ol button {
+  width: 100%; height: 100%; text-align: left; border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; align-content: start;
+  background: transparent;
+}
+ol button .at { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+ol button .what { min-width: 0; }
+ol button .how { color: var(--muted); font-size: 12px; }
+ol button[aria-current="true"] { background: var(--surface); border-color: var(--accent); }
+ol button[aria-current="true"] .at { color: var(--accent); }
+.themes, .chapters { display: flex; flex-wrap: wrap; gap: 8px; }
+.themes button, .chapters button { padding: 7px 12px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; }
+.themes button[aria-pressed="true"], .chapters button[aria-pressed="true"] { color: var(--page); background: var(--accent); border-color: var(--accent); }
+@media (max-width: 760px) { ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) {
+  ol { grid-template-columns: minmax(0, 1fr); }
+  .transport { grid-template-columns: auto 1fr; }
+  .clock { grid-column: 1 / -1; order: 3; }
+}
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Шаг 7 · <span id="chapter-topic">Итог</span> · <span id="chapter-name">страница 10</span> · тема <span id="theme-name">Матрица</span></div>
+    <h1 id="chapter-title">В быту</h1>
+    <p class="note" id="note"></p>
+  </header>
+
+  <div class="chapters" id="chapters" role="group" aria-label="Страница" hidden></div>
+  <div class="themes" id="themes" role="group" aria-label="Тема"></div>
+
+  <div class="stage">
+    <canvas id="scene" role="img" aria-label="Пятиэтажный дом в разрезе на чёрном лаковом столе. Один человек проходит через весь свой день: спор на кухне, лифт, трамвай, очередь в магазине, чашка, которую он ловит, работа за столом, вечерняя поездка на велосипеде; трижды он проговаривает вслух и слушает свой голос. Вокруг него три кольца. Ночью дом засыпает окно за окном, кольца возвращаются к нему по одному и звучат вместе; линия света проводит его путь через дом, и в каждом месте дня он снова там; дом уходит в код, стол становится водой, капля света встречается со своим отражением, камера уходит под воду, переворачивается, и дом под водой становится утренним домом."></canvas>
+    <div class="status" id="status">Загружаю сцену…</div>
+  </div>
+
+  <div class="transport">
+    <button id="play" type="button" aria-label="Пауза"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="icon" d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+    <div class="track">
+      <div class="beats-bar" id="bar" aria-hidden="true"></div>
+      <input id="time" type="range" min="0" max="402.5" step="0.1" value="0" aria-label="Время в петле, секунды">
+    </div>
+    <div class="clock" id="clock">00:00,0</div>
+  </div>
+
+  <ol id="beats"></ol>
+</main>
+
+<script type="module">
+__GLUE__
+
+// The scene's one chapter (story.rs): page 10. Each beat is from, to, the
+// page's words, what the scene does then (loop seconds).
+const CHAPTERS = [
+  {
+    code: 0, name: 'страница 10', loop: 402.5,
+    topic: 'Итог',
+    title: 'В быту',
+    note: 'Живой прототип десятой страницы, финала шага: сцена «Дом в разрезе». Её считает видеокарта твоего устройства тем же кодом, что пойдёт на сайт. Пятиэтажный дом, открытый спереди, как кукольный, стоит на чёрном лаковом столе. Один человек проходит через один свой день внутри своей сферы: второе кольцо сканирует его сверху вниз, первое ходит по сфере, третье кольцо — меридиан — обходит пространство вокруг. В трамвае, в магазине и за ноутбуком камера смотрит его глазами. Трижды за день он проговаривает вслух и слушает свой голос: у стены дома после трамвая (в телефон, потом телефон у уха), за закрытым ноутбуком и у стены после велосипеда. В финале дом засыпает окно за окном, кольца возвращаются к нему по одному, сходятся и бьют вместе; линия его дня проходит через тёмный дом, и в каждом месте он снова там, каким был днём; сфера вырастает на весь дом, лак стола становится водой, капля света падает и встречается со своим отражением, камера уходит под воду, переворачивается, и дом под водой становится утренним домом. Петля 6 минут 42 секунды.',
+    beats: [
+      [0, 6, '«Необходимо использовать эти алгоритмы в быту:»', 'Раннее утро. Камера издалека: весь дом в разрезе на чёрном столе, в окнах ещё горят лампы.'],
+      [6, 21, '«в разговоре,»', 'Кухня на четвёртом этаже. Она у плиты, они спорят — его второе кольцо дрожит. Она снимает чайник, наливает ему чай и возвращается к кастрюле. Он отпивает, кольцо успокаивается.'],
+      [21, 42, '', 'Он выходит из-за стола с ближней стороны, вызывает лифт и едет вниз мимо этажей и соседей.'],
+      [42, 56, '«в дороге,»', 'Улица. Трамвай тормозит и сигналит, по сфере пробегает вспышка. Он садится.'],
+      [56, 83, '', 'Его глазами: дом плывёт в окнах трамвая. Общий план: трамвай уходит вправо за кадр, и пока его нет, день плавно идёт дальше: солнце уходит за полдень, проходит облако, стрелки уличных часов слева от дома сдвигаются на два часа. Трамвай возвращается слева, он выходит.'],
+      [83, 110, '', 'Он подходит к дому, прислоняется спиной к стене у входа и отдыхает. За день его сфера сжалась и почти погасла. Держит телефон в ладони перед собой и проговаривает вслух: сфера раздаётся шире прежнего, её край и код внутри вспыхивают. Потом прикладывает телефон к щеке, ладонь лежит на телефоне, и слушает свой голос: круги идут от губ к телефону и от телефона к уху, кольца наливаются светом.'],
+      [110, 143, '«в магазине,»', 'Очередь его глазами, камера плавно входит в его взгляд и выходит. Монета выскальзывает и медленно падает, третье кольцо делает лишний оборот. Он поднимает её и кладёт на прилавок, монета блестит; продавщица забирает её и снимает с полки хлеб.'],
+      [143, 185, '«дома,»', 'Домой по тротуару с хлебом в руке, лифт наверх, хлеб на кухню. Ребёнок задевает чашку: мир замедляется, третье кольцо вспыхивает, он ловит её.'],
+      [185, 247, '«в делах,»', 'По лестнице в кабинет, камера идёт за ним. Его глазами: экран, текст набирается. Звонит телефон, второе кольцо дрожит, над календарём горят сроки, он держится за виски. Снова работа. Потом он закрывает ноутбук, откидывается, проговаривает вслух и прислушивается к своему голосу: сфера снова раздаётся и вспыхивает. За окном вечер.'],
+      [247, 306, '«в движении.»', 'Вниз на лифте. Велосипед весь день стоит у фонаря: он садится и уезжает вправо за кадр, и пока его нет, плавно приходит вечер, солнце садится. Он въезжает слева, камера одним проездом подходит к нему, тормозит у того же фонаря и ставит велосипед к столбу.'],
+      [306, 321, '', 'Снова у стены у входа: прислоняется спиной, отдыхает, проговаривает и слушает свой голос, сфера раздаётся и вспыхивает.'],
+      [321, 345, '«Пусть тело запоминает не «упражнение», а многомерность Наблюдения, Сканирования, Считывания и Осознания.»', 'Ночь. Камера отходит и смотрит вверх: дом засыпает, окна гаснут одно за другим, его семья последней. Кольца уходят от него, потом возвращаются по одному: первое, второе, третье, каждое со вспышкой.'],
+      [345, 349, '«Сохраняй осознанно синхронность трех колец!»', 'Кольца сходятся у его сердца и бьют вместе одним аккордом, по полу расходится волна.'],
+      [349, 362, '«Важно перепроверять себя на предмет Осознавания Одинности Реальности Себя, Осознавания Целостности и Неделимости Сознания Божественного Бытия, находясь в мире форм — мире двойственности и дуальности!»', 'Камера отъезжает: линия его дня идёт через тёмный дом, каждое место загорается, и в каждом он снова стоит, каким был днём.'],
+      [362, 372, '', 'Линия его дня гаснет. Сфера вырастает на весь дом. Дом сверху вниз уходит в код вместе со всем, что внутри. Чёрный лак стола становится водой. Камера опускается к самой воде.'],
+      [372, 378, '', 'С верхушки сферы падает капля света, навстречу ей из воды поднимается её отражение. Они встречаются: кольца бьют, ось загорается от воды до верха и вниз через отражение, по воде расходится круг.'],
+      [378, 388, '', 'Камера уходит под воду: сверху сквозь поверхность светится мир, внизу вверх ногами висит дом, косые лучи, взвесь. Камера тонет до середины дома; пока она под водой, дом снова собирается из кода.'],
+      [388, 402.5, '', 'Камера переворачивается на пол-оборота: дом под водой встаёт на ноги и становится сценой, муть уходит, часы снова на семи, снова утро, и всё начинается сначала.'],
+    ],
+  },
+];
+const WASM = '__WASM__';
+// The app's themes: settings id, name, graphicsPalette code, page / surface / accent / text / muted / faint / border.
+const THEMES = [
+  ['matrix', 'Матрица', 4, '#000000', '#000A03', '#00FF41', '#00FF41', '#4FB868', '#3F6B4A', '#0A5C22'],
+  ['neutral', 'Тишина', 2, '#0D1520', '#15212E', '#86C9C7', '#E4E7DD', '#A1B0B5', '#8199A6', '#3B5361'],
+  ['dark', 'Искра', 0, '#000000', '#080900', '#F5DD07', '#F5DD07', '#B69D4B', '#655E46', '#575007'],
+  ['violet', 'Астрал', 3, '#0D1426', '#192641', '#6296F5', '#8DB5F0', '#7897C6', '#57739F', '#45638E'],
+];
+const LIGHT = new Set();
+const TOKENS = ['--page', '--surface', '--accent', '--text', '--muted', '--faint', '--border'];
+const asked = new URLSearchParams(location.search).get('theme');
+let theme = THEMES.find(t => t[0] === asked) ?? THEMES[0];
+const askedPage = new URLSearchParams(location.search).get('page');
+let chapter = CHAPTERS.find(c => String(c.code) === askedPage) ?? CHAPTERS[0];
+
+const canvas = document.getElementById('scene');
+const status = document.getElementById('status');
+const range = document.getElementById('time');
+const clock = document.getElementById('clock');
+const play = document.getElementById('play');
+const icon = document.getElementById('icon');
+const list = document.getElementById('beats');
+const bar = document.getElementById('bar');
+const chips = document.getElementById('themes');
+const themeName = document.getElementById('theme-name');
+const chapterChips = document.getElementById('chapters');
+const chapterName = document.getElementById('chapter-name');
+const note = document.getElementById('note');
+let scene;
+let playing = true, reduced = false;
+let fit = () => {};
+
+// Framed under a host page's bar, the host's theme picker drives the page
+// and hears back each change.
+const embedded = window.parent !== window;
+if (embedded) chips.hidden = true;
+
+function applyTheme(next) {
+  theme = next;
+  if (embedded) window.parent.postMessage({ type: 'prototype-theme', theme: next[0] }, '*');
+  const root = document.documentElement.style;
+  TOKENS.forEach((token, i) => root.setProperty(token, next[3 + i]));
+  root.setProperty('color-scheme', LIGHT.has(next[0]) ? 'light' : 'dark');
+  themeName.textContent = next[1];
+  for (const b of chips.children) b.setAttribute('aria-pressed', b.dataset.id === next[0] ? 'true' : 'false');
+  if (scene) {
+    scene.palette(next[2]);
+    scene.backdrop(...[1, 3, 5].map(i => parseInt(next[3].slice(i, i + 2), 16) / 255));
+  }
+}
+for (const t of THEMES) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.id = t[0];
+  b.textContent = t[1];
+  b.addEventListener('click', () => applyTheme(t));
+  chips.append(b);
+}
+applyTheme(theme);
+window.addEventListener('message', event => {
+  if (event.source !== window.parent || event.data?.type !== 'prototype-theme') return;
+  const next = THEMES.find(t => t[0] === event.data.theme);
+  if (next) applyTheme(next);
+});
+
+const fmt = s => {
+  const m = Math.floor(s / 60), r = s - m * 60;
+  return `${String(m).padStart(2, '0')}:${r.toFixed(1).padStart(4, '0').replace('.', ',')}`;
+};
+let items = [], marks = [];
+let show = () => {};
+let setPlaying = () => {};
+function buildBeats() {
+  list.replaceChildren();
+  bar.replaceChildren();
+  items = chapter.beats.map(([from, , words, how]) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `<span class="at">${fmt(from)}</span><span class="what"></span><span class="how"></span>`;
+    b.querySelector('.what').textContent = words;
+    b.querySelector('.how').textContent = how;
+    b.addEventListener('click', () => {
+      if (!scene) return;
+      scene.seek(from);
+      setPlaying(true);
+      show();
+    });
+    li.append(b);
+    list.append(li);
+    return b;
+  });
+  marks = chapter.beats.map(([from, to]) => {
+    const s = document.createElement('span');
+    s.style.left = `${from / chapter.loop * 100}%`;
+    s.style.width = `${(to - from) / chapter.loop * 100}%`;
+    bar.append(s);
+    return s;
+  });
+  range.max = String(chapter.loop);
+}
+function applyChapter(next) {
+  chapter = next;
+  chapterName.textContent = next.name;
+  document.getElementById('chapter-topic').textContent = next.topic;
+  document.getElementById('chapter-title').textContent = next.title;
+  note.textContent = next.note;
+  for (const b of chapterChips.children) b.setAttribute('aria-pressed', b.dataset.code === String(next.code) ? 'true' : 'false');
+  buildBeats();
+  if (scene) show();
+}
+for (const c of CHAPTERS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.code = String(c.code);
+  b.textContent = c.name;
+  b.addEventListener('click', () => applyChapter(c));
+  chapterChips.append(b);
+}
+applyChapter(chapter);
+
+function fail(text) {
+  status.className = 'status error';
+  status.innerHTML = '<p></p>';
+  status.firstChild.textContent = text;
+  status.hidden = false;
+}
+
+async function start() {
+  if (!document.createElement('canvas').getContext('webgl2')) {
+    fail('Этот браузер не даёт WebGL2, а сцена рисуется на нём. Открой страницу в свежем Chrome, Safari или Firefox.');
+    return;
+  }
+  const bytes = Uint8Array.from(atob(WASM), c => c.charCodeAt(0));
+  try {
+    await __wbg_init({ module_or_path: bytes });
+  } catch (error) {
+    fail(`Страница не смогла запустить WebAssembly: ${error && error.message ? error.message : error}`);
+    return;
+  }
+
+  let dragging = false;
+  // Reduced motion holds one moment: the sun out behind him, the light risen in him.
+  reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) playing = false;
+  fit = () => {
+    if (!scene) return;
+    const r = canvas.getBoundingClientRect();
+    const k = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(2, Math.min(3072, Math.round(r.width * k)));
+    scene.resize(w, Math.round(w * 2 / 3));
+  };
+  scene = new DayHouse(canvas);
+  scene.soft_edges(true);
+  scene.reduced(reduced);
+  fit();
+  applyTheme(theme);
+  new ResizeObserver(fit).observe(canvas);
+  show = () => {
+    const t = scene.elapsed();
+    if (!dragging) range.value = t.toFixed(1);
+    clock.textContent = `${fmt(t)} / ${fmt(chapter.loop)}`;
+    chapter.beats.forEach(([from, to], i) => {
+      const on = !reduced && t >= from && t < to;
+      items[i].setAttribute('aria-current', on ? 'true' : 'false');
+      marks[i].classList.toggle('on', on);
+    });
+  };
+  setPlaying = value => {
+    playing = value;
+    scene.pause(!value);
+    icon.setAttribute('d', value ? 'M3 2h3.5v12H3zM9.5 2H13v12H9.5z' : 'M4 2l10 6-10 6z');
+    play.setAttribute('aria-label', value ? 'Пауза' : 'Играть');
+  };
+  setPlaying(playing);
+  play.addEventListener('click', () => setPlaying(!playing));
+  range.addEventListener('pointerdown', () => { dragging = true; });
+  range.addEventListener('pointerup', () => { dragging = false; });
+  range.addEventListener('input', () => { scene.seek(Number(range.value)); show(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) scene.suspend(); });
+  const tick = now => {
+    scene.frame(now);
+    show();
+    requestAnimationFrame(tick);
+  };
+  // The GPU builds the scene's programs in the background: the page keeps
+  // running and the status stays up until the scene can draw.
+  const wait = () => {
+    let done;
+    try {
+      done = scene.ready();
+    } catch (error) {
+      fail(`Сцена не запустилась: ${error && error.message ? error.message : error}`);
+      return;
+    }
+    if (!done) {
+      requestAnimationFrame(wait);
+      return;
+    }
+    status.hidden = true;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(wait);
+}
+start().catch(error => fail(`Сцена не запустилась: ${error && error.message ? error.message : error}`));
+</script>

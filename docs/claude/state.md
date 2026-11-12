@@ -1,6 +1,6 @@
 # Project state
 
-Updated 2026-11-12. Telegram-style message edit/delete (branch `claude/message-edit`) shipped to `main` 2026-11-12 (Art: «Пушим»). Step 2 edits (branch `claude/step-2-edits`, 00888c3) still wait for Art's «пушим» (ship them first). Step 3 edits stage 5 fixes (branch `claude/step-3-edits`) shipped to `main` 2026-11-12 (Art: «Сначала пушим правки»); the hero (`voice-presence`) and screen 6 (`voice-witness`) reworks wait for Art's direction (rule 7). Quiet body text everywhere + soft bold (branch `claude/quiet-text`) shipped to `main` 2026-11-11. Diary filters fix (branch `claude/diary-filters-fill`) shipped to `main` 2026-11-11: chosen option filled with the accent, dark text, text/voice filters removed. UI motion leftovers (chat delete, skeleton lists; branch `claude/motion-leftovers`) shipped to `main` 2026-11-11. UI animations set (branch `claude/ui-motion`) shipped to `main` 2026-11-11 (Art: «пушить сразу», without a preview). Icon tap animations «Характер» (branch `claude/icon-motion`) shipped to `main` 2026-11-11 (Art: «Пушим»). Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Intensive daily reports and Rust role marks shipped 2026-11-11. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
+Updated 2026-11-12. Step 7 page 10 «Дом в разрезе» (`graphics/day-house`, 402.5 s, round 9, branch `claude/step-7-dynamic-0682ec`) shipped to `main` 2026-11-12 in all 4 dark themes (Art: «Пушим»). Telegram-style message edit/delete (branch `claude/message-edit`) shipped to `main` 2026-11-12 (Art: «Пушим»). Step 2 edits (branch `claude/step-2-edits`, 00888c3) still wait for Art's «пушим» (ship them first). Step 3 edits stage 5 fixes (branch `claude/step-3-edits`) shipped to `main` 2026-11-12 (Art: «Сначала пушим правки»); the hero (`voice-presence`) and screen 6 (`voice-witness`) reworks wait for Art's direction (rule 7). Quiet body text everywhere + soft bold (branch `claude/quiet-text`) shipped to `main` 2026-11-11. Diary filters fix (branch `claude/diary-filters-fill`) shipped to `main` 2026-11-11: chosen option filled with the accent, dark text, text/voice filters removed. UI motion leftovers (chat delete, skeleton lists; branch `claude/motion-leftovers`) shipped to `main` 2026-11-11. UI animations set (branch `claude/ui-motion`) shipped to `main` 2026-11-11 (Art: «пушить сразу», without a preview). Icon tap animations «Характер» (branch `claude/icon-motion`) shipped to `main` 2026-11-11 (Art: «Пушим»). Art's fixes of 11.11 (branch `claude/art-fixes-1111-569d08`) shipped to `main` 2026-11-11 (standing rule: small fixes go at once). Step 7 page 09 «Канатоходец на рассвете» (`graphics/rope-dawn`) on branch `claude/step-7-dynamic-0682ec`: the reworked second version (96 s, a beat per phrase) shipped to `main` 2026-11-09 in all 4 dark themes (Art: «Пушим»). Step 7 pages 07 «Автопилот» and 08 «Эхо в переходе» (branch `claude/step-7-dynamic-0682ec`) shipped 2026-11-09 (Art: «Пушим 07 и 08»). Step 7 page 06 «Ночной город» and the Step 7 home card shipped 2026-11-08 (Art: «залей предыдущую страницу»). Step 7 page 05 «Третье кольцо» shipped 2026-11-08. Step 6 page 03 «Тело как форма» shipped 2026-11-08. Step 7 page 04 «Второе кольцо» shipped 2026-11-08. Step 6 page 02 «Каркас» shipped 2026-11-08. Intensive redesign, blocking, the /admin page, voice messages, edit/delete and name + surname shipped 2026-11-08. Intensive daily reports and Rust role marks shipped 2026-11-11. Step 6 page 01 «Внутрь» shipped 2026-11-07. Step 7 pages 02–03 shipped 2026-11-07. Step 6 hero «Внутренняя сфера» (scene + home card) shipped 2026-11-07. App icon and favicon «Выход» shipped 2026-11-07. Intensive chat shipped 2026-11-07. Step 2's last page «Лабиринт», five UI fixes, the panel edge fix and text wrapping shipped 2026-11-07. Stuck-release self-heal shipped 2026-11-02. Light themes removed from the site 2026-11-01. Latest on `main`: Step 7 «Динамическая сфера» (text, hero, page 01
 scene), Step 5 pages 04–07 and Step 6 with placeholders, all 2026-11-01. Every Step 4 page
 has its own scene (since 2026-10-31).
 Art's rule (2026-10-31): small fixes are pushed at once via `/ship-to-main`; big changes such
@@ -324,8 +324,64 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   in all 4 dark themes: page 09 mounts `rust-rope-dawn`, ready, 60 fps, gpu-error 0, no
   console errors, at 1440 (608 px, the plate width) and 390 (310 px). Shipped to `main`
   2026-11-09 (Art: «Пушим»).
-- Next: page 10 «dynamic-everyday»: offer Art 2–3 directions first. A stage-finale screen
-  after page 10 needs Art's wording first.
+- Page 10 «В быту» (dynamic-everyday), crate `graphics/day-house` «Дом в разрезе»: Art chose А
+  («делай А… полноценный сюжет… на каждый образ и действие сцену… до 3х минут… филигранно»).
+  A cutaway five-storey house on a lacquer table; one man's day, a scene per phrase. Wired
+  (`DayHouse.web.tsx`, `webScene: 'day-house'`). Round 2 (219 s) was rejected 2026-11-11
+  (kitchen start, rings not a sphere, tram, bread carry, child, quick laptop scene, roof
+  treadmill, unclear finale; see art-feedback.md). Round 3, loop 271.9 s: rings ported from
+  page 06 (sphere, second ring scans his body, first rides the sphere, third a meridian); she
+  starts at the stove and pours; tram with straps leaves right and returns from the left;
+  first-person shots in the tram, the shop and at the desk (typed page on the screen); bread at
+  his side; a proper child; an evening street jog; finale: the rings sync and strike a chord,
+  the line of his day lights its places, the sphere grows into a globe over the house and
+  meets its reflection, dawn. Round 3 notes (2026-11-11, see art-feedback.md) led to round 4,
+  loop 305.4 s (commit 3ca0c5b): rings steady up close, the mug to his mouth, a smooth ease
+  out of the tram POV, no walk into the sign, the phone by his hand, no see-through laptop, no
+  camera jerk on stops (`steady()` ignores cuts); the jog became a bicycle ride (the bike
+  leans on the lamp's post all day; out right, back in from the left, leaned on the same
+  post); finale 58 s (house sleeps window by window, the rings return one by one, chord,
+  the line of his day with a glowing echo of him at each place, globe, dawn). Beats in the
+  crate README. build.ps1 (31 tests), tsc, lint, export:web, app at 1440/390 clean. Shown in
+  Матрица (`output/prototypes/day-house/index.html`, storyboard
+  `output/prototypes/day-house/storyboard-round4.jpg`). Round 4 notes and extra notes
+  (2026-11-12, see art-feedback.md) led to round 5, loop 402.5 s: he steps clear of the
+  kitchen table; the shop's POV cuts ease in and out, the coin falls slower; while the tram
+  has him away the day runs fast (sun past noon, shadows sweep, clouds, rooms' lights: a
+  couple of hours), the same for the evening ride (BIKE_AWAY); the camera holds him, not
+  the sphere, on the stair; three spoken-and-heard moments: at the wall by the door after the
+  tram (phone held before him, then at his ear, circles of the voice), at the desk after he
+  shuts the laptop (a moving lid), at the wall again after the ride; finale 82 s: the
+  lacquer turns to water, a drop of light falls from the globe's crown and meets its
+  reflection (the rings strike, the axis lights, a ring runs over the water), the camera goes
+  under (mirrored world below, the world above through the surface, shafts, motes) and rises
+  at dawn as the house comes back (commit 63bff82). Round 5 notes (2026-11-12, see
+  art-feedback.md) led to round 6, same loop: Матрица code in the world (columns on the
+  painted town, rain on the plinth's front, code inside his sphere, the house dissolves to
+  code from the top and everything inside goes with it); the sphere centred on his pelvis;
+  presence: the sphere shrinks and fades through the day and widens, with the rings bright,
+  when he speaks and listens; a street clock left of the house, the lapses are one smooth
+  pass of a couple of hours (no racing sun, no flicker); the phone sits in his palm; the bike
+  return is one dolly, no cut; no meridian or inner dome in the finale globe (commit
+  57f1439). Round 6 notes led to round 7, same loop: the phone at his ear sits beside the
+  cheek (cast.rs in_palm keeps clear of the head); he lays the coin on the counter and it
+  glints (tone 0.9 brass emits), the keeper takes it from there; no basket on the bike; the
+  day's line and its lit places go out as the melt starts; the house is rebuilt bottom up
+  under water, whole before the camera surfaces (commit d1d1bbc). Round 7 notes led to
+  round 8, same loop: at the ear the phone lies on his cheek and the palm on its back,
+  fingers up (cast.rs at_cheek, point_hand); presence is stronger (the sphere sinks to 0.6
+  and nearly fades through the day, widens to 1.15 and its shell and inner code flare while
+  he speaks, story.rs voice() into MELT.w); under water the camera sinks without closing in
+  and pulling back, the water clears toward dawn, the camera makes one full roll round its
+  axis (TURN) and surfaces level (commit fcf2dd4). Round 8 note led to round 9, same loop:
+  no surfacing; under water the house hangs upside down, the camera sinks to its middle and
+  turns over half a turn (TURN, DAWN−7..DAWN−1), the world under the water stands up and is
+  the loop's first frame, the murk lifts by LOOP−1 (story.rs `turned_over`: under the water
+  the eye is handed over turned about x = 0, y = TABLE; moon, meridian and beads mirrored
+  there so the dive is continuous; the clouds come round to the start; commit 95c61c8).
+  Shown in Матрица (storyboard `output/prototypes/day-house/storyboard-round9.jpg`); Art:
+  «Пушим». Key frames checked in Тишина, Искра and Астрал; shipped to `main` 2026-11-12.
+- Next: a stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

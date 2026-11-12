@@ -5,6 +5,7 @@ import { InnerFrame } from './InnerFrame.web';
 import { InnerVessel } from './InnerVessel.web';
 import { isNightScene, NightCity } from './NightCity.web';
 import type { ReadingPage } from './readingPages';
+import { DayHouse } from './DayHouse.web';
 import { RopeDawn } from './RopeDawn.web';
 import { ScenePlaceholder } from './ScenePlaceholder';
 import { SphereAnchor } from './SphereAnchor.web';
@@ -35,7 +36,8 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'inner-vessel' ? InnerVessel
     : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' || page.webScene === 'dynamic-inner' || page.webScene === 'dynamic-action' ? DynamicRings
     : isNightScene(page.webScene) ? NightCity
-    : page.webScene === 'rope-dawn' ? RopeDawn : undefined;
+    : page.webScene === 'rope-dawn' ? RopeDawn
+    : page.webScene === 'day-house' ? DayHouse : undefined;
   if (!Scene) return placeholder;
   // These pages have no engine art; the kind only names the load for the skeleton.
   const props: ArtProps = { kind: 'grounding-hero', webScene: page.webScene, width, height, active, reducedMotion: reducedMotion || systemReduced };

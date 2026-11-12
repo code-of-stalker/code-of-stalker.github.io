@@ -54,6 +54,11 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - He chose a labyrinth told by the camera: first person inside, then a pull back over the plan; the figure of light at the end breaks the labyrinth.
 - A light figure in a one-hue theme (Матрица, Искра) clips into a blot: dim the body, ink the drawing paler.
 
+## Step 3 «Голос»
+- The heroine's eyes are always open: calm, attentive, looking where her voice goes. Never "eyes closed, serene" in a brief. 2026-11-12, painted hero concepts: «у нее опять закрыты глаза, они должны быть открыты».
+- Her voice and light start at the jugular notch, never at the mouth or higher on the neck.
+- A prototype must play the moment he opens it: screen 6 v1 froze on its first frame («не проигрывается»). Before sending, check in headless Chrome that the clock runs and the frame rate holds.
+
 ## Step 5 «Внешнее кольцо»
 - Painted panoramas want depth and a living head: parallax from a depth map, a small sway, leaning toward where something happens. A static raster element (the bird painted in the sky) «выглядит тупо»: keep the camera away from it. (Page 01.)
 - «Якорь» first take lacked detail, depth and breathing; a crooked outline read badly. Wanted: a background (Matrix-like rain is fine), breathing, an even outline. (Page 02.)

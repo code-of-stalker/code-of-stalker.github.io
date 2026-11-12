@@ -466,13 +466,16 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   header; the feed melts over 24 px under it once scrolled (diary's mask, `--chat-fade-top` in `ChatView.tsx`).
 - Admin edits, shipped to `main` 2026-11-12 (Art's notes via the main session): a Rust surface that
   cannot start stays empty, never shows its label (`ArtUnavailable`, native `Unavailable`; his phone
-  showed «Стеклянная поверхность» on the PIN screen); PIN screen link «ВОЙТИ ПО СЛОВАМ ГЛАВНОГО АДМИНА»
-  (restore step `fromPin`: this page only, the device and its PIN untouched; the notice says how to make
-  this phone the admin device); search over the list, filters under it; chosen chips and tabs filled like
+  showed «Стеклянная поверхность» on the PIN screen); button «ВОЙТИ В ДРУГОЙ АККАУНТ» under «Забыли PIN?»
+  on both PIN screens (restore step `fromPin`): on /admin it signs in for this page only, the device and its
+  PIN untouched; in the app a confirm first says the device keeps one account, so the current one comes
+  back only by its 12 words once the new one sets a PIN (several accounts per device was not simple: one
+  sealed vault, one server device id and PIN verifier); search over the list, filters under it; chosen chips and tabs filled like
   the Diary (`DiaryChoiceFace` exported from `DiaryFilters.tsx`, `Tabs filled`); person card on soft
   cards (`ListGroup card`), «Закрыть доступ» one card without a caption; a picked row's tint runs frame
   to frame; roles as in the chat everywhere (`useRoleInks`, `RoleTag`, `ListItem badge` in `chrome.tsx`;
-  `rolesOf`, `RoleTags` in `PersonCard.tsx`). Checked in the local demo, 4 themes, 1280 and 390.
+  `rolesOf`, `RoleTags` in `PersonCard.tsx`); on the phone the filter row runs to the screen edges
+  (negative gutter margin, first chip on the page line; the Diary filters wrap, no change there). Checked in the local demo, 4 themes, 1280 and 390.
   The in-app ЛЮДИ tab (`AdminPanel.tsx`) still lists roles as text.
 - Daily reports + role marks, shipped to `main` 2026-11-11 (Art: «Ок, пушим»). Daily reports in
   Intensive «как в дневнике», into the chat with the guide (Art: «В чат с проводником»): the report mark sealed inside the message

@@ -6,7 +6,7 @@ import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-nat
 import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
 import { DiaryChoiceFace } from '../../product/diary/DiaryFilters';
 import { DiaryGlass } from '../../product/diary/DiaryGlass';
-import { useProductLayout } from '../../product/layout';
+import { useProductLayout, useProductSpacing } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
 import { PanelBorder } from '../../product/PanelBorder';
@@ -163,6 +163,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const inks = useRoleInks();
+  const { gutter } = useProductSpacing();
   const { settings } = useProduct();
   const wide = useProductLayout().columns === 2;
   const roomy = useWindowDimensions().width >= 1200;
@@ -386,7 +387,9 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   if (!wide) return <View style={styles.stack}>
     {tabs}
     {search}
-    {tab === 'walkers' && pickedRows.length ? bulk : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>{chips}</ScrollView>}
+    {/* The filters run to the screen's edges: the first lines up with the page, the rest slide off the glass (Art 2026-11-12). */}
+    {tab === 'walkers' && pickedRows.length ? bulk :
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -gutter }} contentContainerStyle={{ paddingHorizontal: gutter }}>{chips}</ScrollView>}
     <Appear key={tab}><Framed style={styles.table}>{head}{tableRows}</Framed></Appear>
     <View style={styles.footer}>{refresh}</View>
     {error ? <Note tone="error">{error}</Note> : null}
@@ -469,7 +472,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   listColumn: { flex: 1, minWidth: 0, minHeight: 0, gap: 12 },
   // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
-  chipScroll: { paddingRight: 4 },
   chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
   chipFill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
   chipText: { fontSize: 10, lineHeight: 14, letterSpacing: .8 },

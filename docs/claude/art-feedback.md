@@ -139,6 +139,7 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - A lock icon for «close/sign out» reads wrong («странное решение»): use a sign-out door. Check boxes stay small (14 px; 20 px was «огромные»).
 - Icons inside fields keep the same inset as the text («че ты её прижал?»); a control above a pane takes that pane's width.
 - Admin page (Art 2026-11-12): search sits over the list it searches; chosen filters and tabs look like the Diary's (accent fill, dark text); soft cards instead of hairlines in a detail pane; a single action needs no section header; a picked row's tint runs edge to edge, no side gaps; roles look as in the chat (mark + role ink) everywhere.
+- A PIN screen offers «Войти в другой аккаунт» next to «Забыли PIN?» («не просто забыли пин а еще кнопку войти в другой аккаунт»). A horizontal filter row on the phone runs off the screen edge, never clipped by the page padding («должны просто уходить за экран»).
 - A graphics surface that fails never shows its developer label (his phone showed «Стеклянная поверхность» over the PIN screen): it stays empty.
 - People are named by first name and surname («имена сделать в 2 слова» → «Имя и фамилия»).
 

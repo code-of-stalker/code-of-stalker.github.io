@@ -250,7 +250,11 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
     }
     // The coin, his phone.
     if held.coin.y > -30.0 {
-        out.push(cyl(mat::BRASS, held.coin, 0.022, 0.004).flags(flag::GLOSS));
+        out.push(
+            cyl(mat::BRASS, held.coin, 0.022, 0.004)
+                .tone(0.9)
+                .flags(flag::GLOSS),
+        );
     }
     out.push(
         cube(
@@ -386,8 +390,7 @@ fn bicycle(out: &mut Vec<Prim>, s: f32, world: &World) {
                 .tone(0.3),
         );
     }
-    // The top and down tubes, the head tube, the fork, stem and bars,
-    // the basket.
+    // The top and down tubes, the head tube, the fork, stem and bars.
     parts.push(frame(at(0.5, 0.8, 0.0), at(-0.15, 0.76, 0.0)));
     parts.push(frame(at(0.53, 0.76, 0.0), at(bb[0], bb[1], 0.0)));
     parts.push(frame(at(0.5, 0.92, 0.0), at(0.55, 0.72, 0.0)));
@@ -400,18 +403,13 @@ fn bicycle(out: &mut Vec<Prim>, s: f32, world: &World) {
             0.011,
         ));
     }
-    parts.push(
-        cube(mat::WOOD, at(0.72, 0.95, 0.0), v3(0.12, 0.09, 0.15))
-            .pitch(roll)
-            .tone(0.55),
-    );
-    // The front wheel and its lamp.
+    // The front wheel and its lamp on the head tube.
     wheel(&mut parts, front, turn);
     let lit = b.lit(s) > 0.5;
     parts.push(ball(
         if lit { mat::LAMP } else { mat::METAL },
-        at(0.86, 0.85, 0.0),
-        v3(0.035, 0.035, 0.035),
+        at(0.58, 0.86, 0.0),
+        v3(0.03, 0.03, 0.03),
     ));
     out.extend(parts.into_iter().filter(|p| p.c.x.abs() <= 15.5));
 }

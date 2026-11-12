@@ -41,7 +41,7 @@
 //! 378–394  the camera goes under: the world shines down through the
 //!          surface, the globe's reflection hangs below, shafts of light,
 //!          motes; it sinks deep and looks up;
-//! 394–402  dawn: it rises out of the water, the house comes back.
+//! 394–402  dawn: it rises out of the water to the house, whole again.
 use crate::cast::{
     at_shop, Cast, Held, Keys, BIKE_AWAY, DESK_LISTEN, DESK_SPAN, DESK_SPEAK, DOOR_WALL, HERO,
     WALL_SPAN,
@@ -103,7 +103,8 @@ pub const DROP: f32 = F + 51.5;
 pub const DROP_FALL: f32 = 2.4;
 pub const DROP_SPEED: f32 = 8.0;
 
-/// The house comes back from here, at dawn, after the water.
+/// Dawn from here: the camera rises out of the water to the house, whole
+/// again (it came back while the camera was under).
 const DAWN: f32 = LOOP - 8.0;
 
 /// Reduced motion holds this moment: the night house with the line of his
@@ -566,7 +567,10 @@ impl Story {
         let gloss = window(s, LINE, LINE + 4.0, DAWN + 2.0, DAWN + 7.0);
         let day = [sky, golden, night, gloss];
         let path_drawn = drawn(s);
-        let lamps = lamps(s, &k, &self.route, path_drawn, dusk);
+        // The line of his day and its lit places go out as the house
+        // starts to go.
+        let line_out = 1.0 - smooth(GROW + 0.5, GROW + 2.5, s);
+        let lamps = lamps(s, &k, &self.route, path_drawn * line_out, dusk);
         // The line reaches each place of his day and he is there again, as
         // he was, in the places the others have left; the echoes go as the
         // sphere takes in the whole house.
@@ -655,16 +659,19 @@ impl Story {
 
         // The line of his day.
         let path = [
-            path_drawn,
-            0.6 + 0.6 * chord,
-            smooth(LINE + 0.5, LINE + LINE_SPAN + 0.5, s) * (1.0 - smooth(DAWN, DAWN + 3.0, s)),
+            if line_out > 0.0 { path_drawn } else { 0.0 },
+            (0.6 + 0.6 * chord) * line_out,
+            smooth(LINE + 0.5, LINE + LINE_SPAN + 0.5, s)
+                * (1.0 - smooth(DAWN, DAWN + 3.0, s))
+                * line_out,
             0.0,
         ];
         // The finale's level sweeps the whole house into its code, top to
-        // bottom (and builds it back at dawn); inside his sphere through the
+        // bottom (and builds it back, bottom up, while the camera is under the
+        // water, whole before it rises); inside his sphere through the
         // day things show their code as plainly as the sphere shows.
         let melt = [
-            window(s, GROW + 1.5, GROW + 9.5, DAWN + 1.0, DAWN + 5.0),
+            window(s, GROW + 1.5, GROW + 9.5, DAWN - 8.0, DAWN - 2.5),
             gloss,
             0.8 * shown * (1.0 - 0.7 * pov) * (1.0 - grow),
             0.0,
@@ -1429,7 +1436,7 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         fixed(f + 66.5, v3(4.0, -4.3, 21.0), v3(0.0, -0.7, 0.0), 1.9, 0.0),
         // Into the globe, deep under the line of his day, looking up.
         fixed(f + 70.5, v3(3.0, -5.6, 13.5), v3(0.0, 0.2, -2.0), 1.8, 0.0),
-        // Up and out at dawn as the house comes back round the camera.
+        // Up and out at dawn: the house is whole again round the camera.
         fixed(
             DAWN - 1.5,
             v3(1.4, -2.0, 22.0),

@@ -656,6 +656,11 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
     s.a = 0.45;
     s.warm = 0.9;
     s.gloss = 0.5;
+    // The coin (tone 0.9) keeps a small warm glint, so it reads in his hand and on the counter.
+    if (tone > 0.8) {
+      s.a = 0.7;
+      s.emit = vec2(0.03, 0.45);
+    }
   } else if (m == M_LAMP || m == M_STREETLAMP) {
     s.a = 0.5;
     float k = lampOf(cell);

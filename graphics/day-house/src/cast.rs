@@ -94,9 +94,25 @@ pub fn grip(body: &Body, side: usize) -> V3 {
     )
 }
 
+/// A coin held between the fingertips of the hand on `side`: just past
+/// them, so the hand does not swallow it.
+fn pinch(body: &Body, side: usize) -> V3 {
+    let c = &body.cones;
+    let i = 3 * HANDS[side];
+    let wrist = v3(c[i][0], c[i][1], c[i][2]);
+    let tip = v3(c[i + 1][0], c[i + 1][1], c[i + 1][2]);
+    let d = tip - wrist;
+    if d.length() > 1e-4 {
+        tip + d.normalize() * 0.012
+    } else {
+        tip
+    }
+}
+
 /// Where a phone held in the hand on `side` lies: on the palm's face
 /// toward his head, its lower half in the fingers, so the hand holds it
-/// rather than passing through it.
+/// rather than passing through it. At his ear it rests on his cheek,
+/// never inside his head.
 pub fn in_palm(body: &Body, side: usize) -> V3 {
     let g = grip(body, side);
     let to = body.head - g;
@@ -106,8 +122,19 @@ pub fn in_palm(body: &Body, side: usize) -> V3 {
     } else {
         body.face.forward * -1.0
     };
-    g + toward * 0.05 + v3(0.0, 0.03, 0.0)
+    let p = g + toward * 0.05 + v3(0.0, 0.03, 0.0);
+    let off = v3(p.x - body.head.x, 0.0, p.z - body.head.z);
+    let d = off.length();
+    if p.y > body.head.y - 0.22 && d < CHEEK && d > 1e-4 {
+        p + off * ((CHEEK - d) / d)
+    } else {
+        p
+    }
 }
+
+/// How far a phone at his ear stands off his head's axis: the skull's
+/// half-width, the phone's half-thickness and a gap.
+const CHEEK: f32 = 0.106;
 
 /// The hand on `side` aims its wrist at `w` (the walk's frame), `a` of the
 /// way: what it reached for before keeps its share, so one reach hands
@@ -321,6 +348,9 @@ pub const BAG_DROP: f32 = 0.25;
 /// Where a hand carries a bag (from the pelvis, see `hold`).
 const CARRY: V3 = v3(-0.24, 0.72, 0.04);
 const COUNTER_COIN: V3 = v3(-4.3, 1.055, -2.42);
+/// Where his coin lies on the counter: under his fingertips as his wrist
+/// comes to `COUNTER_COIN`, clear of his hand, toward her.
+const COIN_LAID: V3 = v3(-4.42, 1.055, -2.42);
 const TILL: V3 = v3(-4.38, 1.27, -2.85);
 const LOAF_SHELF: V3 = v3(-5.12, 1.32, -2.45);
 // The living room: the child's cup on the low table, his hand catching it.
@@ -899,7 +929,7 @@ impl Cast {
         let at_ear = window(s, w + 7.9, w + 8.6, w + 13.4, w + 14.0);
         if at_ear > 0.0 {
             let b = build(pose);
-            let ear = local.world(b.head - b.face.left * 0.13 + b.face.forward * 0.01);
+            let ear = local.world(b.head - b.face.left * 0.14 + b.face.forward * 0.01 - Y * 0.05);
             reach(pose, local, 1, ear, at_ear);
         }
         // Listening, his eyes down and still.
@@ -1445,12 +1475,13 @@ impl Cast {
                     window(s, q - 1.5, q - 0.9, q - 0.3, at_shop(q, 0.2)),
                 );
                 // His coin, his bag.
+                // She lets it lie a moment, then takes it to the till.
                 let coin = window(
                     s,
-                    at_shop(q, 9.5),
-                    at_shop(q, 9.8),
-                    at_shop(q, 10.1),
-                    at_shop(q, 10.4),
+                    at_shop(q, 9.9),
+                    at_shop(q, 10.2),
+                    at_shop(q, 10.5),
+                    at_shop(q, 10.8),
                 );
                 pose.lean += 0.25 * coin + 0.25 * till;
                 reach(
@@ -1458,9 +1489,9 @@ impl Cast {
                     local,
                     0,
                     lerp3(
-                        COUNTER_COIN,
+                        COIN_LAID,
                         TILL,
-                        smooth(at_shop(q, 9.8), at_shop(q, 10.2), s),
+                        smooth(at_shop(q, 10.25), at_shop(q, 10.6), s),
                     ),
                     coin,
                 );
@@ -1687,11 +1718,14 @@ impl Cast {
                 let hop = (0.06 - 4.9 * (b - 0.11) * (b - 0.11)).max(0.0) * smooth(0.0, 0.02, b);
                 held.coin = v3(fallen.x, 0.012 + hop, fallen.z);
             }
-        } else if s >= at_shop(q, 4.45) && s < at_shop(q, 9.1) {
-            held.coin = grip(h, 1);
-        } else if s >= at_shop(q, 9.1) && s < at_shop(q, 9.9) {
-            held.coin = COUNTER_COIN;
-        } else if s >= at_shop(q, 9.9) && s < at_shop(q, 10.3) {
+        } else if s >= at_shop(q, 4.45) && s < at_shop(q, 9.15) {
+            // Between his fingertips, out past them so it shows; laid
+            // down flat on the counter from there.
+            let laid = smooth(at_shop(q, 8.85), at_shop(q, 9.1), s);
+            held.coin = pinch(h, 1).lerp(COIN_LAID, laid);
+        } else if s >= at_shop(q, 9.15) && s < at_shop(q, 10.25) {
+            held.coin = COIN_LAID;
+        } else if s >= at_shop(q, 10.25) && s < at_shop(q, 10.7) {
             held.coin = grip(&bodies[KEEPER], 0);
         }
 

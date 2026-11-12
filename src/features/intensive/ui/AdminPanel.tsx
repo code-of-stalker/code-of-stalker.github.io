@@ -7,7 +7,7 @@ import type { DirectoryEntry } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import { Avatar, GlassField, Glyph, ListGroup, ListItem } from './chrome';
-import { formatTime, Note, problemText, Skeleton, Tabs } from './parts';
+import { Chip, formatTime, Note, problemText, Skeleton } from './parts';
 import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, plain, RoleTags, waitedFor } from './PersonCard';
 
@@ -58,13 +58,13 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
   const needle = plain(query.trim());
   const list = needle ? directory.filter(entry => plain(entry.name).includes(needle) || plain(shortCode(entry.userId)).includes(needle)) : groups[group];
   return <View style={styles.stack}>
-    <Tabs fit value={group} onChange={value => { setGroup(value); setQuery(''); }} options={[
-      { id: 'waiting', label: `ЖДУТ ${groups.waiting.length}` },
-      { id: 'walkers', label: `ИДУЩИЕ ${groups.walkers.length}` },
-      { id: 'team', label: `КОМАНДА ${groups.team.length}` },
-    ]} />
+    {/* Tabs under tabs read badly (Art 2026-11-12): the groups are filters, as on the admin page, under the search. */}
     {directory.length >= SEARCH_FROM ? <GlassField value={query} onChangeText={setQuery} placeholder="Имя или код" accessibilityLabel="Поиск по имени или коду"
       autoCapitalize="none" returnKeyType="search" right={<Glyph name="search" size={18} color={colors.muted} />} /> : null}
+    <View accessibilityRole="tablist" style={styles.chips}>
+      {([['waiting', 'ЖДУТ'], ['walkers', 'ИДУЩИЕ'], ['team', 'КОМАНДА']] as const).map(([id, label]) =>
+        <Chip key={id} label={label} count={groups[id].length} on={!needle && group === id} alert={id === 'waiting'} onPress={() => { setGroup(id); setQuery(''); }} />)}
+    </View>
     <Appear key={needle ? 'search' : group}><ListGroup caption={needle ? 'ПОИСК ПО ВСЕМ' : undefined}
       footer={!needle && group === 'waiting' && list.length ? 'Новые аккаунты. Откройте человека и назначьте ему проводника.' : undefined}>
       {list.length ? list.map((entry, index) => <ListItem key={entry.userId} avatar={<Avatar name={entry.name} size={44} accent={isStaff(entry)} />}
@@ -78,4 +78,5 @@ export function AdminPanel({ session, onOpenChat }: { session: IntensiveSession;
 
 const createStyles = () => StyleSheet.create({
   stack: { gap: 20 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: -8 },
 });

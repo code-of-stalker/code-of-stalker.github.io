@@ -7,9 +7,9 @@
   const fans=all('.projection-fan'),threads=all('.projection-thread'),traces=all('.projection-trace');
   const storyBack=find('.story-thread-back'),storyFront=find('.story-thread-front');
   const storyPaths={near:all('.story-front-soft,.story-front-core'),far:all('.story-back-soft,.story-back-core')};
-  const shape=find('#insert-man-shape path'),length=shape.getTotalLength();
-  const anchors=Array.from({length:12},(_,i)=>{const p=shape.getPointAtLength(length*(i+.3)/12);return{x:p.x*.054-27.65,y:p.y*.054+2.9};}).sort((a,b)=>a.y-b.y);
-  const echoes=all('.echo').map((node,i)=>({node,side:Number(node.dataset.side),plane:node.querySelector('.echo-plane'),footing:node.querySelector('.echo-footing'),gradient:find('#echo-erode-'+i),scan:node.querySelector('.echo-scan'),band:node.querySelector('.echo-scan rect'),sheen:node.querySelector('.pane-sheen'),glint:node.querySelector('.pane-glint'),flecks:[...node.querySelectorAll('.echo-fleck')]}));
+  // Flecks peel off each projected person's own contour.
+  const contour=shape=>{const length=shape.getTotalLength();return Array.from({length:12},(_,i)=>{const p=shape.getPointAtLength(length*(i+.3)/12);return{x:p.x*.054-27.65,y:p.y*.054+2.9};}).sort((a,b)=>a.y-b.y);};
+  const echoes=all('.echo').map((node,i)=>({node,side:Number(node.dataset.side),plane:node.querySelector('.echo-plane'),footing:node.querySelector('.echo-footing'),gradient:find('#echo-erode-'+i),scan:node.querySelector('.echo-scan'),band:node.querySelector('.echo-scan rect'),sheen:node.querySelector('.pane-sheen'),glint:node.querySelector('.pane-glint'),flecks:[...node.querySelectorAll('.echo-fleck')],anchors:contour(find('#insert-shape-'+node.dataset.person+' path'))}));
   const systemReduced=matchMedia('(prefers-reduced-motion: reduce)');
   let elapsed=0,last=null,request=0,active=false,reduced=false,soft=false,targetFps=60,lastPaint=0,reported=null,loops=0;
   const clamp=n=>Math.max(0,Math.min(1,n)),mix=(a,b,t)=>a+(b-a)*t;
@@ -43,7 +43,7 @@
     const spread=still?1:smooth(.25,3.8,t),ignite=still?1:smooth(.4,3.5,t),isolate=still?1:smooth(1.5,7,t);
     const breath=still?.45:.5-.5*Math.cos(elapsed*Math.PI*6/cycle);
     echoes.forEach((echo,i)=>{
-      const {node,side,plane,footing,gradient,scan,band,sheen,glint,flecks}=echo,sign=Math.sign(side),far=Math.abs(side)===2;
+      const {node,side,plane,footing,gradient,scan,band,sheen,glint,flecks,anchors}=echo,sign=Math.sign(side),far=Math.abs(side)===2;
       let x,y,scale,yaw=0,erase;
       if(reflection){
         x=144+sign*(far?94+14*spread:52+20*spread);y=far?13:2;scale=far?.72:.9;

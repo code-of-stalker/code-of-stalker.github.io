@@ -1,4 +1,4 @@
-import { insertPerson, insertRuntime } from './stepTwoInserts.generated';
+import { insertPeople, insertPerson, insertRuntime } from './stepTwoInserts.generated';
 import { bookProjectionPalette } from './bookProjection';
 import { colors } from '../theme';
 
@@ -8,10 +8,13 @@ export type StepTwoInsert = 'reflections' | 'single-hero';
 export function stepTwoInsertHtml(kind: StepTwoInsert, reducedMotion: boolean) {
   const reflection = kind === 'reflections';
   const sides = [-2, 2, -1, 1]; // Distant planes are painted first.
+  // Each projection is a different approved person; the hero alone stays himself.
+  const people = reflection ? ['12-woman-long', '09-man-buzz', '08-woman-ponytail', '11-man-curly']
+    : ['01-man-shaved', '06-central-woman', '04-woman-waves', '02-man-crop'];
   const normalize = 'translate(-27.65 2.9) scale(.054)';
   const palette = bookProjectionPalette(colors);
   const variables = Object.entries(palette.colors).map(([key, value]) => `--book-${key}:${value}`).join(';');
-  const portraits = sides.map((side,i) => `<g class="echo" data-side="${side}" data-index="${i}">
+  const portraits = sides.map((side,i) => `<g class="echo" data-side="${side}" data-index="${i}" data-person="${people[i]}">
     <ellipse class="echo-footing" cy="${reflection ? 99 : 84}" rx="18" ry="2.5" fill="url(#ground-light)" opacity=".3"/>
     <g class="echo-plane">
       ${reflection ? `<path d="M23 4L25 5.5V97.5L23 96Z M-23 96L-21 97.5H25L23 96Z" fill="var(--book-edge)" stroke="var(--book-ink)" stroke-width=".25" stroke-opacity=".3"/>
@@ -19,8 +22,8 @@ export function stepTwoInsertHtml(kind: StepTwoInsert, reducedMotion: boolean) {
       <use href="#portrait-pane" fill="url(#pane-light)"/>
       <path d="M-21 94V6H21" stroke="var(--book-light)" stroke-width=".25" stroke-opacity=".22"/>
       <g clip-path="url(#projection-pane-clip)"><g class="echo-portrait" transform="translate(0 10) scale(.9)">` : '<g class="echo-portrait">'}
-        <g class="echo-body" mask="url(#echo-mask-${i})"><use href="#mini-person"/></g>
-        <g class="echo-scan" opacity="0" clip-path="url(#person-clip)"><rect x="-25" y="-12" width="50" height="7" fill="url(#scan-light)"/></g>
+        <g class="echo-body" mask="url(#echo-mask-${i})"><use href="#mini-${people[i]}"/></g>
+        <g class="echo-scan" opacity="0" clip-path="url(#person-clip-${i})"><rect x="-25" y="-12" width="50" height="7" fill="url(#scan-light)"/></g>
         ${reflection ? '' : `<g class="echo-flecks">${Array.from({length:12},(_,j)=>`<path class="echo-fleck" data-n="${j}" stroke="var(--book-light)" stroke-width=".3" stroke-linecap="round" opacity="0"/>`).join('')}</g>`}
       ${reflection ? '</g></g><g clip-path="url(#projection-pane-clip)"><path class="pane-sheen" d="M-10-4H3L28 104H15Z" fill="url(#pane-sheen)"/></g><use class="pane-glint" href="#portrait-pane" stroke="var(--book-light)" stroke-width=".65" stroke-dasharray="12 264" stroke-linecap="round"/>' : '</g>'}
     </g>
@@ -29,8 +32,9 @@ export function stepTwoInsertHtml(kind: StepTwoInsert, reducedMotion: boolean) {
   <svg class="step-insert" data-kind="${kind}" viewBox="0 0 288 104" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${reflection ? 'Свет героя проявляет отражения в повёрнутых стеклянных портретах. Отражения исчезают, источник остаётся.' : 'Свет проходит через окружающие образы, стирая их контуры. В фокусе остаётся один Главный Герой.'}">
   <defs>${insertPerson}
     <g id="mini-person"><g transform="${normalize}"><use href="#insert-man-shape" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width="7.5" stroke-linejoin="round"/><use href="#insert-man-shape" fill="url(#body-light)"/><use href="#insert-man-lines" fill="var(--book-ink)" opacity=".62"/></g></g>
+    ${people.map(person => `${insertPeople[person]}<g id="mini-${person}"><g transform="${normalize}"><use href="#insert-shape-${person}" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width="7.5" stroke-linejoin="round"/><use href="#insert-shape-${person}" fill="url(#body-light)"/><use href="#insert-drawing-${person}" color="var(--book-ink)" opacity=".62"/></g></g>`).join('')}
     <path id="portrait-pane" d="M-23 4H23V96H-23Z"/>
-    <clipPath id="person-clip"><use href="#insert-man-shape" transform="${normalize}"/></clipPath>
+    ${people.map((person, i) => `<clipPath id="person-clip-${i}"><use href="#insert-shape-${person}" transform="${normalize}"/></clipPath>`).join('')}
     <clipPath id="projection-pane-clip"><path d="M-22 5H22V95H-22Z"/></clipPath>
     <linearGradient id="body-light" x1="0" y1="0" x2=".6" y2="1"><stop stop-color="var(--book-light)" stop-opacity=".015"/><stop offset=".35" stop-color="var(--book-ink)" stop-opacity=".14"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".025"/></linearGradient>
     <linearGradient id="pane-light" x2="1" y2="1"><stop stop-color="var(--book-light)" stop-opacity=".025"/><stop offset=".48" stop-color="var(--book-ink)" stop-opacity=".055"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".015"/></linearGradient>

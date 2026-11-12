@@ -1,37 +1,5 @@
 [
   {
-    "kind": "reflections",
-    "duration": 14.6,
-    "sourceSha256": "9cc8cb1406f9f897b8d1e8f9dea9e3c5a386f6f0c81288ec73f18ff3c2c1e7fd",
-    "svgBytes": 75545,
-    "full": {
-      "fields": 73,
-      "knots": 11647,
-      "bytes": 179562
-    },
-    "soft": {
-      "fields": 78,
-      "knots": 11615,
-      "bytes": 179353
-    }
-  },
-  {
-    "kind": "single-hero",
-    "duration": 14,
-    "sourceSha256": "50241cbada0fe23721ade162ffa0bae4d6e3e7f0b264d9e2e6f2300ed12be1c2",
-    "svgBytes": 82780,
-    "full": {
-      "fields": 150,
-      "knots": 14092,
-      "bytes": 578615
-    },
-    "soft": {
-      "fields": 155,
-      "knots": 14016,
-      "bytes": 578982
-    }
-  },
-  {
     "kind": "lived-paths",
     "duration": 16,
     "sourceSha256": "b40e6ccdb6687a71a2380cd4769ec5d79dd27cc4fabc07feccd1527a2627f296",
@@ -112,22 +80,6 @@
     }
   },
   {
-    "kind": "book",
-    "duration": 16,
-    "sourceSha256": "536dd715755f4348f5e87b2d910cdf11abf6906a354da8f216eb5826e55f2b08",
-    "svgBytes": 105904,
-    "full": {
-      "fields": 162,
-      "knots": 28781,
-      "bytes": 3301995
-    },
-    "soft": {
-      "fields": 162,
-      "knots": 8902,
-      "bytes": 3063447
-    }
-  },
-  {
     "kind": "identity-imprints",
     "duration": 16,
     "sourceSha256": "c9368a25cc207da86ad169c4bfbf750742f97defcc459f301b7bf547e88fba9d",
@@ -141,6 +93,54 @@
       "fields": 24,
       "knots": 5986,
       "bytes": 97888
+    }
+  },
+  {
+    "kind": "reflections",
+    "duration": 14.6,
+    "sourceSha256": "9d2f7a24f3ad65be503d80053d41020258854f846702bea4dde561452b8143b8",
+    "svgBytes": 208006,
+    "full": {
+      "fields": 73,
+      "knots": 11647,
+      "bytes": 179562
+    },
+    "soft": {
+      "fields": 78,
+      "knots": 11615,
+      "bytes": 179353
+    }
+  },
+  {
+    "kind": "single-hero",
+    "duration": 14,
+    "sourceSha256": "40e517ade65ab065ecb46b27c9c9beb0611cac69a7ad2f70226e7619426d221a",
+    "svgBytes": 208729,
+    "full": {
+      "fields": 150,
+      "knots": 14084,
+      "bytes": 578363
+    },
+    "soft": {
+      "fields": 155,
+      "knots": 14014,
+      "bytes": 578838
+    }
+  },
+  {
+    "kind": "book",
+    "duration": 16,
+    "sourceSha256": "de1804c70d747cab329f0463dbd04fc69ba484e1ca3e05d56da1f4d41640976f",
+    "svgBytes": 106020,
+    "full": {
+      "fields": 162,
+      "knots": 28781,
+      "bytes": 3301995
+    },
+    "soft": {
+      "fields": 162,
+      "knots": 8902,
+      "bytes": 3063447
     }
   }
 ]

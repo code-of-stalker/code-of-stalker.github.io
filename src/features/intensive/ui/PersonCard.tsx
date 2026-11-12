@@ -14,7 +14,6 @@ import { RoleMark } from './RoleMark';
 export const isStaff = (entry: DirectoryEntry) => entry.mainAdmin || entry.roles.length > 0;
 export const roleNames: Record<StaffRole, string> = { guide: 'ПРОВОДНИК', admin: 'АДМИН ПРОВОДНИКА' };
 const roleTitles: Record<StaffRole, string> = { guide: 'Проводник', admin: 'Админ проводника' };
-const roleHints: Record<StaffRole, string> = { guide: 'Ведёт идущих и переписывается с ними', admin: 'Видит переписки идущих своих проводников' };
 export const plain = (text: string) => text.toLocaleLowerCase('ru').replace(/[\s-]/g, '');
 
 export function placesOf(entry: DirectoryEntry) {
@@ -102,7 +101,7 @@ export function PersonCard({ session, person, directory, avatars = true, onChang
     <ListGroup card divided caption="ПРАВА" footer={person.mainAdmin ? 'Главного админа назначает владелец сервера, не из приложения.' : undefined}>
       {(['guide', 'admin'] as StaffRole[]).map((role, index) => {
         const on = person.roles.includes(role);
-        return <ListItem key={role} avatar={<View style={styles.mark}><RoleMark role={role} ink={inks[role]} size={20} /></View>} title={roleTitles[role]} hint={roleHints[role]} checked={on}
+        return <ListItem key={role} avatar={<View style={styles.mark}><RoleMark role={role} ink={inks[role]} size={20} /></View>} title={roleTitles[role]} checked={on}
           accessibilityLabel={`${roleTitles[role]}: ${on ? 'включено' : 'выключено'}`} onPress={busy ? undefined : () => toggle(role)}
           right={<ProductToggle enabled={on} />} last={index === 1} />;
       })}

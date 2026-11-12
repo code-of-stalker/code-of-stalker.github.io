@@ -12,6 +12,7 @@ import { useProductLayout } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
 import { fitPanelPath } from '../../product/motion/glassShape';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
+import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
@@ -283,8 +284,8 @@ const DividedContext = createContext(false);
 
 /**
  * A settings-style list: rows separated by hairlines, a caption above. `card` draws the rows on a
- * soft card instead, with no lines between them (the admin's person card, Art 2026-11-12:
- * «куча полосок, лучше сделать карточки»). `divided` adds the hairline back between a card's rows
+ * glass card instead (the diary's material under a thin frame, never see-through: Art 2026-11-12
+ * «почему … полупрозрачные? сделай стекло»), with no lines between them («куча полосок, лучше сделать карточки»). `divided` adds the hairline back between a card's rows
  * (the two «ПРАВА» switches, Art 2026-11-12: «нужно добавить один разделитель между ними»).
  */
 export function ListGroup({ caption, children, footer, card = false, divided = false }: { caption?: string; children: ReactNode; footer?: string; card?: boolean; divided?: boolean }) {
@@ -292,7 +293,10 @@ export function ListGroup({ caption, children, footer, card = false, divided = f
   return <View style={styles.group}>
     {caption ? <ProductText maxFontSize={10} style={styles.caption}>{caption}</ProductText> : null}
     <CardContext.Provider value={card}><DividedContext.Provider value={divided}>
-      <View style={card ? styles.card : styles.groupBody}>{children}</View>
+      <View style={card ? styles.card : styles.groupBody}>
+        {card ? <><DiaryGlass /><PanelBorder /></> : null}
+        {children}
+      </View>
     </DividedContext.Provider></CardContext.Provider>
     {footer ? <ProductText maxFontSize={12} style={styles.groupFooter}>{footer}</ProductText> : null}
   </View>;
@@ -356,9 +360,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   group: { gap: 8 },
   caption: { fontSize: 8, lineHeight: 12, letterSpacing: 1.6, color: colors.muted, paddingHorizontal: 2 },
   groupBody: { borderTopWidth: .25, borderBottomWidth: .25, borderColor: colors.border },
-  // A soft card: the accent's faint wash, no hairlines; a picked row's tint spans its full width and
-  // touches the card's edge (no inner padding: a strip above a picked first row read as a gap, Art 2026-11-12).
-  card: { backgroundColor: `${colors.accent}0f` },
+  // A glass card, no hairlines; a picked row's tint spans its full width and touches the card's
+  // edge (no inner padding: a strip above a picked first row read as a gap, Art 2026-11-12).
+  card: { position: 'relative', overflow: 'hidden' },
   cardItem: { paddingLeft: 14 },
   cardItemBody: { paddingRight: 14 },
   groupFooter: { fontSize: 8, lineHeight: 13, color: colors.faint, paddingHorizontal: 2 },

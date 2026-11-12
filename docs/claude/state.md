@@ -473,10 +473,11 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   sealed vault, one server device id and PIN verifier); search over the list, filters under it; chosen filter chips filled like
   the Diary (`DiaryChoiceFace` exported from `DiaryFilters.tsx`); ИДУЩИЕ / КОМАНДА are text tabs (Rust sliding
   underline, muted rest, one thin baseline under the row, in the app's `Tabs` too; no filled tabs); the app's «Люди»
-  has no second tab row: ЖДУТ / ИДУЩИЕ / КОМАНДА are the admin's filter chips (`Chip`, now in `parts.tsx`) under the search; person card on soft
-  cards (`ListGroup card`, no inner top/bottom padding), «Закрыть доступ» one card without a caption; a picked row's tint runs frame
+  has no second tab row: ЖДУТ / ИДУЩИЕ / КОМАНДА are the admin's filter chips (`Chip`, now in `parts.tsx`) under the search; person card on glass
+  cards (`ListGroup card`: `DiaryGlass` + `PanelBorder`, no inner top/bottom padding; the PC table and panes are
+  `DiaryGlass contour=` under the outline, nothing see-through), «Закрыть доступ» one card without a caption; a picked row's tint runs frame
   to frame; row sentences are `ListItem hint` (Tektur, sentence case, muted), data lines stay `detail` capitals;
-  «ПРАВА» has one hairline between its two switches (`ListGroup divided`); roles as in the chat everywhere (`useRoleInks`, `RoleTag`, `ListItem badge` in `chrome.tsx`;
+  «ПРАВА» has one hairline between its two switches (`ListGroup divided`) and no role descriptions; roles as in the chat everywhere (`useRoleInks`, `RoleTag`, `ListItem badge` in `chrome.tsx`;
   `rolesOf`, `RoleTags` in `PersonCard.tsx`); on the phone the filter row runs to the screen edges
   (negative gutter margin, first chip on the page line; the Diary filters wrap, no change there); the app's
   «Люди» tab shows roles as `RoleTags` too, not text; Settings › Микрофон no longer logs «Unexpected text node». Checked in the local demo, 4 themes, 1280 and 390.

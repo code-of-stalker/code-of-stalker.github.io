@@ -7,6 +7,7 @@ import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
 import { DiaryGlass } from '../../product/diary/DiaryGlass';
 import { useProductLayout, useProductSpacing } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
+import { fitPanelPath } from '../../product/motion/glassShape';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
 import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
@@ -43,6 +44,11 @@ const TABLE_CONTOURS: Record<Cut, string> = {
   both: 'M275.947 .125L287.875 12.0527V63.875H12.0527L.125 51.9473V.125Z',
   bottomLeft: 'M287.875 .125V63.875H12.0527L.125 51.9473V.125Z',
   topRight: 'M275.947 .125L287.875 12.0527V63.875H.125V.125Z',
+};
+const TABLE_GLASS: Record<Cut, (width: number, height: number) => string> = {
+  both: (width, height) => fitPanelPath(TABLE_CONTOURS.both, 288, 64, width, height),
+  bottomLeft: (width, height) => fitPanelPath(TABLE_CONTOURS.bottomLeft, 288, 64, width, height),
+  topRight: (width, height) => fitPanelPath(TABLE_CONTOURS.topRight, 288, 64, width, height),
 };
 
 const filterSets: Record<Tab, Filter[]> = {
@@ -81,18 +87,16 @@ function walkerState(entry: DirectoryEntry, now: number): { label: string; tone:
 function useTableFrame(cut: Cut) {
   const colors = useThemeColors();
   return useMemo(() => {
-    const tag = colors.accent.replace('#', ''), contour = TABLE_CONTOURS[cut];
     return { uri: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg width="288" height="64" viewBox="0 0 288 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="${contour}" fill="${colors.background}" fill-opacity="0.9"/>
-<path d="${contour}" fill="url(#intensive-table-${tag})" fill-opacity="0.08" stroke="${colors.accent}" stroke-width="0.25"/>
-<defs><linearGradient id="intensive-table-${tag}" x1="0" y1="32" x2="288" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`) };
-  }, [colors, cut]);
+<path d="${TABLE_CONTOURS[cut]}" stroke="${colors.accent}" stroke-width="0.25"/></svg>`) };
+  }, [colors.accent, cut]);
 }
 
-/** A framed pane: the diary contour fitted to its content, corners kept whole. */
+/** A framed pane: the diary's glass under its contour, fitted to the content with corners kept whole (never see-through, Art 2026-11-12). */
 function Framed({ children, style, cut = 'both' }: { children: ReactNode; style?: StyleProp<ViewStyle>; cut?: Cut }) {
   const frame = useTableFrame(cut);
   return <View style={[{ position: 'relative' }, style]}>
+    <DiaryGlass contour={TABLE_GLASS[cut]} />
     <PanelArtwork source={frame} />
     {children}
   </View>;

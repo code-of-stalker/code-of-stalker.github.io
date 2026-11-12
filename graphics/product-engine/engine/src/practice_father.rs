@@ -33,14 +33,15 @@ const K: f64 = 1.22 / (887. - 266.);
 /// The art's ground line, and the art x standing on the world's x = 0.
 const GROUND: f64 = 889.;
 const MIDST: f64 = 746.;
-const FATHER_NOTCH: P = (636., 408.);
+const FATHER_NOTCH: P = (620., 393.);
 const FATHER_HEART: P = (590., 470.);
 /// Where the Father's light sits: at his jugular notch, just under the throat,
 /// not in the middle of his chest.
-const FATHER_GLOW: P = (630., 417.);
+const FATHER_GLOW: P = (617., 397.);
 const FATHER_MOUTH: P = (680., 351.);
-const SON_NOTCH: P = (889., 405.);
-const SON_HEART: P = (900., 452.);
+const SON_NOTCH: P = (910., 400.);
+/// The boy's inner light sits at his notch too (Art: «на уровне ярёмной впадины»).
+const SON_HEART: P = (911., 404.);
 const SON_AXIS: f64 = 915.;
 /// Rain inside the boy, in art units.
 const SON_CODE: &str = "0.0048 0 0 0 0.0026 0 0 0 1";

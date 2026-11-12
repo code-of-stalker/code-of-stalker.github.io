@@ -2,31 +2,47 @@
 //!
 //! The beats (story seconds; the prototype's beats list follows them):
 //! 0–21     the house on the lacquer table at dawn; the camera comes into
-//!          his kitchen: the argument (his second ring trembles); she takes
-//!          the kettle off the stove, pours his tea, goes back to her pot; he
-//!          sips, the ring steadies;
-//! 21–46    out by the near side of the table, the lift down, the kerb; the
-//!          tram brakes and honks: the sphere flashes;
-//! 46–77    he boards; his eyes: the house slides by through the far windows;
-//!          the street wide: the tram leaves to the right and comes back in
-//!          from the left; he gets off;
-//! 77–110   the shop through his eyes; the coin slips (the third ring whips
-//!          round), he picks it up, pays, the loaf;
-//! 110–150  home with the bread at his side; the child trips with her cup:
-//!          the world slows, the third ring, he catches it;
-//! 150–192  up the inner stair to his desk: his eyes on the screen, the
-//!          phone, the call, his temples and the deadlines, work again, the
-//!          screen goes dark, the evening in the window;
-//! 192–247  down and out: the evening ride; he takes his bicycle from the
-//!          lamp's post and rides along the street, out of the frame on the
-//!          right and back in from the left; he leans it on the post again;
-//! 247–305  night by the lamp: the house goes to sleep window by window;
-//!          the rings come back to him one by one, meet at his heart and
-//!          strike; the camera draws back; the line of his day runs through
-//!          the dark house, each place lights and he is there again as he
-//!          was; the sphere takes in the whole house, the walls melt, the
-//!          globe meets its reflection in the lacquer; dawn again.
-use crate::cast::{Cast, Held, Keys, HERO};
+//!          his kitchen: the argument (his second ring trembles); she pours
+//!          his tea; he sips, the ring steadies; he pushes his chair back
+//!          and steps clear of the table;
+//! 21–46    the lift down, the kerb; the tram brakes and honks: the sphere
+//!          flashes;
+//! 46–83    he boards; his eyes: the house slides by; the tram leaves to the
+//!          right, and while it has him the day runs fast (the sun swings
+//!          past noon, shadows sweep the street, clouds race, the rooms'
+//!          lights come and go: a couple of hours); it comes back from the
+//!          left; he gets off;
+//! 83–110   to the house: he leans his back on the wall by the door, rests,
+//!          speaks into his phone held before him, then listens with it at
+//!          his ear (circles from his lips to the phone, from it to his ear);
+//! 110–143  the shop: the queue through his eyes (eased in and out); the
+//!          coin slips and falls slowly (the third ring whips round), he
+//!          picks it up, pays, the loaf;
+//! 143–184  home with the bread; the child trips with her cup: the world
+//!          slows, he catches it;
+//! 184–247  up the inner stair to his desk (the camera on him): his eyes on
+//!          the screen, the call, the deadlines, work again; he shuts the
+//!          laptop, sits back, speaks his day aloud, listens; evening;
+//! 247–306  down and out: he takes his bicycle from the lamp's post, rides
+//!          out on the right; while he is away the evening runs fast; back
+//!          in from the left, he leans it on the post again;
+//! 306–321  back to the wall by his door: he leans on it, speaks, listens;
+//! 321–345  night: the house goes to sleep window by window; the rings come
+//!          back to him one by one;
+//! 345–349  they meet at his heart and strike together;
+//! 349–362  the line of his day runs through the dark house, each place
+//!          lights and he is there again as he was;
+//! 362–372  the sphere takes in the whole house, the walls melt, the
+//!          lacquer turns to water;
+//! 372–378  a drop of light falls from the globe's crown and meets its
+//!          reflection rising out of the water: the rings strike, the axis
+//!          lights from the water up to the crown and down through the
+//!          reflection, a ring runs out over the water;
+//! 378–394  the camera goes under: the world shines down through the
+//!          surface, the globe's reflection hangs below, shafts of light,
+//!          motes; it sinks deep and looks up;
+//! 394–402  dawn: it rises out of the water, the house comes back.
+use crate::cast::{at_shop, Cast, Held, Keys, BIKE_AWAY, DESK_SPAN, DOOR_WALL, HERO, WALL_SPAN};
 use crate::house::{cell, lamp_at, TABLE};
 use crate::math::{mix, monotone, pulse, smooth, v3, window, window_integral, V3, Y};
 use crate::props;
@@ -73,6 +89,19 @@ const LINE_SPAN: f32 = 12.0;
 
 /// The sphere grows over the whole house from here.
 const GROW: f32 = F + 41.5;
+
+/// The lacquer turns to water as the walls melt.
+const LIQUID: f32 = F + 44.0;
+
+/// A drop of light falls from the globe's crown down its axis and meets
+/// its reflection rising out of the water `DROP_FALL` later; a ring runs
+/// out over the water from there at `DROP_SPEED` (shaders get both).
+pub const DROP: f32 = F + 51.5;
+pub const DROP_FALL: f32 = 2.4;
+pub const DROP_SPEED: f32 = 8.0;
+
+/// The house comes back from here, at dawn, after the water.
+const DAWN: f32 = LOOP - 8.0;
 
 /// Reduced motion holds this moment: the night house with the line of his
 /// day drawn through it, every place of it lit and him at each, the rings
@@ -149,6 +178,9 @@ pub struct Story {
     /// From his tram's going out of sight to its coming back: the day runs
     /// fast in between.
     away: (f32, f32),
+    /// From his riding out of the frame on the right to his coming back
+    /// in from the left: the sun goes down in between.
+    dusk: (f32, f32),
     /// He at each of the first five places of his day, as he was there.
     echoes: Vec<Figure>,
 }
@@ -210,6 +242,12 @@ pub struct Frame {
     pub coin: [f32; 4],
     /// The lift's cage: its floor, its speed, 0, 0.
     pub lift: [f32; 4],
+    /// His voice: the mouth and how much he speaks, its way and reach,
+    /// where it comes back and how much he listens, those rings' sizes.
+    pub voice: [[f32; 4]; 4],
+    /// The water: the eye under it (0 or 1), how liquid the lacquer, how
+    /// deep the eye, since the drop met its reflection.
+    pub water: [f32; 4],
     pub route: [[f32; 4]; PATH_POINTS],
     /// The tram's primitives and everything else that moves.
     pub movers: [Vec<Prim>; 2],
@@ -267,7 +305,7 @@ fn turn_toward(a: f32, b: f32, k: f32) -> f32 {
 }
 
 /// The six places of his day: the kitchen, the street, the shop, the
-/// child's room, the study, the lamp at the end of his ride.
+/// child's room, the study, the wall by his door at the end of it.
 fn bead_times(k: &Keys) -> [f32; BEADS] {
     [
         k.sip,
@@ -286,13 +324,14 @@ const BEAD_CELLS: [usize; BEADS] = [
     cell::room(1, 0),
     cell::room(2, 3),
     cell::room(2, 4),
-    cell::STREET_M,
+    cell::STREET_L,
 ];
 
-/// How much of the line of his day is drawn.
-/// How much of the day's clock (in story seconds) runs by while the tram
-/// has him away.
-const AWAY_DAY: f32 = 95.0;
+/// How much more of the day's clock (in story seconds) runs by while the
+/// tram has him away (an hour or two in all), and while his ride has him
+/// out of the frame (the sun goes down meanwhile).
+const AWAY_DAY: f32 = 35.0;
+const AWAY_EVE: f32 = 30.0;
 
 /// Clouds racing over the sun in the time-lapse: 0 clear … 1 dull.
 fn racing(s: f32) -> f32 {
@@ -304,7 +343,10 @@ fn racing(s: f32) -> f32 {
 fn flicker(s: f32, c: usize) -> f32 {
     let x = 1.4 * s + 0.37 * c as f32;
     let n = x.floor();
-    let on = ((n * 12.9898 + c as f32 * 78.233).sin() * 43758.547).fract().abs() > 0.55;
+    let on = ((n * 12.9898 + c as f32 * 78.233).sin() * 43758.547)
+        .fract()
+        .abs()
+        > 0.55;
     let f = x - n;
     if on {
         smooth(0.0, 0.12, f) * (1.0 - smooth(0.88, 1.0, f))
@@ -313,8 +355,9 @@ fn flicker(s: f32, c: usize) -> f32 {
     }
 }
 
+/// How much of the line of his day is drawn.
 fn drawn(s: f32) -> f32 {
-    smooth(LINE, LINE + LINE_SPAN, s) * (1.0 - smooth(F + 50.0, F + 53.0, s))
+    smooth(LINE, LINE + LINE_SPAN, s) * (1.0 - smooth(DAWN, DAWN + 3.0, s))
 }
 
 impl Story {
@@ -330,12 +373,14 @@ impl Story {
             .map(|&t| cast.moment(t, 0.5).figures[HERO].clone())
             .collect();
         let away = (cast.world.tram.go1 + 6.5, cast.world.tram.back - 1.0);
+        let dusk = (k.gone + 0.5, k.gone + BIKE_AWAY - 0.5);
         Story {
             cast,
             shots,
             route,
             slow_from,
             away,
+            dusk,
             echoes,
         }
     }
@@ -396,7 +441,7 @@ impl Story {
         // His breath quickens in the argument, on the call and in the run.
         let hurried = window(s, 1.0, 2.0, k.sip, k.rise)
             + window(s, d + 5.5, d + 6.5, d + 13.5, d + 15.0)
-            + window(s, k.go, k.go + 2.0, F + 2.0, F + 6.0);
+            + window(s, k.go, k.go + 2.0, k.wall2 + 3.0, k.wall2 + 6.0);
         let b = breath(s * (1.0 + 0.6 * hurried.min(1.0)));
         let moment = self.cast.moment(s, b);
         let held: Held = moment.held;
@@ -404,8 +449,9 @@ impl Story {
         // In the finale the others go and only his way is left; they are
         // back at dawn. He himself is gone over the night's end and in his
         // kitchen again as the day starts.
-        let others = (1.0 - smooth(CHORD + 0.5, CHORD + 3.0, s)) + smooth(F + 53.0, F + 56.0, s);
-        let his = smooth(0.0, 1.5, s) * (1.0 - smooth(F + 51.0, F + 54.0, s));
+        let others =
+            (1.0 - smooth(CHORD + 0.5, CHORD + 3.0, s)) + smooth(DAWN + 3.0, DAWN + 6.0, s);
+        let his = smooth(0.0, 1.5, s) * (1.0 - smooth(DAWN + 1.0, DAWN + 4.0, s));
         for (i, f) in figures.iter_mut().enumerate() {
             f.seen *= if i == HERO { his } else { others.min(1.0) };
         }
@@ -441,31 +487,39 @@ impl Story {
         // sun swings from morning to past noon, the shadows sweep the
         // street, clouds race over, the rooms' lights come and go.
         let (away, home) = self.away;
-        let lapse = window(s, away, away + 1.0, home - 1.0, home);
+        let (b0, b1) = self.dusk;
+        let lapse =
+            window(s, away, away + 1.0, home - 1.0, home) + window(s, b0, b0 + 1.0, b1 - 1.0, b1);
+        let dusk = smooth(b0, b1, s);
         let u = if s < F {
-            ((s + AWAY_DAY * smooth(away, home, s)) / (F + AWAY_DAY)).clamp(0.0, 1.0)
+            ((s + AWAY_DAY * smooth(away, home, s) + AWAY_EVE * dusk) / (F + AWAY_DAY + AWAY_EVE))
+                .clamp(0.0, 1.0)
         } else {
-            1.0 - smooth(F + 4.0, F + 54.0, s)
+            1.0 - smooth(F + 4.0, DAWN + 4.0, s)
         };
         let az = 1.15 - 1.6 * u;
         let el = 0.05 + 0.85 * (PI * u).sin();
         let sun = v3(az.sin() * el.cos(), el.sin(), az.cos() * el.cos());
         let clouds = lapse * racing(s);
         // Every light comes back to its dawn value at the loop's end.
-        let sun_amount = (smooth(-2.0, 8.0, s) * (1.0 - smooth(F - 8.0, F + 1.0, s))
+        // The sun goes down while his ride has him away; the last of the
+        // light goes as he stands by his door.
+        let sun_amount = (smooth(-2.0, 8.0, s)
+            * (1.0 - 0.8 * dusk - 0.2 * smooth(F - 8.0, F + 1.0, s))
             + smooth(-2.0, 8.0, s - LOOP))
             * (1.0 - 0.6 * clouds);
         let sky = ((0.25 + 0.75 * smooth(0.0, 12.0, s))
-            * (1.0 - 0.85 * smooth(F - 8.0, F + 4.0, s))
-            + 0.1 * smooth(F + 51.0, F + 58.0, s))
+            * (1.0 - 0.45 * dusk - 0.4 * smooth(F - 8.0, F + 4.0, s))
+            + 0.1 * smooth(DAWN + 1.0, DAWN + 8.0, s))
             * (1.0 - 0.2 * clouds);
-        let morning = 0.55 * (1.0 - smooth(6.0, 22.0, s) + smooth(F + 53.0, F + 58.0, s));
-        let golden = window(s, F - 40.0, F - 22.0, F - 2.0, F + 4.0).max(morning);
-        let night = window(s, F - 5.0, F + 4.0, F + 50.0, F + 56.0);
-        let gloss = window(s, LINE, LINE + 4.0, F + 52.0, F + 57.0);
+        let morning = 0.55 * (1.0 - smooth(6.0, 22.0, s) + smooth(DAWN + 3.0, DAWN + 8.0, s));
+        let golden = window(s, k.take - 25.0, k.take - 8.0, b0 + 2.0, b1).max(morning);
+        let night =
+            (0.4 * dusk + 0.6 * smooth(F - 5.0, F + 4.0, s)) * (1.0 - smooth(DAWN, DAWN + 6.0, s));
+        let gloss = window(s, LINE, LINE + 4.0, DAWN + 2.0, DAWN + 7.0);
         let day = [sky, golden, night, gloss];
         let path_drawn = drawn(s);
-        let lamps = lamps(s, &k, &self.route, path_drawn, lapse);
+        let lamps = lamps(s, &k, &self.route, path_drawn, lapse, dusk);
         // The line reaches each place of his day and he is there again, as
         // he was, in the places the others have left; the echoes go as the
         // sphere takes in the whole house.
@@ -490,7 +544,7 @@ impl Story {
         let floor = mix(feet.y, TABLE, grow);
         let mut rings = rings_at(s, c, r, floor, feet.y, eye);
         // The step's ring whips round when something falls.
-        let coin_at = q + 2.9;
+        let coin_at = at_shop(q, 2.9);
         let fall_at = k.catch - 0.55;
         rings[2] = (rings[2]
             + TAU * (smooth(coin_at, coin_at + 1.0, s) + smooth(fall_at, fall_at + 1.0, s)))
@@ -503,7 +557,7 @@ impl Story {
         rings[1] = mix(rings[1], heart, sync);
         let to = c - eye;
         rings[2] = turn_toward(rings[2], to.z.atan2(to.x), sync);
-        rings[3] *= his.max(grow) * (1.0 - smooth(F + 53.5, F + 56.5, s));
+        rings[3] *= his.max(grow) * (1.0 - smooth(DAWN + 3.5, DAWN + 6.5, s));
         // At night they leave him, then come back one by one.
         let back = |i: usize| {
             let at = RINGS_IN + RING_GAP * i as f32;
@@ -518,15 +572,17 @@ impl Story {
             (1.0 - 0.6 * pov) * (1.0 + 2.0 * grow),
         ];
         let chord = pulse(s - CHORD) + 0.4 * pulse(s - CHORD - 0.9);
+        // The three strike once more as the drop meets its reflection.
+        let met = pulse(s - DROP - DROP_FALL);
         let hb = heartbeat(s, HEART * (1.0 - 0.25 * hurried.min(1.0)));
         // The world touches the sphere (the horn); the argument and the
         // call shake his body's ring; what falls flashes the step's.
         let tremble = window(s, 1.0, 2.0, k.pour + 0.5, k.sip + 2.0)
             + 0.8 * window(s, d + 5.5, d + 6.5, d + 13.5, d + 14.5);
         let ring_fx = [
-            pulse(s - k.honk) + chord + arrive(0),
-            tremble + 0.25 * hb * hurried.min(1.0) + chord + arrive(1),
-            pulse(s - coin_at).max(pulse(s - fall_at)) + chord + arrive(2),
+            pulse(s - k.honk) + chord + arrive(0) + met,
+            tremble + 0.25 * hb * hurried.min(1.0) + chord + arrive(1) + met,
+            pulse(s - coin_at).max(pulse(s - fall_at)) + chord + arrive(2) + met,
             floor,
         ];
 
@@ -534,11 +590,11 @@ impl Story {
         let path = [
             path_drawn,
             0.6 + 0.6 * chord,
-            smooth(LINE + 0.5, LINE + LINE_SPAN + 0.5, s) * (1.0 - smooth(F + 50.0, F + 53.0, s)),
+            smooth(LINE + 0.5, LINE + LINE_SPAN + 0.5, s) * (1.0 - smooth(DAWN, DAWN + 3.0, s)),
             0.0,
         ];
         let melt = [
-            window(s, GROW + 2.0, GROW + 6.0, F + 51.0, F + 54.5),
+            window(s, GROW + 2.0, GROW + 6.0, DAWN + 1.0, DAWN + 4.5),
             gloss,
             0.0,
             0.0,
@@ -546,9 +602,10 @@ impl Story {
 
         // The desk: the screen, the lamp, what he has typed, the call's news.
         let desk_on = window(s, d - 2.0, d, d + 19.5, d + 21.0);
+        let lamp = window(s, d - 2.0, d, d + 32.0, d + 33.5);
         let typed = 0.5 * smooth(d + 0.9, d + 4.6, s) + 0.5 * smooth(d + 14.8, d + 18.2, s);
         let news = window(s, d + 6.0, d + 7.0, d + 14.0, d + 16.0);
-        let desk = [desk_on, desk_on, typed, news];
+        let desk = [desk_on * (1.0 - held.lid), lamp, typed, news];
         let sparks = [
             desk_on * window(s, d + 9.5, d + 11.0, d + 14.0, d + 15.5),
             0.0,
@@ -582,9 +639,18 @@ impl Story {
             held.coin.x,
             held.coin.y,
             held.coin.z,
-            window(s, coin_at, coin_at + 0.1, q + 4.3, q + 4.8),
+            window(s, coin_at, coin_at + 0.1, at_shop(q, 4.3), at_shop(q, 4.8)),
         ];
 
+        let voice = self.cast.voice(s, &figures[HERO].body, held.phone);
+        // The water: the eye under it, how liquid the lacquer, how deep
+        // the eye, since the drop met its reflection.
+        let water = [
+            if eye.y < TABLE { 1.0 } else { 0.0 },
+            smooth(LIQUID, LIQUID + 4.0, s) * (1.0 - smooth(DAWN + 1.0, DAWN + 5.0, s)),
+            (TABLE - eye.y).max(0.0),
+            (s - DROP - DROP_FALL).clamp(-99.0, 99.0),
+        ];
         let movers = [props::tram(tc, doors), props::movers(s, world, &held)];
         let head = figures[HERO].body.head;
         Frame {
@@ -620,6 +686,8 @@ impl Story {
             honk,
             coin,
             lift,
+            voice,
+            water,
             route: self.route,
             movers,
             figures,
@@ -635,10 +703,11 @@ fn lamps(
     route: &[[f32; 4]; PATH_POINTS],
     drawn: f32,
     lapse: f32,
+    dusk: f32,
 ) -> [f32; LAMPS] {
     let mut l = [0.0; LAMPS];
-    let end = 1.0 - smooth(F + 51.0, F + 56.0, s);
-    let evening = smooth(F - 30.0, F - 20.0, s) * end;
+    let end = 1.0 - smooth(DAWN + 1.0, DAWN + 6.0, s);
+    let evening = dusk * end;
     // Dawn at the start, and again at the end coming round to it.
     let dawn = (1.0 - smooth(4.0, 9.0, s)).max(smooth(LOOP - 5.0, LOOP - 0.5, s));
     for floor in 0..crate::house::FLOORS {
@@ -656,9 +725,9 @@ fn lamps(
     l[cell::room(2, 3)] = (0.6 * dawn).max(evening);
     l[cell::room(1, 4)] = 0.4 * evening;
     let d = k.desk;
-    l[cell::room(2, 4)] = window(s, d - 3.0, d - 1.0, d + 21.0, d + 24.0).max(evening);
+    l[cell::room(2, 4)] = window(s, d - 3.0, d - 1.0, d + 32.5, d + 35.0).max(evening);
     l[cell::ROOF] = 0.6 * evening;
-    let street = dawn.max(smooth(F - 12.0, F - 6.0, s) * end);
+    let street = dawn.max(smooth(0.3, 0.6, dusk) * end);
     for c in [cell::STREET_L, cell::STREET_M, cell::STREET_R] {
         l[c] = street;
     }
@@ -709,7 +778,12 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         ..key(at, v3(0.0, 1.62, 0.0), look, POV_LENS, 0.002, 1.0)
     };
     let (q, d, f) = (k.queue, k.desk, F);
+    let (w, w2) = (k.wall, k.wall2);
+    // The wall by his door, under where he stands.
+    let a = v3(DOOR_WALL[0], 0.0, DOOR_WALL[1]);
+    let coin_at = at_shop(q, 2.9);
     let go1 = world.tram.go1;
+    let ride_in = k.gone + BIKE_AWAY;
     let stop2 = world.tram.stop2;
     let mut v = vec![
         wide(0.0),
@@ -827,6 +901,9 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             1.95,
             0.002,
         ),
+        // The day runs on while he is away: the house whole, its shadows
+        // sweeping, its windows coming and going.
+        fixed(go1 + 8.5, v3(0.0, 4.2, 27.0), v3(0.0, 3.6, 2.0), 1.9, 0.0),
         fixed(
             world.tram.back,
             v3(0.0, 3.0, 24.0),
@@ -849,11 +926,57 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             0.003,
         ),
         follow(k.alight + 2.5, v3(1.5, 2.0, 8.0), v3(0.0, 1.0, -1.0), 2.0),
+        // Across to the wall by his door. His back to it, a breath; the
+        // phone before his face as he speaks his day into it; round to
+        // his other side as he listens to it at his ear.
+        follow(w - 2.5, v3(1.6, 1.8, 6.4), v3(-0.2, 1.0, -0.4), 2.0),
+        fixed(
+            w + 0.6,
+            a + v3(1.95, 1.45, 4.0),
+            a + v3(0.04, 1.05, 0.0),
+            2.0,
+            0.003,
+        ),
+        fixed(
+            w + 2.6,
+            a + v3(0.9, 1.55, 1.8),
+            a + v3(-0.06, 1.32, 0.05),
+            2.2,
+            0.005,
+        ),
+        fixed(
+            w + 7.2,
+            a + v3(0.65, 1.6, 1.55),
+            a + v3(-0.06, 1.38, 0.05),
+            2.3,
+            0.005,
+        ),
+        fixed(
+            w + 9.4,
+            a + v3(-0.85, 1.55, 1.65),
+            a + v3(-0.06, 1.45, 0.0),
+            2.3,
+            0.005,
+        ),
+        fixed(
+            w + 13.4,
+            a + v3(-0.7, 1.5, 1.4),
+            a + v3(-0.06, 1.45, 0.0),
+            2.4,
+            0.005,
+        ),
+        follow(w + WALL_SPAN, v3(1.4, 1.8, 6.0), v3(0.0, 1.0, -0.5), 2.0),
         // The shop: in at the door, then his eyes in the queue. In and out
         // of his eyes past his left ear, in front of it, never through his
-        // head: no cuts here.
+        // head, and taking its time: no cuts here.
         follow(q - 4.5, v3(1.6, 1.9, 6.5), v3(-0.3, 1.0, -1.0), 2.0),
-        fixed(q - 2.2, v3(0.2, 1.75, -0.6), v3(-3.5, 1.15, -2.4), 2.1, 0.004),
+        fixed(
+            q - 2.2,
+            v3(0.2, 1.75, -0.6),
+            v3(-3.5, 1.15, -2.4),
+            2.1,
+            0.004,
+        ),
         fixed(
             q - 0.8,
             v3(-1.95, 1.8, -1.8),
@@ -861,19 +984,19 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             2.0,
             0.004,
         ),
-        eyes(q + 0.6, v3(-2.85, 1.68, -2.0), v3(-4.6, 1.35, -2.45)),
-        eyes(q + 1.7, v3(-2.85, 1.68, -2.0), v3(-4.3, 1.15, -2.5)),
+        eyes(q + 1.0, v3(-2.85, 1.68, -2.0), v3(-4.6, 1.35, -2.45)),
+        eyes(q + 2.6, v3(-2.85, 1.68, -2.0), v3(-4.3, 1.15, -2.5)),
         // Out by his ear as the coin slips: it falls in front of him.
         fixed(
-            q + 2.9,
+            coin_at,
             v3(-2.55, 1.68, -1.85),
             v3(-3.3, 0.55, -2.3),
             1.9,
             0.005,
         ),
-        // Back to his side, the floor at his feet: he bends for it.
+        // Back to his side, the floor at his feet: he looks, bends for it.
         fixed(
-            q + 4.3,
+            q + 5.9,
             v3(-2.15, 1.3, -0.7),
             v3(-2.95, 0.62, -2.2),
             2.0,
@@ -881,7 +1004,7 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         ),
         // He rises with it: the camera draws back to hold all of him.
         fixed(
-            q + 5.8,
+            q + 8.4,
             v3(-1.4, 1.6, 0.6),
             v3(-2.9, 1.05, -2.3),
             2.0,
@@ -890,25 +1013,25 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // Behind his left shoulder as he reaches the counter, then his
         // eyes: his hand with the coin, her hands, the loaf from the shelf.
         fixed(
-            q + 7.4,
+            q + 10.2,
             v3(-3.0, 1.8, -1.75),
             v3(-4.8, 1.1, -2.45),
             2.0,
             0.004,
         ),
-        eyes(q + 8.8, v3(-3.95, 1.68, -2.0), v3(-4.7, 1.0, -2.45)),
-        eyes(q + 11.4, v3(-3.95, 1.68, -2.0), v3(-5.1, 1.28, -2.6)),
-        eyes(q + 13.7, v3(-3.95, 1.68, -2.0), v3(-4.5, 0.98, -2.4)),
+        eyes(q + 11.7, v3(-3.95, 1.68, -2.0), v3(-4.7, 1.0, -2.45)),
+        eyes(q + 14.2, v3(-3.95, 1.68, -2.0), v3(-5.1, 1.28, -2.6)),
+        eyes(q + 16.3, v3(-3.95, 1.68, -2.0), v3(-4.5, 0.98, -2.4)),
         // Out by his ear before he turns to go, then back to the door.
         fixed(
-            q + 14.9,
+            q + 17.8,
             v3(-3.6, 1.7, -1.85),
             v3(-4.6, 1.05, -2.4),
             1.95,
             0.004,
         ),
         fixed(
-            q + 16.6,
+            q + 19.6,
             v3(0.4, 1.7, -0.2),
             v3(-3.0, 1.1, -2.0),
             2.0,
@@ -997,23 +1120,76 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         // His eyes again: back to work.
         eyes(d + 14.6, v3(3.9, 13.25, -2.86), v3(3.95, 12.86, -2.45)),
         eyes(d + 18.4, v3(3.9, 13.25, -2.86), v3(3.92, 12.9, -2.45)),
-        // Cut: from the street side, the screen goes dark; the evening.
+        // His hands come up to the lid's edge.
+        eyes(d + 18.95, v3(3.9, 13.25, -2.86), v3(3.93, 12.92, -2.47)),
+        // Cut: from his left, low: the lid goes down, the light with it.
         fixed(
-            d + 18.48,
-            v3(3.9, 13.0, 4.5),
-            v3(3.9, 12.9, -2.5),
+            d + 19.03,
+            v3(5.0, 13.05, -2.35),
+            v3(3.95, 12.92, -2.72),
+            2.2,
+            0.004,
+        ),
+        fixed(
+            d + 21.0,
+            v3(4.9, 13.08, -2.2),
+            v3(3.93, 12.98, -2.8),
+            2.25,
+            0.004,
+        ),
+        // Round to his face over the shut laptop as he sits back; he
+        // speaks his day aloud to the evening in the window.
+        fixed(
+            d + 22.6,
+            v3(4.5, 13.28, -1.5),
+            v3(3.9, 13.18, -3.05),
+            2.3,
+            0.005,
+        ),
+        fixed(
+            d + 26.8,
+            v3(4.15, 13.28, -1.6),
+            v3(3.9, 13.18, -3.05),
+            2.45,
+            0.005,
+        ),
+        // From his left, a little above: he listens.
+        fixed(
+            d + 28.0,
+            v3(5.0, 13.42, -2.0),
+            v3(3.92, 13.16, -3.05),
+            2.4,
+            0.005,
+        ),
+        fixed(
+            d + 31.32,
+            v3(4.95, 13.44, -2.1),
+            v3(3.92, 13.14, -3.05),
+            2.5,
+            0.005,
+        ),
+        // Cut: from the street side, the window lit, the evening.
+        fixed(
+            d + 31.4,
+            v3(3.4, 13.1, 5.2),
+            v3(3.7, 12.95, -2.6),
             2.2,
             0.003,
         ),
         fixed(
-            d + 21.5,
+            d + DESK_SPAN + 0.6,
             v3(3.0, 13.2, 6.0),
             v3(3.6, 12.9, -2.5),
             2.1,
             0.003,
         ),
         // Out through the bedroom to the lift, and down.
-        follow(d + 23.5, v3(0.8, 1.5, 5.8), v3(0.2, 1.1, -0.5), 2.0),
+        follow(
+            d + DESK_SPAN + 2.6,
+            v3(0.8, 1.5, 5.8),
+            v3(0.2, 1.1, -0.5),
+            2.0,
+        ),
         follow(k.call + 2.0, v3(2.0, 1.6, 6.2), v3(-0.3, 1.1, -0.5), 2.0),
         follow(k.down - 1.0, v3(1.4, 1.6, 6.0), v3(0.0, 1.1, 0.0), 2.0),
         // The evening ride. Close by him as he takes his bicycle off its
@@ -1038,70 +1214,173 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             2.0,
             0.003,
         ),
+        // He is away a while: the camera rises over the street and the
+        // house as the sun goes down, the shadows run long, the lamps and
+        // the windows come on.
+        fixed(
+            k.gone + 4.0,
+            v3(2.5, 3.0, 19.0),
+            v3(0.5, 3.4, 0.0),
+            1.9,
+            0.0,
+        ),
+        fixed(
+            ride_in - 1.03,
+            v3(1.2, 3.1, 18.5),
+            v3(-0.5, 3.3, 0.0),
+            1.9,
+            0.0,
+        ),
         // Cut: the street's other end; he rides in from the left, and the
         // camera takes him along as he brakes by the lamp.
         fixed(
-            k.gone + 0.03,
+            ride_in - 1.0,
             v3(-7.4, 1.0, 4.9),
             v3(-9.2, 0.9, 1.4),
             2.0,
             0.003,
         ),
         fixed(
-            k.gone + 1.0,
+            ride_in + 1.0,
             v3(-7.3, 1.0, 4.9),
             v3(-9.0, 0.9, 1.4),
             2.0,
             0.003,
         ),
-        follow(k.gone + 3.2, v3(2.0, 1.1, 3.9), v3(0.3, 0.9, 0.36), 2.0),
+        follow(ride_in + 3.2, v3(2.0, 1.1, 3.9), v3(0.3, 0.9, 0.36), 2.0),
         follow(k.stop - 0.3, v3(1.9, 1.15, 3.8), v3(0.1, 0.9, 0.36), 2.0),
         // He steps off and leans it on the lamp's post; a few steps on.
         follow(k.stop + 2.0, v3(1.6, 1.25, 3.7), v3(-0.1, 0.95, 0.5), 2.1),
         follow(k.stop + 3.4, v3(1.9, 1.35, 4.0), v3(0.3, 1.05, 0.3), 2.1),
-        follow(k.rest - 0.3, v3(1.6, 1.4, 4.2), v3(-0.1, 1.1, 0.1), 2.0),
-        // Night by the lamp. The camera stands back and looks up: the house
+        // Back to the wall by his door; he leans on it in the dusk, a
+        // breath, speaks his day aloud, then listens to it.
+        follow(w2 - 2.0, v3(1.7, 1.5, 4.6), v3(-0.3, 1.0, 0.0), 2.0),
+        fixed(
+            w2 + 0.8,
+            a + v3(2.2, 1.35, 3.6),
+            a + v3(0.04, 1.1, 0.0),
+            2.0,
+            0.003,
+        ),
+        fixed(
+            w2 + 3.4,
+            a + v3(1.2, 1.5, 2.0),
+            a + v3(-0.01, 1.4, 0.05),
+            2.2,
+            0.005,
+        ),
+        fixed(
+            w2 + 8.4,
+            a + v3(0.3, 1.48, 2.05),
+            a + v3(-0.01, 1.4, 0.0),
+            2.3,
+            0.005,
+        ),
+        fixed(
+            w2 + 12.8,
+            a + v3(-0.6, 1.45, 2.1),
+            a + v3(-0.01, 1.35, 0.0),
+            2.3,
+            0.005,
+        ),
+        // Night by his door. The camera stands back and looks up: the house
         // goes to sleep round him, window by window.
-        fixed(f + 1.5, v3(3.2, 1.5, 4.9), v3(1.1, 1.15, 0.95), 2.0, 0.004),
-        fixed(f + 4.0, v3(3.0, 1.9, 9.0), v3(0.9, 4.0, 0.0), 2.0, 0.002),
-        fixed(f + 9.0, v3(2.6, 2.6, 13.5), v3(0.8, 6.0, 0.0), 2.0, 0.002),
+        fixed(
+            f + 1.5,
+            a + v3(2.1, 1.5, 3.95),
+            a + v3(0.0, 1.15, 0.0),
+            2.0,
+            0.004,
+        ),
+        fixed(f + 4.0, v3(-3.2, 1.9, 9.3), v3(-3.6, 4.2, 0.0), 2.0, 0.002),
+        fixed(f + 9.0, v3(-2.0, 2.6, 14.0), v3(-2.4, 6.0, 0.0), 2.0, 0.002),
         // Back down to him: the rings come back to him one by one, the
         // camera going round him a little for each.
-        fixed(f + 12.5, v3(3.0, 1.6, 4.9), v3(1.1, 1.2, 0.95), 2.0, 0.004),
-        fixed(f + 15.5, v3(2.3, 2.0, 4.6), v3(1.1, 1.25, 0.95), 2.1, 0.004),
-        fixed(f + 18.5, v3(2.9, 1.05, 4.0), v3(1.1, 1.3, 0.95), 2.2, 0.004),
+        fixed(
+            f + 12.5,
+            a + v3(1.9, 1.6, 3.95),
+            a + v3(0.0, 1.2, 0.0),
+            2.0,
+            0.004,
+        ),
+        fixed(
+            f + 15.5,
+            a + v3(1.2, 2.0, 3.65),
+            a + v3(0.0, 1.25, 0.0),
+            2.1,
+            0.004,
+        ),
+        fixed(
+            f + 18.5,
+            a + v3(1.8, 1.05, 3.05),
+            a + v3(0.0, 1.3, 0.0),
+            2.2,
+            0.004,
+        ),
         // Together at his heart; they strike.
         fixed(
             f + 22.5,
-            v3(2.6, 1.45, 4.3),
-            v3(1.1, 1.25, 0.95),
+            a + v3(1.5, 1.45, 3.35),
+            a + v3(0.0, 1.25, 0.0),
             2.2,
             0.004,
         ),
         fixed(
             f + 25.5,
-            v3(2.55, 1.45, 4.2),
-            v3(1.1, 1.25, 0.95),
+            a + v3(1.45, 1.45, 3.25),
+            a + v3(0.0, 1.25, 0.0),
             2.2,
             0.004,
         ),
         // The camera draws back: the dark house whole; the line of his day
         // runs through it, and he is at each place of it again.
-        fixed(f + 28.0, v3(2.8, 2.6, 8.0), v3(1.1, 1.6, 0.95), 2.1, 0.002),
+        fixed(
+            f + 28.0,
+            a + v3(1.7, 2.6, 7.05),
+            a + v3(0.0, 1.6, 0.0),
+            2.1,
+            0.002,
+        ),
         fixed(f + 32.5, v3(1.6, 6.0, 22.0), v3(0.4, 5.6, 0.0), 2.0, 0.0),
         fixed(f + 37.5, v3(0.6, 7.2, 27.0), v3(0.0, 6.3, 0.0), 2.0, 0.0),
         fixed(f + 42.0, v3(0.0, 7.8, 31.0), v3(0.0, 6.6, 0.0), 2.0, 0.0),
-        // The sphere grows over the house; the camera sinks to the lacquer,
-        // where the globe meets its reflection.
+        // The sphere grows over the house; the lacquer turns to water; the
+        // camera sinks to it, where the globe meets its reflection. The drop
+        // falls and meets its own; its ring runs out under the camera.
         fixed(f + 47.5, v3(0.0, 3.0, 38.0), v3(0.0, 2.0, 0.0), 1.8, 0.0),
         fixed(f + 50.5, v3(0.0, -0.7, 40.0), v3(0.0, -0.9, 0.0), 1.6, 0.0),
+        fixed(f + 54.0, v3(0.0, -0.72, 38.6), v3(0.0, -0.9, 0.0), 1.6, 0.0),
         fixed(
-            f + 53.5,
-            v3(0.0, -0.65, 39.0),
-            v3(0.0, -0.85, 0.0),
-            1.6,
+            f + 57.0,
+            v3(0.0, -0.86, 33.0),
+            v3(0.0, -0.95, 0.0),
+            1.7,
             0.0,
         ),
+        // Through the surface, into the reflection: the globe hangs below
+        // it, the world above shines through it, light comes down in
+        // shafts.
+        fixed(
+            f + 59.0,
+            v3(0.3, -1.35, 29.5),
+            v3(0.0, -1.2, 0.0),
+            1.75,
+            0.0,
+        ),
+        fixed(f + 62.5, v3(1.6, -2.6, 26.0), v3(0.0, -1.3, 0.0), 1.8, 0.0),
+        fixed(f + 66.5, v3(4.0, -4.3, 21.0), v3(0.0, -0.7, 0.0), 1.9, 0.0),
+        // Into the globe, deep under the line of his day, looking up.
+        fixed(f + 70.5, v3(3.0, -5.6, 13.5), v3(0.0, 0.2, -2.0), 1.8, 0.0),
+        // Up and out at dawn as the house comes back round the camera.
+        fixed(
+            DAWN - 1.5,
+            v3(1.4, -2.0, 22.0),
+            v3(0.0, 1.0, -1.0),
+            1.85,
+            0.0,
+        ),
+        fixed(DAWN + 0.5, v3(0.6, 0.5, 29.5), v3(0.0, 2.8, 0.0), 1.9, 0.0),
+        fixed(DAWN + 4.0, v3(0.2, 4.0, 31.0), v3(0.0, 5.4, 0.0), 2.0, 0.0),
         wide(LOOP),
     ];
     // Monotone keys need rising times.
@@ -1208,14 +1487,14 @@ mod tests {
     fn his_eyes_are_his_in_the_tram_the_shop_and_at_the_desk() {
         let story = Story::new(Chapter::Everyday);
         let k = story.keys();
-        for s in [k.board + 1.5, k.queue + 1.0, k.queue + 10.0, k.desk + 3.0] {
+        for s in [k.board + 1.5, k.queue + 1.0, k.queue + 13.0, k.desk + 3.0] {
             // Loop time and story time differ by well under a second here.
             let f = story.compose(s);
             assert!(f.pov[3] > 0.95, "{s}: {}", f.pov[3]);
             let head = v3(f.pov[0], f.pov[1], f.pov[2]);
             assert!((f.eye - head).length() < 0.25, "{s}");
         }
-        assert!(story.compose(k.queue + 3.5).pov[3] < 0.05);
+        assert!(story.compose(k.queue + 6.0).pov[3] < 0.05);
     }
 
     #[test]

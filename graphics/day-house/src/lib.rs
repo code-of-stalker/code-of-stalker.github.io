@@ -33,10 +33,10 @@ use math::{v3, V3};
 pub use story::{Figure, Frame, Story};
 use watcher_scene_palette::Palette;
 
-/// One loop: the whole day, about five minutes.
-pub const LOOP: f32 = 305.4;
+/// One loop: the whole day, about six and a half minutes.
+pub const LOOP: f32 = 402.5;
 /// The finale after he stands still by the lamp.
-pub const FINALE: f32 = 58.0;
+pub const FINALE: f32 = 82.0;
 
 /// The lens: the whole 3:2 frame stays in view on a canvas of any shape.
 pub const FRAME_ASPECT: f32 = 1.5;
@@ -81,7 +81,7 @@ pub const PATH_POINTS: usize = 48;
 /// The uniform slots the shaders read (common.glsl names them).
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_LAMPS: usize = 7;
-pub const SLOT_PATH: usize = SLOT_LAMPS + LAMPS.div_ceil(4) + 18;
+pub const SLOT_PATH: usize = SLOT_LAMPS + LAMPS.div_ceil(4) + 23;
 pub const SLOTS: usize = SLOT_PATH + PATH_POINTS;
 // Every uniform of the world's programs fits the 224 vectors WebGL2
 // promises a fragment shader, with room for ANGLE's own.
@@ -167,7 +167,8 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     let mut k = SLOT_LAMPS + LAMPS.div_ceil(4);
     for slot in [
         f.sphere, f.rings, f.ring_vis, f.ring_fx, f.pov, f.chord, f.path, f.melt, f.sparks,
-        f.spark_to, f.desk, f.tram, f.motion, f.cup, f.steam, f.honk, f.coin, f.lift,
+        f.spark_to, f.desk, f.tram, f.motion, f.cup, f.steam, f.honk, f.coin, f.lift, f.voice[0],
+        f.voice[1], f.voice[2], f.voice[3], f.water,
     ] {
         s[k] = slot;
         k += 1;

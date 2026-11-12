@@ -3,7 +3,9 @@
 //! her spoon, the cups, the bags of bread, the coin, the phone, the
 //! neighbours' tools).
 use crate::act::{World, BB_Y, CRANK_LEN, GRIP, PEDAL_OUT, SADDLE, TRAM_GONE, WHEEL_R};
-use crate::cast::{Held, KETTLE_GRIP, SPOUT, STRAPS, STRAP_Y, STRAP_Z};
+use crate::cast::{
+    lid_pitch, Held, KETTLE_GRIP, LID_HINGE, LID_LONG, SPOUT, STRAPS, STRAP_Y, STRAP_Z,
+};
 use crate::house::{
     ball, chair, cube, cyl, flag, kind, mat, slab, tube, Prim, CAGE, CAGE_H, TRACK_Z,
 };
@@ -259,6 +261,19 @@ pub fn movers(s: f32, world: &World, held: &Held) -> Vec<Prim> {
         .yaw(held.phone_yaw)
         .pitch(held.phone_tilt)
         .tone(0.4),
+    );
+    // His laptop's lid on its hinge: its face glows toward him (tone above
+    // a half tells it from his phone).
+    let pitch = lid_pitch(held.lid);
+    let (sp, cp) = pitch.sin_cos();
+    out.push(
+        cube(
+            mat::SCREEN,
+            LID_HINGE + v3(0.0, cp, sp) * (0.5 * LID_LONG) + v3(0.0, -sp, cp) * 0.006,
+            v3(0.2, 0.5 * LID_LONG, 0.006),
+        )
+        .pitch(pitch)
+        .tone(0.6),
     );
     // The gardener's can, the painter's brush, the cellist's bow, the
     // mechanic's wrench.

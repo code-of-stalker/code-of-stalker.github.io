@@ -11,9 +11,10 @@ uniform vec4 u_edges; // left, right, top, bottom
 uniform vec3 u_warm;
 
 void main() {
-  float w = texture(u_dof, v_uv).g;
-  w += BLOOM * (0.45 * textureLod(u_dof, v_uv, 2.0).g + 0.3 * textureLod(u_dof, v_uv, 3.0).g
-              + 0.22 * textureLod(u_dof, v_uv, 4.0).g + 0.16 * textureLod(u_dof, v_uv, 5.0).g);
+  vec2 uv = waterUv(v_uv);
+  float w = texture(u_dof, uv).g;
+  w += BLOOM * (0.45 * textureLod(u_dof, uv, 2.0).g + 0.3 * textureLod(u_dof, uv, 3.0).g
+              + 0.22 * textureLod(u_dof, uv, 4.0).g + 0.16 * textureLod(u_dof, uv, 5.0).g);
   w = max(w * u_out.w, 0.0);
   if (w > 0.7) w = 0.7 + 0.3 * (1.0 - exp(-(w - 0.7) / 0.3));
   vec2 v = v_uv - 0.5;

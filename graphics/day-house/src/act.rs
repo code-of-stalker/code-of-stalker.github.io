@@ -395,9 +395,10 @@ pub struct World {
 
 /// His bicycle's evening, story times: all day it leans on the lamp's
 /// post by the shop; he takes it at `take`, pushes off at `go`, rides out
-/// of the frame on the right, is back in from the left at `gone` (the cut)
-/// and brakes to a stop by the same lamp at `stop`, and leans it on the
-/// post again just as it stood; `home` only starts the next day's count.
+/// of the frame on the right; at `gone` (the cut) he is away, the evening
+/// runs fast for `BIKE_AWAY`, then he is back in from the left, brakes to
+/// a stop by the same lamp at `stop` and leans it on the post again just
+/// as it stood; `home` only starts the next day's count.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Bike {
     pub take: f32,
@@ -465,12 +466,15 @@ impl Bike {
                 BIKE_HOME + BIKE_V * (u - 0.5 * BIKE_PUSH)
             };
         }
+        // Away a while past the street's left end (the evening goes on),
+        // then in.
         let w = (self.stop - t).max(0.0);
-        if w < BIKE_BRAKE {
+        let x = if w < BIKE_BRAKE {
             BIKE_STOP - 0.5 * BIKE_V * w * w / BIKE_BRAKE
         } else {
             BIKE_STOP - BIKE_V * (w - 0.5 * BIKE_BRAKE)
-        }
+        };
+        x.max(BIKE_IN)
     }
 
     /// How far it has rolled, and how far of that he pedalled: he stops

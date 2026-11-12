@@ -661,7 +661,7 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
   } else if (m == M_SCREEN) {
     s.a = 0.04;
     s.gloss = 0.4;
-    if (cell == 14) {
+    if (cell == 14 || (h.id == CELL_MOVE && tone > 0.5)) {
       // Only the lid's face toward his chair glows; its back (toward the
       // street) and his phone lying on the desk are dark metal and glass.
       float front = step(h.n.z, -0.5) * step(h.lp.z, -0.004);
@@ -825,7 +825,10 @@ Surf personSurface(Hit h, vec3 p, vec3 n, vec3 rd) {
       float vis = smoothstep(0.02, 0.006, px) * smoothstep(0.015, 0.04, z);
       float eye = length(vec2(abs(x) - 0.03, y)) - 0.0085;
       float brow = max(abs(y - 0.021) - 0.0035, abs(abs(x) - 0.032) - 0.016);
-      float mouth = max(abs(y + 0.044) - 0.003, abs(x) - 0.017);
+      // His mouth opens and closes as he speaks.
+      float talk = VOICE.w * step(length(p - VOICE.xyz), 0.15)
+        * (0.5 + 0.5 * sin(STORY * 13.0 + 1.7 * sin(STORY * 4.3)));
+      float mouth = max(abs(y + 0.044) - 0.003 - 0.007 * talk, abs(x) - 0.017 + 0.004 * talk);
       float dark = 0.8 * smoothstep(px, -px, eye) + 0.5 * smoothstep(px, -px, brow) + 0.35 * smoothstep(px, -px, mouth);
       s.a *= 1.0 - min(dark, 0.85) * vis;
     }
@@ -969,20 +972,85 @@ vec2 voidLight(vec3 rd) {
   return vec2(0.004 + 0.004 * max(rd.y, 0.0), 0.0);
 }
 
+// ---- the water ----
+
+// In the finale the lacquer turns to water. Its height over the level at
+// xz (only its slopes are used): a slow swell running in and out of the
+// globe's waterline, the drop's ring running out from the centre, a fine
+// ripple.
+float since() {
+  return WATER.w;
+}
+float waterH(vec2 xz) {
+  vec2 d = xz - SPHERE.xz;
+  float r = length(d);
+  float e0 = abs(r - SPHERE.w);
+  float h = 0.012 * sin(e0 * 2.2 - STORY * 1.8) * exp(-e0 * 0.1);
+  float s = since();
+  if (s > 0.0 && s < 14.0) {
+    float e = r - DROP_SPEED * s;
+    h += 0.03 * sin(e * 2.6) * exp(-max(e, 0.0) * max(e, 0.0) * 2.0 - max(-e, 0.0) * 0.25) * exp(-0.15 * s);
+  }
+  h += 0.012 * noise2(xz * 1.6 + vec2(0.3, -0.2) * STORY, 41u);
+  return h * WATER.y;
+}
+vec2 waterSlope(vec2 xz) {
+  float h = waterH(xz);
+  return vec2(waterH(xz + vec2(0.06, 0.0)) - h, waterH(xz + vec2(0.0, 0.06)) - h) / 0.06;
+}
+// The drop's ring on the water, 0 ... 1.
+float dropRing(vec2 xz) {
+  float s = since();
+  if (s <= 0.0 || s > 14.0) return 0.0;
+  float e = length(xz - SPHERE.xz) - DROP_SPEED * s;
+  return exp(-e * e * 1.5) * exp(-0.2 * s) * WATER.y;
+}
+// The bright net the waves throw on the surface, seen from under it.
+float caustic(vec2 q, float t) {
+  vec2 w = q * 0.9 + 0.35 * vec2(sin(q.y * 1.3 + t * 0.7), sin(q.x * 1.1 - t * 0.6));
+  float e = min(abs(sin(w.x * 2.1 + t * 0.4)), abs(sin(w.y * 2.3 - t * 0.5)));
+  return exp(-e * e * 40.0);
+}
+
 // The black lacquer: dark, and the house in its gloss (more of it in the
 // finale, when the house and its reflection join), from the mirrored eye's
-// frame.
+// frame. In the finale it is water: its waves bend the reflection, the
+// drop's ring runs over it; from under it, it is the window up to the world
+// over it.
 vec2 shadeTable(Hit h, vec3 ro, vec3 rd) {
   vec3 p = ro + rd * h.t;
   float far = exp(-max(length(p.xz) - 22.0, 0.0) / 14.0);
   vec2 sky = vec2(DAY.x * 0.2 + 0.012, 0.0);
   vec2 L = 0.03 * (sky + sunLight() * max(normalize(SUN.xyz).y, 0.0));
+  float liquid = WATER.y;
+  vec2 g = vec2(0.0);
+  float ring = 0.0;
+  if (liquid > 0.001) {
+    g = waterSlope(p.xz);
+    ring = dropRing(p.xz);
+  }
 #ifdef PASS_LIGHT
-  float fres = 0.04 + 0.96 * pow(1.0 - abs(rd.y), 5.0);
-  float g = (fres * 0.7 + 0.08 + 0.8 * MELT.y) * far;
-  if (u_res.w < MIRROR - 0.5) L += g * texture(u_refl, gl_FragCoord.xy / u_res.xy).xy;
+  if (u_res.w < MIRROR - 0.5) {
+    vec2 uv = gl_FragCoord.xy / u_res.xy;
+    vec2 ahead = normalize(FWD.xz + vec2(1e-5, 0.0));
+    uv += vec2(dot(g, RIGHT.xz), dot(g, ahead)) * (0.5 * VIEW.y) * 2.0 / (2.0 + 0.02 * h.t);
+    vec2 R = texture(u_refl, clamp(uv, vec2(0.002), vec2(0.998))).xy;
+    if (WATER.x > 0.5) {
+      // From under it: the world over it, plain inside the window
+      // straight up, dimmer slanting; the net of light; the ring.
+      float win = smoothstep(0.3, 0.8, abs(rd.y));
+      float far2 = exp(-max(length(p.xz) - 40.0, 0.0) / 20.0);
+      return (R * mix(0.7, 1.05, win) + vec2(0.05, 0.0) * caustic(p.xz, STORY) * liquid
+              + ring * vec2(0.12, 0.3)) * far2;
+    }
+    float fres = 0.04 + 0.96 * pow(1.0 - abs(rd.y), 5.0);
+    float gl = (fres * 0.7 + 0.08 + 0.8 * MELT.y) * far;
+    L += gl * R;
+    // The crests catch the sky.
+    L += liquid * far * vec2(0.025, 0.0) * smoothstep(0.03, 0.12, length(g));
+  }
 #endif
-  return L * far;
+  return L * far + ring * vec2(0.15, 0.35) * far;
 }
 
 vec2 shade(Hit h, vec3 ro, vec3 rd) {
@@ -1211,6 +1279,46 @@ vec2 moments(vec3 ro, vec3 rd, float T) {
       L += SPARKS.x * (1.0 - age) * vec2(0.3, 1.2) * (lineK(dt.x, 0.008, pixelAt(dt.y)) + 0.15 * sline(dt.x, 0.04));
     }
   }
+  // His voice: rings out of his mouth the way he speaks (into the phone,
+  // or out into the street, the room), each word a little louder or
+  // softer.
+  if (VOICE.w > 0.002) {
+    vec2 dt = rayPoint(ro, rd, VOICE.xyz);
+    if (dt.y > 0.0 && dt.y < T + 0.3) {
+      float px = pixelAt(dt.y);
+      vec3 off = ro + rd * dt.y - VOICE.xyz;
+      vec3 way = VOICE_TO.xyz - rd * dot(VOICE_TO.xyz, rd);
+      float wl = length(way);
+      float toward = dot(off, way) / max(dt.x * wl, 1e-5);
+      // Seen from the side the rings open toward where he speaks; seen
+      // along it (he speaks to the eye) they are whole.
+      float arc = mix(1.0, smoothstep(-0.3, 0.8, toward), smoothstep(0.1, 0.5, wl));
+      for (int k = 0 + ZERO; k < 4; k++) {
+        float ph = STORY * 1.1 + float(k) * 0.25;
+        float f = fract(ph);
+        float loud = 0.35 + 0.65 * hash1(int(floor(ph)) * 4 + k, 91u);
+        float r = 0.05 + VOICE_TO.w * f;
+        float fade = smoothstep(0.0, 0.12, f) * (1.0 - f);
+        L += VOICE.w * loud * fade * arc * vec2(0.35, 1.0) * (lineK(abs(dt.x - r), 0.005, px) + 0.12 * sline(abs(dt.x - r), 0.03));
+      }
+    }
+  }
+  // And back: rings closing in on his ear (the phone at it) or on his
+  // head, as he listens to himself.
+  if (EAR.w > 0.002) {
+    vec2 dt = rayPoint(ro, rd, EAR.xyz);
+    if (dt.y > 0.0 && dt.y < T + 0.3) {
+      float px = pixelAt(dt.y);
+      for (int k = 0 + ZERO; k < 4; k++) {
+        float ph = STORY * 0.9 + float(k) * 0.25;
+        float f = fract(ph);
+        float loud = 0.35 + 0.65 * hash1(int(floor(ph)) * 4 + k, 93u);
+        float r = EAR_K.x + EAR_K.y * (1.0 - f);
+        float fade = smoothstep(0.0, 0.3, f) * smoothstep(1.0, 0.82, f);
+        L += EAR.w * loud * fade * vec2(0.6, 0.8) * (lineK(abs(dt.x - r), 0.005, px) + 0.12 * sline(abs(dt.x - r), 0.03));
+      }
+    }
+  }
   // The child's cup, slowed: time rings round it.
   if (CUP.w > 0.01) {
     vec2 dt = rayPoint(ro, rd, CUP.xyz);
@@ -1223,8 +1331,81 @@ vec2 moments(vec3 ro, vec3 rd, float T) {
   return L;
 }
 
+// A drop of light falls from the globe's crown down its axis to the
+// water, where its reflection rises to meet it (the mirrored eye draws
+// that one); where they meet, a flash, and the axis lights up from the
+// water to the crown (and in the water, its reflection down to the
+// reflected crown): one line through the world and its reflection.
+vec2 drop(vec3 ro, vec3 rd, float T) {
+  float s = since();
+  if (WATER.y < 0.001 || s < -DROP_FALL || s > 8.0) return vec2(0.0);
+  vec3 c = vec3(SPHERE.x, TABLE_Y, SPHERE.z);
+  vec2 L = vec2(0.0);
+  if (s < 0.0) {
+    float u = (s + DROP_FALL) / DROP_FALL;
+    float y = SPHERE.w * (1.0 - u * u);
+    vec3 b = c + vec3(0.0, y + 0.03, 0.0);
+    vec3 q = raySegment(ro, rd, b, b + vec3(0.0, 0.6 + 3.5 * u, 0.0));
+    if (q.y < T) {
+      float w = max(0.05, 2.0 * pixelAt(q.y));
+      float on = smoothstep(0.0, 0.1, u);
+      L += on * vec2(0.8, 2.0) * sline(q.x, w) * (1.0 - q.z);
+      L += on * vec2(0.1, 0.25) * sline(q.x, 0.8) * (1.0 - q.z);
+    }
+  } else {
+    vec2 q = rayPoint(ro, rd, c + vec3(0.0, 0.02, 0.0));
+    if (q.y < T + 0.1) {
+      float w = max(0.08, 2.0 * pixelAt(q.y));
+      float k = exp(-s * 1.4);
+      L += k * (vec2(1.2, 3.0) * sline(q.x, w) + vec2(0.15, 0.4) * sline(q.x, 1.0 + 3.0 * s));
+    }
+    vec3 a = raySegment(ro, rd, c, c + vec3(0.0, SPHERE.w, 0.0));
+    if (a.y < T) {
+      float w = max(0.04, 1.5 * pixelAt(a.y));
+      float front = smoothstep(0.0, 2.0, s * 30.0 - a.z * SPHERE.w);
+      L += front * exp(-s * 0.9) * (1.0 - 0.6 * a.z) * (vec2(0.25, 0.6) * sline(a.x, w) + vec2(0.03, 0.07) * sline(a.x, 0.6));
+    }
+  }
+  return L;
+}
+
+// Shafts of light down from the surface into the water, in the mirrored
+// eye's frame (where the deep lies over the level): slanting, swaying.
+vec2 shafts(vec3 ro, vec3 rd, float T) {
+  float far = min(T, 36.0);
+  float dt = far / 14.0;
+  float acc = 0.0;
+  float j = rand(uint(gl_FragCoord.x) * 1973u + uint(gl_FragCoord.y) * 9277u);
+  for (int i = 0 + ZERO; i < 14; i++) {
+    vec3 p = ro + rd * (dt * (float(i) + j));
+    float depth = p.y - TABLE_Y;
+    if (depth > 0.0) {
+      vec2 q = p.xz - vec2(0.35, 0.2) * depth;
+      float n = noise2(q * 0.55 + vec2(0.1, 0.07) * STORY, 77u);
+      acc += smoothstep(0.55, 0.85, n) * exp(-depth / 12.0);
+    }
+  }
+  return vec2(0.012, 0.0) * acc * dt * WATER.y;
+}
+
 vec2 air(vec3 ro, vec3 rd, float T) {
-  return rings(ro, rd, T) + route(ro, rd, T) + moments(ro, rd, T);
+  return rings(ro, rd, T) + route(ro, rd, T) + moments(ro, rd, T) + drop(ro, rd, T);
+}
+
+// Under the water the far fades to the water's own murk: light from over
+// the surface, dark below.
+vec2 underwater(vec2 L, float t, vec3 rd) {
+  float deep = underDeep();
+  if (WATER.x < 0.5 || u_res.w > MIRROR - 0.5) return L;
+  float a = exp(-min(t, 400.0) / mix(300.0, 24.0, deep));
+  float aw = exp(-min(t, 400.0) / mix(300.0, 14.0, deep));
+  float haze = mix(0.035, 0.004, smoothstep(-0.4, 0.7, rd.y));
+  return vec2(L.x * a + haze * (1.0 - a), L.y * aw);
+}
+vec2 underAir(vec2 A, vec3 ro, vec3 rd, float T) {
+  if (WATER.x < 0.5 || u_res.w > MIRROR - 0.5) return A;
+  A *= exp(-min(T, 30.0) / mix(300.0, 40.0, underDeep()));
+  return A + shafts(ro, rd, T);
 }
 
 // ---- the passes ----
@@ -1281,7 +1462,8 @@ void main() {
 void main() {
   vec3 ro = EYE.xyz, rd = eyeRay();
   Hit h = trace(ro, rd, 1e4);
-  vec2 L = shade(h, ro, rd) + air(ro, rd, h.kind == K_VOID ? 1e5 : h.t);
+  float T = h.kind == K_VOID ? 1e5 : h.t;
+  vec2 L = underwater(shade(h, ro, rd), T, rd) + underAir(air(ro, rd, T), ro, rd, T);
   o = worldPixel(L, h);
 }
 
@@ -1326,9 +1508,10 @@ void main() {
   }
   o = vec4(vis, 0.0, 0.0, 1.0);
 #elif defined(PASS_LIGHT)
-  o = worldPixel(shade(h, ro, rd), h);
+  o = worldPixel(underwater(shade(h, ro, rd), h.kind == K_VOID ? 1e5 : h.t, rd), h);
 #elif defined(PASS_FX)
-  o = vec4(max(air(ro, rd, h.kind == K_VOID ? 1e5 : h.t), 0.0) * u_res.z, 0.0, 0.0);
+  float T = h.kind == K_VOID ? 1e5 : h.t;
+  o = vec4(max(underAir(air(ro, rd, T), ro, rd, T), 0.0) * u_res.z, 0.0, 0.0);
 #endif
 }
 #endif

@@ -633,6 +633,15 @@ fn stairwell(cells: &mut [Vec<Prim>]) {
                 .tone(0.2),
             );
         }
+        // A pier of wall between the lobby's door and the shop: he leans
+        // on it after the tram and at night.
+        if col == 0 {
+            out.push(
+                slab(mat::FRAME, v3(-6.18, 0.0, -0.14), v3(-5.6, 2.35, 0.0))
+                    .flags(flag::WALL | flag::NEAR)
+                    .tone(0.2),
+            );
+        }
         // Kick plates under the glass, none at the doors.
         let plates: &[[f32; 2]] = match col {
             0 => &[[-9.75, -7.42]],
@@ -1461,13 +1470,8 @@ fn study(out: &mut Vec<Prim>) {
             .pitch(0.5)
             .flags(flag::GLOSS),
     );
-    // The laptop, open toward him.
+    // The laptop's base; its lid moves (`props::movers`).
     out.push(cube(mat::METAL, d + v3(0.05, 0.78, -0.2), v3(0.2, 0.008, 0.14)).tone(0.55));
-    out.push(
-        cube(mat::SCREEN, d + v3(0.05, 0.92, -0.05), v3(0.2, 0.13, 0.006))
-            .pitch(0.25)
-            .tone(0.6),
-    );
     out.push(cube(
         mat::CALENDAR,
         v3(5.3, y + 1.55, -4.58),

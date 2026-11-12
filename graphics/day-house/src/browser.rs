@@ -182,6 +182,8 @@ fn defines() -> String {
         ("BACKDROP_HALF", f(house::BACKDROP_HALF)),
         ("BACKDROP_TOP", f(house::BACKDROP_TOP)),
         ("MIRROR", f(MIRROR)),
+        ("DROP_FALL", f(crate::story::DROP_FALL)),
+        ("DROP_SPEED", f(crate::story::DROP_SPEED)),
         ("TRACK_Z", f(house::TRACK_Z)),
         ("COL_1", f(house::COLUMNS[1][0])),
         ("COL_2", f(house::COLUMNS[2][0])),
@@ -1053,6 +1055,15 @@ impl DayHouse {
             axis[1] = -axis[1];
         }
         let mirrored: Vec<f32> = mirrored.iter().flatten().copied().collect();
+        // Under the water the eye sees the world mirrored (under the surface
+        // lies the reflection) and the world above through the surface: the
+        // eye's frame and the reflection's swap.
+        let under = slots[0][1] < house::TABLE;
+        let (main, refl) = if under {
+            (&mirrored, &flat)
+        } else {
+            (&flat, &mirrored)
+        };
         let (moving, cells) = self.scene.moving(&f);
         let cells: Vec<f32> = cells.iter().flatten().copied().collect();
         let people: Vec<f32> = self.scene.people(&f).iter().flatten().copied().collect();
@@ -1093,35 +1104,35 @@ impl DayHouse {
                 // and no shadow; the lens's frame only fills their units.
                 let half = self.mirror_frame.size;
                 self.mirror_records.bind(gl);
-                world(hits, &mirrored, half, MIRROR);
+                world(hits, refl, half, MIRROR);
                 self.mirror_frame.bind(gl);
                 self.mirror_records.read(gl);
                 self.lens_frame.read(gl, UNIT_REFL);
                 self.lens_frame.read(gl, UNIT_SHADOW);
-                world(light, &mirrored, half, MIRROR);
+                world(light, refl, half, MIRROR);
                 gl.enable(Gl::BLEND);
                 gl.blend_func(Gl::ONE, Gl::ONE);
-                world(fx, &mirrored, half, MIRROR);
+                world(fx, refl, half, MIRROR);
                 gl.disable(Gl::BLEND);
                 // The eye's own: the light also writes the depth and the
                 // blur; the light in the air is added over it.
                 self.records.bind(gl);
-                world(hits, &flat, (ww, wh), 0.0);
+                world(hits, main, (ww, wh), 0.0);
                 self.shadow_frame.bind(gl);
                 self.records.read(gl);
-                world(shadow, &flat, (ww, wh), 0.0);
+                world(shadow, main, (ww, wh), 0.0);
                 self.world_frame.bind(gl);
                 self.shadow_frame.read(gl, UNIT_SHADOW);
                 self.mirror_frame.read(gl, UNIT_REFL);
-                world(light, &flat, (ww, wh), 0.0);
+                world(light, main, (ww, wh), 0.0);
                 gl.enable(Gl::BLEND);
                 gl.blend_func(Gl::ONE, Gl::ONE);
-                world(fx, &flat, (ww, wh), 0.0);
+                world(fx, main, (ww, wh), 0.0);
                 gl.disable(Gl::BLEND);
             }
             World::Whole(all) => {
                 self.world_frame.bind(gl);
-                world(all, &flat, (ww, wh), 0.0);
+                world(all, main, (ww, wh), 0.0);
             }
         }
 

@@ -45,6 +45,11 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define HONK    u_d[SX + 15]  // the tram's horn, how much
 #define COIN    u_d[SX + 16]  // the coin's glint, how much
 #define LIFT    u_d[SX + 17]  // the lift's floor, moving
+#define VOICE   u_d[SX + 18]  // his mouth, how much he speaks
+#define VOICE_TO u_d[SX + 19] // the way his voice goes, how far
+#define EAR     u_d[SX + 20]  // where it comes back to, how much he listens
+#define EAR_K   u_d[SX + 21]  // the smallest ring there, the widest more
+#define WATER   u_d[SX + 22]  // the eye under the water, how liquid, how deep, since the drop met its own
 #define ROUTE_AT(i) u_d[SLOT_PATH + (i)]
 
 #define TIME     RIGHT.w
@@ -144,6 +149,16 @@ float pixelAt(float t) {
 vec3 eyeRay() {
   vec2 ndc = gl_FragCoord.xy / u_res.xy * 2.0 - 1.0;
   return normalize(FWD.xyz + RIGHT.xyz * (ndc.x / VIEW.x) + UP.xyz * (ndc.y / VIEW.y));
+}
+
+// Under the water the whole frame sways a little, more the deeper.
+float underDeep() {
+  return WATER.x * smoothstep(0.0, 0.8, WATER.z);
+}
+vec2 waterUv(vec2 uv) {
+  float k = underDeep();
+  if (k < 0.001) return uv;
+  return uv + k * 0.003 * vec2(sin(uv.y * 23.0 + TIME * 1.3), sin(uv.x * 17.0 - TIME * 1.1));
 }
 
 float softmin(float a, float b, float k) {

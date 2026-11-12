@@ -228,6 +228,9 @@ pub struct Keys {
     pub go: f32,
     pub gone: f32,
     pub stop: f32,
+    /// At the wall by his door after the tram, and after the ride.
+    pub wall: f32,
+    pub wall2: f32,
     pub rest: f32,
     pub p_sit: f32,
 }
@@ -259,6 +262,8 @@ pub struct Held {
     /// His phone stood up at his ear: how far, and the way its face looks.
     pub phone_tilt: f32,
     pub phone_yaw: f32,
+    /// His laptop's lid: 0 open toward him … 1 shut.
+    pub lid: f32,
     pub chair: V3,
     pub can: V3,
     pub can_tilt: f32,
@@ -314,9 +319,16 @@ const CRANK: V3 = v3(4.35, 0.66, -2.0);
 pub const STRAP_Y: f32 = 1.93;
 pub const STRAP_Z: f32 = 4.45;
 pub const STRAPS: [f32; 4] = [-3.0, -1.3, 0.5, 2.1];
-/// Where he stands by the lamp for the night, and which way he faces.
-pub const REST: [f32; 2] = [1.1, 0.95];
-pub const REST_HEADING: f32 = 0.25;
+/// How long he is out of the frame on his ride (the evening goes on
+/// meanwhile) before he is back in from the left.
+pub const BIKE_AWAY: f32 = 9.0;
+/// The wall by his door (between the lobby's door and the shop) where he
+/// stands with his back to it, facing the street: after the tram, and
+/// after the ride for the night.
+pub const DOOR_WALL: [f32; 2] = [-5.89, 0.3];
+/// How long he stays there after the tram (and before the night).
+pub const WALL_SPAN: f32 = 16.0;
+pub const WALL2_SPAN: f32 = 14.5;
 /// The bicycle's day starts over this long before the loop's end (it
 /// stands just where it stood in the morning).
 const BIKE_HOME_BEFORE: f32 = 3.0;
@@ -414,19 +426,30 @@ impl Cast {
         world.tram.go2 = h.t + 0.3;
         h.turn_to(PI).wait_until(world.tram.go2 + 2.2);
 
+        // Across to the wall by his door: his back to it, he rests, speaks
+        // into his phone and listens to it at his ear.
+        h.walk(
+            &[[-4.6, 5.4], [-5.7, 1.3], [DOOR_WALL[0], DOOR_WALL[1]]],
+            street,
+            WALKING,
+        );
+        h.turn_to(0.0).mark("wall");
+        k.wall = h.when("wall");
+        h.wait(WALL_SPAN);
+
         // The shop.
         h.walk(
-            &[[-1.2, 5.4], [-1.2, 0.3], [-1.4, -1.2], [-2.65, -2.3]],
+            &[[-4.0, 0.75], [-1.2, 0.6], [-1.4, -1.2], [-2.65, -2.3]],
             street,
             WALKING,
         );
         h.turn_to(-FRAC_PI_2).mark("queue");
         k.queue = h.when("queue");
         let q = k.queue;
-        h.wait_until(q + 5.8);
+        h.wait_until(at_shop(q, 5.8));
         h.walk(&[[-3.75, -2.3]], flat, STROLL);
         h.turn_to(-FRAC_PI_2);
-        h.wait_until(q + 15.4);
+        h.wait_until(at_shop(q, 15.4));
         h.walk(&[[-2.0, -1.2], [-1.4, -0.4]], street, WALKING);
         h.mark("shop_out");
         k.shop_out = h.when("shop_out");
@@ -524,7 +547,7 @@ impl Cast {
         h.wait(3.0);
         k.go = h.t;
         k.gone = k.go + Bike::out_after();
-        k.stop = k.gone + Bike::stop_after();
+        k.stop = k.gone + BIKE_AWAY + Bike::stop_after();
         world.bike = Bike {
             take: k.take,
             go: k.go,
@@ -536,8 +559,16 @@ impl Cast {
         h.cut(v3(BIKE_IN + 0.05, 0.0, BIKE_Z - 0.36), FRAC_PI_2);
         h.ride_until(Ride::Bike, k.stop, &world);
         h.wait(3.4);
-        h.walk(&[[REST[0], REST[1]]], street, WALKING);
-        h.turn_to(REST_HEADING).mark("rest");
+        // Back to the wall by his door: he leans on it, speaks his day
+        // aloud and listens; then the night.
+        h.walk(
+            &[[-3.0, 0.8], [-5.3, 0.75], [DOOR_WALL[0], DOOR_WALL[1]]],
+            street,
+            WALKING,
+        );
+        h.turn_to(0.0).mark("wall2");
+        k.wall2 = h.when("wall2");
+        h.wait(WALL2_SPAN).mark("rest");
         k.rest = h.when("rest");
         h.wait_until(LOOP + 10.0);
 
@@ -562,7 +593,7 @@ impl Cast {
         // K behind the counter: L's purchase, then his.
         let mut kp = Plan::new(0.0, v3(-4.82, 0.0, -2.45), FRAC_PI_2, false, 1.0, 4.4);
         kp.wait_until(q - 3.0).turn_by(PI).wait(0.6).turn_by(-PI);
-        kp.wait_until(q + 10.6)
+        kp.wait_until(at_shop(q, 10.6))
             .turn_by(PI)
             .wait(0.7)
             .turn_by(-PI)
@@ -584,10 +615,10 @@ impl Cast {
             STROLL,
         );
         l.turn_to(-FRAC_PI_2);
-        let paid = l.t.max(q + 0.8);
+        let paid = l.t.max(at_shop(q, 0.8));
         l.wait_until(paid);
         l.walk(&[[-3.6, -1.6], [-3.4, -1.0]], flat, STROLL);
-        l.turn_to(0.0).wait_until(q + 30.0);
+        l.turn_to(0.0).wait_until(at_shop(q, 30.0));
         l.walk(
             &[
                 [-2.2, -0.9],
@@ -666,6 +697,7 @@ impl Cast {
             phone: DESK_PHONE,
             phone_tilt: 0.0,
             phone_yaw: 0.0,
+            lid: 0.0,
             chair: v3(-0.75 + 0.3 * smooth(k.rise, k.rise + 1.0, s), 9.0, -3.0),
             can: HIDDEN,
             can_tilt: 0.0,
@@ -814,6 +846,103 @@ impl Cast {
         reach(pose, local, 1, lerp3(saddle, grip(1.0), riding), held);
     }
 
+    /// By his door, his back to the wall: he rests and speaks his day,
+    /// then listens to it. After the tram into his phone held before him,
+    /// then with it at his ear; after the ride aloud, then the night.
+    fn at_wall(&self, s: f32, pose: &mut Pose, local: &Local) {
+        let k = &self.keys;
+        let (w, w2) = (k.wall, k.wall2);
+        if w == 0.0 || s < w - 1.0 {
+            return;
+        }
+        // Hips and shoulders back on the wall, his heels out from it.
+        let leaning = window(
+            s,
+            w + 0.2,
+            w + 1.2,
+            w + WALL_SPAN - 1.4,
+            w + WALL_SPAN - 0.4,
+        ) + smooth(w2 + 0.2, w2 + 1.2, s);
+        pose.pelvis.z -= 0.07 * leaning;
+        pose.lean -= 0.14 * leaning;
+        // A breath with his head back on the wall before he speaks.
+        pose.nod -= 0.14
+            * (window(s, w + 0.6, w + 1.4, w + 1.8, w + 2.4)
+                + window(s, w2 + 1.0, w2 + 2.2, w2 + 3.0, w2 + 3.6));
+
+        // After the tram: the phone out of his pocket, held before his
+        // face as he records (he looks at it), then at his right ear.
+        let before = window(s, w + 1.4, w + 2.2, w + 7.9, w + 8.5);
+        let at_eyes = v3(-0.07, 1.27, 0.3);
+        hold(pose, 1, at_eyes, before);
+        look(
+            pose,
+            local,
+            local.world(pose.pelvis + at_eyes - Y * STAND),
+            0.9 * window(s, w + 1.6, w + 2.3, w + 7.8, w + 8.4),
+        );
+        let at_ear = window(s, w + 7.9, w + 8.6, w + 13.4, w + 14.0);
+        if at_ear > 0.0 {
+            let b = build(pose);
+            let ear = local.world(b.head - b.face.left * 0.13 + b.face.forward * 0.01);
+            reach(pose, local, 1, ear, at_ear);
+        }
+        // Listening, his eyes down and still.
+        pose.nod += 0.2 * window(s, w + 8.8, w + 9.4, w + 13.0, w + 13.6);
+        pose.turn -= 0.12 * window(s, w + 8.8, w + 9.4, w + 13.0, w + 13.6);
+
+        // After the ride: aloud, his right hand a little with the words;
+        // then he listens, his head down.
+        let talk = window(s, w2 + 3.4, w2 + 3.8, w2 + 7.8, w2 + 8.3);
+        pose.arms[1] += 0.22 * talk * (0.5 + 0.5 * (TAU * s / 1.4).sin());
+        pose.bend[1] += 0.55 * talk;
+        pose.nod += 0.16 * window(s, w2 + 8.8, w2 + 9.4, w2 + 12.8, w2 + 13.4);
+    }
+
+    /// His voice this moment, for the shaders: the mouth it leaves and how
+    /// much he speaks; the way it goes and how far; where it comes back to
+    /// and how much he listens; the smallest and the widest ring there.
+    pub fn voice(&self, s: f32, h: &Body, phone: V3) -> [[f32; 4]; 4] {
+        let k = &self.keys;
+        let (w, w2, d) = (k.wall, k.wall2, k.desk);
+        let into_phone = window(s, w + 2.6, w + 3.0, w + 7.2, w + 7.7);
+        let aloud = window(s, w2 + 3.4, w2 + 3.8, w2 + 7.8, w2 + 8.3)
+            + window(
+                s,
+                d + DESK_SPEAK[0],
+                d + DESK_SPEAK[0] + 0.4,
+                d + DESK_SPEAK[1] - 0.5,
+                d + DESK_SPEAK[1],
+            );
+        let (way, far) = if into_phone > 0.0 {
+            let to = phone - h.mouth;
+            (to.normalize(), to.length() + 0.03)
+        } else {
+            (h.face.forward, 0.9)
+        };
+        let at_phone = window(s, w + 8.9, w + 9.3, w + 13.0, w + 13.5);
+        let inward = window(s, w2 + 8.8, w2 + 9.2, w2 + 12.8, w2 + 13.3)
+            + window(
+                s,
+                d + DESK_LISTEN[0],
+                d + DESK_LISTEN[0] + 0.4,
+                d + DESK_LISTEN[1] - 0.5,
+                d + DESK_LISTEN[1],
+            );
+        let (to, rings) = if at_phone > 0.0 {
+            (phone, [0.035, 0.4])
+        } else {
+            (h.head, [0.17, 0.75])
+        };
+        let m = h.mouth;
+        [
+            [m.x, m.y, m.z, into_phone + aloud],
+            [way.x, way.y, way.z, far],
+            [to.x, to.y, to.z, at_phone + inward],
+            [rings[0], rings[1], 0.0, 0.0],
+        ]
+    }
+
     fn gestures(&self, i: usize, s: f32, pose: &mut Pose, local: &Local) {
         let k = &self.keys;
         let q = k.queue;
@@ -893,7 +1022,13 @@ impl Cast {
                 );
                 // The coin: out of his pocket, it slips, he picks it up,
                 // lays it on the counter.
-                let coin_out = window(s, q + 1.0, q + 1.6, q + 2.9, q + 3.0);
+                let coin_out = window(
+                    s,
+                    at_shop(q, 1.0),
+                    at_shop(q, 1.6),
+                    at_shop(q, 2.9),
+                    at_shop(q, 3.0),
+                );
                 hold(pose, 1, v3(-0.12, 1.05, 0.3), coin_out);
                 look(
                     pose,
@@ -906,30 +1041,69 @@ impl Cast {
                     pose,
                     local,
                     fallen,
-                    window(s, q + 2.95, q + 3.2, q + 5.2, q + 5.6),
+                    window(
+                        s,
+                        at_shop(q, 2.95),
+                        at_shop(q, 3.2),
+                        at_shop(q, 5.2),
+                        at_shop(q, 5.6),
+                    ),
                 );
-                crouch(pose, window(s, q + 3.3, q + 4.1, q + 4.7, q + 5.5));
+                crouch(
+                    pose,
+                    window(
+                        s,
+                        at_shop(q, 3.3),
+                        at_shop(q, 4.1),
+                        at_shop(q, 4.7),
+                        at_shop(q, 5.5),
+                    ),
+                );
                 reach(
                     pose,
                     local,
                     1,
                     fallen,
-                    window(s, q + 3.9, q + 4.3, q + 4.6, q + 5.0),
+                    window(
+                        s,
+                        at_shop(q, 3.9),
+                        at_shop(q, 4.3),
+                        at_shop(q, 4.6),
+                        at_shop(q, 5.0),
+                    ),
                 );
                 hold(
                     pose,
                     1,
                     v3(-0.15, 1.0, 0.25),
-                    window(s, q + 4.8, q + 5.3, q + 5.9, q + 6.2),
+                    window(
+                        s,
+                        at_shop(q, 4.8),
+                        at_shop(q, 5.3),
+                        at_shop(q, 5.9),
+                        at_shop(q, 6.2),
+                    ),
                 );
-                let give = window(s, q + 8.4, q + 8.9, q + 9.2, q + 9.6);
+                let give = window(
+                    s,
+                    at_shop(q, 8.4),
+                    at_shop(q, 8.9),
+                    at_shop(q, 9.2),
+                    at_shop(q, 9.6),
+                );
                 pose.lean += 0.3 * give;
                 reach(pose, local, 1, COUNTER_COIN, give);
                 look(
                     pose,
                     local,
                     v3(-4.75, 1.6, -2.45),
-                    window(s, q + 8.6, q + 9.0, q + 15.0, q + 15.4),
+                    window(
+                        s,
+                        at_shop(q, 8.6),
+                        at_shop(q, 9.0),
+                        at_shop(q, 15.0),
+                        at_shop(q, 15.4),
+                    ),
                 );
                 // The bread in its bag: from K's hand, carried at his side,
                 // set on the kitchen table.
@@ -1058,12 +1232,46 @@ impl Cast {
                     temples,
                 );
                 pose.nod += 0.3 * temples;
-                // Done: he leans back and looks out at the evening.
-                let done = window(s, d + 19.0, d + 19.8, d + 21.0, d + 21.6);
-                pose.lean -= 0.18 * done;
-                look(pose, local, v3(3.9, 13.4, 6.0), done);
+                // Done: both hands on the lid's edge, he shuts it; he sits
+                // back, looks out at the evening, speaks his day aloud and
+                // listens to it.
+                let lid = smooth(d + DESK_LID[0], d + DESK_LID[1], s);
+                let shut = window(s, d + 18.8, d + 19.3, d + 20.6, d + 21.1);
+                let edge = lid_edge(lid);
+                reach(pose, local, 0, edge + v3(0.11, 0.0, 0.0), shut);
+                reach(pose, local, 1, edge - v3(0.11, 0.0, 0.0), shut);
+                look(pose, local, edge - v3(0.0, 0.05, 0.0), shut);
+                let back = window(s, d + 20.6, d + 21.6, d + 32.0, d + 32.8);
+                pose.lean -= 0.2 * back;
+                pose.pelvis.z -= 0.05 * back;
+                look(
+                    pose,
+                    local,
+                    v3(3.6, 13.5, 6.0),
+                    window(s, d + 21.0, d + 21.8, d + 27.0, d + 27.6),
+                );
+                let talk = window(
+                    s,
+                    d + DESK_SPEAK[0],
+                    d + DESK_SPEAK[0] + 0.4,
+                    d + DESK_SPEAK[1] - 0.5,
+                    d + DESK_SPEAK[1],
+                );
+                pose.arms[1] += 0.25 * talk * (0.5 + 0.5 * (TAU * s / 1.5).sin());
+                pose.bend[1] += 0.6 * talk;
+                // Listening, his head down a little, his eyes on the shut lid.
+                let inward = window(
+                    s,
+                    d + DESK_LISTEN[0],
+                    d + DESK_LISTEN[0] + 0.6,
+                    d + DESK_LISTEN[1] - 0.4,
+                    d + DESK_LISTEN[1] + 0.4,
+                );
+                pose.nod += 0.22 * inward;
+                pose.turn -= 0.1 * inward;
                 self.on_bike(s, pose, local);
-                // By the lamp, the night: he looks up at the sky.
+                self.at_wall(s, pose, local);
+                // By his door, the night: he looks up at the sky.
                 pose.nod -= 0.25 * smooth(k.rest + 4.0, k.rest + 6.0, s);
             }
             PARTNER => {
@@ -1219,16 +1427,26 @@ impl Cast {
                     local,
                     1,
                     HANDOVER,
-                    window(s, q - 1.5, q - 0.9, q - 0.3, q + 0.2),
+                    window(s, q - 1.5, q - 0.9, q - 0.3, at_shop(q, 0.2)),
                 );
                 // His coin, his bag.
-                let coin = window(s, q + 9.5, q + 9.8, q + 10.1, q + 10.4);
+                let coin = window(
+                    s,
+                    at_shop(q, 9.5),
+                    at_shop(q, 9.8),
+                    at_shop(q, 10.1),
+                    at_shop(q, 10.4),
+                );
                 pose.lean += 0.25 * coin + 0.25 * till;
                 reach(
                     pose,
                     local,
                     0,
-                    lerp3(COUNTER_COIN, TILL, smooth(q + 9.8, q + 10.2, s)),
+                    lerp3(
+                        COUNTER_COIN,
+                        TILL,
+                        smooth(at_shop(q, 9.8), at_shop(q, 10.2), s),
+                    ),
                     coin,
                 );
                 reach(
@@ -1236,7 +1454,13 @@ impl Cast {
                     local,
                     1,
                     LOAF_SHELF,
-                    window(s, q + 12.0, q + 12.3, q + 12.6, q + 12.9),
+                    window(
+                        s,
+                        at_shop(q, 12.0),
+                        at_shop(q, 12.3),
+                        at_shop(q, 12.6),
+                        at_shop(q, 12.9),
+                    ),
                 );
                 let hand = keeper_hands_bag(q);
                 reach(
@@ -1246,7 +1470,7 @@ impl Cast {
                     HANDOVER,
                     window(s, hand - 1.0, hand - 0.4, hand + 0.2, hand + 0.6),
                 );
-                let customer = if s < q + 2.0 {
+                let customer = if s < at_shop(q, 2.0) {
                     v3(-3.75, 1.6, -2.3)
                 } else {
                     v3(-3.75, 1.7, -2.3)
@@ -1262,20 +1486,26 @@ impl Cast {
                     local,
                     1,
                     HANDOVER,
-                    window(s, q - 0.8, q - 0.4, q - 0.2, q + 0.3),
+                    window(s, q - 0.8, q - 0.4, q - 0.2, at_shop(q, 0.3)),
                 );
                 hold(
                     pose,
                     1,
                     CARRY,
-                    window(s, q - 0.2, q + 0.3, LOOP + 5.0, LOOP + 6.0),
+                    window(s, q - 0.2, at_shop(q, 0.3), LOOP + 5.0, LOOP + 6.0),
                 );
                 // Aside, she watches him chase his coin.
                 look(
                     pose,
                     local,
                     coin_floor(),
-                    window(s, q + 3.0, q + 3.4, q + 5.4, q + 6.0),
+                    window(
+                        s,
+                        at_shop(q, 3.0),
+                        at_shop(q, 3.4),
+                        at_shop(q, 5.4),
+                        at_shop(q, 6.0),
+                    ),
                 );
             }
             YOUTH => {
@@ -1426,10 +1656,10 @@ impl Cast {
 
         // The coin.
         let fallen = coin_floor();
-        if s > q + 1.3 && s < q + 2.9 {
+        if s > at_shop(q, 1.3) && s < at_shop(q, 2.9) {
             held.coin = grip(h, 1);
-        } else if s >= q + 2.9 && s < q + 4.45 {
-            let u = s - (q + 2.9);
+        } else if s >= at_shop(q, 2.9) && s < at_shop(q, 4.45) {
+            let u = s - (at_shop(q, 2.9));
             let from = v3(-2.77, 1.0, -2.3);
             let drop = (from.y - 0.012).max(0.0);
             let t_fall = (2.0 * drop / 9.8).sqrt();
@@ -1442,11 +1672,11 @@ impl Cast {
                 let hop = (0.06 - 4.9 * (b - 0.11) * (b - 0.11)).max(0.0) * smooth(0.0, 0.02, b);
                 held.coin = v3(fallen.x, 0.012 + hop, fallen.z);
             }
-        } else if s >= q + 4.45 && s < q + 9.1 {
+        } else if s >= at_shop(q, 4.45) && s < at_shop(q, 9.1) {
             held.coin = grip(h, 1);
-        } else if s >= q + 9.1 && s < q + 9.9 {
+        } else if s >= at_shop(q, 9.1) && s < at_shop(q, 9.9) {
             held.coin = COUNTER_COIN;
-        } else if s >= q + 9.9 && s < q + 10.3 {
+        } else if s >= at_shop(q, 9.9) && s < at_shop(q, 10.3) {
             held.coin = grip(&bodies[KEEPER], 0);
         }
 
@@ -1455,7 +1685,7 @@ impl Cast {
         let kp = &bodies[KEEPER];
         let hang = |b: &Body| grip(b, 1) - v3(0.0, BAG_DROP, 0.0);
         let take = keeper_hands_bag(q);
-        if s > q + 12.3 && s < take + 0.1 {
+        if s > at_shop(q, 12.3) && s < take + 0.1 {
             held.bag = hang(kp);
             held.bag_yaw = yaw_of(kp);
         } else if s >= take + 0.1 && s < k.bread + 1.1 {
@@ -1474,15 +1704,36 @@ impl Cast {
             held.bag2_yaw = yaw_of(lb);
         }
 
-        // His phone: it buzzes on the desk, then at his ear.
+        // By the wall after the tram: out of his pocket, before his face as
+        // he records, then at his ear.
+        let w = k.wall;
+        if s > w + 1.45 && s < w + 14.0 {
+            held.phone = grip(h, 1) - v3(0.0, 0.005, 0.0);
+            let to = h.head - held.phone;
+            held.phone_yaw = to.x.atan2(to.z);
+            let ear = smooth(w + 8.0, w + 8.6, s) * (1.0 - smooth(w + 13.4, w + 13.9, s));
+            held.phone_tilt = mix(1.0, FRAC_PI_2, ear);
+        } else {
+            // On the desk: it buzzes, then at his ear.
+            let d = k.desk;
+            let buzz = window(s, d + 4.9, d + 5.0, d + 5.9, d + 6.0);
+            held.phone = DESK_PHONE
+                + v3(
+                    0.004 * (TAU * s * 23.0).sin(),
+                    0.0,
+                    0.003 * (TAU * s * 31.0).sin(),
+                ) * buzz;
+        }
         let d = k.desk;
-        let buzz = window(s, d + 4.9, d + 5.0, d + 5.9, d + 6.0);
-        held.phone = DESK_PHONE
-            + v3(
-                0.004 * (TAU * s * 23.0).sin(),
-                0.0,
-                0.003 * (TAU * s * 31.0).sin(),
-            ) * buzz;
+        // He shuts the lid at the day's end; it stands open again once the
+        // house has gone, before the morning.
+        held.lid = window(
+            s,
+            d + DESK_LID[0],
+            d + DESK_LID[1],
+            k.rest + 48.0,
+            k.rest + 48.5,
+        );
         let call = smooth(d + 6.05, d + 6.2, s) * (1.0 - smooth(d + 10.75, d + 10.9, s));
         if call > 0.0 {
             held.phone = held.phone.lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
@@ -1518,8 +1769,26 @@ impl Default for Cast {
     }
 }
 
-/// How long he works at his desk, from sitting down to getting up.
-pub const DESK_SPAN: f32 = 21.5;
+/// How long he sits at his desk, from sitting down to getting up: work,
+/// the call, work, the lid closed; he speaks his day aloud, then listens.
+pub const DESK_SPAN: f32 = 33.0;
+/// When he speaks and when he listens there, from sitting down.
+pub const DESK_SPEAK: [f32; 2] = [21.6, 26.8];
+pub const DESK_LISTEN: [f32; 2] = [27.2, 31.6];
+/// The lid going down under his hands, from sitting down.
+pub const DESK_LID: [f32; 2] = [19.4, 20.6];
+/// The laptop lid's hinge at the base's far edge, and the lid's length.
+pub const LID_HINGE: V3 = v3(3.95, 12.792, -2.488);
+pub const LID_LONG: f32 = 0.26;
+/// The lid's pitch (+ leans it away from him) at `lid`: open, shut.
+pub fn lid_pitch(lid: f32) -> f32 {
+    mix(0.25, -FRAC_PI_2, lid)
+}
+/// The middle of the lid's far edge, where his fingers take it.
+pub fn lid_edge(lid: f32) -> V3 {
+    let (s, c) = lid_pitch(lid).sin_cos();
+    LID_HINGE + v3(0.0, c, s) * LID_LONG + v3(0.0, -s, c) * 0.012
+}
 
 /// Each person's hair: its cut and its shade, 0 black … 7 grey.
 const HAIR: [(Hair, u8); PEOPLE] = [
@@ -1541,9 +1810,30 @@ const CLOTHES: [f32; PEOPLE] = [
     0.32, 0.72, 0.9, 0.55, 0.62, 0.18, 0.4, 0.5, 0.15, 0.68, 0.85, 0.28,
 ];
 
+/// The shop's beats, `x` s after he stands in the queue as first timed,
+/// given more time round his coin: it lies in his hand longer, falls as it
+/// falls, and he looks, crouches, picks it up and stands slower; all after
+/// that comes `COIN_MORE` s later.
+pub fn at_shop(q: f32, x: f32) -> f32 {
+    const MAP: [(f32, f32); 4] = [(1.0, 1.0), (2.9, 4.0), (3.6, 4.7), (6.2, 6.2 + COIN_MORE)];
+    if x <= MAP[0].0 {
+        return q + x;
+    }
+    for w in MAP.windows(2) {
+        let ((a, a2), (b, b2)) = (w[0], w[1]);
+        if x <= b {
+            return q + a2 + (x - a) * (b2 - a2) / (b - a);
+        }
+    }
+    q + x + COIN_MORE
+}
+
+/// How much later all after his coin comes than first timed.
+pub const COIN_MORE: f32 = 2.8;
+
 /// K holds his bag out to him over the counter here.
 fn keeper_hands_bag(q: f32) -> f32 {
-    q + 14.5
+    at_shop(q, 14.5)
 }
 
 /// Where his coin lies after it rolled.

@@ -358,7 +358,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       {refreshing ? 'ОБНОВЛЯЮ…' : `ОБНОВЛЕНО ${formatTime(new Date(loadedAt).toISOString())}`}
     </ProductText>
   </Pressable>;
-  const tabs = <Tabs fit filled value={tab} onChange={value => { changeView(value); setSelected(null); }} options={[
+  const tabs = <Tabs fit value={tab} onChange={value => { changeView(value); setSelected(null); }} options={[
     { id: 'walkers', label: `ИДУЩИЕ ${walkers.length}` },
     { id: 'team', label: `КОМАНДА ${team.length}` },
   ]} />;

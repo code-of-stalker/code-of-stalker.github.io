@@ -1004,7 +1004,11 @@ vec2 backdrop(vec3 p) {
     float star = hash2(int(gs.x), int(gs.y), 71u);
     vec2 f = fract(p.xy * 2.2) - 0.5;
     L.x += DAY.z * step(0.965, star) * exp(-dot(f, f) * 60.0) * 0.6 * (0.6 + 0.4 * sin(TIME * 2.0 + star * 40.0));
-    float md = length(p.xy - vec2(-13.5, 18.5));
+    // Under the water the eye sees the world turned over the surface,
+    // the reflection turned left for right: the moon goes to the other
+    // side, so it stays where the reflection showed it as the camera goes
+    // under (and is gone with the night before the loop comes round).
+    float md = length(p.xy - vec2(WATER.x > 0.0 ? 13.5 : -13.5, 18.5));
     L += DAY.z * (vec2(0.55, 0.06) * smoothstep(0.85, 0.78, md) + vec2(0.04, 0.0) * exp(-md / 2.5));
   }
   // Painted only round the house: toward its sides and top the backdrop
@@ -1149,19 +1153,22 @@ vec2 shadeTable(Hit h, vec3 ro, vec3 rd) {
     vec2 ahead = normalize(FWD.xz + vec2(1e-5, 0.0));
     uv += vec2(dot(g, RIGHT.xz), dot(g, ahead)) * (0.5 * VIEW.y) * 2.0 / (2.0 + 0.02 * h.t);
     vec2 R = texture(u_refl, clamp(uv, vec2(0.002), vec2(0.998))).xy;
-    if (WATER.x > 0.5) {
-      // From under it: the world over it, plain inside the window
-      // straight up, dimmer slanting; the net of light; the ring.
-      float win = smoothstep(0.3, 0.8, abs(rd.y));
-      float far2 = exp(-max(length(p.xz) - 40.0, 0.0) / 20.0);
-      return (R * mix(0.7, 1.05, win) + vec2(0.05, 0.0) * caustic(p.xz, STORY) * liquid
-              + ring * vec2(0.12, 0.3)) * far2;
-    }
     float fres = 0.04 + 0.96 * pow(1.0 - abs(rd.y), 5.0);
     float gl = (fres * 0.7 + 0.08 + 0.8 * MELT.y) * far;
     L += gl * R;
     // The crests catch the sky.
     L += liquid * far * vec2(0.025, 0.0) * smoothstep(0.03, 0.12, length(g));
+    vec2 lacquer = L * far + ring * vec2(0.15, 0.35) * far;
+    if (WATER.x < 0.001) return lacquer;
+    // From under it: the world over it, plain inside the window straight
+    // up, dimmer slanting; the net of light; the ring. As the turned-over
+    // world under it becomes the morning's, the window becomes the
+    // lacquer again.
+    float win = smoothstep(0.3, 0.8, abs(rd.y));
+    float far2 = exp(-max(length(p.xz) - 40.0, 0.0) / 20.0);
+    vec2 below = (R * mix(0.7, 1.05, win) + vec2(0.05, 0.0) * caustic(p.xz, STORY) * liquid
+                  + ring * vec2(0.12, 0.3)) * far2;
+    return mix(lacquer, below, WATER.x);
   }
 #endif
   return L * far + ring * vec2(0.15, 0.35) * far;
@@ -1240,10 +1247,14 @@ vec2 rings(vec3 ro, vec3 rd, float T) {
       float first = sline(abs(dy) - 0.02, w);
       float phi = atan(nr.z, nr.x);
       float rr = length(q.xz - C.xz);
-      float arc = abs(fract((phi + TAU * STORY / 16.0) * (24.0 / TAU)) - 0.5) * (TAU / 24.0) * rr;
+      // Under the water the world is seen turned left for right (story.rs
+      // turns the meridian so): the beads and the meridian's trail run
+      // the other way round, as they ran in the reflection.
+      float spin = WATER.x > 0.0 ? -1.0 : 1.0;
+      float arc = abs(fract((phi + spin * TAU * STORY / 16.0) * (24.0 / TAU)) - 0.5) * (TAU / 24.0) * rr;
       float bead = sline(length(vec2(arc, dy)), max(0.011, w));
       float third = sline(dot(q - C, mer), w);
-      float lag = fract((RINGS.z + 0.5 * PI - phi) / PI);
+      float lag = fract((spin * (RINGS.z - phi) + 0.5 * PI) / PI);
       float trail = 0.015 * exp(-6.0 * lag);
       // Glass right at the lens would smear across the frame: it fades.
       float fade = (k == 0 ? 1.0 : 0.7) * smoothstep(0.45, 1.3, t);
@@ -1485,8 +1496,9 @@ vec2 drop(vec3 ro, vec3 rd, float T) {
   return L;
 }
 
-// Shafts of light down from the surface into the water, in the mirrored
-// eye's frame (where the deep lies over the level): slanting, swaying.
+// Shafts of light down from the surface into the water, in the frame of
+// the eye turned over the surface (where the deep lies over the level):
+// slanting, swaying.
 vec2 shafts(vec3 ro, vec3 rd, float T) {
   float far = min(T, 36.0);
   float dt = far / 14.0;
@@ -1510,18 +1522,20 @@ vec2 air(vec3 ro, vec3 rd, float T) {
 
 // Under the water the far fades to the water's own murk: light from over
 // the surface, dark below.
+// WATER.x goes from 1 to 0 at the loop's end, while the eye is still
+// under: the murk lifts and the world under the water is the morning's.
 vec2 underwater(vec2 L, float t, vec3 rd) {
+  if (WATER.x < 0.001 || u_res.w > MIRROR - 0.5) return L;
   float deep = underDeep();
-  if (WATER.x < 0.5 || u_res.w > MIRROR - 0.5) return L;
   float a = exp(-min(t, 400.0) / mix(300.0, 24.0, deep));
   float aw = exp(-min(t, 400.0) / mix(300.0, 14.0, deep));
   float haze = mix(0.035, 0.004, smoothstep(-0.4, 0.7, rd.y));
-  return vec2(L.x * a + haze * (1.0 - a), L.y * aw);
+  return mix(L, vec2(L.x * a + haze * (1.0 - a), L.y * aw), WATER.x);
 }
 vec2 underAir(vec2 A, vec3 ro, vec3 rd, float T) {
-  if (WATER.x < 0.5 || u_res.w > MIRROR - 0.5) return A;
-  A *= exp(-min(T, 30.0) / mix(300.0, 40.0, underDeep()));
-  return A + shafts(ro, rd, T);
+  if (WATER.x < 0.001 || u_res.w > MIRROR - 0.5) return A;
+  vec2 murk = A * exp(-min(T, 30.0) / mix(300.0, 40.0, underDeep())) + shafts(ro, rd, T);
+  return mix(A, murk, WATER.x);
 }
 
 // ---- the passes ----

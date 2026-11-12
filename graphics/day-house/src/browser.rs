@@ -1058,15 +1058,9 @@ impl DayHouse {
             axis[1] = -axis[1];
         }
         let mirrored: Vec<f32> = mirrored.iter().flatten().copied().collect();
-        // Under the water the eye sees the world mirrored (under the surface
-        // lies the reflection) and the world above through the surface: the
-        // eye's frame and the reflection's swap.
-        let under = slots[0][1] < house::TABLE;
-        let (main, refl) = if under {
-            (&mirrored, &flat)
-        } else {
-            (&flat, &mirrored)
-        };
+        // Under the water the story already hands over the eye turned over
+        // the surface (story.rs `turned_over`), so it always stands over it.
+        let (main, refl) = (&flat, &mirrored);
         let (moving, cells) = self.scene.moving(&f);
         let cells: Vec<f32> = cells.iter().flatten().copied().collect();
         let people: Vec<f32> = self.scene.people(&f).iter().flatten().copied().collect();

@@ -38,10 +38,12 @@
 //!          reflection rising out of the water: the rings strike, the axis
 //!          lights from the water up to the crown and down through the
 //!          reflection, a ring runs out over the water;
-//! 378–394  the camera goes under: the world shines down through the
-//!          surface, the globe's reflection hangs below, shafts of light,
-//!          motes; it sinks deep and looks up;
-//! 394–402  dawn: it rises out of the water to the house, whole again.
+//! 378–388  the camera goes under: the world shines down through the
+//!          surface, the house hangs upside down below it, shafts of light,
+//!          motes; it sinks to the house's middle, the house builds back;
+//! 388–402  it turns over, half a turn round its own axis: the house under
+//!          the water stands up and is the morning's house, the murk lifts,
+//!          and the last frame is the first.
 use crate::cast::{
     at_shop, Cast, Held, Keys, BIKE_AWAY, DESK_LISTEN, DESK_SPAN, DESK_SPEAK, DOOR_WALL, HERO,
     WALL_SPAN,
@@ -103,12 +105,26 @@ pub const DROP: f32 = F + 51.5;
 pub const DROP_FALL: f32 = 2.4;
 pub const DROP_SPEED: f32 = 8.0;
 
-/// Dawn from here: the camera rises out of the water to the house, whole
-/// again (it came back while the camera was under).
+/// Dawn from here: under the water the house is whole again (it came back
+/// while the camera was under) and the morning's lamps come up.
 const DAWN: f32 = LOOP - 8.0;
-/// Under the water the camera turns over once round its own axis as it
-/// rises, and is level again just before it breaks the surface.
-const TURN: (f32, f32) = (DAWN - 6.0, DAWN - 0.6);
+/// Under the water the camera turns over, half a turn round its own axis:
+/// the house that hung upside down under the surface stands up, and is the
+/// morning's house the loop starts from.
+const TURN: (f32, f32) = (DAWN - 7.0, DAWN - 1.0);
+
+/// A point turned over the water's surface: half a turn round the line
+/// along the depth through the house's middle at the surface. Not a
+/// mirror: what is seen turned over, turned over once more, is the world
+/// again, the right way round.
+fn turned_over(p: V3) -> V3 {
+    v3(-p.x, 2.0 * TABLE - p.y, p.z)
+}
+
+/// A direction turned over the water's surface (see `turned_over`).
+fn turned_over_axis(d: V3) -> V3 {
+    v3(-d.x, -d.y, d.z)
+}
 
 /// Reduced motion holds this moment: the night house with the line of his
 /// day drawn through it, every place of it lit and him at each, the rings
@@ -542,12 +558,26 @@ impl Story {
         let aperture = curve(|k| k.aperture).max(0.0);
         let forward = (look - eye).normalize();
         let level = forward.cross(Y).normalize();
-        // Under the water at dawn the camera turns over once round its own
-        // axis, and comes up level.
-        let (sr, cr) = (TAU * smooth(TURN.0, TURN.1, s)).sin_cos();
+        // Under the water the camera turns over, half a turn round its own
+        // axis: the house hanging upside down under the surface stands up.
+        let (sr, cr) = (PI * smooth(TURN.0, TURN.1, s)).sin_cos();
         let right = level * cr + level.cross(forward) * sr;
         let up = right.cross(forward);
         let focus = (look - eye).length().max(0.3);
+        // How deep the eye is, then the eye as drawn: under the water it
+        // sees the world turned over the surface, so once it has turned
+        // over itself it sees the morning's world the right way up.
+        let depth = (TABLE - eye.y).max(0.0);
+        let (eye, right, up, forward) = if depth > 0.0 {
+            (
+                turned_over(eye),
+                turned_over_axis(right),
+                turned_over_axis(up),
+                turned_over_axis(forward),
+            )
+        } else {
+            (eye, right, up, forward)
+        };
 
         // The day: dawn, noon, the golden hour, sunset, night, dawn. The
         // evening sun sets low in front, a little left, down the street he
@@ -633,6 +663,14 @@ impl Story {
         rings[1] = mix(rings[1], heart, sync);
         let to = c - eye;
         rings[2] = turn_toward(rings[2], to.z.atan2(to.x), sync);
+        // Under the water the eye sees the world turned over the surface,
+        // which is the reflection turned left for right: the meridian is set
+        // the other way round, so it stands where the reflection showed it
+        // as the camera goes under (the rings are gone before the loop
+        // comes round).
+        if depth > 0.0 {
+            rings[2] = (PI - rings[2]).rem_euclid(TAU);
+        }
         rings[3] *= his.max(grow) * (1.0 - smooth(DAWN + 3.5, DAWN + 6.5, s));
         // At night they leave him, then come back one by one.
         let back = |i: usize| {
@@ -712,8 +750,10 @@ impl Story {
         // The sky's own time (its clouds hurry while the day runs fast and
         // drift back over the night) and the street clock's hour.
         let night_back = smooth(GROW + 8.0, DAWN, s);
+        // Back by a whole loop's drift too, so the morning's clouds at the
+        // loop's end stand where they stand at its start.
         let sky_time = s + SKY_TRAM * noon + SKY_RIDE * dusk
-            - (SKY_TRAM + SKY_RIDE) * smooth(F + 4.0, DAWN, s);
+            - (SKY_TRAM + SKY_RIDE + LOOP) * smooth(F + 4.0, DAWN, s);
         let hours = mix(
             CLOCK_START + CLOCK_RATE * s + CLOCK_TRAM * noon + CLOCK_RIDE * dusk,
             CLOCK_START + 24.0,
@@ -745,12 +785,18 @@ impl Story {
         let voice = self.cast.voice(s, &figures[HERO].body, held.phone);
         // The water: the eye under it, how liquid the lacquer, how deep
         // the eye, since the drop met its reflection.
+        // Under it, until the world under it is the morning's.
+        let under = if depth > 0.0 {
+            1.0 - smooth(DAWN + 1.5, LOOP - 1.0, s)
+        } else {
+            0.0
+        };
         let water = [
-            if eye.y < TABLE { 1.0 } else { 0.0 },
+            under,
             smooth(LIQUID, LIQUID + 4.0, s) * (1.0 - smooth(DAWN + 1.0, DAWN + 5.0, s)),
-            // The water clears as the house builds back toward dawn, so its
-            // reflection shows plainly while the camera turns over.
-            (TABLE - eye.y).max(0.0) * (1.0 - 0.9 * smooth(DAWN - 8.0, DAWN - 5.0, s)),
+            // The murk thickens a little as it sinks, then clears as the
+            // house builds back, so the house shows plainly as it turns.
+            depth.min(2.0) * (1.0 - 0.8 * smooth(DAWN - 9.0, DAWN - 5.0, s)) * under,
             (s - DROP - DROP_FALL).clamp(-99.0, 99.0),
         ];
         let movers = [props::tram(tc, doors), props::movers(s, world, &held)];
@@ -848,6 +894,16 @@ fn lamps(s: f32, k: &Keys, route: &[[f32; 4]; PATH_POINTS], drawn: f32, dusk: f3
 fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
     let world = &cast.world;
     let wide = |at: f32| key(at, v3(0.0, 7.4, 31.0), v3(0.0, 6.4, 0.0), 2.0, 0.0, 0.0);
+    // The first frame's camera turned over the water's surface: under it,
+    // once it has turned over itself, it sees just what `wide` sees.
+    let turned = |at: f32| {
+        let w = wide(at);
+        Key {
+            eye: turned_over(w.eye),
+            look: turned_over(w.look),
+            ..w
+        }
+    };
     let fixed = |at: f32, eye: V3, look: V3, lens: f32, aperture: f32| {
         key(at, eye, look, lens, aperture, 0.0)
     };
@@ -1437,46 +1493,30 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             1.7,
             0.0,
         ),
-        // Through the surface, into the reflection: the globe hangs below
-        // it, the world above shines through it, light comes down in
-        // shafts. Under the water the camera only sinks, it comes no
-        // nearer and draws no farther.
+        // Through the surface: under it the world hangs upside down, the
+        // world above shines through it, light comes down in shafts. The
+        // camera only sinks, it comes no nearer and draws no farther; the
+        // house builds back out of its code under the water.
         fixed(
             f + 59.0,
-            v3(0.2, -1.35, 32.0),
-            v3(0.0, -1.3, 0.0),
+            v3(0.15, -1.4, 32.6),
+            v3(0.0, -1.5, 0.0),
             1.75,
             0.0,
         ),
-        fixed(f + 63.0, v3(0.5, -2.5, 31.3), v3(0.0, -2.9, 0.0), 1.8, 0.0),
-        // Deep: the house's reflection builds back out of its code.
-        fixed(f + 66.0, v3(0.7, -3.4, 30.8), v3(0.0, -3.8, 0.0), 1.85, 0.0),
+        fixed(f + 63.0, v3(0.2, -3.2, 32.0), v3(0.0, -3.9, 0.0), 1.8, 0.0),
+        fixed(f + 66.5, v3(0.15, -5.6, 31.6), v3(0.0, -6.4, 0.0), 1.9, 0.0),
+        // Level with the house's middle it turns over (TURN): the house
+        // stands up, and the frame is the loop's first, the morning's.
         fixed(
-            DAWN - 6.5,
-            v3(0.7, -3.6, 30.6),
-            v3(0.0, -3.4, 0.0),
-            1.85,
+            DAWN - 1.5,
+            v3(0.03, -9.0, 31.1),
+            v3(0.0, -8.3, 0.0),
+            2.0,
             0.0,
         ),
-        // It turns over once round its own axis as it rises (TURN) and
-        // comes up into the world level, the house whole.
-        fixed(
-            DAWN - 3.5,
-            v3(0.6, -2.6, 30.4),
-            v3(0.0, -0.4, 0.0),
-            1.85,
-            0.0,
-        ),
-        fixed(
-            DAWN - 0.6,
-            v3(0.5, -1.15, 30.2),
-            v3(0.0, 2.2, 0.0),
-            1.9,
-            0.0,
-        ),
-        fixed(DAWN + 0.5, v3(0.45, 0.2, 30.1), v3(0.0, 3.0, 0.0), 1.9, 0.0),
-        fixed(DAWN + 4.0, v3(0.2, 4.0, 30.8), v3(0.0, 5.4, 0.0), 2.0, 0.0),
-        wide(LOOP),
+        turned(DAWN + 2.0),
+        turned(LOOP),
     ];
     // Monotone keys need rising times.
     v.sort_by(|a, b| a.at.total_cmp(&b.at));
@@ -1571,6 +1611,21 @@ mod tests {
         let story = Story::new(Chapter::Everyday);
         let (a, b) = (story.compose(0.0), story.compose(LOOP - 1e-3));
         assert!((a.eye - b.eye).length() < 0.05, "{:?} {:?}", a.eye, b.eye);
+        // Under the water, turned over, the camera sees just what the
+        // first frame sees: the same way, the same way up, no water left.
+        for (p, q) in [(a.right, b.right), (a.up, b.up), (a.forward, b.forward)] {
+            assert!((p - q).length() < 0.01, "{p:?} {q:?}");
+        }
+        assert!((a.lens - b.lens).abs() < 0.01 && (a.focus - b.focus).abs() < 0.05);
+        for i in 0..3 {
+            assert!(a.water[i] < 0.01 && b.water[i] < 0.01, "{i} {:?}", b.water);
+        }
+        assert!(
+            (a.motion[2] - b.motion[2]).abs() < 0.05,
+            "{:?} {:?}",
+            a.motion,
+            b.motion
+        );
         assert!((a.sun_amount - b.sun_amount).abs() < 0.01);
         for i in 0..4 {
             assert!((a.day[i] - b.day[i]).abs() < 0.02, "{i}");

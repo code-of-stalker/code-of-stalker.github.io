@@ -13,7 +13,6 @@ import type { Place } from '../backend';
 import { Glyph, Hero, useContour } from './chrome';
 import { SlideMark } from '../../product/motion/SlideMark';
 import { Breathe } from '../../product/motion/Breathe';
-import { DiaryChoiceFace } from '../../product/diary/DiaryFilters';
 
 export const placeLabels: Record<Place, string> = {
   walker: 'ИДУЩИЙ', guide: 'ПРОВОДНИК', admin: 'АДМИН ПРОВОДНИКА', main: 'ГЛАВНЫЙ АДМИН',
@@ -85,25 +84,18 @@ export function Skeleton({ rows = 4, label = 'Загружаю…', style }: { r
 }
 
 /**
+ * Text tabs over one thin baseline; the chosen one in the text colour, the rest muted. Filled choices are for
+ * filters only, never for tabs (Art 2026-11-12: «кнопки выглядят тупо»).
  * `fit` sizes each tab to its label, so longer labels with counts still fit on a phone.
- * `filled` draws the tabs as the diary's choices: the chosen one filled with the accent (the admin page).
  */
-export function Tabs<T extends string>({ value, options, onChange, fit = false, filled = false }: { value: T; options: { id: T; label: string }[]; onChange: (id: T) => void; fit?: boolean; filled?: boolean }) {
+export function Tabs<T extends string>({ value, options, onChange, fit = false }: { value: T; options: { id: T; label: string }[]; onChange: (id: T) => void; fit?: boolean }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [spots, setSpots] = useState<Partial<Record<string, { x: number; width: number }>>>({});
   const spot = spots[value];
-  if (filled) return <View accessibilityRole="tablist" style={styles.filledTabs}>
-    {options.map(option => {
-      const on = option.id === value;
-      return <Pressable key={option.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(option.id)} style={styles.filledTab}>
-        <DiaryChoiceFace selected={on} fillStyle={styles.filledFace} content={ink =>
-          <ProductText variant="label" numberOfLines={1} maxFontSize={13} style={[styles.filledLabel, { color: ink ?? colors.muted }]}>{option.label}</ProductText>} />
-      </Pressable>;
-    })}
-  </View>;
   // One underline slides and stretches to the chosen tab (Rust, SlideMark).
   return <View accessibilityRole="tablist" style={styles.tabs}>
+    <View pointerEvents="none" style={[styles.baseline, { backgroundColor: colors.border }]} />
     {options.map(option => {
       const on = option.id === value;
       return <Pressable key={option.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(option.id)}
@@ -190,13 +182,10 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   note: { lineHeight: 18 },
   center: { textAlign: 'center' },
   tabs: { flexDirection: 'row', gap: 4 },
+  baseline: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 0.5 },
   tab: { flex: 1, minHeight: 40, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'transparent', paddingHorizontal: 4 },
   fitTab: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
   fitLabel: { fontSize: 13, lineHeight: 18, letterSpacing: 0.4 },
-  filledTabs: { flexDirection: 'row', gap: 8 },
-  filledTab: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  filledFace: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  filledLabel: { fontSize: 12, lineHeight: 17, letterSpacing: 0.6, textAlign: 'center' },
   pin: { alignItems: 'center', gap: 14, paddingTop: 4 },
   dots: { flexDirection: 'row', gap: 18, marginTop: 10 },
   dot: { width: 11, height: 11, borderWidth: .75, transform: [{ rotate: '45deg' }] },

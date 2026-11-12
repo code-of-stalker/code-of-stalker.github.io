@@ -528,7 +528,8 @@ pub(crate) fn glow_defs(id: &str) -> String {
 /// The approved standing contour, in file painter order: cover, then ink.
 const UNSEAL: &str = include_str!("../assets/unseal-reference.svg");
 pub(crate) const UNSEAL_THROAT: P = (1268., 262.);
-pub(crate) const UNSEAL_HEART: P = (1270., 335.);
+/// The jugular notch, where the collarbones meet: the inner light sits here.
+pub(crate) const UNSEAL_NOTCH: P = (1263., 284.);
 const UNSEAL_SHOULDERS: [P; 2] = [(1230., 294.), (1305., 297.)];
 /// Centre of the soles and the top of the head in the art.
 const UNSEAL_FEET: P = (1268., 872.);
@@ -658,6 +659,32 @@ pub(crate) struct Look<'a> {
     pub code: Option<(&'a str, f64)>,
     /// Light over each cover, under its ink.
     pub glow: Option<(&'a str, f64)>,
+    /// Masks from `unseal_pit_defs`: when the arms open, each arm also lies
+    /// at rest under itself, solid at the shoulder and fading toward the
+    /// elbow, so no dark cut opens between arm and trunk.
+    pub pit: Option<&'a str>,
+}
+/// The armpit masks for `Look::pit`, drawn at `at`, as `{id}-near-pit` and `{id}-far-pit`.
+pub(crate) fn unseal_pit_defs(id: &str, at: Placement) -> String {
+    let mut out = format!(
+        r#"<radialGradient id="{id}-pit-fade"><stop stop-color="white"/><stop offset=".45" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></radialGradient>"#
+    );
+    // The far arm hangs behind the trunk, its gap running nearly to the waist.
+    for (side, shoulder, drop, reach) in [("near", UNSEAL_SHOULDERS[0], 45., 100.), ("far", UNSEAL_SHOULDERS[1], 70., 135.)] {
+        let c = at.at((shoulder.0, shoulder.1 + drop));
+        let (rx, ry) = (36. * at.scale, reach * at.scale);
+        let _ = write!(
+            out,
+            r#"<mask id="{id}-{side}-pit" x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" maskUnits="userSpaceOnUse" style="mask-type:alpha"><ellipse cx="{:.2}" cy="{:.2}" rx="{rx:.2}" ry="{ry:.2}" fill="url(#{id}-pit-fade)"/></mask>"#,
+            c.0 - rx,
+            c.1 - ry,
+            2. * rx,
+            2. * ry,
+            c.0,
+            c.1
+        );
+    }
+    out
 }
 /// The figure at a fixed reference place; carry it with a group transform
 /// (`Placement::from`). Contours never change: each moving part is posed by
@@ -678,16 +705,28 @@ pub(crate) fn still_unseal(c: &mut Canvas, at: Placement, breath: f64, open: f64
             }
             continue;
         }
+        if let (Some(pit), true) = (look.pit, part.contains("arm")) {
+            let side = if part.starts_with("near") { "near" } else { "far" };
+            c.group("", &art.then(unseal_pose("trunk", breath, open)).then(place).svg(), 1.);
+            c.raw(&format!(r#"<g mask="url(#{pit}-{side}-pit)">"#));
+            paint(c, &d, look);
+            c.end();
+            c.end();
+        }
         if moving {
             c.group("", &art.then(unseal_pose(part, breath, open)).then(place).svg(), 1.);
         }
-        c.fixed(d, look.cover, 1.);
-        if let Some((uv, alpha)) = look.code {
-            c.fixed_rain(d, uv, alpha);
-        }
-        if let Some((paint, alpha)) = look.glow {
-            c.fixed(d, paint, alpha);
-        }
+        paint(c, &d, look);
+    }
+}
+/// One cover's fill, code and inner light.
+fn paint(c: &mut Canvas, d: &impl Fn() -> String, look: &Look) {
+    c.fixed(d, look.cover, 1.);
+    if let Some((uv, alpha)) = look.code {
+        c.fixed_rain(d, uv, alpha);
+    }
+    if let Some((glow, alpha)) = look.glow {
+        c.fixed(d, glow, alpha);
     }
 }
 
@@ -910,6 +949,9 @@ const LAND: f64 = -0.16;
 /// ankle that is: mid-stance, the planted foot is under her hips.
 const PROFILE_HIPS: P = (570., 710.);
 const UNDER: f64 = PROFILE_HIPS.0 - ANKLES[0].0;
+/// How much narrower her trunk is in the profile rig, about x 500 → 510
+/// (`breath_heroine::Rig::upper`).
+const PROFILE_NARROW: f64 = 0.84;
 /// Walking, her hips sink this much, so her knees stay soft, and bob this
 /// much more, lowest as her heel comes down; a leg at its fullest reach may
 /// stretch this share past its length rather than jerk her hips.
@@ -1067,6 +1109,32 @@ pub(crate) fn heroine_walking(c: &mut Canvas, place: Affine, steps: f64, pace: f
     let (pose, drop) = stride(steps, pace);
     let rig = Rig::new(pose);
     c.group("", &place.svg(), alpha);
+    // Standing, her legs are the approved drawing, half turned to us like the
+    // rest of her (Art: not profile legs under a half-turned body), narrowed
+    // as her profile trunk is and meeting its settled hips; with her first
+    // steps they hand over to the solved profile legs, and back as she stops.
+    let walk = ease(ramp(pace, 0.03, 0.4));
+    let hips = HEROINE_FEET.1 - PROFILE_HIPS.1;
+    let k = (hips - drop) / hips;
+    let legs = Affine([PROFILE_NARROW, 0., 0., k, 510. - 500. * PROFILE_NARROW, HEROINE_FEET.1 * (1. - k)]);
+    c.group("", &legs.svg(), 1. - ramp(walk, 0.5, 1.));
+    for (id, d) in HEROINE.iter().filter(|(id, _)| !id.starts_with("upper")) {
+        if id.ends_with("ink") {
+            for &(paint, alpha) in look.inks {
+                c.fixed(|| d.clone(), paint, alpha);
+            }
+            continue;
+        }
+        c.fixed(|| d.clone(), look.cover.0, look.cover.1);
+        if let Some((uv, alpha)) = look.code {
+            c.fixed_rain(|| d.clone(), uv, alpha);
+        }
+        for &(paint, alpha) in look.glows {
+            c.fixed(|| d.clone(), paint, alpha);
+        }
+    }
+    c.end();
+    c.group("", "", ramp(walk, 0., 0.5));
     for (part, lines) in [(0, 0.75), (1, 1.)] {
         let [cover, ink] = [0, 1].map(|k| compact(&PROFILE_LEG[k], |p| rig.point(p, part), 1.));
         c.path(&cover, look.cover.0, look.cover.1);
@@ -1080,6 +1148,7 @@ pub(crate) fn heroine_walking(c: &mut Canvas, place: Affine, steps: f64, pace: f
             c.path(&ink, paint, alpha * lines);
         }
     }
+    c.end();
     c.group("", &heroine_breath(breath).then(stride_body(pace, drop)).svg(), 1.);
     let (cover, ink) = (&PROFILE_UPPER[0], &PROFILE_UPPER[1]);
     c.fixed(|| cover.clone(), look.cover.0, look.cover.1);

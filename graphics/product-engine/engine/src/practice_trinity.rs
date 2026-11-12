@@ -417,13 +417,15 @@ fn body_code(feet: W, height: f64) -> String {
 const BEAMS: f64 = 1.25;
 fn defs() -> String {
     let (father, son) = references();
-    let heart = father.at(UNSEAL_HEART);
+    let heart = father.at(UNSEAL_NOTCH);
     let r = 0.95 * father.scale * 722. / FATHER_HEIGHT;
-    let core = son.at(UNSEAL_HEART);
+    let core = son.at(UNSEAL_NOTCH);
     let reach = 0.55 * 722. * son.scale;
     format!(
-        r#"{}<radialGradient id="tri-spill"><stop stop-color="var(--book-line)" stop-opacity=".24"/><stop offset=".45" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-pool"><stop stop-color="var(--book-light)" stop-opacity=".4"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-shade"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".6" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="tri-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity=".92"/><stop offset=".3" stop-color="var(--book-cover)" stop-opacity=".66"/><stop offset=".65" stop-color="var(--book-cover)" stop-opacity=".24"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><linearGradient id="tri-bottom" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".4"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".95"/></linearGradient><radialGradient id="tri-edge" cx=".5" cy=".47" r=".62"><stop offset=".5" stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".68" stop-color="var(--book-cover)" stop-opacity=".22"/><stop offset=".84" stop-color="var(--book-cover)" stop-opacity=".68"/><stop offset="1" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-father" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-dim)"/><stop offset=".6" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-aura" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><radialGradient id="tri-inner" gradientUnits="userSpaceOnUse" cx="{cx:.2}" cy="{cy:.2}" r="{reach:.2}"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><filter id="tri-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter><radialGradient id="tri-radiance"><stop stop-color="var(--book-light)" stop-opacity=".5"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".26"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-rays" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{beams:.2}"><stop offset=".15" stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".45"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-father-light" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".3" stop-color="var(--book-line)" stop-opacity=".5"/><stop offset=".75" stop-color="var(--book-ink)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".06"/></radialGradient><filter id="tri-ray-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3"/></filter>"#,
+        r#"{}{}{}<radialGradient id="tri-spill"><stop stop-color="var(--book-line)" stop-opacity=".24"/><stop offset=".45" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-pool"><stop stop-color="var(--book-light)" stop-opacity=".4"/><stop offset=".35" stop-color="var(--book-line)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-shade"><stop stop-color="var(--book-cover)" stop-opacity=".95"/><stop offset=".6" stop-color="var(--book-cover)" stop-opacity=".55"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></radialGradient><linearGradient id="tri-top" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity=".92"/><stop offset=".3" stop-color="var(--book-cover)" stop-opacity=".66"/><stop offset=".65" stop-color="var(--book-cover)" stop-opacity=".24"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity="0"/></linearGradient><linearGradient id="tri-bottom" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".5" stop-color="var(--book-cover)" stop-opacity=".4"/><stop offset="1" stop-color="var(--book-cover)" stop-opacity=".95"/></linearGradient><radialGradient id="tri-edge" cx=".5" cy=".47" r=".62"><stop offset=".5" stop-color="var(--book-cover)" stop-opacity="0"/><stop offset=".68" stop-color="var(--book-cover)" stop-opacity=".22"/><stop offset=".84" stop-color="var(--book-cover)" stop-opacity=".68"/><stop offset="1" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-father" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-dim)"/><stop offset=".6" stop-color="var(--book-cover)"/></radialGradient><radialGradient id="tri-aura" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-line)" stop-opacity=".75"/><stop offset=".5" stop-color="var(--book-ink)" stop-opacity=".35"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".1"/></radialGradient><radialGradient id="tri-inner" gradientUnits="userSpaceOnUse" cx="{cx:.2}" cy="{cy:.2}" r="{reach:.2}"><stop stop-color="var(--book-light)" stop-opacity=".95"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".55"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".2"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><filter id="tri-aura-blur" x="-80%" y="-30%" width="260%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter><radialGradient id="tri-radiance"><stop stop-color="var(--book-light)" stop-opacity=".5"/><stop offset=".22" stop-color="var(--book-line)" stop-opacity=".26"/><stop offset=".55" stop-color="var(--book-ink)" stop-opacity=".09"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-rays" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{beams:.2}"><stop offset=".15" stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".45" stop-color="var(--book-line)" stop-opacity=".45"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient><radialGradient id="tri-father-light" gradientUnits="userSpaceOnUse" cx="{hx:.2}" cy="{hy:.2}" r="{r:.2}"><stop stop-color="var(--book-light)" stop-opacity=".9"/><stop offset=".3" stop-color="var(--book-line)" stop-opacity=".5"/><stop offset=".75" stop-color="var(--book-ink)" stop-opacity=".16"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity=".06"/></radialGradient><filter id="tri-ray-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3"/></filter>"#,
         glow_defs("tri"),
+        unseal_pit_defs("tri-f", father),
+        unseal_pit_defs("tri-s", son),
         hx = heart.0,
         hy = heart.1,
         beams = BEAMS * r,
@@ -504,7 +506,7 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
     let father_open = 0.85 * ramp(t, 22.5, 24.5) * (1. - ramp(t, 28., 29.5));
     let shine = 0.75 + 0.25 * speak;
     c.group("", &father.from(reference), here);
-    let core = reference.at(UNSEAL_HEART);
+    let core = reference.at(UNSEAL_NOTCH);
     let inner = 0.95 * reference.scale * 722. / FATHER_HEIGHT;
     c.sprite(core, 1.45 * inner, "tri-radiance", shine);
     let turn = format!(
@@ -533,16 +535,17 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
             ink: &format!(r#"fill="{LINE}" fill-opacity=".85" fill-rule="evenodd" stroke="{LINE}" stroke-opacity=".85" stroke-width=".18""#),
             code: Some((&code, 0.14)),
             glow: Some((r#"fill="url(#tri-father-light)" fill-rule="evenodd""#, 0.45 + 0.3 * speak + 0.2 * together_now)),
+            pit: Some("tri-f"),
         },
     );
     let throat = unseal_mark(reference, UNSEAL_THROAT, father_breath, father_open);
     c.sprite(throat, 5., "tri-glow", 0.6 * speak);
-    c.sprite(unseal_mark(reference, UNSEAL_HEART, father_breath, father_open), 4. + 1.5 * father_breath, "tri-glow", 0.25 + 0.3 * speak + 0.35 * light);
+    c.sprite(unseal_mark(reference, UNSEAL_NOTCH, father_breath, father_open), 4. + 1.5 * father_breath, "tri-glow", 0.25 + 0.3 * speak + 0.35 * light);
     c.end();
 
     // The unity haze sits between them, behind the Son.
-    let son_heart = unseal_world(SON, SON_HEIGHT, UNSEAL_HEART);
-    let father_heart = unseal_world(FATHER, FATHER_HEIGHT, UNSEAL_HEART);
+    let son_heart = unseal_world(SON, SON_HEIGHT, UNSEAL_NOTCH);
+    let father_heart = unseal_world(FATHER, FATHER_HEIGHT, UNSEAL_NOTCH);
     let mid = cam.project(wmix(son_heart, father_heart, 0.45));
     c.sprite(mid, 18. + 34. * together_now, "tri-haze", 0.9 * together_now);
 
@@ -570,10 +573,11 @@ fn draw(c: &mut Canvas, t: f64, reduced: bool) {
             ink: &format!(r#"fill="{INK}" fill-rule="evenodd" stroke="{INK}" stroke-width=".18""#),
             code: Some((&code, 0.16 * (1. - 0.7 * light))),
             glow: Some((r#"fill="url(#tri-inner)" fill-rule="evenodd""#, light * (0.55 + 0.3 * breath))),
+            pit: Some("tri-s"),
         },
     );
     c.end();
-    let heart = unseal_mark(son, UNSEAL_HEART, breath, open);
+    let heart = unseal_mark(son, UNSEAL_NOTCH, breath, open);
     c.sprite(heart, 3. + 2.2 * breath, "tri-glow", 0.22 * breath * (1. - light) + light * (0.7 + 0.3 * breath));
 
     // Breath climbing the inside of the glass.
@@ -748,7 +752,7 @@ mod tests {
             let cam = camera(t);
             let son = Placement::standing(&cam, SON, SON_HEIGHT);
             let father = Placement::standing(&cam, FATHER, FATHER_HEIGHT);
-            let (s, f) = (son.at(UNSEAL_HEART), father.at(UNSEAL_HEART));
+            let (s, f) = (son.at(UNSEAL_NOTCH), father.at(UNSEAL_NOTCH));
             assert!(f.0 < s.0 - 40., "beside, with room between them, at {t}");
             assert!(FATHER[2] > SON[2] + 1.2, "behind at {t}");
             let (son_top, father_top) = (son.at((1268., 150.)).1, father.at((1268., 150.)).1);

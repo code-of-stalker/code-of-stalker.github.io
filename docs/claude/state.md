@@ -378,11 +378,10 @@ The finale of stage 1. 10 reading pages, author's text unchanged, emoji dropped
   turns over half a turn (TURN, DAWN−7..DAWN−1), the world under the water stands up and is
   the loop's first frame, the murk lifts by LOOP−1 (story.rs `turned_over`: under the water
   the eye is handed over turned about x = 0, y = TABLE; moon, meridian and beads mirrored
-  there so the dive is continuous; the clouds come round to the start). Shown in Матрица
-  (`output/prototypes/day-house/index.html`, storyboard
-  `output/prototypes/day-house/storyboard-round9.jpg`); waiting for Art's notes; other themes
-  only after his OK; no push without his «пушим».
-- Next: Art's notes on page 10. A stage-finale screen after page 10 needs Art's wording first.
+  there so the dive is continuous; the clouds come round to the start; commit 95c61c8).
+  Shown in Матрица (storyboard `output/prototypes/day-house/storyboard-round9.jpg`); Art:
+  «Пушим». Key frames checked in Тишина, Искра and Астрал; shipped to `main` 2026-11-12.
+- Next: a stage-finale screen after page 10 needs Art's wording first.
 
 ## Level «Интенсив»: chat (branch `claude/intensive-chat-9e8099`)
 Built 2026-11-07 after Art's «Да, делаем»; shipped to `main` 2026-11-07 (Art: «Пушим»). Everything

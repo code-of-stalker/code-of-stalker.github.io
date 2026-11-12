@@ -42,7 +42,10 @@
 //!          surface, the globe's reflection hangs below, shafts of light,
 //!          motes; it sinks deep and looks up;
 //! 394–402  dawn: it rises out of the water, the house comes back.
-use crate::cast::{at_shop, Cast, Held, Keys, BIKE_AWAY, DESK_SPAN, DOOR_WALL, HERO, WALL_SPAN};
+use crate::cast::{
+    at_shop, Cast, Held, Keys, BIKE_AWAY, DESK_LISTEN, DESK_SPAN, DESK_SPEAK, DOOR_WALL, HERO,
+    WALL_SPAN,
+};
 use crate::house::{cell, lamp_at, TABLE};
 use crate::math::{mix, monotone, pulse, smooth, v3, window, window_integral, V3, Y};
 use crate::props;
@@ -333,26 +336,68 @@ const BEAD_CELLS: [usize; BEADS] = [
 const AWAY_DAY: f32 = 35.0;
 const AWAY_EVE: f32 = 30.0;
 
-/// Clouds racing over the sun in the time-lapse: 0 clear … 1 dull.
-fn racing(s: f32) -> f32 {
-    let c = 0.5 + 0.3 * (3.7 * s).sin() + 0.2 * (6.3 * s + 2.0).sin();
-    smooth(0.5, 0.85, c)
+/// One slow cloud passing over the sun in a stretch of fast time `a … b`:
+/// 0 clear … 1 at its thickest, once, in the middle.
+fn passing(s: f32, a: f32, b: f32) -> f32 {
+    if s <= a || s >= b {
+        return 0.0;
+    }
+    let x = (s - a) / (b - a);
+    (PI * x).sin().powi(2)
 }
 
-/// A room's lights coming and going while the day runs fast.
-fn flicker(s: f32, c: usize) -> f32 {
-    let x = 1.4 * s + 0.37 * c as f32;
-    let n = x.floor();
-    let on = ((n * 12.9898 + c as f32 * 78.233).sin() * 43758.547)
-        .fract()
-        .abs()
-        > 0.55;
-    let f = x - n;
-    if on {
-        smooth(0.0, 0.12, f) * (1.0 - smooth(0.88, 1.0, f))
-    } else {
-        0.0
+/// The hour on the street's clock (0 … 24 and on): half past seven as he
+/// sips his tea, the minute hand going round in a story minute and a half
+/// an hour, two hours more while the tram has him away, an hour and a
+/// half while his ride does; over the night (the house gone) it comes
+/// round to the morning's hour again.
+const CLOCK_START: f32 = 7.0;
+const CLOCK_RATE: f32 = 0.03;
+const CLOCK_TRAM: f32 = 2.0;
+const CLOCK_RIDE: f32 = 1.5;
+/// How much faster the clouds go while the day runs fast.
+const SKY_TRAM: f32 = 50.0;
+const SKY_RIDE: f32 = 40.0;
+
+/// How present he is, 0 … 1. The day wears the sphere down: it narrows
+/// and pales. Speaking his day aloud and hearing it back fills it out
+/// again, a breath more than full, then it settles.
+fn presence(s: f32, k: &Keys) -> f32 {
+    let (w, d, w2) = (k.wall, k.desk, k.wall2);
+    // (worn from, speaks, listens, done, how low it got)
+    let spans = [
+        (k.rise, w + 2.6, w + 8.9, w + 13.5, 0.5),
+        (
+            w + 13.5,
+            d + DESK_SPEAK[0],
+            d + DESK_LISTEN[0],
+            d + DESK_LISTEN[1],
+            0.42,
+        ),
+        (d + DESK_LISTEN[1], w2 + 3.4, w2 + 8.8, w2 + 13.3, 0.5),
+    ];
+    let mut p = 1.0;
+    for (from, speak, listen, done, low) in spans {
+        if s < from {
+            break;
+        }
+        p = if s < speak {
+            mix(1.0, low, smooth(from, speak, s))
+        } else {
+            let back = 0.55 * smooth(speak, listen - 0.4, s) + 0.45 * smooth(listen, done, s);
+            mix(low, 1.0, back) + 0.12 * window(s, done - 1.5, done + 0.5, done + 1.0, done + 5.0)
+        };
     }
+    p
+}
+
+/// How the presence shows: the sphere's size, how plainly it and its rings
+/// show.
+pub fn presence_size(p: f32) -> f32 {
+    0.7 + 0.3 * p
+}
+pub fn presence_seen(p: f32) -> f32 {
+    0.2 + 0.8 * p
 }
 
 /// How much of the line of his day is drawn.
@@ -449,9 +494,11 @@ impl Story {
         // In the finale the others go and only his way is left; they are
         // back at dawn. He himself is gone over the night's end and in his
         // kitchen again as the day starts.
+        // He goes into the code with the house as its level passes down
+        // him (the shader takes him away above it).
         let others =
             (1.0 - smooth(CHORD + 0.5, CHORD + 3.0, s)) + smooth(DAWN + 3.0, DAWN + 6.0, s);
-        let his = smooth(0.0, 1.5, s) * (1.0 - smooth(DAWN + 1.0, DAWN + 4.0, s));
+        let his = smooth(0.0, 1.5, s) * (1.0 - smooth(GROW + 8.0, GROW + 8.8, s));
         for (i, f) in figures.iter_mut().enumerate() {
             f.seen *= if i == HERO { his } else { others.min(1.0) };
         }
@@ -488,19 +535,19 @@ impl Story {
         // street, clouds race over, the rooms' lights come and go.
         let (away, home) = self.away;
         let (b0, b1) = self.dusk;
-        let lapse =
-            window(s, away, away + 1.0, home - 1.0, home) + window(s, b0, b0 + 1.0, b1 - 1.0, b1);
         let dusk = smooth(b0, b1, s);
+        let noon = smooth(away, home, s);
         let u = if s < F {
-            ((s + AWAY_DAY * smooth(away, home, s) + AWAY_EVE * dusk) / (F + AWAY_DAY + AWAY_EVE))
-                .clamp(0.0, 1.0)
+            ((s + AWAY_DAY * noon + AWAY_EVE * dusk) / (F + AWAY_DAY + AWAY_EVE)).clamp(0.0, 1.0)
         } else {
             1.0 - smooth(F + 4.0, DAWN + 4.0, s)
         };
         let az = 1.15 - 1.6 * u;
         let el = 0.05 + 0.85 * (PI * u).sin();
         let sun = v3(az.sin() * el.cos(), el.sin(), az.cos() * el.cos());
-        let clouds = lapse * racing(s);
+        // One slow cloud over the sun in each stretch of fast time, not a
+        // flicker of days.
+        let clouds = 0.55 * (passing(s, away, home) + passing(s, b0, b1));
         // Every light comes back to its dawn value at the loop's end.
         // The sun goes down while his ride has him away; the last of the
         // light goes as he stands by his door.
@@ -519,7 +566,7 @@ impl Story {
         let gloss = window(s, LINE, LINE + 4.0, DAWN + 2.0, DAWN + 7.0);
         let day = [sky, golden, night, gloss];
         let path_drawn = drawn(s);
-        let lamps = lamps(s, &k, &self.route, path_drawn, lapse, dusk);
+        let lamps = lamps(s, &k, &self.route, path_drawn, dusk);
         // The line reaches each place of his day and he is there again, as
         // he was, in the places the others have left; the echoes go as the
         // sphere takes in the whole house.
@@ -535,12 +582,17 @@ impl Story {
             }
         }
 
-        // The sphere and its rings.
+        // The sphere and its rings, round his body (not where his feet are
+        // planned: seated, his body sits back from them). Worn down over
+        // the day, filled out again when he speaks his day and hears it.
         let feet = hero;
         let grow = smooth(GROW, GROW + 6.0, s);
-        let his_c = feet + Y * SPHERE_Y;
+        let present = presence(s, &k);
+        let shown = presence_seen(present);
+        let pelvis = figures[HERO].body.pelvis;
+        let his_c = v3(pelvis.x, feet.y + SPHERE_Y, pelvis.z);
         let c = his_c.lerp(GLOBE, grow);
-        let r = mix(SPHERE_R, GLOBE_R, grow);
+        let r = mix(SPHERE_R * presence_size(present), GLOBE_R, grow);
         let floor = mix(feet.y, TABLE, grow);
         let mut rings = rings_at(s, c, r, floor, feet.y, eye);
         // The step's ring whips round when something falls.
@@ -564,13 +616,27 @@ impl Story {
             1.0 - 0.85 * window(s, F + 8.5, F + 10.0, at, at + 1.5)
         };
         let arrive = |i: usize| 0.7 * pulse(s - RINGS_IN - RING_GAP * i as f32 - 0.75);
-        // His own eyes see the glass and his own ring least.
+        // His own eyes see the glass and his own ring least. Over the
+        // globe only the first ring is left: the meridian would stand in it
+        // as a second dome.
         let ring_vis = [
-            (1.0 - 0.5 * pov) * back(0),
-            (1.0 - 0.8 * pov) * (1.0 - grow) * back(1),
-            (1.0 - 0.5 * pov) * back(2),
-            (1.0 - 0.6 * pov) * (1.0 + 2.0 * grow),
+            (1.0 - 0.5 * pov) * back(0) * shown,
+            (1.0 - 0.8 * pov) * (1.0 - grow) * back(1) * shown,
+            (1.0 - 0.5 * pov) * back(2) * shown * (1.0 - grow),
+            (1.0 - 0.6 * pov) * (1.0 + 2.0 * grow) * shown,
         ];
+        // As he speaks and listens the rings glow up, with his breath.
+        let (w, w2) = (k.wall, k.wall2);
+        let filling = (window(s, w + 2.6, w + 3.4, w + 13.5, w + 15.5)
+            + window(
+                s,
+                d + DESK_SPEAK[0],
+                d + DESK_SPEAK[0] + 0.8,
+                d + DESK_LISTEN[1],
+                d + DESK_LISTEN[1] + 2.0,
+            )
+            + window(s, w2 + 3.4, w2 + 4.2, w2 + 13.3, w2 + 15.3))
+            * (0.25 + 0.15 * b);
         let chord = pulse(s - CHORD) + 0.4 * pulse(s - CHORD - 0.9);
         // The three strike once more as the drop meets its reflection.
         let met = pulse(s - DROP - DROP_FALL);
@@ -580,9 +646,10 @@ impl Story {
         let tremble = window(s, 1.0, 2.0, k.pour + 0.5, k.sip + 2.0)
             + 0.8 * window(s, d + 5.5, d + 6.5, d + 13.5, d + 14.5);
         let ring_fx = [
-            pulse(s - k.honk) + chord + arrive(0) + met,
-            tremble + 0.25 * hb * hurried.min(1.0) + chord + arrive(1) + met,
-            pulse(s - coin_at).max(pulse(s - fall_at)) + chord + arrive(2) + met,
+            pulse(s - k.honk) + chord + arrive(0) + met + filling,
+            tremble + 0.25 * hb * hurried.min(1.0) + chord + arrive(1) + met + filling,
+            (pulse(s - coin_at).max(pulse(s - fall_at)) + chord + arrive(2) + met + filling)
+                * (1.0 - grow),
             floor,
         ];
 
@@ -593,10 +660,13 @@ impl Story {
             smooth(LINE + 0.5, LINE + LINE_SPAN + 0.5, s) * (1.0 - smooth(DAWN, DAWN + 3.0, s)),
             0.0,
         ];
+        // The finale's level sweeps the whole house into its code, top to
+        // bottom (and builds it back at dawn); inside his sphere through the
+        // day things show their code as plainly as the sphere shows.
         let melt = [
-            window(s, GROW + 2.0, GROW + 6.0, DAWN + 1.0, DAWN + 4.5),
+            window(s, GROW + 1.5, GROW + 9.5, DAWN + 1.0, DAWN + 5.0),
             gloss,
-            0.0,
+            0.8 * shown * (1.0 - 0.7 * pov) * (1.0 - grow),
             0.0,
         ];
 
@@ -619,7 +689,17 @@ impl Story {
         let ly = world.lift_y(s);
         let lift = [ly, world.lift_moving(s), 0.0, 0.0];
         let slow = self.slowness(t);
-        let motion = [s, slow, ly, world.lift_moving(s)];
+        // The sky's own time (its clouds hurry while the day runs fast and
+        // drift back over the night) and the street clock's hour.
+        let night_back = smooth(GROW + 8.0, DAWN, s);
+        let sky_time = s + SKY_TRAM * noon + SKY_RIDE * dusk
+            - (SKY_TRAM + SKY_RIDE) * smooth(F + 4.0, DAWN, s);
+        let hours = mix(
+            CLOCK_START + CLOCK_RATE * s + CLOCK_TRAM * noon + CLOCK_RIDE * dusk,
+            CLOCK_START + 24.0,
+            night_back,
+        );
+        let motion = [s, slow, sky_time, hours];
         let cup = [held.kid_cup.x, held.kid_cup.y, held.kid_cup.z, slow];
         let steam_at = held.cup + v3(0.0, 0.12, 0.0);
         let steam = [
@@ -697,14 +777,7 @@ impl Story {
 
 /// Each cell's lamp, 0 … 1: the day's, and the places of his day lit one
 /// by one as the line reaches them.
-fn lamps(
-    s: f32,
-    k: &Keys,
-    route: &[[f32; 4]; PATH_POINTS],
-    drawn: f32,
-    lapse: f32,
-    dusk: f32,
-) -> [f32; LAMPS] {
+fn lamps(s: f32, k: &Keys, route: &[[f32; 4]; PATH_POINTS], drawn: f32, dusk: f32) -> [f32; LAMPS] {
     let mut l = [0.0; LAMPS];
     let end = 1.0 - smooth(DAWN + 1.0, DAWN + 6.0, s);
     let evening = dusk * end;
@@ -732,15 +805,6 @@ fn lamps(
         l[c] = street;
     }
     l[cell::TRAM] = 1.0;
-    // While he is away the rooms' lights come and go, hours in seconds.
-    if lapse > 0.0 {
-        for floor in 0..crate::house::FLOORS {
-            for col in 1..3 {
-                let c = cell::room(col, floor);
-                l[c] = l[c].max(0.9 * lapse * flicker(s, c));
-            }
-        }
-    }
     // The house goes to sleep round him; the stair's lights dim last.
     for (i, &c) in SLEEP_ORDER.iter().enumerate() {
         let at = SLEEP + SLEEP_GAP * i as f32;
@@ -1231,23 +1295,17 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
             1.9,
             0.0,
         ),
-        // Cut: the street's other end; he rides in from the left, and the
-        // camera takes him along as he brakes by the lamp.
+        // No cut: he rides in from the left, and the camera comes down off
+        // the street to meet him and takes him along as he brakes by the
+        // lamp.
         fixed(
-            ride_in - 1.0,
-            v3(-7.4, 1.0, 4.9),
-            v3(-9.2, 0.9, 1.4),
-            2.0,
-            0.003,
+            ride_in + 1.4,
+            v3(-1.5, 2.4, 13.5),
+            v3(-6.0, 1.2, 1.4),
+            1.95,
+            0.002,
         ),
-        fixed(
-            ride_in + 1.0,
-            v3(-7.3, 1.0, 4.9),
-            v3(-9.0, 0.9, 1.4),
-            2.0,
-            0.003,
-        ),
-        follow(ride_in + 3.2, v3(2.0, 1.1, 3.9), v3(0.3, 0.9, 0.36), 2.0),
+        follow(ride_in + 4.0, v3(2.4, 1.3, 4.6), v3(0.3, 0.9, 0.36), 2.0),
         follow(k.stop - 0.3, v3(1.9, 1.15, 3.8), v3(0.1, 0.9, 0.36), 2.0),
         // He steps off and leans it on the lamp's post; a few steps on.
         follow(k.stop + 2.0, v3(1.6, 1.25, 3.7), v3(-0.1, 0.95, 0.5), 2.1),

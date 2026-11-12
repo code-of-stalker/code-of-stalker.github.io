@@ -224,16 +224,17 @@ float coneT(vec3 o, vec3 d, vec3 hs, float top, out vec3 n) {
 
 // The finale's dissolve: one level sweeps down the house from over its
 // roof to the table (and back up at dawn), its line wavering a little.
-// Walls, floors, the street and the plinth above it are gone; what he
-// lived among stays in the air. Positive under the level, negative over.
+// Over it everything is gone, the rooms and all in them, the street, the
+// plinth, him; under it a band shows its code. Only the painted backdrop
+// stays. Positive under the level, negative over.
 float meltFront() {
   return mix(ROOF_Y + 3.4, TABLE_Y - 0.3, MELT.x);
 }
 float meltLevel(vec3 p) {
   return meltFront() + 0.3 * (noise3(p * vec3(0.4, 0.15, 0.4), 7u) - 0.5) - p.y;
 }
-bool melted(vec3 p, int flags) {
-  if (MELT.x < 0.001 || (flags & (F_WALL | F_SLAB)) == 0) return false;
+bool melted(vec3 p, int mat) {
+  if (MELT.x < 0.001 || mat == M_BACKDROP) return false;
   return meltLevel(p) < 0.0;
 }
 
@@ -273,7 +274,7 @@ void primHit(int at, vec3 ro, vec3 rd, int cell, inout Hit h, bool shadow) {
     bool pane = q.x < hs.x - 0.07 && q.y < hs.y - 0.07 && q.x > 0.025 && abs(lp.y - 0.2 * hs.y) > 0.025;
     if (pane) return;
   }
-  if (melted(ro + rd * t, flags)) return;
+  if (melted(ro + rd * t, mat)) return;
   h.t = t;
   h.kind = K_PRIM;
   h.mat = mat;
@@ -449,6 +450,8 @@ Hit trace(vec3 ro, vec3 rd, float tmax) {
     // Through his own eyes his head is not there (his hands and body are).
     bool own = fi == 0 && HEROP.w > 0.01 && dot(ro - HEROP.xyz, ro - HEROP.xyz) < 0.2
         && dot(q - HEROP.xyz, q - HEROP.xyz) < 0.045;
+    // Over the finale's level the people are gone with the house.
+    own = own || (MELT.x > 0.001 && meltLevel(q) < 0.0);
     if (d < 0.0012 && !own) {
       h.t = t;
       h.kind = K_FIG;
@@ -781,6 +784,26 @@ Surf surface(Hit h, vec3 p, vec3 n, int cell) {
   } else if (m == M_FRIDGE) {
     s.a = 0.68;
     s.gloss = 0.3;
+  } else if (m == M_CLOCK) {
+    // The street clock: a pale face, twelve marks, the hands at MOTION.w
+    // o'clock; its rim dark. Lit from inside after dark.
+    vec2 q = vec2(h.lp.x, -h.lp.z) / CLOCK_R;
+    float rr = length(q);
+    s.a = 0.05;
+    if (abs(h.lp.y) > 0.03 && rr < 0.9) {
+      float ang = atan(q.x, q.y);
+      float off = abs(fract(ang * 12.0 / TAU + 0.5) - 0.5) * TAU / 12.0 * rr;
+      float mark = step(0.7, rr) * step(rr, 0.84) * step(off, 0.035);
+      float ha = TAU * mod(MOTION.w, 12.0) / 12.0, ma = TAU * fract(MOTION.w);
+      vec2 hu = vec2(sin(ha), cos(ha)), mu = vec2(sin(ma), cos(ma));
+      float hl = dot(q, hu), ml = dot(q, mu);
+      float hourHand = step(abs(q.x * hu.y - q.y * hu.x), 0.05) * step(-0.1, hl) * step(hl, 0.5);
+      float minuteHand = step(abs(q.x * mu.y - q.y * mu.x), 0.03) * step(-0.1, ml) * step(ml, 0.78);
+      float ink = max(max(mark, step(rr, 0.07)), max(hourHand, minuteHand));
+      s.a = mix(0.55, 0.03, ink);
+      s.warm = 0.15;
+      s.emit = vec2(0.03, 0.12) * DAY.z * (1.0 - ink);
+    }
   }
   return s;
 }
@@ -855,6 +878,76 @@ Surf personSurface(Hit h, vec3 p, vec3 n, vec3 rd) {
   return s;
 }
 
+// ---- the code under the world (as on the pages before) ----
+
+// How brightly the code runs down the town, and inside the sphere.
+const float CODE_LIGHT = 0.24;
+const float ESSENCE_LIGHT = 0.4;
+
+// A 5×7 glyph of dots, at f in 0..1 over the glyph.
+float glyph(vec2 f, int k, int g, uint salt) {
+  vec2 cell = f * vec2(5.0, 7.0);
+  vec2 b = floor(cell);
+  if (b.x < 0.0 || b.y < 0.0 || b.x > 4.0 || b.y > 6.0) return 0.0;
+  float on = step(0.52, hash3(k, g, int(b.x + 5.0 * b.y), salt));
+  vec2 q = abs(fract(cell) - 0.5);
+  return on * smoothstep(0.5, 0.3, max(q.x, q.y));
+}
+
+// Falling code over a surface: columns cell.x apart along uv.x, glyphs
+// cell.y tall up uv.y. In a `density` share of the columns a head falls
+// down and leaves a fading trail; it comes round every `span` glyphs a
+// whole number of times a loop. pxm: metres a pixel spans there.
+float code(vec2 uv, vec2 cell, float span, float density, float pxm, uint salt) {
+  vec2 g = uv / cell;
+  int cx = int(floor(g.x));
+  if (hash2(cx, 0, salt) > density) return 0.0;
+  float laps = float(25 + int(hash2(cx, 1, salt) * 45.0));
+  float row = floor(g.y);
+  float s = fract(row / span + TIME * laps / LOOP + hash2(cx, 2, salt));
+  float trail = pow(1.0 - s, 2.5);
+  float head = step(s, 1.0 / span);
+  // A share of the glyphs keeps changing as the code runs.
+  int sym = int(row);
+  if (hash3(cx, sym, 3, salt) < 0.35) {
+    sym += 131 * pm(int(floor(TIME * 6.0 + hash2(cx, 4, salt))), int(LOOP * 6.0));
+  }
+  vec2 f = fract(g);
+  float gl = glyph(vec2(f.x * 1.4 - 0.2, f.y * 1.2 - 0.1), cx, sym, salt + 7u);
+  // Far off a glyph is smaller than its dots: their mean.
+  float dots = cell.x / 7.0;
+  gl = mix(0.3, gl, smoothstep(dots * 1.5, dots * 0.6, pxm));
+  return gl * (0.8 * trail + 1.4 * head);
+}
+
+// The code on a thing's face at p (normal n): it runs down the walls and
+// along the floors, glyphs cw wide.
+float codeOn(vec3 p, vec3 n, float cw, float density, uint salt) {
+  vec3 an = abs(n);
+  bool flat_ = an.y > max(an.x, an.z);
+  bool alongZ = flat_ || an.x > an.z;
+  vec2 uv = flat_ ? p.zx : (alongZ ? p.zy : p.xy);
+  float pxm = pixelAt(length(p - EYE.xyz));
+  return code(uv, vec2(cw, cw * 1.4), 16.0, density, pxm, salt);
+}
+
+// Inside the sphere round him a thing shows its code: its own light sinks
+// to a ghost (by k) and falling glyphs cover it; where it crosses the
+// glass a thin line rings it.
+vec2 essence(vec3 p, vec3 n, vec2 L, float k) {
+  vec3 rel = p - SPHERE.xyz;
+  float R = SPHERE.w;
+  float d2 = dot(rel, rel);
+  if (k < 0.001 || d2 > (R + 0.06) * (R + 0.06)) return L;
+  float d = sqrt(d2);
+  float inside = smoothstep(R + 0.02, R - 0.06, d);
+  float c = codeOn(p, n, 0.05, 0.85, 500u);
+  vec2 inner = L * mix(1.0, 0.12, k) + vec2(ESSENCE_LIGHT * k * (0.05 + c), 0.0);
+  L = mix(L, inner, inside);
+  L.x += RINGS.w * k * 0.2 * sline(d - R, 0.012);
+  return L;
+}
+
 // The painted backdrop: the sky (the day's light, the clouds, the sun
 // crossing it, the stars and the moon at night) and in front of it a town,
 // two rows of roofs, the nearer darker, their windows lit while the sky is
@@ -863,7 +956,7 @@ vec2 backdrop(vec3 p) {
   float hgt = clamp(p.y / 21.0, 0.0, 1.0);
   // The golden hour takes the sky's cold away and fills its foot warm.
   vec2 L = vec2(DAY.x * mix(0.25, 0.16, hgt) * (1.0 - 0.5 * DAY.y), DAY.y * (0.32 * (1.0 - hgt) * (1.0 - hgt) + 0.2 * (1.0 - hgt) + 0.04));
-  float cl = fbm(vec2(p.x * 0.11 + 0.015 * STORY, p.y * 0.22), 3, 21u);
+  float cl = fbm(vec2(p.x * 0.11 + 0.015 * MOTION.z, p.y * 0.22), 3, 21u);
   L += vec2(DAY.x * 0.07, DAY.y * 0.12) * smoothstep(0.55, 0.72, cl);
   vec2 sp = vec2(SUN.x * 12.0, 2.0 + max(SUN.y, -0.3) * 18.0);
   float d = length(p.xy - sp);
@@ -889,11 +982,16 @@ vec2 backdrop(vec3 p) {
       float on = step(hash2(int(floor(cell.x)), int(floor(cell.y)), 97u), lit);
       L = mix(L * 0.6, vec2(0.02, 0.42), on);
     }
+    // The town's code runs down its walls, faint by day, plain at night.
+    float pxm = pixelAt(length(p - EYE.xyz));
+    L.x += CODE_LIGHT * (1.0 + 1.2 * DAY.z) * code(vec2(x2, p.y), vec2(0.3, 0.42), 24.0, 0.5, pxm, 300u);
   } else if (p.y < h1) {
     L = mix(L, vec2(0.03 + 0.07 * DAY.x, 0.08 * DAY.y), 0.55);
     vec2 cell = vec2(x / 0.4, p.y / 0.55);
     vec2 g = fract(cell);
     if (g.x > 0.35 && g.x < 0.65 && g.y > 0.3 && g.y < 0.7 && hash2(int(floor(cell.x)), int(floor(cell.y)), 99u) < 0.6 * lit) L += vec2(0.0, 0.18);
+    float pxm = pixelAt(length(p - EYE.xyz));
+    L.x += 0.7 * CODE_LIGHT * (1.0 + 1.2 * DAY.z) * code(vec2(x, p.y), vec2(0.22, 0.31), 32.0, 0.4, pxm, 310u);
   } else {
     // Night over the roofs: stars, and the moon high over the left.
     vec2 gs = floor(p.xy * 2.2);
@@ -959,11 +1057,21 @@ vec2 shadeSurface(Hit h, vec3 ro, vec3 rd, bool full) {
   L += s.emit;
   // When the rings strike together, the rooms of his day flash.
   if (CHORD.x > 0.001 && hisRoom(cell)) L += s.a * CHORD.x * vec2(0.05, 0.3);
-  // Where the level cuts the walls and floors: a line of light, and a
-  // glow fading down from it.
-  if (MELT.x > 0.001 && (h.flags & (F_WALL | F_SLAB)) != 0) {
+  // The plinth's front: a strip of code running along under the street.
+  if (h.kind == K_PRIM && h.mat == M_PLINTH && n.z > 0.7 && p.z > PLINTH_FRONT - 0.05) {
+    float pxm = pixelAt(h.t);
+    L.x += CODE_LIGHT * code(p.xy, vec2(0.12, 0.17), 12.0, 0.55, pxm, 700u);
+  }
+  // Inside his sphere things show their code (he himself does not).
+  if (!(h.kind == K_FIG && h.id == 0)) L = essence(p, n, L, MELT.z);
+  // The finale's level: under it a band where all goes to its code, on
+  // it a thin line; over it nothing (it is not there to be hit).
+  if (MELT.x > 0.001) {
     float e = meltLevel(p);
-    L += vec2(0.2, 1.4) * (smoothstep(0.045, 0.0, e) + 0.18 * exp(-e / 0.6));
+    float band = smoothstep(4.0, 0.0, e);
+    float c = codeOn(p, n, 0.4, 0.9, 600u);
+    L = L * mix(1.0, 0.06, band) + vec2(2.0 * CODE_LIGHT * band * (0.06 + c), 0.0);
+    L.x += 0.9 * smoothstep(0.05, 0.0, e);
   }
   return L;
 }

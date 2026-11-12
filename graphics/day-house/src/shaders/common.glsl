@@ -34,12 +34,12 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define HEROP   u_d[SX + 4]   // his head, how much the eye is his own
 #define CHORD   u_d[SX + 5]   // the three rings striking together, since
 #define PATHS   u_d[SX + 6]   // the line of his day: drawn, bright, the beads
-#define MELT    u_d[SX + 7]   // the walls melting, the table's gloss
+#define MELT    u_d[SX + 7]   // the house going to code, the table's gloss, the code in his sphere
 #define SPARKS  u_d[SX + 8]   // the deadlines' sparks
 #define SPARK_TO u_d[SX + 9]  // where they burn
 #define DESK    u_d[SX + 10]  // his screen, the desk lamp, how much he typed, the bad news
 #define TRAM    u_d[SX + 11]  // the tram's place, its doors
-#define MOTION  u_d[SX + 12]  // story time, slowness, the lift's floor, moving
+#define MOTION  u_d[SX + 12]  // story time, slowness, the sky's time, the street clock's hour
 #define CUP     u_d[SX + 13]  // the child's cup, slowness
 #define STEAM   u_d[SX + 14]  // over his tea, how much
 #define HONK    u_d[SX + 15]  // the tram's horn, how much

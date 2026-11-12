@@ -77,7 +77,7 @@ const COMPLETION_STATUS: u32 = 0x91B1;
 const PASSES: [&str; 4] = ["HITS", "SHADOW", "LIGHT", "FX"];
 
 /// The materials by the shaders' names.
-const MATERIALS: [(&str, u32); 37] = [
+const MATERIALS: [(&str, u32); 38] = [
     ("PLASTER", mat::PLASTER),
     ("TILE", mat::TILE),
     ("BOARDS", mat::BOARDS),
@@ -115,6 +115,7 @@ const MATERIALS: [(&str, u32); 37] = [
     ("STONE", mat::STONE),
     ("FRIDGE", mat::FRIDGE),
     ("STREETLAMP", mat::STREETLAMP),
+    ("CLOCK", mat::CLOCK),
 ];
 
 /// lib.rs's constants as the shaders' `#define`s, so both read one source.
@@ -179,6 +180,8 @@ fn defines() -> String {
         ("BACK_Z", f(house::BACK)),
         ("ROOF_Y", f(house::ROOF)),
         ("TABLE_Y", f(house::TABLE)),
+        ("CLOCK_R", f(house::CLOCK_R)),
+        ("PLINTH_FRONT", f(house::PLINTH[3])),
         ("BACKDROP_HALF", f(house::BACKDROP_HALF)),
         ("BACKDROP_TOP", f(house::BACKDROP_TOP)),
         ("MIRROR", f(MIRROR)),

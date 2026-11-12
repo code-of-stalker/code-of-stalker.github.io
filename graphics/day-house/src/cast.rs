@@ -94,6 +94,21 @@ pub fn grip(body: &Body, side: usize) -> V3 {
     )
 }
 
+/// Where a phone held in the hand on `side` lies: on the palm's face
+/// toward his head, its lower half in the fingers, so the hand holds it
+/// rather than passing through it.
+pub fn in_palm(body: &Body, side: usize) -> V3 {
+    let g = grip(body, side);
+    let to = body.head - g;
+    let flat = v3(to.x, 0.0, to.z);
+    let toward = if flat.length() > 1e-4 {
+        flat.normalize()
+    } else {
+        body.face.forward * -1.0
+    };
+    g + toward * 0.05 + v3(0.0, 0.03, 0.0)
+}
+
 /// The hand on `side` aims its wrist at `w` (the walk's frame), `a` of the
 /// way: what it reached for before keeps its share, so one reach hands
 /// over to the next without a jump.
@@ -1708,7 +1723,7 @@ impl Cast {
         // he records, then at his ear.
         let w = k.wall;
         if s > w + 1.45 && s < w + 14.0 {
-            held.phone = grip(h, 1) - v3(0.0, 0.005, 0.0);
+            held.phone = in_palm(h, 1);
             let to = h.head - held.phone;
             held.phone_yaw = to.x.atan2(to.z);
             let ear = smooth(w + 8.0, w + 8.6, s) * (1.0 - smooth(w + 13.4, w + 13.9, s));
@@ -1736,7 +1751,7 @@ impl Cast {
         );
         let call = smooth(d + 6.05, d + 6.2, s) * (1.0 - smooth(d + 10.75, d + 10.9, s));
         if call > 0.0 {
-            held.phone = held.phone.lerp(grip(h, 0) - v3(0.0, 0.01, 0.0), call);
+            held.phone = held.phone.lerp(in_palm(h, 0), call);
             // At his ear it stands up, its face to his cheek.
             let ear = smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s);
             let to = h.head - held.phone;

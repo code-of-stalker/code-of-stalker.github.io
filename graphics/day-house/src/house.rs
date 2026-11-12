@@ -17,6 +17,9 @@ pub const SLAB: f32 = 0.24;
 pub const ROOM_H: f32 = STOREY - SLAB;
 pub const FLOORS: usize = 5;
 pub const ROOF: f32 = STOREY * FLOORS as f32;
+/// The street clock's face: its middle and radius.
+pub const CLOCK_AT: V3 = v3(-7.0, 3.35, 6.95);
+pub const CLOCK_R: f32 = 0.5;
 /// The back wall's inner and outer faces, the side walls' inner and outer.
 pub const BACK: f32 = -4.6;
 pub const BACK_OUT: f32 = -4.9;
@@ -125,6 +128,7 @@ pub mod mat {
     pub const STONE: u32 = 34;
     pub const FRIDGE: u32 = 35;
     pub const STREETLAMP: u32 = 36;
+    pub const CLOCK: u32 = 37;
 }
 
 /// Flags in a primitive's tag (its whole part; the fraction is a tone).
@@ -1772,6 +1776,10 @@ fn street(cells: &mut [Vec<Prim>]) {
         // The second stop's sign stands back by the kerb, clear of the door.
         out.push(cyl(mat::METAL, v3(-4.6, 1.2, 6.95), 0.03, 1.2).tone(0.3));
         out.push(cyl(mat::SIGN, v3(-4.6, 2.5, 6.95), 0.22, 0.012).pitch(FRAC_PI_2));
+        // The street's clock on its own post: the day's hours go round on
+        // it (its face faces the street, its hands drawn by the shader).
+        out.push(cyl(mat::METAL, v3(CLOCK_AT.x, 1.45, CLOCK_AT.z), 0.035, 1.45).tone(0.3));
+        out.push(cyl(mat::CLOCK, CLOCK_AT, CLOCK_R, 0.045).pitch(FRAC_PI_2));
         out.push(cube(mat::WOOD, v3(3.0, 0.45, 7.6), v3(0.9, 0.035, 0.2)).tone(0.4));
         legs(out, mat::METAL, v3(3.0, 0.0, 7.6), 0.85, 0.17, 0.42, 0.02);
         out.push(

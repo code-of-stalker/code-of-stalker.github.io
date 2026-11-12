@@ -95,14 +95,14 @@ export function PersonCard({ session, person, directory, avatars = true, onChang
     {guided ? <ListGroup card caption="ПРОВОДНИК" footer="Переписка остаётся у идущего: новый проводник увидит всю историю, прежний теряет доступ.">
       {guides.length ? guides.map((guide, index) => pick(guide, person.guideId === guide.userId, index === guides.length - 1 && !person.guideId,
         () => { void act(() => session.assignGuide(person.userId, guide.userId)); }))
-        : <ListItem glyph="people" title={isGuide ? 'Других проводников нет' : 'Проводников пока нет'} detail="Дайте права проводника кому-нибудь из людей" last={!person.guideId} />}
+        : <ListItem glyph="people" title={isGuide ? 'Других проводников нет' : 'Проводников пока нет'} hint="Дайте права проводника кому-нибудь из людей" last={!person.guideId} />}
       {person.guideId ? <ListItem glyph="exit" tone="error" title="Снять проводника" chevron={false} last
         onPress={busy ? undefined : () => { void act(() => session.assignGuide(person.userId, null)); }} /> : null}
     </ListGroup> : null}
-    <ListGroup card caption="ПРАВА" footer={person.mainAdmin ? 'Главного админа назначает владелец сервера, не из приложения.' : undefined}>
+    <ListGroup card divided caption="ПРАВА" footer={person.mainAdmin ? 'Главного админа назначает владелец сервера, не из приложения.' : undefined}>
       {(['guide', 'admin'] as StaffRole[]).map((role, index) => {
         const on = person.roles.includes(role);
-        return <ListItem key={role} avatar={<View style={styles.mark}><RoleMark role={role} ink={inks[role]} size={20} /></View>} title={roleTitles[role]} detail={roleHints[role]} checked={on}
+        return <ListItem key={role} avatar={<View style={styles.mark}><RoleMark role={role} ink={inks[role]} size={20} /></View>} title={roleTitles[role]} hint={roleHints[role]} checked={on}
           accessibilityLabel={`${roleTitles[role]}: ${on ? 'включено' : 'выключено'}`} onPress={busy ? undefined : () => toggle(role)}
           right={<ProductToggle enabled={on} />} last={index === 1} />;
       })}
@@ -110,16 +110,16 @@ export function PersonCard({ session, person, directory, avatars = true, onChang
     {isGuide ? <ListGroup card caption="АДМИН ЭТОГО ПРОВОДНИКА">
       {admins.length ? admins.map((admin, index) => pick(admin, person.adminId === admin.userId, index === admins.length - 1 && !person.adminId,
         () => { void act(() => session.assignAdmin(person.userId, admin.userId, directory)); }))
-        : <ListItem glyph="shield" title="Админов пока нет" detail="Дайте права админа проводника кому-нибудь из людей" last={!person.adminId} />}
+        : <ListItem glyph="shield" title="Админов пока нет" hint="Дайте права админа проводника кому-нибудь из людей" last={!person.adminId} />}
       {person.adminId ? <ListItem glyph="exit" tone="error" title="Снять админа" chevron={false} last
         onPress={busy ? undefined : () => { void act(() => session.assignAdmin(person.userId, null, directory)); }} /> : null}
     </ListGroup> : null}
     {/* One action needs no section of its own (Art 2026-11-12). */}
     {canBlock(person) ? <ListGroup card>
       {person.blocked
-        ? <ListItem glyph="key" tone="accent" title="Открыть доступ" detail="Человек снова увидит свою переписку" chevron={false} last
+        ? <ListItem glyph="key" tone="accent" title="Открыть доступ" hint="Человек снова увидит свою переписку" chevron={false} last
           onPress={busy ? undefined : () => { void act(() => session.setBlocked(person.userId, false)); }} />
-        : <ListItem glyph="lock" tone="error" title="Закрыть доступ" detail="Переписка сохранится, писать будет нельзя" chevron={false} last
+        : <ListItem glyph="lock" tone="error" title="Закрыть доступ" hint="Переписка сохранится, писать будет нельзя" chevron={false} last
           onPress={busy ? undefined : () => setConfirm('block')} />}
     </ListGroup> : null}
     {error ? <Note tone="error">{error}</Note> : null}

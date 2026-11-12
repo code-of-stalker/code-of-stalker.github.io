@@ -1,13 +1,13 @@
-import { View, Text } from 'react-native';
-import { useThemeColors } from '../ProductTheme';
-import { artLabels, type ArtProps } from './types';
+import { View } from 'react-native';
+import type { ArtProps } from './types';
 import { useArtLoadingSettled } from '../skeleton/ArtLoading';
 
-/** A failed Rust surface must never silently switch to JavaScript graphics. */
+/**
+ * A failed Rust surface must never silently switch to JavaScript graphics. It keeps its place
+ * and stays empty: the art label is a developer name, never shown (Art's phone showed
+ * «Стеклянная поверхность» over the admin PIN screen when the GPU had no room for a surface).
+ */
 export function ArtUnavailable(props: ArtProps) {
-  const colors = useThemeColors();
   useArtLoadingSettled();
-  return <View testID="rust-art-unavailable" style={[{ width: props.width ?? '100%', height: props.height, alignItems: 'center', justifyContent: 'center' }, props.style]}>
-    <Text accessibilityRole="text" style={{ color: colors.muted, fontSize: 11 }}>{artLabels[props.kind]}</Text>
-  </View>;
+  return <View testID="rust-art-unavailable" aria-hidden pointerEvents="none" style={[{ width: props.width ?? '100%', height: props.height }, props.style]} />;
 }

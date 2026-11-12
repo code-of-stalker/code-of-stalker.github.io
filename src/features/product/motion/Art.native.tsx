@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { AppState, PanResponder, StyleSheet, View } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useIsFocused } from 'expo-router';
@@ -72,7 +72,7 @@ function NativeArt({ kind, height, width, glass, controllerRef, audioSource, sca
   useEffect(() => { if (!active || !foreground || !focused) gesture.cancel(); return () => gesture.cancel(); }, [active, foreground, focused, gesture]);
   return <View style={[{ height, width: width ?? '100%' }, style]} onLayout={event => { dimensions.current = { width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height }; }}>
     {/* While the asset loads, the skeleton holds the place. */}
-    {failed === kind ? <Unavailable kind={kind} /> : !source ? null :
+    {failed === kind ? <Unavailable /> : !source ? null :
       <View pointerEvents="none" style={styles.fill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <WebView key={kind} ref={browser} source={source} style={styles.web} containerStyle={styles.web} originWhitelist={['*']}
           javaScriptEnabled domStorageEnabled={false} scrollEnabled={false} bounces={false} overScrollMode="never"
@@ -88,8 +88,9 @@ function NativeArt({ kind, height, width, glass, controllerRef, audioSource, sca
       accessibilityActions={[{ name: 'activate' }]} onAccessibilityAction={event => { if (event.nativeEvent.actionName === 'activate') gesture.activate(); }} onAccessibilityTap={() => gesture.activate()}/>}
   </View>;
 }
-function Unavailable({ kind }: { kind: ArtProps['kind'] }) {
+/** A surface that cannot start keeps its place and stays empty: the art label is never shown. */
+function Unavailable() {
   useArtLoadingSettled();
-  return <View style={styles.fallback}><Text style={styles.label}>{artLabels[kind]}</Text></View>;
+  return <View style={styles.fill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />;
 }
-const styles = StyleSheet.create({ fill: { ...StyleSheet.absoluteFill }, web: { flex: 1, backgroundColor: 'transparent' }, fallback: { flex: 1, alignItems: 'center', justifyContent: 'center' }, label: { color: '#E7E100', fontSize: 13 } });
+const styles = StyleSheet.create({ fill: { ...StyleSheet.absoluteFill }, web: { flex: 1, backgroundColor: 'transparent' } });

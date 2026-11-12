@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-native';
 
 import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
+import { DiaryChoiceFace } from '../../product/diary/DiaryFilters';
 import { DiaryGlass } from '../../product/diary/DiaryGlass';
 import { useProductLayout } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
@@ -13,14 +14,15 @@ import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
 import { ProductButton, ProductText } from '../../product/ui';
-import type { DirectoryEntry } from '../backend';
+import type { DirectoryEntry, Place } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import type { GlyphName } from './chrome';
-import { GlassField, Glyph, ListGroup, ListItem } from './chrome';
+import { GlassField, Glyph, ListGroup, ListItem, useRoleInks } from './chrome';
 import { formatTime, Note, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
-import { isStaff, PersonCard, placesOf, plain, waitedFor } from './PersonCard';
+import { isStaff, PersonCard, plain, RoleTags, waitedFor } from './PersonCard';
+import { RoleMark } from './RoleMark';
 
 type Tab = 'walkers' | 'team';
 type FilterId = 'all' | 'waiting' | 'unguided' | 'blocked' | 'guides' | 'admins';
@@ -107,25 +109,28 @@ function CheckBox({ checked, label, onPress, mixed = false }: { checked: boolean
   </Pressable>;
 }
 
-/** A filter as the diary's filter choices: glass under a hairline, the accent line when chosen. */
+/** A filter as the diary's filter choices: the chosen one filled with the accent, its text dark (Art 2026-11-12). */
 function Chip({ label, count, on, alert = false, onPress }: { label: string; count: number; on: boolean; alert?: boolean; onPress: () => void }) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   return <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${label}: ${count}`} onPress={onPress}
-    style={(state: Pointer) => [styles.chip, (on || state.hovered) && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
-    <DiaryGlass /><PanelBorder color={on ? colors.accent : colors.border} />
-    <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={on ? colors.text : colors.muted} style={styles.chipText}>{label}</ProductText>
-    <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={alert && count ? colors.accent : on ? colors.text : colors.faint} style={styles.chipText}>{String(count)}</ProductText>
+    style={(state: Pointer) => [styles.chip, !on && state.hovered && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
+    <DiaryChoiceFace selected={on} fillStyle={styles.chipFill} content={ink => <>
+      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? colors.muted} style={styles.chipText}>{label}</ProductText>
+      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? (alert && count ? colors.accent : colors.faint)} style={styles.chipText}>{String(count)}</ProductText>
+    </>} />
   </Pressable>;
 }
 
-function Cell({ children, flex, tone = 'text', align = 'left', title = false, detail }: {
-  children: ReactNode; flex: number; tone?: Tone; align?: 'left' | 'right'; title?: boolean; detail?: string;
+/** `mark` puts a role's mark right of the text, as the chat does after a role. */
+function Cell({ children, flex, tone = 'text', align = 'left', title = false, detail, mark }: {
+  children: ReactNode; flex: number; tone?: Tone; align?: 'left' | 'right'; title?: boolean; detail?: string; mark?: { role: Place; ink: string };
 }) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const color = tone === 'accent' ? colors.accent : tone === 'error' ? colors.error : tone === 'muted' ? colors.muted : colors.text;
+  const text = <ProductText variant={title ? 'title' : 'body'} numberOfLines={1} maxFontSize={title ? 15 : 12}
+    style={[title ? styles.cellTitle : styles.cellText, { color, textAlign: align }, mark && styles.cellShrink]}>{children}</ProductText>;
   return <View style={[styles.cell, { flex }]}>
-    <ProductText variant={title ? 'title' : 'body'} numberOfLines={1} maxFontSize={title ? 15 : 12}
-      style={[title ? styles.cellTitle : styles.cellText, { color, textAlign: align }]}>{children}</ProductText>
+    {mark ? <View style={styles.cellLine}>{text}<RoleMark role={mark.role} ink={mark.ink} /></View> : text}
     {detail ? <ProductText numberOfLines={1} maxFontSize={11} style={[styles.cellDetail, { textAlign: align }]}>{detail}</ProductText> : null}
   </View>;
 }
@@ -157,10 +162,10 @@ function Row({ on, hovered, last, children, style }: { on: boolean; hovered: boo
 export function AdminConsole({ session, onOpenChat }: { session: IntensiveSession; onOpenChat: (chatId: string) => void }) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
+  const inks = useRoleInks();
   const { settings } = useProduct();
   const wide = useProductLayout().columns === 2;
   const roomy = useWindowDimensions().width >= 1200;
-  // The search above the side pane takes the pane's width, so their edges line up.
   const sideWidth = roomy ? 400 : 340;
   const [directory, setDirectory] = useState<DirectoryEntry[] | null>(null);
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
@@ -263,11 +268,16 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
             <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
             {wide ? <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{`КОД ${shortCode(entry.userId)}`}</ProductText>
               : state.notable ? <StateCell label={state.label} tone={state.tone} glyph={state.glyph} />
-                : <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{guide ? `ПРОВОДНИК: ${guide.name}` : `КОД ${shortCode(entry.userId)}`}</ProductText>}
+                : guide ? <View style={styles.cellLine}>
+                  <ProductText numberOfLines={1} maxFontSize={11} style={[styles.code, styles.cellShrink]}>{`ПРОВОДНИК: ${guide.name}`}</ProductText>
+                  <RoleMark role="guide" ink={inks.guide} size={12} />
+                </View>
+                  : <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{`КОД ${shortCode(entry.userId)}`}</ProductText>}
           </View>
         </View>
         {wide ? <>
-          <Cell flex={1.4} title tone={guide ? 'text' : 'accent'} detail={guide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}>{guide?.name ?? 'Не назначен'}</Cell>
+          <Cell flex={1.4} title tone={guide ? 'text' : 'accent'} detail={guide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}
+            mark={guide ? { role: 'guide', ink: inks.guide } : undefined}>{guide?.name ?? 'Не назначен'}</Cell>
           <StateCell flex={1.7} label={state.label} tone={state.tone} glyph={state.glyph} />
           <Cell flex={1.1} tone="muted" align="right">{time || '—'}</Cell>
         </> : time && !entry.waitingSince ? <ProductText maxFontSize={11} style={styles.time}>{time}</ProductText> : null}
@@ -280,7 +290,6 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     const isGuide = entry.roles.includes('guide');
     const admin = entry.adminId ? byId.get(entry.adminId) : undefined;
     const own = isGuide ? guideLoad(entry.userId) : null;
-    const places = placesOf(entry).join(' · ');
     return <Row key={entry.userId} on={selected === entry.userId} hovered={hovered === entry.userId} last={index === rows.length - 1}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Открыть: ${entry.name}`} onPress={() => open(entry.userId)} {...hover(entry.userId)}
         style={({ pressed }) => [styles.rowBody, styles.teamBody, pressed && { opacity: .7 }]}>
@@ -288,11 +297,14 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
           <View style={styles.nameCopy}>
             <ProductText variant="title" numberOfLines={1} maxFontSize={16} style={styles.name}>{entry.name}</ProductText>
             {entry.blocked ? <StateCell label="ДОСТУП ЗАКРЫТ" tone="error" glyph="lock" />
-              : <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{wide ? `КОД ${shortCode(entry.userId)}` : places}</ProductText>}
+              : wide ? <ProductText numberOfLines={1} maxFontSize={11} style={styles.code}>{`КОД ${shortCode(entry.userId)}`}</ProductText> : <RoleTags entry={entry} />}
           </View>
         </View>
         {wide ? <>
-          <Cell flex={2} tone="muted" detail={isGuide ? `АДМИН: ${admin?.name ?? 'НЕТ'}` : undefined}>{places}</Cell>
+          <View style={[styles.cell, { flex: 2 }]}>
+            <RoleTags entry={entry} />
+            {isGuide ? <ProductText numberOfLines={1} maxFontSize={11} style={styles.cellDetail}>{`АДМИН: ${admin?.name ?? 'НЕТ'}`}</ProductText> : null}
+          </View>
           <Cell flex={.8} title tone={own ? 'text' : 'muted'} align="right">{own ? own.walkers : '—'}</Cell>
           <Cell flex={.9} title tone={own?.waiting ? 'accent' : 'muted'} align="right">{own ? own.waiting : '—'}</Cell>
         </> : own?.waiting ? <StateCell label={`ЖДУТ ${own.waiting}`} tone="accent" glyph="clock" /> : null}
@@ -345,7 +357,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       {refreshing ? 'ОБНОВЛЯЮ…' : `ОБНОВЛЕНО ${formatTime(new Date(loadedAt).toISOString())}`}
     </ProductText>
   </Pressable>;
-  const tabs = <Tabs fit value={tab} onChange={value => { changeView(value); setSelected(null); }} options={[
+  const tabs = <Tabs fit filled value={tab} onChange={value => { changeView(value); setSelected(null); }} options={[
     { id: 'walkers', label: `ИДУЩИЕ ${walkers.length}` },
     { id: 'team', label: `КОМАНДА ${team.length}` },
   ]} />;
@@ -386,7 +398,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
   const queue = walkers.filter(entry => entry.waitingSince && !entry.blocked);
   const fresh = walkers.filter(entry => !entry.guideId && !entry.blocked);
   const overview = <View style={styles.stack}>
-    <ListGroup caption={`ЖДУТ ОТВЕТА · ${queue.length}`}>
+    <ListGroup card caption={`ЖДУТ ОТВЕТА · ${queue.length}`}>
       {queue.length ? queue.slice(0, QUEUE_SIZE).map((entry, index) => {
         const guide = entry.guideId ? byId.get(entry.guideId) : undefined;
         return <ListItem key={entry.userId} title={entry.name}
@@ -395,12 +407,12 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       }) : <ListItem glyph="check" title="Всем ответили" detail="СООБЩЕНИЙ БЕЗ ОТВЕТА НЕТ" last />}
       {queue.length > QUEUE_SIZE ? <ListItem glyph="clock" tone="accent" title={`Показать всех: ${queue.length}`} onPress={() => changeView('walkers', 'waiting')} last /> : null}
     </ListGroup>
-    {fresh.length ? <ListGroup caption={`НОВЫЕ БЕЗ ПРОВОДНИКА · ${fresh.length}`} footer="Откройте человека и назначьте ему проводника.">
+    {fresh.length ? <ListGroup card caption={`НОВЫЕ БЕЗ ПРОВОДНИКА · ${fresh.length}`} footer="Откройте человека и назначьте ему проводника.">
       {fresh.slice(0, QUEUE_SIZE).map((entry, index) => <ListItem key={entry.userId} title={entry.name}
         detail={`КОД ${shortCode(entry.userId)} · С ${formatTime(entry.createdAt)}`} onPress={() => setSelected(entry.userId)}
         last={index === Math.min(fresh.length, QUEUE_SIZE) - 1} />)}
     </ListGroup> : null}
-    <ListGroup caption="ПРОВОДНИКИ">
+    <ListGroup card caption="ПРОВОДНИКИ">
       {guides.length ? guides.map((guide, index) => {
         const own = guideLoad(guide.userId);
         return <ListItem key={guide.userId} title={guide.name}
@@ -411,20 +423,23 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     <ProductText maxFontSize={13} style={styles.hint}>Откройте человека в списке, чтобы назначить проводника или изменить права. Отметьте нескольких идущих, чтобы перевести их разом.</ProductText>
   </View>;
 
+  // The search sits over the list it searches (Art 2026-11-12), the filters right under it.
   return <View style={styles.workspace}>
     <View style={styles.toolbar}>
       <View style={styles.tabsWide}>{tabs}</View>
       <View style={styles.refreshWide}>{refresh}</View>
-      <View style={[styles.searchWide, { width: sideWidth }]}>{search}</View>
     </View>
-    {tab === 'walkers' && pickedRows.length ? bulk : chips}
     <View style={styles.split}>
-      <Framed cut="bottomLeft" style={styles.pane}>
-        {head}
-        <ScrollView style={styles.paneScroll} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {tableRows}
-        </ScrollView>
-      </Framed>
+      <View style={styles.listColumn}>
+        {search}
+        {tab === 'walkers' && pickedRows.length ? bulk : chips}
+        <Framed cut="bottomLeft" style={styles.pane}>
+          {head}
+          <ScrollView style={styles.paneScroll} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {tableRows}
+          </ScrollView>
+        </Framed>
+      </View>
       <Framed cut="topRight" style={[styles.pane, styles.side, { width: sideWidth }]}>
         <View style={styles.paneHead}>
           <ProductText variant="label" numberOfLines={1} maxFontSize={12} style={styles.paneCaption}>
@@ -451,11 +466,12 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   toolbar: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   tabsWide: { flexShrink: 0, minWidth: 320 },
   refreshWide: { marginLeft: 'auto' },
-  searchWide: { flexShrink: 0 },
+  listColumn: { flex: 1, minWidth: 0, minHeight: 0, gap: 12 },
   // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
   chipScroll: { paddingRight: 4 },
   chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  chipFill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
   chipText: { fontSize: 10, lineHeight: 14, letterSpacing: .8 },
   bulk: { minHeight: 48, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 16, paddingRight: 4, backgroundColor: colors.subtle },
   bulkNarrow: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 10, paddingRight: 16 },
@@ -465,7 +481,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   refresh: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
   refreshText: { fontSize: 9, lineHeight: 13, letterSpacing: .8, color: colors.muted },
   split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: 20 },
-  pane: { flex: 1, minWidth: 0, minHeight: 0, padding: 4 },
+  // Rows run from frame to frame: a picked row's tint has no gaps at its sides (Art 2026-11-12).
+  pane: { flex: 1, minWidth: 0, minHeight: 0, paddingVertical: 4 },
   // `flex: 0` on the web sets a zero basis that beats the width, so the side pane says it plainly.
   side: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
   paneScroll: { flex: 1, minHeight: 0 },
@@ -475,7 +492,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   paneCaption: { fontSize: 9, lineHeight: 13, letterSpacing: 1.6, color: colors.muted, flexShrink: 1 },
   paneClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   sideContent: { padding: 16, paddingBottom: 24 },
-  table: { paddingHorizontal: 4, paddingVertical: 4 },
+  table: { paddingVertical: 4 },
   head: { minHeight: 44, borderBottomWidth: .25, borderBottomColor: colors.border },
   headBody: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 4, paddingRight: 8 },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingLeft: 4 },
@@ -493,6 +510,8 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   code: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },
   time: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },
   cell: { minWidth: 0, gap: 3 },
+  cellLine: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+  cellShrink: { flexShrink: 1 },
   cellTitle: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
   cellText: { fontSize: 11, lineHeight: 16, letterSpacing: .4 },
   cellDetail: { fontSize: 9, lineHeight: 13, color: colors.muted, letterSpacing: .6 },

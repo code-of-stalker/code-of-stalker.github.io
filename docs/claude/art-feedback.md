@@ -58,6 +58,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - The heroine's eyes are always open: calm, attentive, looking where her voice goes. Never "eyes closed, serene" in a brief. 2026-11-12, painted hero concepts: «у нее опять закрыты глаза, они должны быть открыты».
 - Her voice comes from her lips when she speaks: «почему разрез идет от ярёмной впадины а не от проговаривания девушки?» (2026-11-12, hero). The old rule «voice from the jugular notch» holds only for the shipped stage-5 scenes.
 - Screen 6 «Всплытие» v1: she must not surface by herself; the water level changes because she speaks, the words surface because she speaks, and the code is matrix code, not binary («двоичный код должен быть матричным кодом»). 2026-11-12.
+- Камертон v1: no line or cut at the start; not sparse; the voice must change the whole field, not one channel; she must open her mouth, drawn (dispatcher image), not a shader cut («ты просто разрезал рот?»). 2026-11-12.
+- Всплытие v2: the water must drain fully; hair, brows and stripes read as one psychedelic mass; the water above the line must read as water. 2026-11-12.
 - Screen 6 «Проговоренное — уже не скрытое», direction A (the old room, figure and card, executed richer) rejected 2026-11-12: «ты добавил деталей но саму сцену не переработал. она выглядит слабо, топорно. а твои детали на и так слабую основу сделали только шум». A rework means a new central image and a new base, never more detail on the old staging.
 - A prototype must play the moment he opens it: screen 6 v1 froze on its first frame («не проигрывается»). Before sending, check in headless Chrome that the clock runs and the frame rate holds.
 

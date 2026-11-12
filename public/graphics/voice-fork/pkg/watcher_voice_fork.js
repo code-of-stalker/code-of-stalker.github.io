@@ -50,7 +50,7 @@ export class VoiceFork {
         return ret >>> 0;
     }
     /**
-     * `figure`: assets/figure.webp (R her light, G her silhouette).
+     * `figure`: assets/figure.webp (R her light, G her silhouette, B her mouth half open and open).
      * @param {HTMLCanvasElement} canvas
      * @param {HTMLImageElement} figure
      */

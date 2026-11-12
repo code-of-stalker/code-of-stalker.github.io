@@ -1,8 +1,10 @@
 //! Browser adapter: one WebGL2 program, one texture (the woman). Every
-//! motion value comes from `compose` and every colour from `look`; the
-//! shader draws the code, the channel and the voice round her raster.
+//! motion value comes from `compose` (and `track`, the voice over the loop)
+//! and every colour from `look`; the shader draws the code, the rings and the
+//! note's pattern round her raster, and opens her mouth.
 use crate::{
-    compose, look, Look, AXIS_Y, LOOP_SECONDS, MOUTH, OPEN, PULSES, REACH, RISE, SIZE, SPAN, STILL,
+    compose, look, track, Look, LOOP_SECONDS, MOUTH, MOUTH_BOX, MOUTH_SHIFT, SIZE, SOUND_SPEED,
+    STILL, TRACK, TREMBLE,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -19,9 +21,9 @@ const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
 const NAMES: [&str; 13] = [
     "u_res",
     "u_hum",
-    "u_chan",
-    "u_lips",
-    "u_pulse[0]",
+    "u_say",
+    "u_track[0]",
+    "u_spare",
     "u_cold",
     "u_warm",
     "u_pale",
@@ -36,15 +38,15 @@ const NAMES: [&str; 13] = [
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
     let v2 = |v: [f32; 2]| format!("vec2({:?}, {:?})", v[0], v[1]);
+    let v4 = |v: [f32; 4]| format!("vec4({:?}, {:?}, {:?}, {:?})", v[0], v[1], v[2], v[3]);
     [
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
         ("MOUTH", v2(MOUTH)),
-        ("AXIS_Y", f(AXIS_Y)),
-        ("RISE", f(RISE)),
-        ("REACH", v2(REACH)),
-        ("OPEN_MAX", f(OPEN[1])),
-        ("SPAN", f(SPAN)),
-        ("PULSES", PULSES.to_string()),
+        ("MOUTH_BOX", v4(MOUTH_BOX)),
+        ("MOUTH_SHIFT", f(MOUTH_SHIFT)),
+        ("SOUND_SPEED", f(SOUND_SPEED)),
+        ("TREMBLE", f(TREMBLE)),
+        ("TRACK", TRACK.to_string()),
     ]
     .iter()
     .map(|(name, value)| format!("#define {name} {value}\n"))
@@ -108,11 +110,13 @@ pub struct VoiceFork {
     reduced: bool,
     disposed: bool,
     frames: u32,
+    /// The voice over the loop, flattened for `u_track`.
+    track: Vec<f32>,
 }
 
 #[wasm_bindgen]
 impl VoiceFork {
-    /// `figure`: assets/figure.webp (R her light, G her silhouette).
+    /// `figure`: assets/figure.webp (R her light, G her silhouette, B her mouth half open and open).
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement, figure: HtmlImageElement) -> Result<VoiceFork, JsValue> {
         if figure.natural_width() != SIZE[0] as u32 || figure.natural_height() != SIZE[1] as u32 {
@@ -173,6 +177,7 @@ impl VoiceFork {
             reduced: false,
             disposed: false,
             frames: 0,
+            track: track().iter().flatten().copied().collect(),
         };
         fork.gl.use_program(Some(&fork.program));
         fork.gl.uniform1i(fork.at("u_fig"), 0);
@@ -292,14 +297,8 @@ impl VoiceFork {
         gl.bind_texture(Gl::TEXTURE_2D, Some(&self.figure));
         gl.uniform2f(self.at("u_res"), width as f32, height as f32);
         gl.uniform4f(self.at("u_hum"), f.hum, f.mode, f.phase, f.time);
-        gl.uniform4f(self.at("u_chan"), f.open, f.front, f.swing, f.breath);
-        gl.uniform4f(self.at("u_lips"), f.lips, 0.0, 0.0, 0.0);
-        let mut pulses = [0.0f32; PULSES * 4];
-        for (k, p) in f.pulses.iter().enumerate() {
-            pulses[k * 4] = p[0];
-            pulses[k * 4 + 1] = p[1];
-        }
-        gl.uniform4fv_with_f32_array(self.at("u_pulse[0]"), &pulses);
+        gl.uniform4f(self.at("u_say"), f.mouth, f.lips, f.breath, 0.0);
+        gl.uniform4fv_with_f32_array(self.at("u_track[0]"), &self.track);
         gl.uniform3fv_with_f32_array(self.at("u_cold"), &l.cold);
         gl.uniform3fv_with_f32_array(self.at("u_warm"), &l.warm);
         gl.uniform3fv_with_f32_array(self.at("u_pale"), &l.pale);

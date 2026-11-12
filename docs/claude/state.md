@@ -17,6 +17,7 @@ Hero «Камертон» (`graphics/voice-fork`, Art: «давай камерт
 pick, the only raster) over Rust matrix code; a light string comes from her lips (Art: the cut
 must come from her speech, not the jugular notch), standing wave, the code parts round it;
 12 s loop. Prototype `output/prototypes/voice-fork/index.html`.
+PAUSED 2026-11-12 (Art: «ставь всё на паузу»). Камертон reworked (silent start, rings and the note pattern over the whole code rain) and her mouth now opens from 3 drawn frames (assets/heroine{,-half,-open}.png via the dispatcher; tools/prepare.py packs them into figure B; shader blends inside MOUTH_BOX). Next: check stills at 0.78 s and 2.9 s for seams at the MOUTH_BOX edges (the 2 px padding fix is built, not yet looked at), then show Art both prototypes in Тишина. Nothing shipped.
 Screen 6 «Всплытие» (`graphics/voice-surface`, no raster, Art: «насчет 6 экрана там не нужен
 растр»): camera on the surface of a dark sea of matrix code; she stands still, eyes open; each
 time she speaks (lips move) a ray from her lips raises a knot that opens into БОЛЬ/ВИНА/МЫСЛЬ

@@ -19,7 +19,7 @@ SOURCES = {
     "hear-state": ["figure", "labels"],
     "simple-practice": ["figure"],
     "tuning-questions": ["figure", "labels"],
-    "persona-dream": ["figure", "labels"],
+    "persona-dream": ["figure", "others", "labels"],
     "persona-program": ["figure", "labels"],
     "persona-belief": ["labels"],
     "call-bell": ["labels"],

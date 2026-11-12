@@ -8,10 +8,10 @@ async function image(name) {
   return node;
 }
 export async function mount(canvas) {
-  resources ??= Promise.all([init(), image('figure'), image('labels')])
+  resources ??= Promise.all([init(), image('figure'), image('others'), image('labels')])
     .catch(error => { resources = undefined; throw error; });
-  const [, figure, labels] = await resources;
-  const renderer = new PersonaDream(canvas, figure, labels);
+  const [, figure, others, labels] = await resources;
+  const renderer = new PersonaDream(canvas, figure, others, labels);
   renderer.soft_edges(true);
   return renderer;
 }

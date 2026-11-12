@@ -1,12 +1,14 @@
 //! «Персонаж: сон, в который поверил Абсолют»: Step 4, the second block's
-//! page 01/08. The seated person of pages 04–06, at first just themself: a
-//! quiet, even light of Presence inside the body. Then the page's three
+//! page 01/08. A person standing in a dark room (the figure of pages 04–06,
+//! risen: nobody sits here), at first just themself: a quiet, even light of
+//! Presence inside the body. Then the page's three
 //! paragraphs, in order:
 //! «Человек живёт не собой, а персонажем — ментальной конструкцией,
 //! собранной из образов, заимствованных установок, страхов и памяти» —
 //! pieces come from the room and lock onto the body as the plates of a
 //! mosaic shell: images (framed pictures out of the air), borrowed attitudes
-//! (letterless lines brought from other people deep in the room), fears
+//! (letterless lines brought from three other people standing deep in the
+//! room, each one different), fears
 //! (dark trembling shards rising from below) and memory (faded frames from
 //! behind). The living light is then seen only through the seams.
 //! «Он живёт в картине мира, где уже ментальной матрицей задано, что можно,
@@ -40,15 +42,17 @@ pub const LOOP_SECONDS: f32 = 66.0;
 /// behind it and the four tags, «не в живое Я, не в Присутствие» on the card.
 pub const STILL: f32 = 52.4;
 
-/// Metres per unit of the approved figure (spoken-thought-person.svg): 1.3 m
-/// from the soles to the crown, as a seated adult.
+/// Metres per unit of the figure: the approved seated drawing
+/// (spoken-thought-person.svg, 1.3 m from the soles to the crown) above the
+/// waist and its standing legs (tools/standing.js) below. Standing, the
+/// person is 1.66 m tall.
 pub const UNIT: f32 = 1.3 / 505.0;
 /// Size of the figure's SVG in its own units.
-pub const FIGURE_SVG: [f32; 2] = [335.0, 530.0];
-/// The soles of the figure (and the chair's legs) stand on this SVG row.
-pub const FLOOR_SVG: f32 = 518.6;
-/// The SVG column placed at the world's x = 0.
-pub const ORIGIN_SVG: f32 = 160.0;
+pub const FIGURE_SVG: [f32; 2] = [200.0, 672.0];
+/// The soles of the figure stand on this SVG row.
+pub const FLOOR_SVG: f32 = 660.0;
+/// The SVG column placed at the world's x = 0: under the middle of the body.
+pub const ORIGIN_SVG: f32 = 95.0;
 /// The crown of the head (SVG row).
 pub const CROWN_SVG: f32 = 14.0;
 
@@ -64,11 +68,10 @@ pub const FIGURE: [f32; 4] = [
     FLOOR_SVG * UNIT,
 ];
 pub const EYE: [f32; 3] = on_figure(117.0, 56.0);
-pub const HEEL: [f32; 3] = on_figure(234.0, FLOOR_SVG);
-pub const BALL: [f32; 3] = on_figure(296.0, FLOOR_SVG);
-pub const CHAIR_LEGS: [[f32; 3]; 2] = [on_figure(20.0, FLOOR_SVG), on_figure(176.0, FLOOR_SVG)];
+pub const HEEL: [f32; 3] = on_figure(64.0, FLOOR_SVG);
+pub const BALL: [f32; 3] = on_figure(140.0, FLOOR_SVG);
 /// The middle of the body: where the pieces gather around.
-pub const CENTRE: [f32; 3] = on_figure(150.0, 250.0);
+pub const CENTRE: [f32; 3] = on_figure(90.0, 330.0);
 
 /// What the character is assembled from, in the page's order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -121,22 +124,25 @@ pub fn arrives(i: usize) -> f32 {
     departs(i) + FLIGHT
 }
 
-/// The other people deep in the room the attitudes are borrowed from:
-/// where each sits (world x, z) and whether it faces left.
-pub const OTHERS: [(f32, f32, bool); 3] =
-    [(-2.0, 3.4, false), (2.25, 2.8, true), (1.05, 5.6, true)];
-/// Where an attitude leaves another person: before their face.
+/// The other people deep in the room the attitudes are borrowed from: where
+/// each stands (world x, z), facing us, and who it is: 0 a tall man, 1 a
+/// woman, 2 a stocky adult in a shirt (cells of others.png).
+pub const OTHERS: [(f32, f32, usize); 3] = [(-1.65, 3.4, 0), (2.25, 2.8, 1), (0.95, 4.6, 2)];
+/// The size of one cell of others.png in the world (m), its feet on the
+/// floor, and how tall each of them stands in it (tools/prepare-assets.mjs).
+pub const OTHER_CELL: [f32; 2] = [0.7, 1.9];
+pub const OTHER_HEIGHTS: [f32; 3] = [1.8, 1.63, 1.72];
+/// Where an attitude leaves another person: just before their face.
 pub fn other_face(k: usize) -> [f32; 3] {
-    let (x, z, left) = OTHERS[k % OTHERS.len()];
-    let p = on_figure(if left { 335.0 - 128.0 } else { 128.0 }, 72.0);
-    [x + p[0] + if left { -0.08 } else { 0.08 }, p[1], z]
+    let (x, z, who) = OTHERS[k % OTHERS.len()];
+    [x, OTHER_HEIGHTS[who] - 0.13, z - 0.12]
 }
 
 /// The picture of the world: a frame standing just behind the person, from
 /// the floor up (left, bottom, right, top, in its plane `FRAME_Z`), and its
 /// matrix of cells.
 pub const FRAME_Z: f32 = 0.34;
-pub const FRAME_RECT: [f32; 4] = [-0.84, 0.0, 0.98, 1.7];
+pub const FRAME_RECT: [f32; 4] = [-0.84, 0.0, 0.98, 2.05];
 pub const COLUMNS: usize = 5;
 pub const ROWS: usize = 4;
 /// What each cell of the matrix already says: 0 МОЖНО, 1 НЕЛЬЗЯ, 2 ХОРОШО,
@@ -170,10 +176,10 @@ pub const VERDICT_SECONDS: f32 = 1.7;
 /// tag hangs (world offset from that plate) and when it is pinned. The
 /// words: «Я ТАКОЙ-ТО», «Я НЕ ТАКОЙ», «Я ДОЛЖЕН», «Я ХОЧУ».
 pub const TAGS: [(usize, [f32; 2], f32); 4] = [
-    (4, [0.2, 0.15], 41.0),
-    (12, [0.31, -0.01], 43.4),
-    (8, [-0.14, 0.4], 45.8),
-    (28, [0.16, 0.16], 48.2),
+    (5, [0.2, 0.15], 41.0),
+    (9, [0.31, -0.01], 43.4),
+    (7, [-0.14, 0.4], 45.8),
+    (20, [0.24, 0.1], 48.2),
 ];
 /// The tags hang a little nearer the camera than the person.
 pub const TAG_Z: f32 = -0.16;
@@ -273,23 +279,23 @@ const fn shot(eye: [f32; 3], focal: f32, horizon: f32, aperture: f32) -> Shot {
         aperture,
     }
 }
-/// The whole room and the seated person.
-const WIDE: Shot = shot([0.25, 0.85, -4.2], 1450.0, 480.0, 0.02);
+/// The whole room and the standing person.
+const WIDE: Shot = shot([0.25, 0.92, -4.3], 1450.0, 480.0, 0.02);
 /// The camera's moves: each one starts, eases and arrives (start, end, shot).
 const MOVES: [(f32, f32, Shot); 7] = [
     // «Человек живёт не собой…»: the whole body and the air around it,
     // where the pieces come from.
-    (1.2, 4.4, shot([0.3, 0.88, -3.2], 1400.0, 470.0, 0.025)),
+    (1.2, 4.4, shot([0.3, 0.95, -3.4], 1400.0, 470.0, 0.025)),
     // The shell is complete: a little nearer.
-    (16.8, 20.4, shot([0.24, 0.9, -2.7], 1400.0, 455.0, 0.03)),
+    (16.8, 20.4, shot([0.24, 1.0, -3.0], 1400.0, 470.0, 0.03)),
     // «Он живёт в картине мира…»: back, the whole frame around the person.
-    (21.2, 24.4, shot([0.68, 0.9, -3.75], 1380.0, 430.0, 0.02)),
+    (21.2, 24.4, shot([0.68, 1.04, -3.95], 1380.0, 475.0, 0.02)),
     // «Он верит в образ себя…»: close, the upper body and the tags.
-    (37.6, 40.6, shot([0.28, 0.98, -2.3], 1300.0, 410.0, 0.04)),
+    (37.6, 40.6, shot([0.28, 1.3, -2.3], 1300.0, 430.0, 0.04)),
     // «Не в живое Я…»: a little nearer still, the lens on the tags.
-    (50.0, 54.4, shot([0.3, 0.99, -2.2], 1300.0, 410.0, 0.045)),
+    (50.0, 54.4, shot([0.3, 1.31, -2.2], 1300.0, 430.0, 0.045)),
     // Everything stands: wide.
-    (56.4, 60.4, shot([0.36, 0.88, -3.9], 1420.0, 465.0, 0.02)),
+    (55.6, 59.6, shot([0.36, 0.95, -4.0], 1420.0, 470.0, 0.02)),
     (62.0, 65.6, WIDE),
 ];
 fn blend(a: Shot, b: Shot, t: f32) -> Shot {
@@ -857,7 +863,7 @@ mod tests {
             assert!(seen.iter().all(|s| *s), "group {g}");
         }
         // The head, the trunk and the legs each get every kind.
-        for (top, bottom) in [(0.0, 120.0), (120.0, 330.0), (330.0, 530.0)] {
+        for (top, bottom) in [(0.0, 120.0), (120.0, 360.0), (360.0, 672.0)] {
             let mut seen = [false; 4];
             for (i, c) in CELLS.iter().enumerate() {
                 if c[1] >= top && c[1] < bottom {
@@ -955,7 +961,7 @@ mod tests {
             let q = c.project(p).unwrap();
             q.at[0] > 50.0 && q.at[0] < SIZE[0] - 50.0 && q.at[1] > 30.0 && q.at[1] < SIZE[1] - 50.0
         };
-        let body = [EYE, HEEL, BALL, CHAIR_LEGS[0], on_figure(85.0, CROWN_SVG)];
+        let body = [EYE, HEEL, BALL, on_figure(85.0, CROWN_SVG)];
         for t in [0.0, 3.0, 10.0, 18.0, 22.0, 30.0, 58.0, 65.0] {
             for p in body {
                 assert!(inside(&camera(t), p), "{t} {p:?}");

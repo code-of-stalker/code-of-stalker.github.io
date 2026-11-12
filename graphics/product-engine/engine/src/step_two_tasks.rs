@@ -33,12 +33,33 @@ pub fn contains(kind: &str) -> bool {
     Scene::parse(kind).is_some()
 }
 
-fn person(x: f64, y: f64, scale: f64) -> String {
-    format!(r##"<g transform="translate({x} {y}) scale({scale})"><use href="#task-person"/></g>"##)
+fn person(id: &str, x: f64, y: f64, scale: f64) -> String {
+    format!(r##"<g transform="translate({x} {y}) scale({scale})"><use href="#{id}"/></g>"##)
 }
 fn standing(x: f64, floor: f64, scale: f64) -> String {
     // Authored outline: max y = 1482.88155, then scale .054 + translate 2.9.
-    person(x, floor - 82.975604 * scale, scale)
+    person("task-person", x, floor - 82.975604 * scale, scale)
+}
+fn standing_woman(x: f64, floor: f64, scale: f64) -> String {
+    // Approved crowd figure 04-woman-waves: max y = 1486.8, same normalization.
+    person("task-woman", x, floor - 83.18972 * scale, scale)
+}
+/// The turning leaf of the life book: it lifts off the right page, curls over the
+/// spine with its free edge lagging, and settles on the left page.
+fn leaf_path(turn: f64) -> String {
+    let angle = turn * std::f64::consts::PI;
+    let lag = angle - 0.5 * angle.sin();
+    let edge = |gutter_y: f64, base_y: f64, width: f64| {
+        let outer = (144. + width * angle.cos(), base_y - 62. * angle.sin());
+        let control = (
+            144. + 0.55 * width * lag.cos(),
+            (gutter_y + base_y) / 2. - 40. * lag.sin(),
+        );
+        (outer, control)
+    };
+    let ((fx, fy), (fcx, fcy)) = edge(157., 140., 113.);
+    let ((nx, ny), (ncx, ncy)) = edge(193., 178., 119.);
+    format!("M144 157Q{fcx:.2} {fcy:.2} {fx:.2} {fy:.2}L{nx:.2} {ny:.2}Q{ncx:.2} {ncy:.2} 144 193Z")
 }
 fn book() -> &'static str {
     include_str!("../assets/task-open-book.svg")
@@ -61,6 +82,10 @@ pub fn svg(kind: &str) -> Option<String> {
         r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view_box}" fill="none"><defs>"##
     );
     out.push_str(include_str!("../assets/task-person.svg"));
+    if matches!(scene, Scene::Discernment) {
+        out.push_str(include_str!("../assets/task-woman.svg"));
+        out.push_str(r##"<g id="task-woman"><g transform="translate(-27.65 2.9) scale(0.054)"><use href="#task-woman-shape" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width="7.5" stroke-linejoin="round"/><use href="#task-woman-lines" color="var(--book-ink)"/></g></g>"##);
+    }
     out.push_str(r##"<g id="task-person"><g transform="translate(-27.65 2.9) scale(0.054)"><use href="#task-person-shape" fill="var(--book-cover)" stroke="var(--book-ink)" stroke-width="7.5" stroke-linejoin="round"/><use href="#task-person-lines" fill="var(--book-ink)"/></g></g>
       <radialGradient id="task-light"><stop stop-color="var(--book-light)" stop-opacity="0.7"/><stop offset="0.25" stop-color="var(--book-ink)" stop-opacity="0.22"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>
       <radialGradient id="task-ground"><stop stop-color="var(--book-ink)" stop-opacity="0.17"/><stop offset="1" stop-color="var(--book-ink)" stop-opacity="0"/></radialGradient>
@@ -74,7 +99,8 @@ pub fn svg(kind: &str) -> Option<String> {
               <path d="M42 169H111M177 169H246" stroke="var(--book-dim)" stroke-width="0.4"/>
               <ellipse cx="77" cy="168" rx="21" ry="3" fill="url(#task-ground)"/><ellipse cx="211" cy="168" rx="21" ry="3" fill="url(#task-ground)"/>"##);
             out.push_str(&standing(77., 168., 1.6));
-            out.push_str(&standing(211., 168., 1.6));
+            // A different person on the right: discernment compares two people.
+            out.push_str(&standing_woman(211., 168., 1.6));
             out.push_str(r##"<defs><clipPath id="task-head-clip"><rect x="66" y="42" width="22" height="21" rx="8"/></clipPath>
               <linearGradient id="task-scan-fill" x2="0" y2="1"><stop stop-color="var(--book-ink)" stop-opacity="0"/><stop offset="1" stop-color="var(--book-bright)" stop-opacity="0.28"/></linearGradient></defs>
               <g clip-path="url(#task-head-clip)"><g class="task-head-scan"><path d="M61-11H93V0H61Z" fill="url(#task-scan-fill)"/><path d="M61 0H93" stroke="var(--book-bright)" stroke-width="0.65"/></g></g>
@@ -89,9 +115,9 @@ pub fn svg(kind: &str) -> Option<String> {
             forest(&mut out);
             out.push_str(include_str!("../assets/task-train.svg"));
             out.push_str(r##"</g>"##);
-            out.push_str(book());
-            out.push_str(r##"<path class="task-leaf" d="M144 163Q181 118 233 124L239 149Q187 145 144 185Z" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width="0.55"/>
-              <path d="M35 189Q87 177 144 196Q204 177 258 189" stroke="var(--book-dim)" stroke-width="0.4"/>"##);
+            // Step 2 task 2 has its own bound book; the Author scene keeps the older one.
+            out.push_str(include_str!("../assets/task-life-book.svg"));
+            out.push_str(r##"<path class="task-leaf" d="" fill="var(--book-paper)" stroke="var(--book-bright)" stroke-width="0.55" stroke-linejoin="round" opacity="0"/>"##);
         }
         Scene::Breath => out.push_str(include_str!("../assets/task-body-presence.svg")),
         Scene::One => out.push_str(include_str!("../assets/task-one-source.svg")),
@@ -248,15 +274,7 @@ pub fn frame(kind: &str, seconds: f64, reduced: bool) -> Vec<Update> {
             } else {
                 smooth((t.rem_euclid(9.) - 7.7) / 1.3)
             };
-            set(
-                &mut out,
-                ".task-leaf",
-                "transform",
-                format!(
-                    "translate(144 0) scale({:0.4} 1) translate(-144 0)",
-                    (turn * std::f64::consts::PI).cos()
-                ),
-            );
+            set(&mut out, ".task-leaf", "d", leaf_path(turn));
             set(
                 &mut out,
                 ".task-leaf",

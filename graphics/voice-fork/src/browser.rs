@@ -2,8 +2,7 @@
 //! motion value comes from `compose` and every colour from `look`; the
 //! shader draws the code, the channel and the voice round her raster.
 use crate::{
-    compose, look, Look, AXIS_Y, LOOP_SECONDS, MOUTH, OPEN, PULSES, REACH, RISE, SIZE, SPAN,
-    STILL,
+    compose, look, Look, AXIS_Y, LOOP_SECONDS, MOUTH, OPEN, PULSES, REACH, RISE, SIZE, SPAN, STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{

@@ -5,7 +5,7 @@
 //! onto the page in the theme's own cold, warm and pale (`look`). The scene
 //! is two-toned, so it does not go through the monochrome theme recolor.
 use crate::{
-    compose, look, Look, EYES, FRAME_ASPECT, LENS, LINE, LOOP_SECONDS, NECK, RINGS, RING_SPEED,
+    compose, look, Look, DRY, EYES, FRAME_ASPECT, LENS, LOOP_SECONDS, NECK, RINGS, RING_SPEED,
     SEGMENTS, STILL, WATER_EYE, WORDS, WORD_STARTS, ZOOM,
 };
 use wasm_bindgen::{prelude::*, JsCast};
@@ -53,7 +53,7 @@ fn defines() -> String {
         ("FRAME_ASPECT", f(FRAME_ASPECT)),
         ("WATER_EYE", f(WATER_EYE)),
         ("ZOOM", f(ZOOM)),
-        ("LINE", f(LINE)),
+        ("DRY", f(DRY)),
         ("NECK", v3(NECK)),
         ("EYES", v3(EYES)),
         ("RINGS", RINGS.to_string()),

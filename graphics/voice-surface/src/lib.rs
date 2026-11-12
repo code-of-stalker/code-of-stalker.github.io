@@ -1,6 +1,6 @@
 //! «Всплытие»: Step 3, page 6 «Проговоренное — уже не скрытое».
 //!
-//! A woman drawn by level lines of light stands still in a dark sea of
+//! A woman of soft light (her skin, her hair drawn up, her brows apart) stands still in a dark sea of
 //! matrix code, the water over her eyes. The lens is half in the water: its
 //! waterline is the water's level, so when the level falls the line slides
 //! down the frame and uncovers her. She never moves up; only her speaking
@@ -8,9 +8,10 @@
 //! her mouth as a ray down into the depth; there it lights a knot and draws it
 //! up. The knot breaks the surface and opens, stroke by stroke, into a word in
 //! the air (БОЛЬ, ВИНА, МЫСЛЬ), and as it opens the water falls a step: off
-//! her mouth, off her throat, off her breast. Each word moves off and hangs
-//! apart over the water; the sea grows calm. In the silence at the end the
-//! words dissolve upward, the water comes back, and the loop begins again.
+//! her mouth, off her breast, and after the last word it drains away
+//! altogether. Each word moves off and hangs apart in the dark. In the
+//! silence at the end the words dissolve upward, the water comes back, and
+//! the loop begins again.
 //!
 //! This module is the choreography: pure functions of loop time, tested here.
 //! `browser.rs` hands every value to one full-screen shader pass.
@@ -48,8 +49,6 @@ pub const NOTCH: [f32; 3] = [0.0, 1.375, 0.05];
 pub const NECK: [f32; 3] = [0.0, 1.43, -0.005];
 /// The middle of her eyes in her head's frame.
 pub const EYES: [f32; 3] = [0.0, 1.534, 0.074];
-/// Her body is drawn by level lines this far apart (m).
-pub const LINE: f32 = 0.0085;
 
 /// Where her lips meet, in her head's frame: the voice leaves here.
 pub const MOUTH: [f32; 3] = [0.0, 1.468, 0.1];
@@ -69,10 +68,13 @@ pub const KNOT_RADIUS: f32 = 0.05;
 pub const SYLLABLES: f32 = 140.0;
 /// The water's level (world y) before the first word and after each: over
 /// her eyes (she says the first word under the water), then at her neck,
-/// over her breast, under her breast.
-pub const LEVELS: [f32; WORDS + 1] = [0.21, 0.03, -0.1, -0.26];
-/// How long the water takes to fall a step once the knot is out.
-pub const DROP: f32 = 2.6;
+/// under her breast, and after the last word it is gone: far under the frame.
+pub const LEVELS: [f32; WORDS + 1] = [0.21, 0.03, -0.16, -1.2];
+/// How long the water takes to fall each step once the knot is out; the
+/// last step drains it away.
+pub const DROPS: [f32; WORDS] = [2.6, 2.6, 4.6];
+/// Under this level no water is left in the frame (the far sea has faded).
+pub const DRY: f32 = -0.9;
 /// In the silence at the end the water comes back.
 pub const RETURN: [f32; 2] = [37.0, 43.6];
 /// Where each word opens, in front of her and nearer the camera, and the
@@ -318,7 +320,7 @@ pub fn surfaces(w: usize) -> f32 {
 pub fn level(t: f32) -> f32 {
     let mut l = LEVELS[0];
     for w in 0..WORDS {
-        l += (LEVELS[w + 1] - LEVELS[w]) * smooth(surfaces(w), surfaces(w) + DROP, t);
+        l += (LEVELS[w + 1] - LEVELS[w]) * smooth(surfaces(w), surfaces(w) + DROPS[w], t);
     }
     l + (LEVELS[0] - LEVELS[WORDS]) * smooth(RETURN[0], RETURN[1], t)
 }
@@ -767,7 +769,7 @@ mod tests {
             assert!(near(level(WORD_AT[w]), LEVELS[w], 1e-4), "before word {w}");
             assert!(near(level(surfaces(w) - 0.01), LEVELS[w], 1e-4), "word {w}");
             assert!(
-                near(level(surfaces(w) + DROP), LEVELS[w + 1], 1e-4),
+                near(level(surfaces(w) + DROPS[w]), LEVELS[w + 1], 1e-4),
                 "after word {w}"
             );
             // The others she says with her mouth out of the water.
@@ -795,8 +797,10 @@ mod tests {
             .map(|k| mouth(WORD_AT[1] + 1.0 + k as f32 * 0.05))
             .fold((1.0f32, 0.0f32), |(a, b), m| (a.min(m), b.max(m)));
         assert!(lo < 0.1 && hi > 0.9, "mouth {lo}..{hi}");
-        // The lens's waterline follows the water.
-        assert!(split(WORD_AT[0]) > 0.1 && split(STILL) < -0.15);
+        // The lens's waterline follows the water, and after the last word it
+        // leaves the frame: no water is left.
+        assert!(split(WORD_AT[0]) > 0.1 && split(STILL) < -LENS * 1.5);
+        assert!(level(STILL) < DRY && level(CALM[0]) < -0.6);
     }
 
     #[test]
@@ -864,6 +868,7 @@ mod tests {
             assert!(f.words[w][3] > 0.0);
         }
         assert!(f.sea < 0.6);
+        assert!(f.water[0] < DRY, "the water is gone");
         assert!(f.lamp[3] > 0.3);
     }
 
@@ -901,7 +906,7 @@ mod tests {
             assert!((f.head[1] - prev.head[1]).abs() < 0.03, "head pitch at {t}");
             assert!((f.voice[3] - prev.voice[3]).abs() < 0.12, "voice at {t}");
             assert!((f.sea - prev.sea).abs() < 0.01, "sea at {t}");
-            assert!((f.water[0] - prev.water[0]).abs() < 0.004, "level at {t}");
+            assert!((f.water[0] - prev.water[0]).abs() < 0.008, "level at {t}");
             assert!((f.water[2] - prev.water[2]).abs() < 0.25, "mouth at {t}");
             for c in 0..3 {
                 assert!((f.voice[c] - prev.voice[c]).abs() < 0.01, "lips at {t}");

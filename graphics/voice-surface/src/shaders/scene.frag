@@ -1,10 +1,12 @@
 // «Всплытие» in one pass, straight onto the page. The lens sits half in the
 // water: above the waterline each pixel's ray leaves the air eye, below it
 // the water eye, through water that magnifies and wavers. The water's level
-// L moves (lib.rs lowers it as she speaks), and the waterline on the lens
-// with it; every test of "above or under the water" is against L. Rays meet
-// the woman (a distance field, drawn by level lines of light, her eyes open,
-// her lips parting as she speaks), the surface of the water far off, the
+// L moves (lib.rs lowers it as she speaks, and after the last word drains it
+// away), and the waterline on the lens with it; every test of "above or under
+// the water" is against L. Rays meet the woman (a distance field: soft skin,
+// her hair drawn up apart from it, brows, lips, her eyes open, her lips
+// parting as she speaks), the surface of the water, which mirrors her and the
+// words and shivers with waves, the
 // strokes of the knots and words (segments placed by lib.rs every frame), the
 // voice as a ray from her lips down to the knot, and under the water a slow
 // fall of matrix code and light shafts. Light is added onto the page in the
@@ -15,8 +17,6 @@ precision highp int;
 
 #define TAU 6.28318531
 #define MURK 0.55
-// Above this height (her frame) she is drawn by finer lines.
-#define HEAD_LINES 1.44
 
 in vec2 v_uv;
 out vec4 o;
@@ -140,20 +140,20 @@ float skull(vec3 h) {
   d = smin(d, sdEll(h - vec3(0.0, 1.505, 0.03), vec3(0.053, 0.078, 0.072)), 0.03);
   // As she speaks the jaw and the lower lip drop and the mouth opens.
   float drop = 0.0075 * speak;
-  d = smin(d, sdEll(h - vec3(0.0, 1.446 - 0.8 * drop, 0.06 - 0.3 * drop), vec3(0.022, 0.022, 0.029)), 0.022);
+  d = smin(d, sdEll(h - vec3(0.0, 1.447 - 0.8 * drop, 0.053 - 0.3 * drop), vec3(0.02, 0.02, 0.027)), 0.022);
   d = smin(d, sdCap(m, vec3(0.05, 1.474, -0.006), vec3(0.014, 1.436, 0.062), 0.008), 0.022);
   d = smin(d, sdEll(m - vec3(0.04, 1.515, 0.062), vec3(0.018, 0.012, 0.016)), 0.016);
   d = smin(d, sdCap(m, vec3(0.012, 1.556, 0.086), vec3(0.042, 1.557, 0.075), 0.0045), 0.018);
   // The almond opening of the lids over each eye.
   d = smax(d, -sdEll(m - vec3(0.031, 1.535, 0.09), vec3(0.0145, 0.0062, 0.012)), 0.003);
-  d = smin(d, sdRC(h, vec3(0.0, 1.536, 0.095), vec3(0.0, 1.5, 0.111), 0.0045, 0.0078), 0.008);
-  d = smin(d, sdEll(m - vec3(0.0095, 1.497, 0.1), vec3(0.0055, 0.0045, 0.0055)), 0.006);
-  d = smin(d, sdEll(h - vec3(0.0, 1.474, 0.095), vec3(0.018, 0.0058, 0.009)), 0.006);
-  d = smin(d, sdEll(h - vec3(0.0, 1.463 - drop, 0.092 - 0.25 * drop), vec3(0.016, 0.0068, 0.009)), 0.006);
+  d = smin(d, sdRC(h, vec3(0.0, 1.536, 0.094), vec3(0.0, 1.502, 0.106), 0.004, 0.0062), 0.008);
+  d = smin(d, sdEll(m - vec3(0.0085, 1.4985, 0.097), vec3(0.0048, 0.004, 0.005)), 0.006);
+  d = smin(d, sdEll(h - vec3(0.0, 1.474, 0.091), vec3(0.015, 0.0055, 0.008)), 0.006);
+  d = smin(d, sdEll(h - vec3(0.0, 1.463 - drop, 0.087 - 0.25 * drop), vec3(0.014, 0.0062, 0.008)), 0.006);
   if (speak > 0.02) {
     d = smax(d, -sdEll(h - vec3(0.0, 1.4685 - 0.5 * drop, 0.1), vec3(0.0115, 0.0005 + 0.45 * drop, 0.014)), 0.002);
   }
-  return smin(d, sdEll(m - vec3(0.07, 1.523, -0.022), vec3(0.009, 0.023, 0.014)), 0.008);
+  return smin(d, sdEll(m - vec3(0.068, 1.523, -0.02), vec3(0.006, 0.021, 0.012)), 0.012);
 }
 float eyeballs(vec3 h) {
   return length(vec3(abs(h.x), h.y, h.z) - vec3(0.031, EYES.y, EYES.z)) - 0.0122;
@@ -166,7 +166,7 @@ float torso(vec3 q) {
   d = smin(d, sdEll(m - vec3(0.06, 1.215, 0.055), vec3(0.058, 0.052, 0.048)), 0.035);
   d = smin(d, sdEll(q - vec3(0.0, 1.03, -0.002), vec3(0.118, 0.14, 0.082)), 0.06);
   d = smin(d, sdEll(q - vec3(0.0, 0.88, -0.008), vec3(0.158, 0.115, 0.098)), 0.06);
-  d = smin(d, sdCap(m, vec3(0.012, 1.372, 0.05), vec3(0.135, 1.392, 0.004), 0.0085), 0.012);
+  d = smin(d, sdCap(m, vec3(0.014, 1.371, 0.045), vec3(0.135, 1.392, 0.0), 0.006), 0.022);
   float a = sdRC(m, vec3(0.172, 1.342, -0.03), vec3(0.203, 1.1, -0.035), 0.042, 0.032);
   a = smin(a, sdRC(m, vec3(0.205, 1.1, -0.035), vec3(0.205, 0.875, 0.03), 0.031, 0.024), 0.02);
   a = smin(a, sdEll(m - vec3(0.2, 0.815, 0.045), vec3(0.018, 0.052, 0.032)), 0.02);
@@ -239,26 +239,45 @@ float march(vec3 ro, vec3 rd, float tMax, out float closest, out float tClosest,
 }
 
 // ---------- the water
-// The height of the surface at xz and how bright the ring crests are there.
-float waves(vec2 xz, out float crest) {
-  float h = 0.0015 * sin(xz.x * 7.0 + TAU * 3.0 * time / LOOP_SECONDS) * sin(xz.y * 5.0 - TAU * 2.0 * time / LOOP_SECONDS);
+// The surface at xz: its height and slope (d/dx, d/dz), and how bright the
+// ring crests are there. A light swell crosses it, every wave a whole number
+// of times per loop; waves finer than the footprint fp of a pixel are left out.
+vec3 waves(vec2 xz, float fp, out float crest) {
+  float ph = TAU * time / LOOP_SECONDS;
+  vec3 h = vec3(0.0);
+  for (int k = ZERO; k < 5; k++) {
+    float fk = float(k);
+    float a = fk * 2.39996 + 0.4;
+    vec2 dir = vec2(cos(a), sin(a));
+    float freq = 7.0 * pow(1.65, fk);
+    float amp = 0.026 / freq * (1.0 - smoothstep(0.25, 0.6, fp * freq));
+    float w = dot(xz, dir) * freq + ph * float(2 + 3 * k) + fk * 1.7;
+    h += amp * vec3(sin(w), freq * cos(w) * dir);
+  }
   crest = 0.0;
+  float keep = 1.0 - smoothstep(0.25, 0.6, fp * 90.0);
   for (int k = ZERO; k < RINGS; k++) {
     vec4 r = u_rings[k];
     if (r.w < 0.001) continue;
-    float d = length(xz - r.xy);
+    vec2 v = xz - r.xy;
+    float d = length(v);
     float x = d - r.z * RING_SPEED;
     float env = exp(-x * x / 0.006) * r.w * exp(-r.z * 0.3) / (1.0 + d * 3.0);
-    h += 0.006 * env * sin(x * 90.0);
+    h.x += 0.006 * env * sin(x * 90.0);
+    h.yz += 0.54 * env * keep * cos(x * 90.0) * v / max(d, 1e-4);
     crest += env * pow(max(0.5 + 0.5 * sin(x * 90.0 + 1.2), 0.0), 6.0);
   }
   return h;
 }
-// Where the waterline crosses the lens at x, bobbing as the rings pass.
+// Where the waterline crosses the lens at x, bobbing as the waves pass.
 float splitAt(float x) {
   float crest;
-  float h = waves(vec2(u_eye.x + x * 0.4, u_eye.z - 0.4), crest);
-  return u_water.y + h * 2.2 +0.0024 * sin(x * 7.0 + TAU * 9.0 * time / LOOP_SECONDS) + 0.0011 * sin(x * 19.0 - TAU * 14.0 * time / LOOP_SECONDS);
+  float h = waves(vec2(u_eye.x + x * 0.4, u_eye.z - 0.4), 0.0, crest).x;
+  return u_water.y + h * 1.2 + 0.0024 * sin(x * 7.0 + TAU * 9.0 * time / LOOP_SECONDS) + 0.0011 * sin(x * 19.0 - TAU * 14.0 * time / LOOP_SECONDS);
+}
+// The night over the water: a faint glow low on the horizon.
+vec3 sky(vec3 d) {
+  return u_cold * 0.055 * exp(-max(d.y, 0.0) * 14.0);
 }
 
 // ---------- strokes of light
@@ -278,8 +297,8 @@ vec3 raySeg(vec3 ro, vec3 rd, vec3 a, vec3 b) {
   return vec3(length(w0 + rd * t - ba * s), t, s);
 }
 // The knots and the words. Each half sees only its own side of the water;
-// under it they blur and fade in the murk.
-vec3 strokes(vec3 ro, vec3 rd, float tMax, bool under) {
+// under it they blur and fade in the murk; mirrored they spread by blur.
+vec3 strokes(vec3 ro, vec3 rd, float tMax, bool under, float blur) {
   vec3 c = vec3(0.0);
   for (int w = ZERO; w < WORDS; w++) {
     vec4 b = u_words[w];
@@ -298,7 +317,7 @@ vec3 strokes(vec3 ro, vec3 rd, float tMax, bool under) {
       float y = mix(a.y, e.y, r.z);
       if (under ? y > L : y < L) continue;
       float core = max(0.0011, pixel * r.y * 0.75);
-      float width = core + (under ? 0.0012 + 0.0018 * r.y : 0.0);
+      float width = core + (under ? 0.0012 + 0.0018 * r.y : 0.0) + blur * r.y;
       float glow = core / width * exp(-sq(r.x / width)) + (under ? 0.05 : 0.12) * exp(-r.x / (width * 4.0 + 0.003));
       float fade = under ? 2.6 * murk(r.y) : 1.0;
       c += mix(u_pale, u_warm, e.w) * a.w * glow * fade;
@@ -357,48 +376,72 @@ vec3 eye(vec3 h, vec3 n, vec3 rd, vec3 lamp, vec3 target) {
   c += mix(u_pale, u_warm, 0.3) * pow(max(dot(rf, lamp), 0.0), 160.0) * u_lamp.w * 1.2;
   return c;
 }
-// Level lines of light round her body, lit by the word she looks at and by
-// her own voice, a cold rim, and a bright line where she meets the water.
+// Her skin in soft light; her hair, drawn up into the knot, darker, with a
+// sheen along its strands; her brows; her lips. Lit by the word she looks at,
+// by her own voice and the sky; a cold rim; a line where she meets the water.
 vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
   vec3 q = toLocal(p);
   vec3 rl = dirLocal(rd);
   vec3 lq = toLocal(u_lamp.xyz);
   vec3 lamp = normalize(lq - q);
   vec3 h = headLocal(q);
+  vec3 nh = vec3(dot(n, hr), dot(n, hu), dot(n, hf));
+  vec3 rh = vec3(dot(rl, hr), dot(rl, hu), dot(rl, hf));
+  vec3 lh = vec3(dot(lamp, hr), dot(lamp, hu), dot(lamp, hf));
   vec3 c;
   if (isEye) {
-    vec3 nh = vec3(dot(n, hr), dot(n, hu), dot(n, hf));
-    vec3 rh = vec3(dot(rl, hr), dot(rl, hu), dot(rl, hf));
-    vec3 lh = vec3(dot(lamp, hr), dot(lamp, hu), dot(lamp, hf));
     c = eye(h, nh, rh, lh, headLocal(lq));
   } else {
-    float facing = max(abs(dot(n, -rl)), 0.05);
-    float rim = pow(clamp(1.0 - facing, 0.0, 1.0), 2.5);
-    // How much of one spacing a pixel covers: the lines blur into an even
-    // glow where they would crowd.
-    float spacing = q.y > HEAD_LINES ? LINE * 0.62 : LINE;
-    float foot = pixel * t / spacing * sqrt(max(1.0 - n.y * n.y, 0.0)) / max(facing, 0.25);
-    float blur = foot + (under ? 0.05 + 0.08 * t : 0.0);
-    float width = 0.055 + blur * 0.6;
-    float phase = q.y / LINE + max(q.y - HEAD_LINES, 0.0) * (1.0 / 0.62 - 1.0) / LINE;
-    float dl = abs(fract(phase + 0.5) - 0.5);
-    float line = (1.0 - smoothstep(width * 0.5, width, dl)) * min(1.0, 0.1 / width);
-    line = mix(line, 0.15, smoothstep(0.35, 0.7, blur));
-    float key = max(dot(n, lamp), 0.0) * u_lamp.w / (1.0 + 0.6 * dot(lq - q, lq - q));
-    float sky = 0.3 + 0.45 * max(dot(n, normalize(vec3(-0.3, 0.8, 0.5))), 0.0);
+    float facing = max(dot(n, -rl), 0.0);
+    float rim = pow(1.0 - facing, 3.0);
+    float wrap = max(dot(n, lamp) * 0.75 + 0.25, 0.0);
+    float key = wrap * wrap * u_lamp.w / (1.0 + 0.6 * dot(lq - q, lq - q));
+    float sky = 0.5 + 0.5 * dot(n, normalize(vec3(-0.3, 0.8, 0.5)));
     // The voice lights her lips, chin and cheek from the mouth.
     vec3 toLips = toLocal(u_voice.xyz) - q;
     float voice = u_voice.w * exp(-length(toLips) / 0.035) * (0.4 + 0.6 * max(dot(n, normalize(toLips + vec3(0.0, 0.0, 0.03))), 0.0));
-    // A faint fill between the lines shows the form of her face.
-    c = u_cold * (0.02 + rim * 0.35)
-      + mix(u_cold, u_pale, 0.3) * (0.05 * sky + 0.14 * key)
-      + mix(u_cold, u_pale, 0.45) * line * sky
-      + mix(u_pale, u_warm, 0.35) * line * key * 1.3
-      + u_warm * voice * (0.35 + 1.2 * line);
+    float gloss = pow(max(dot(reflect(rl, n), lamp), 0.0), 18.0) * u_lamp.w;
+    vec3 skin = mix(u_cold, u_pale, 0.5) * (0.012 + 0.045 * sky)
+      + mix(u_pale, u_warm, 0.3) * 0.55 * key
+      + u_pale * 0.07 * gloss
+      + u_cold * 0.32 * rim;
+    // Her head's parts, in its own frame: the hair above a hairline that is
+    // high on the forehead and low at the nape.
+    vec3 m = vec3(abs(h.x), h.y, h.z);
+    vec3 v = h - vec3(0.0, 1.565, -0.02);
+    float hairline = -0.062 + 0.1 * smoothstep(-0.07, 0.085, v.z);
+    float hair = smoothstep(-0.003, 0.003, v.y - hairline);
+    // Strands run to the knot: a sheen across them, fine lines along them
+    // where a pixel can hold them.
+    vec3 knot = vec3(0.0, 1.612, -0.116);
+    vec3 toKnot = knot - h;
+    vec3 tang = normalize(toKnot - nh * dot(toKnot, nh) + vec3(0.0, 1e-4, 0.0));
+    float th = dot(tang, normalize(lh - rh));
+    float sheen = pow(max(1.0 - th * th, 0.0), 24.0);
+    vec3 ax = normalize(knot - vec3(0.0, 1.565, -0.02));
+    vec3 e1 = normalize(cross(ax, vec3(1.0, 0.0, 0.0)));
+    vec3 e2 = cross(ax, e1);
+    vec3 wk = h - knot;
+    float spacing = length(wk - ax * dot(wk, ax)) * TAU / 120.0;
+    float fine = 1.0 - smoothstep(0.5, 1.2, pixel * t / max(spacing, 1e-5));
+    float strand = 1.0 - 0.4 * fine * (0.5 + 0.5 * sin(atan(dot(wk, e1), dot(wk, e2)) * 120.0));
+    vec3 locks = u_cold * (0.008 + 0.025 * sky)
+      + mix(u_cold, u_pale, 0.35) * sheen * strand * (0.07 + 0.3 * key)
+      + u_cold * 0.2 * rim;
+    // Brows: two dark arcs over the eyes.
+    float bd = sdCap(vec3(m.xy, 0.0), vec3(0.012, 1.5578, 0.0), vec3(0.043, 1.5598, 0.0), 0.0);
+    float brow = (1.0 - smoothstep(0.0016 + 0.001 * smoothstep(0.04, 0.012, m.x), 0.003, bd)) * smoothstep(0.055, 0.07, h.z);
+    // Lips, a little warmer; they part as she speaks.
+    float drop = 0.0075 * speak;
+    float lip = 1.0 - smoothstep(0.8, 1.2, length((h - vec3(0.0, 1.468 - 0.5 * drop, 0.098)) / vec3(0.016, 0.0085 + drop, 0.03)));
+    c = mix(skin, locks, hair);
+    c = mix(c, u_cold * (0.012 + 0.08 * rim), brow * (1.0 - hair) * 0.85);
+    c = mix(c, mix(c, u_warm * (0.05 + 0.32 * key), 0.45), lip * (1.0 - hair));
+    c += u_warm * voice * 0.7;
   }
   // Where she meets the water.
   float crest;
-  float level = L + waves(p.xz, crest);
+  float level = L + waves(p.xz, 0.0, crest).x;
   c += mix(u_cold, u_pale, 0.6) * 0.55 * exp(-abs(p.y - level) / 0.0025);
   if (under) {
     c *= murk(t) * (0.75 + 0.25 * exp(min(p.y - L, 0.0) * 5.0));
@@ -411,16 +454,6 @@ vec3 outline(float closest, float t, bool under) {
   if (closest > 0.03) return vec3(0.0);
   float px = max(closest, 0.0) / (pixel * t);
   return u_cold * (under ? 0.25 * murk(t) : 0.45) * exp(-px * px / (under ? 6.0 : 0.8));
-}
-
-// ---------- above the water
-vec3 surface(vec3 p, vec3 rd, float t) {
-  float crest;
-  waves(p.xz, crest);
-  float fade = exp(-t * 0.18);
-  vec3 c = u_cold * 0.025 * fade + mix(u_cold, u_pale, 0.6) * crest * 0.5 * fade;
-  // The words mirrored in the water.
-  return c + strokes(p, vec3(rd.x, -rd.y, rd.z), 1e9, false) * 0.35;
 }
 
 // ---------- under the water
@@ -493,8 +526,9 @@ vec3 code(vec3 ro, vec3 rd, float tMax) {
   return c;
 }
 // One ray per pixel, from the air eye above the waterline on the lens or from
-// the water eye under it. Both halves share one march, so her distance field
-// and the strokes are compiled in once.
+// the water eye under it. A ray from above that comes down onto the water
+// goes on once more, mirrored off the waves. Every pass shares one march, so
+// her distance field and the strokes are compiled in once.
 vec3 view(vec2 lens, float ys) {
   bool under = lens.y < ys;
   vec2 l = lens;
@@ -507,9 +541,11 @@ vec3 view(vec2 lens, float ys) {
     ro = vec3(u_eye.x, WATER_EYE, u_eye.z);
   }
   vec3 rd = normalize(u_fwd.xyz + u_right.xyz * l.x + u_up.xyz * l.y);
+  // While there is water: it fades out as the last of it drains under the frame.
+  float sea = smoothstep(DRY, DRY + 0.35, L);
   // Where a ray from above the level comes down to the water.
   float down = ro.y > L && rd.y < -1e-5 ? (L - ro.y) / rd.y : -1.0;
-  float limit = down > 0.0 ? down : 1e9;
+  float limit = down > 0.0 && sea > 0.0 ? down : 1e9;
   if (under) {
     // Once the level falls under the water eye, its rays enter the water on
     // the way; while the eye is under the water, the surface from below
@@ -517,40 +553,83 @@ vec3 view(vec2 lens, float ys) {
     wet = max(down, 0.0);
     limit = ro.y < L && rd.y > 1e-5 ? (L - ro.y) / rd.y : 1e9;
   }
-  float closest;
-  float tc;
-  vec3 n;
-  bool eye;
-  float th = march(ro, rd, limit, closest, tc, n, eye);
-  float tMax = th > 0.0 ? th : limit;
-  vec3 c;
-  if (under) {
-    // Light from the surface, fading with depth, and its slow shafts.
-    float depth = ys - l.y;
-    c = u_cold * (0.02 + 0.055 * exp(-depth * 7.0));
-    float shafts = 0.0;
-    for (int k = ZERO; k < 3; k++) {
-      float fk = float(k);
-      shafts += pow(max(sin(l.x * (9.0 + 5.0 * fk) + depth * (2.0 - fk) + TAU * float(2 + k) * time / LOOP_SECONDS + fk * 2.1), 0.0), 10.0);
+  vec3 c = under ? vec3(0.0) : u_cold * 0.012 * exp(-max(l.y - ys, 0.0) * 9.0) + sky(rd) * sea * step(1e8, limit);
+  vec3 o = ro;
+  vec3 d = rd;
+  float lim = limit;
+  float k = 1.0;
+  float blur = 0.0;
+  for (int pass = ZERO; pass < 2; pass++) {
+    float closest;
+    float tc;
+    vec3 n;
+    bool eye;
+    float th = march(o, d, lim, closest, tc, n, eye);
+    float tMax = th > 0.0 ? th : lim;
+    if (under) {
+      // Light from the surface, fading with depth, and its slow shafts.
+      float depth = ys - l.y;
+      c += u_cold * (0.02 + 0.055 * exp(-depth * 7.0));
+      float shafts = 0.0;
+      for (int j = ZERO; j < 3; j++) {
+        float fj = float(j);
+        shafts += pow(max(sin(l.x * (9.0 + 5.0 * fj) + depth * (2.0 - fj) + TAU * float(2 + j) * time / LOOP_SECONDS + fj * 2.1), 0.0), 10.0);
+      }
+      c += mix(u_cold, u_pale, 0.3) * shafts * 0.03 * exp(-depth * 2.5);
+      // Code in front of her is thinned, so her body under the water still reads.
+      float veil = th > 0.0 ? 0.45 : mix(0.45, 1.0, smoothstep(0.0, 0.012, closest));
+      c += code(o, d, tMax) * veil;
     }
-    c += mix(u_cold, u_pale, 0.3) * shafts * 0.03 * exp(-depth * 2.5);
-    // Code in front of her is thinned, so her body under the water still reads.
-    float veil = th > 0.0 ? 0.45 : mix(0.45, 1.0, smoothstep(0.0, 0.012, closest));
-    c += code(ro, rd, tMax) * veil;
-  } else {
-    c = u_cold * 0.012 * exp(-max(l.y - ys, 0.0) * 9.0);
-    // The far water seen from above, once its level is under the eye.
-    if (th <= 0.0 && limit < 1e8) c += surface(ro + rd * limit, rd, limit);
+    if (th > 0.0) {
+      c += k * shade(o + d * th, d, th, under, n, eye);
+    } else {
+      c += k * outline(closest, tc, under);
+    }
+    c += k * strokes(o, d, tMax, under, blur);
+    c += k * beam(o, d, tMax, under);
+    // Her lips when she speaks; under the water a softer, wider halo.
+    c += k * lips(o, d, tMax, under ? 1.6 : 1.0) * (under ? 0.7 : 1.0);
+    if (pass > 0 || under || th > 0.0 || lim > 1e8) break;
+    // The water: its waves tilt the mirror, so what it mirrors shivers and
+    // stretches down towards the eye; the ring crests catch the light.
+    vec3 sp = o + d * lim;
+    float crest;
+    vec3 w = waves(sp.xz, pixel * lim / max(-d.y, 0.03), crest);
+    vec3 wn = normalize(vec3(-w.y, 1.0, -w.z));
+    float fresnel = 0.02 + 0.98 * pow(1.0 - max(-dot(d, wn), 0.0), 5.0);
+    float fade = exp(-lim * 0.08) * sea;
+    vec3 rr = reflect(d, wn);
+    rr.y = max(rr.y, 0.002);
+    c += (sky(rr) * fresnel + u_cold * 0.02 * (1.0 - fresnel) + mix(u_cold, u_pale, 0.6) * crest * 0.5) * fade;
+    // Under each word a path of glints, as under the moon: the eye is too low
+    // to see the word itself in the water, but the facets of the waves that
+    // turn towards it flash in a column straight under it, out to the horizon.
+    vec2 back = normalize(d.xz);
+    // Far off, the waves are finer than a pixel: there the path breaks into
+    // streaks across it.
+    float distant = smoothstep(0.006, 0.03, pixel * lim / max(-d.y, 0.03));
+    float streaks = 0.3 * sq(0.5 + 0.5 * sin(sp.z * 38.0 + sp.x * 6.0 + TAU * 11.0 * time / LOOP_SECONDS)) * (0.6 + 0.4 * sin(sp.x * 21.0 - TAU * 7.0 * time / LOOP_SECONDS));
+    for (int j = ZERO; j < WORDS; j++) {
+      vec4 b = u_words[j];
+      if (b.w <= 0.0) continue;
+      vec2 to = b.xz - u_eye.xz;
+      float far = length(to);
+      float side = back.x * to.y - back.y * to.x;
+      float width = b.w * 0.6 + 0.04 * far;
+      float path = exp(-sq(side / width)) * step(0.0, dot(back, to));
+      float tilt = dot(w.yz, to / far);
+      float glit = smoothstep(0.012, 0.05, tilt) * (0.35 + 0.65 * sq(sin(sp.x * 150.0 + TAU * 21.0 * time / LOOP_SECONDS) * sin(sp.z * 120.0 - TAU * 17.0 * time / LOOP_SECONDS)));
+      glit = mix(glit, streaks, distant);
+      float lit = u_seg[2 * (STARTS[j] + 2)].w;
+      c += mix(u_pale, u_warm, 0.25) * lit * path * glit * fade * 0.7;
+    }
+    o = sp + vec3(0.0, 0.0005, 0.0);
+    d = rr;
+    lim = 30.0;
+    k = fresnel * fade;
+    blur = 0.0022;
   }
-  if (th > 0.0) {
-    c += shade(ro + rd * th, rd, th, under, n, eye);
-  } else {
-    c += outline(closest, tc, under);
-  }
-  c += strokes(ro, rd, tMax, under);
-  c += beam(ro, rd, tMax, under);
-  // Her lips when she speaks; under the water a softer, wider halo.
-  return c + lips(ro, rd, tMax, under ? 1.6 : 1.0) * (under ? 0.7 : 1.0);
+  return c;
 }
 
 void main() {

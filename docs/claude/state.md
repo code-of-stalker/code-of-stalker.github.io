@@ -475,7 +475,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   cards (`ListGroup card`), «Закрыть доступ» one card without a caption; a picked row's tint runs frame
   to frame; roles as in the chat everywhere (`useRoleInks`, `RoleTag`, `ListItem badge` in `chrome.tsx`;
   `rolesOf`, `RoleTags` in `PersonCard.tsx`); on the phone the filter row runs to the screen edges
-  (negative gutter margin, first chip on the page line; the Diary filters wrap, no change there). Checked in the local demo, 4 themes, 1280 and 390.
+  (negative gutter margin, first chip on the page line; the Diary filters wrap, no change there); the app's
+  «Люди» tab shows roles as `RoleTags` too, not text; Settings › Микрофон no longer logs «Unexpected text node». Checked in the local demo, 4 themes, 1280 and 390.
   The in-app ЛЮДИ tab (`AdminPanel.tsx`) still lists roles as text.
 - Daily reports + role marks, shipped to `main` 2026-11-11 (Art: «Ок, пушим»). Daily reports in
   Intensive «как в дневнике», into the chat with the guide (Art: «В чат с проводником»): the report mark sealed inside the message

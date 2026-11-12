@@ -37,7 +37,7 @@ export function MicrophoneSettings({ value = '', onChange, renderOption }: Micro
       {inputs.map(input => <View key={input.deviceId}>{renderOption({ label: input.label, selected: value === input.deviceId, onPress: () => onChange(input.deviceId) })}</View>)}
     </View>
     <ProductButton label={loading ? 'ОТКРЫВАЕМ МИКРОФОНЫ…' : 'ПОКАЗАТЬ МИКРОФОНЫ'} kind="outline" disabled={loading || !media?.getUserMedia} onPress={() => { void showInputs(); }} />
-    {value && !inputs.some(input => input.deviceId === value) && <ProductText variant="label" color={colors.muted}>Выбранный источник сейчас недоступен. Подключи его или выбери другой.</ProductText>}
+    {!!value && !inputs.some(input => input.deviceId === value) && <ProductText variant="label" color={colors.muted}>Выбранный источник сейчас недоступен. Подключи его или выбери другой.</ProductText>}
     {!!error && <ProductText accessibilityRole="alert" color={colors.error}>{error}</ProductText>}
   </View>;
 }

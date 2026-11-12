@@ -279,37 +279,45 @@ export function ConfirmSheet({ open, title, text, confirmLabel, busy = false, on
 }
 
 const CardContext = createContext(false);
+const DividedContext = createContext(false);
 
 /**
  * A settings-style list: rows separated by hairlines, a caption above. `card` draws the rows on a
  * soft card instead, with no lines between them (the admin's person card, Art 2026-11-12:
- * «куча полосок, лучше сделать карточки»).
+ * «куча полосок, лучше сделать карточки»). `divided` adds the hairline back between a card's rows
+ * (the two «ПРАВА» switches, Art 2026-11-12: «нужно добавить один разделитель между ними»).
  */
-export function ListGroup({ caption, children, footer, card = false }: { caption?: string; children: ReactNode; footer?: string; card?: boolean }) {
+export function ListGroup({ caption, children, footer, card = false, divided = false }: { caption?: string; children: ReactNode; footer?: string; card?: boolean; divided?: boolean }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.group}>
     {caption ? <ProductText maxFontSize={10} style={styles.caption}>{caption}</ProductText> : null}
-    <CardContext.Provider value={card}><View style={card ? styles.card : styles.groupBody}>{children}</View></CardContext.Provider>
+    <CardContext.Provider value={card}><DividedContext.Provider value={divided}>
+      <View style={card ? styles.card : styles.groupBody}>{children}</View>
+    </DividedContext.Provider></CardContext.Provider>
     {footer ? <ProductText maxFontSize={12} style={styles.groupFooter}>{footer}</ProductText> : null}
   </View>;
 }
 
-/** `checked` makes the row a switch for screen readers; the caller draws the toggle on the right. `badge` sits under the title, after the detail (a role tag). */
-export function ListItem({ title, detail, badge, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, chevron = !!onPress && checked === undefined, last = false, accessibilityLabel }: {
-  title: string; detail?: string; badge?: ReactNode; glyph?: GlyphName; avatar?: ReactNode; right?: ReactNode; onPress?: () => void;
+/**
+ * `checked` makes the row a switch for screen readers; the caller draws the toggle on the right. `badge` sits under the title, after the detail (a role tag).
+ * `detail` is a data line in the body's capitals; `hint` is a sentence about the row in plain small text (Art 2026-11-12: capitals there read «ужасно»).
+ */
+export function ListItem({ title, detail, hint, badge, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, chevron = !!onPress && checked === undefined, last = false, accessibilityLabel }: {
+  title: string; detail?: string; hint?: string; badge?: ReactNode; glyph?: GlyphName; avatar?: ReactNode; right?: ReactNode; onPress?: () => void;
   tone?: 'text' | 'accent' | 'error'; selected?: boolean; checked?: boolean; chevron?: boolean; last?: boolean; accessibilityLabel?: string;
 }) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
-  const card = useContext(CardContext);
+  const card = useContext(CardContext), divided = useContext(DividedContext);
   const ink = tone === 'error' ? colors.error : tone === 'accent' ? colors.accent : colors.text;
   const role = checked !== undefined ? 'switch' : onPress ? 'button' : undefined;
   return <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel} accessibilityState={role ? { selected, checked, disabled: !onPress } : undefined} disabled={!onPress} onPress={onPress}
     style={({ pressed }) => [styles.item, card && styles.cardItem, (pressed || selected) && { backgroundColor: colors.subtle }]}>
     {avatar ?? (glyph ? <View style={styles.itemGlyph}><Glyph name={glyph} size={20} color={tone === 'error' ? colors.error : colors.accent} /></View> : null)}
-    <View style={[styles.itemBody, card ? styles.cardItemBody : !last && styles.itemLine]}>
+    <View style={[styles.itemBody, card && styles.cardItemBody, (!card || divided) && !last && styles.itemLine]}>
       <View style={styles.itemCopy}>
         <ProductText variant="title" numberOfLines={1} color={ink} style={styles.itemTitle}>{title}</ProductText>
         {detail ? <ProductText numberOfLines={2} maxFontSize={12} style={styles.itemDetail}>{detail}</ProductText> : null}
+        {hint ? <ProductText numberOfLines={3} maxFontSize={14} color={colors.muted} style={styles.itemHint}>{hint}</ProductText> : null}
         {badge}
       </View>
       {right}
@@ -348,8 +356,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   group: { gap: 8 },
   caption: { fontSize: 8, lineHeight: 12, letterSpacing: 1.6, color: colors.muted, paddingHorizontal: 2 },
   groupBody: { borderTopWidth: .25, borderBottomWidth: .25, borderColor: colors.border },
-  // A soft card: the accent's faint wash, no hairlines; a picked row's tint spans its full width.
-  card: { backgroundColor: `${colors.accent}0f`, paddingVertical: 4 },
+  // A soft card: the accent's faint wash, no hairlines; a picked row's tint spans its full width and
+  // touches the card's edge (no inner padding: a strip above a picked first row read as a gap, Art 2026-11-12).
+  card: { backgroundColor: `${colors.accent}0f` },
   cardItem: { paddingLeft: 14 },
   cardItemBody: { paddingRight: 14 },
   groupFooter: { fontSize: 8, lineHeight: 13, color: colors.faint, paddingHorizontal: 2 },
@@ -360,6 +369,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   itemCopy: { flex: 1, minWidth: 0, gap: 3 },
   itemTitle: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
   itemDetail: { fontSize: 8, lineHeight: 13, color: colors.muted },
+  itemHint: { fontFamily: fonts.title, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
   roleTag: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
   roleLabel: { fontSize: 9, lineHeight: 13, letterSpacing: .8, flexShrink: 1 },
 });

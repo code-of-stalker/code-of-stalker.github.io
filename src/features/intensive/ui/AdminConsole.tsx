@@ -365,7 +365,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
               return <ListItem key={guide.userId} title={guide.name}
                 detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
                 onPress={() => { void moveTo(guide); }} last={index === guides.length - 1} />;
-            }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из команды" last />}
+            }) : <ListItem glyph="people" title="Проводников пока нет" hint="Дайте права проводника кому-нибудь из команды" last />}
           </ListGroup>}
     </DiaryDesignPanel>
   </BottomSheet>;
@@ -409,7 +409,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
         return <ListItem key={guide.userId} title={guide.name}
           detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
           onPress={() => setSelected(guide.userId)} last={index === guides.length - 1} />;
-      }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из людей" last />}
+      }) : <ListItem glyph="people" title="Проводников пока нет" hint="Дайте права проводника кому-нибудь из людей" last />}
     </ListGroup>
     <ProductText maxFontSize={13} style={styles.hint}>Откройте человека в списке, чтобы назначить проводника или изменить права. Отметьте нескольких идущих, чтобы перевести их разом.</ProductText>
   </View>;

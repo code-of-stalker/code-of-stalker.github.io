@@ -472,7 +472,8 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
   back only by its 12 words once the new one sets a PIN (several accounts per device was not simple: one
   sealed vault, one server device id and PIN verifier); search over the list, filters under it; chosen filter chips filled like
   the Diary (`DiaryChoiceFace` exported from `DiaryFilters.tsx`); ИДУЩИЕ / КОМАНДА are text tabs (Rust sliding
-  underline, muted rest, one thin baseline under the row, in the app's `Tabs` too; no filled tabs); person card on soft
+  underline, muted rest, one thin baseline under the row, in the app's `Tabs` too; no filled tabs); the app's «Люди»
+  has no second tab row: ЖДУТ / ИДУЩИЕ / КОМАНДА are the admin's filter chips (`Chip`, now in `parts.tsx`) under the search; person card on soft
   cards (`ListGroup card`), «Закрыть доступ» one card without a caption; a picked row's tint runs frame
   to frame; roles as in the chat everywhere (`useRoleInks`, `RoleTag`, `ListItem badge` in `chrome.tsx`;
   `rolesOf`, `RoleTags` in `PersonCard.tsx`); on the phone the filter row runs to the screen edges

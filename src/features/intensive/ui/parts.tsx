@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-native';
 
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProductLayout } from '../../product/layout';
@@ -13,6 +13,9 @@ import type { Place } from '../backend';
 import { Glyph, Hero, useContour } from './chrome';
 import { SlideMark } from '../../product/motion/SlideMark';
 import { Breathe } from '../../product/motion/Breathe';
+import { DiaryChoiceFace } from '../../product/diary/DiaryFilters';
+
+type Pointer = PressableStateCallbackType & { hovered?: boolean };
 
 export const placeLabels: Record<Place, string> = {
   walker: 'ИДУЩИЙ', guide: 'ПРОВОДНИК', admin: 'АДМИН ПРОВОДНИКА', main: 'ГЛАВНЫЙ АДМИН',
@@ -108,6 +111,18 @@ export function Tabs<T extends string>({ value, options, onChange, fit = false }
   </View>;
 }
 
+/** A filter under the tabs: the chosen one filled like the Diary's choices, the count after the label (admin page, «Люди»). */
+export function Chip({ label, count, on, alert = false, onPress }: { label: string; count: number; on: boolean; alert?: boolean; onPress: () => void }) {
+  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  return <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${label}: ${count}`} onPress={onPress}
+    style={(state: Pointer) => [styles.chip, !on && state.hovered && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
+    <DiaryChoiceFace selected={on} fillStyle={styles.chipFill} content={ink => <>
+      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? colors.muted} style={styles.chipText}>{label}</ProductText>
+      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? (alert && count ? colors.accent : colors.faint)} style={styles.chipText}>{String(count)}</ProductText>
+    </>} />
+  </Pressable>;
+}
+
 const KEY = { width: 80, height: 60 };
 
 function PinKey({ label, digit, onPress, disabled }: { label: string; digit: string; onPress: () => void; disabled: boolean }) {
@@ -183,6 +198,9 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   center: { textAlign: 'center' },
   tabs: { flexDirection: 'row', gap: 4 },
   baseline: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 0.5 },
+  chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  chipFill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
+  chipText: { fontSize: 10, lineHeight: 14, letterSpacing: .8 },
   tab: { flex: 1, minHeight: 40, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'transparent', paddingHorizontal: 4 },
   fitTab: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
   fitLabel: { fontSize: 13, lineHeight: 18, letterSpacing: 0.4 },

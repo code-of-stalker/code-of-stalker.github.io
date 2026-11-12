@@ -11,6 +11,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   grew from one crate (dark room with pillars and grid floor, seated person in profile, card
   bottom-right in Disket Mono, thin-lens focus pulls); Art: «все анимации стали однотипные».
   Offer 2–3 distinct directions, recommend one. (persona-belief v1 rejected, «Оттиск» chosen.)
+- «Персонаж» (block 2 page 01, 2026-11-12): nobody sits; the person stands, and the other
+  people are different people, not copies of one figure («других сделать разными и они не
+  должны сидеть на стуле»). Words must fit inside their frame cells. The next page
+  «Механизм обусловленности» was rejected as is («надо переработать анимацию»).
 - Approve Тишина first, then the other 6 themes. Never do all themes at once.
 - Live HTML prototype instead of video (videos took ~50 min to render and he had to wait).
 - Approved changes often ship together. When he says «пушим всё вместе», wait for every part.

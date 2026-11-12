@@ -1,0 +1,508 @@
+// «Всплытие» in one pass, straight onto the page. The lens sits half in the
+// water: above the waterline each pixel's ray leaves the air eye, below it
+// the water eye, through water that magnifies and wavers. Rays meet the
+// woman (a distance field, drawn by level lines of light, her eyes open),
+// the surface of the water far off, the strokes of the knots and words
+// (segments placed by lib.rs every frame), and under the water a slow fall
+// of code, light shafts and the voice reaching down. Light is added onto the
+// page in the theme's cold, warm and pale. Rust puts the version line and
+// lib.rs's constants (#define) in front of it.
+precision highp float;
+precision highp int;
+
+#define TAU 6.28318531
+#define MURK 0.55
+// Above this height (her frame) she is drawn by finer lines.
+#define HEAD_LINES 1.44
+
+in vec2 v_uv;
+out vec4 o;
+
+uniform vec4 u_eye;    // air eye xyz, loop time
+uniform vec4 u_right;  // camera axes
+uniform vec4 u_up;
+uniform vec4 u_fwd;
+uniform vec4 u_view;   // lens scale x and y, canvas width and height in px
+uniform vec4 u_body;   // her feet xyz, how she is turned
+uniform vec4 u_head;   // head yaw, pitch; how busy the sea is; -
+uniform vec4 u_voice;  // the notch in the world, the voice's light
+uniform vec4 u_lamp;   // what lights her face, how strongly
+uniform vec4 u_beam;   // x, z, lower end, light
+uniform vec4 u_rings[RINGS];        // x, z, age, strength
+uniform vec4 u_seg[SEGMENTS * 2];   // from xyz + light, to xyz + warmth
+uniform vec4 u_words[WORDS];        // bounding sphere of each word
+uniform vec3 u_cold;
+uniform vec3 u_warm;
+uniform vec3 u_pale;
+uniform vec3 u_backdrop; // the page
+uniform vec4 u_edges;    // left, right, top, bottom
+uniform vec4 u_out;      // soft edges, -, -, -
+
+const int STARTS[WORDS + 1] = WORD_STARTS;
+const vec3 BOX_FROM = vec3(-0.27, 0.74, -0.2);
+const vec3 BOX_TO = vec3(0.27, 1.68, 0.2);
+
+float time;   // loop time
+float pixel;  // the tangent of one pixel
+float bc;     // how she is turned
+float bs;
+vec3 hr;      // her head's axes in her frame
+vec3 hu;
+vec3 hf;
+
+float sq(float x) {
+  return x * x;
+}
+uint mixBits(uint x) {
+  x ^= x >> 16;
+  x *= 0x7feb352du;
+  x ^= x >> 15;
+  x *= 0x846ca68bu;
+  x ^= x >> 16;
+  return x;
+}
+float hash2(vec2 cell, uint k) {
+  ivec2 c = ivec2(cell);
+  return float(mixBits(uint(c.x) * 0x9e3779b9u ^ mixBits(uint(c.y) + 0x632be5abu + k * 0x27d4eb2du)) >> 8) / 16777215.0;
+}
+
+// ---------- shapes
+float sdEll(vec3 p, vec3 r) {
+  float k0 = length(p / r);
+  float k1 = length(p / (r * r));
+  return k0 * (k0 - 1.0) / k1;
+}
+float sdCap(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a;
+  vec3 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+float sdRC(vec3 p, vec3 a, vec3 b, float r1, float r2) {
+  vec3 ba = b - a;
+  float l2 = dot(ba, ba);
+  float rr = r1 - r2;
+  float a2 = l2 - rr * rr;
+  float il2 = 1.0 / l2;
+  vec3 pa = p - a;
+  float y = dot(pa, ba);
+  float z = y - l2;
+  vec3 xv = pa * l2 - ba * y;
+  float x2 = dot(xv, xv);
+  float y2 = y * y * l2;
+  float z2 = z * z * l2;
+  float k = sign(rr) * rr * rr * x2;
+  if (sign(z) * a2 * z2 > k) return sqrt(x2 + z2) * il2 - r2;
+  if (sign(y) * a2 * y2 < k) return sqrt(x2 + y2) * il2 - r1;
+  return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+}
+float smin(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+float smax(float a, float b, float k) {
+  return -smin(-a, -b, k);
+}
+
+// ---------- her
+vec3 toLocal(vec3 p) {
+  vec3 v = p - u_body.xyz;
+  return vec3(v.x * bc - v.z * bs, v.y, v.x * bs + v.z * bc);
+}
+vec3 dirLocal(vec3 d) {
+  return vec3(d.x * bc - d.z * bs, d.y, d.x * bs + d.z * bc);
+}
+// Her frame to her head's own upright frame.
+vec3 headLocal(vec3 q) {
+  vec3 v = q - NECK;
+  return NECK + vec3(dot(v, hr), dot(v, hu), dot(v, hf));
+}
+float skull(vec3 h) {
+  vec3 m = vec3(abs(h.x), h.y, h.z);
+  float d = sdEll(h - vec3(0.0, 1.565, -0.02), vec3(0.069, 0.088, 0.092));
+  // Hair drawn up into a knot high at the back.
+  d = smin(d, sdEll(h - vec3(0.0, 1.612, -0.116), vec3(0.04, 0.038, 0.036)), 0.024);
+  d = smin(d, sdEll(h - vec3(0.0, 1.505, 0.03), vec3(0.053, 0.078, 0.072)), 0.03);
+  d = smin(d, sdEll(h - vec3(0.0, 1.446, 0.06), vec3(0.022, 0.022, 0.029)), 0.022);
+  d = smin(d, sdCap(m, vec3(0.05, 1.474, -0.006), vec3(0.014, 1.436, 0.062), 0.008), 0.022);
+  d = smin(d, sdEll(m - vec3(0.04, 1.515, 0.062), vec3(0.018, 0.012, 0.016)), 0.016);
+  d = smin(d, sdCap(m, vec3(0.012, 1.556, 0.086), vec3(0.042, 1.557, 0.075), 0.0045), 0.018);
+  // The almond opening of the lids over each eye.
+  d = smax(d, -sdEll(m - vec3(0.031, 1.535, 0.09), vec3(0.0145, 0.0062, 0.012)), 0.003);
+  d = smin(d, sdRC(h, vec3(0.0, 1.536, 0.095), vec3(0.0, 1.5, 0.111), 0.0045, 0.0078), 0.008);
+  d = smin(d, sdEll(m - vec3(0.0095, 1.497, 0.1), vec3(0.0055, 0.0045, 0.0055)), 0.006);
+  d = smin(d, sdEll(h - vec3(0.0, 1.474, 0.095), vec3(0.018, 0.0058, 0.009)), 0.006);
+  d = smin(d, sdEll(h - vec3(0.0, 1.463, 0.092), vec3(0.016, 0.0068, 0.009)), 0.006);
+  return smin(d, sdEll(m - vec3(0.07, 1.523, -0.022), vec3(0.009, 0.023, 0.014)), 0.008);
+}
+float eyeballs(vec3 h) {
+  return length(vec3(abs(h.x), h.y, h.z) - vec3(0.031, EYES.y, EYES.z)) - 0.0122;
+}
+float torso(vec3 q) {
+  vec3 m = vec3(abs(q.x), q.y, q.z);
+  float d = sdCap(q, vec3(0.0, 1.35, -0.02), vec3(0.0, 1.47, -0.01), 0.034);
+  d = smin(d, sdCap(m, vec3(0.03, 1.402, -0.03), vec3(0.158, 1.356, -0.03), 0.044), 0.05);
+  d = smin(d, sdEll(q - vec3(0.0, 1.235, -0.005), vec3(0.148, 0.165, 0.09)), 0.05);
+  d = smin(d, sdEll(m - vec3(0.06, 1.215, 0.055), vec3(0.058, 0.052, 0.048)), 0.035);
+  d = smin(d, sdEll(q - vec3(0.0, 1.03, -0.002), vec3(0.118, 0.14, 0.082)), 0.06);
+  d = smin(d, sdEll(q - vec3(0.0, 0.88, -0.008), vec3(0.158, 0.115, 0.098)), 0.06);
+  d = smin(d, sdCap(m, vec3(0.012, 1.372, 0.05), vec3(0.135, 1.392, 0.004), 0.0085), 0.012);
+  float a = sdRC(m, vec3(0.172, 1.342, -0.03), vec3(0.203, 1.1, -0.035), 0.042, 0.032);
+  a = smin(a, sdRC(m, vec3(0.205, 1.1, -0.035), vec3(0.205, 0.875, 0.03), 0.031, 0.024), 0.02);
+  a = smin(a, sdEll(m - vec3(0.2, 0.815, 0.045), vec3(0.018, 0.052, 0.032)), 0.02);
+  return smin(d, a, 0.03);
+}
+float figure(vec3 q) {
+  vec3 h = headLocal(q);
+  return smin(torso(q), min(skull(h), eyeballs(h)), 0.016);
+}
+vec3 normalAt(vec3 q) {
+  const vec2 e = vec2(0.0005, -0.0005);
+  return normalize(e.xyy * figure(q + e.xyy) + e.yyx * figure(q + e.yyx) + e.yxy * figure(q + e.yxy) + e.xxx * figure(q + e.xxx));
+}
+
+vec3 safeInv(vec3 d) {
+  vec3 s = vec3(greaterThanEqual(d, vec3(0.0))) * 2.0 - 1.0;
+  return 1.0 / (s * max(abs(d), vec3(1e-6)));
+}
+vec2 box(vec3 ro, vec3 inv, vec3 lo, vec3 hi) {
+  vec3 a = (lo - ro) * inv;
+  vec3 b = (hi - ro) * inv;
+  vec3 n = min(a, b);
+  vec3 f = max(a, b);
+  return vec2(max(max(n.x, n.y), max(n.z, 0.0)), min(min(f.x, f.y), f.z));
+}
+// The nearest point of her along the ray before tMax (-1 if none), and how
+// near the ray passes her, for the rim of light round her outline.
+float march(vec3 ro, vec3 rd, float tMax, out float closest, out float tClosest) {
+  vec3 lo = toLocal(ro);
+  vec3 ld = dirLocal(rd);
+  closest = 1e9;
+  tClosest = 1.0;
+  vec2 b = box(lo, safeInv(ld), BOX_FROM, BOX_TO);
+  if (b.x >= b.y) return -1.0;
+  float t = b.x;
+  float end = min(b.y, tMax);
+  for (int i = 0; i < 110; i++) {
+    float d = figure(lo + ld * t);
+    if (d < closest) {
+      closest = d;
+      tClosest = t;
+    }
+    if (d < 0.0003 * (1.0 + t)) return t;
+    t += d * 0.9;
+    if (t > end) break;
+  }
+  return -1.0;
+}
+
+// ---------- the water
+// The height of the surface at xz and how bright the ring crests are there.
+float waves(vec2 xz, out float crest) {
+  float h = 0.0015 * sin(xz.x * 7.0 + TAU * 3.0 * time / LOOP_SECONDS) * sin(xz.y * 5.0 - TAU * 2.0 * time / LOOP_SECONDS);
+  crest = 0.0;
+  for (int k = 0; k < RINGS; k++) {
+    vec4 r = u_rings[k];
+    if (r.w < 0.001) continue;
+    float d = length(xz - r.xy);
+    float x = d - r.z * RING_SPEED;
+    float env = exp(-x * x / 0.006) * r.w * exp(-r.z * 0.3) / (1.0 + d * 3.0);
+    h += 0.006 * env * sin(x * 90.0);
+    crest += env * pow(max(0.5 + 0.5 * sin(x * 90.0 + 1.2), 0.0), 6.0);
+  }
+  return h;
+}
+// Where the waterline crosses the lens at x, bobbing as the rings pass.
+float splitAt(float x) {
+  float crest;
+  float h = waves(vec2(u_eye.x + x * 0.4, u_eye.z - 0.4), crest);
+  return SPLIT + h * 2.2 + 0.0024 * sin(x * 7.0 + TAU * 9.0 * time / LOOP_SECONDS) + 0.0011 * sin(x * 19.0 - TAU * 14.0 * time / LOOP_SECONDS);
+}
+
+// ---------- strokes of light
+// Closest approach of the ray to segment a-b: distance, ray t, segment s.
+vec3 raySeg(vec3 ro, vec3 rd, vec3 a, vec3 b) {
+  vec3 ba = b - a;
+  vec3 w0 = ro - a;
+  float c = max(dot(ba, ba), 1e-10);
+  float bb = dot(rd, ba);
+  float d = dot(rd, w0);
+  float e = dot(ba, w0);
+  float den = c - bb * bb;
+  float s = den > 1e-10 ? clamp((e - bb * d) / den, 0.0, 1.0) : 0.0;
+  float t = bb * s - d;
+  s = clamp((e + bb * t) / c, 0.0, 1.0);
+  t = max(bb * s - d, 0.0);
+  return vec3(length(w0 + rd * t - ba * s), t, s);
+}
+// The knots and the words. Each half sees only its own side of the water;
+// under it they blur and fade in the murk.
+vec3 strokes(vec3 ro, vec3 rd, float tMax, bool under) {
+  vec3 c = vec3(0.0);
+  for (int w = 0; w < WORDS; w++) {
+    vec4 b = u_words[w];
+    if (b.w <= 0.0) continue;
+    // The sphere grown by the reach of the glow, so the glow is never cut.
+    b.w += under ? 0.08 : 0.03;
+    vec3 oc = b.xyz - ro;
+    float tc = dot(oc, rd);
+    if (tc < -b.w || dot(oc, oc) - tc * tc > b.w * b.w) continue;
+    for (int i = STARTS[w]; i < STARTS[w + 1]; i++) {
+      vec4 a = u_seg[2 * i];
+      vec4 e = u_seg[2 * i + 1];
+      if (a.w < 0.002) continue;
+      vec3 r = raySeg(ro, rd, a.xyz, e.xyz);
+      if (r.y <= 0.0 || r.y > tMax) continue;
+      float y = mix(a.y, e.y, r.z);
+      if (under ? y > 0.0 : y < 0.0) continue;
+      float core = max(0.0011, pixel * r.y * 0.75);
+      float width = core + (under ? 0.0012 + 0.0018 * r.y : 0.0);
+      float glow = core / width * exp(-sq(r.x / width)) + (under ? 0.05 : 0.12) * exp(-r.x / (width * 4.0 + 0.003));
+      float fade = under ? 2.6 * exp(-r.y * MURK) : 1.0;
+      c += mix(u_pale, u_warm, e.w) * a.w * glow * fade;
+    }
+    if (under) {
+      // The heart of the knot while it rises.
+      float lit = u_seg[2 * STARTS[w]].w * smoothstep(0.02, -0.03, b.y);
+      float th = max(tc, 0.0);
+      float d = length(oc - rd * th);
+      c += u_warm * lit * (0.5 * exp(-sq(d / 0.022)) + 0.12 * exp(-d / 0.05)) * exp(-th * MURK) * step(th, tMax);
+    }
+  }
+  return c;
+}
+// The voice: a warm point at the hollow of her throat.
+vec3 notch(vec3 ro, vec3 rd, float tMax, float size) {
+  vec3 v = u_voice.xyz - ro;
+  float t = dot(v, rd);
+  if (t <= 0.0 || t > tMax + 0.02) return vec3(0.0);
+  float d = length(v - rd * t);
+  float s = max(pixel * t * 1.3, 0.0022) * size;
+  return u_warm * u_voice.w * (0.9 * exp(-sq(d / s)) + 0.3 * exp(-d / (s * 5.0)));
+}
+
+// ---------- her light
+// An open eye looking at `target` (head frame): a dim white, a ring of iris
+// lit cold, a dark pupil, and the glints of the sky and the word.
+vec3 eye(vec3 h, vec3 n, vec3 rd, vec3 lamp, vec3 target) {
+  vec3 centre = vec3(sign(h.x) * 0.031, EYES.y, EYES.z);
+  vec3 aim = normalize(normalize(target - centre) + vec3(0.0, 0.0, 0.4));
+  float k = dot(normalize(h - centre), aim);
+  float iris = smoothstep(0.85, 0.87, k);
+  float pupil = smoothstep(0.962, 0.972, k);
+  vec3 c = mix(mix(u_cold, u_pale, 0.5) * 0.14, u_cold * 0.07, iris) * (1.0 - pupil);
+  vec3 rf = reflect(rd, n);
+  c += u_pale * pow(max(dot(rf, normalize(vec3(-0.4, 0.7, 0.6))), 0.0), 300.0) * 1.4;
+  c += mix(u_pale, u_warm, 0.3) * pow(max(dot(rf, lamp), 0.0), 160.0) * u_lamp.w * 1.2;
+  return c;
+}
+// Level lines of light round her body, lit by the word she looks at and by
+// her own voice, a cold rim, and a bright line where she meets the water.
+vec3 shade(vec3 p, vec3 rd, float t, bool under) {
+  vec3 q = toLocal(p);
+  vec3 n = normalAt(q);
+  vec3 rl = dirLocal(rd);
+  vec3 lq = toLocal(u_lamp.xyz);
+  vec3 lamp = normalize(lq - q);
+  vec3 h = headLocal(q);
+  vec3 c;
+  if (eyeballs(h) < skull(h) + 0.0002) {
+    vec3 nh = vec3(dot(n, hr), dot(n, hu), dot(n, hf));
+    vec3 rh = vec3(dot(rl, hr), dot(rl, hu), dot(rl, hf));
+    vec3 lh = vec3(dot(lamp, hr), dot(lamp, hu), dot(lamp, hf));
+    c = eye(h, nh, rh, lh, headLocal(lq));
+  } else {
+    float facing = max(abs(dot(n, -rl)), 0.05);
+    float rim = pow(clamp(1.0 - facing, 0.0, 1.0), 2.5);
+    // How much of one spacing a pixel covers: the lines blur into an even
+    // glow where they would crowd.
+    float spacing = q.y > HEAD_LINES ? LINE * 0.62 : LINE;
+    float foot = pixel * t / spacing * sqrt(max(1.0 - n.y * n.y, 0.0)) / max(facing, 0.25);
+    float blur = foot + (under ? 0.05 + 0.08 * t : 0.0);
+    float width = 0.055 + blur * 0.6;
+    float phase = q.y / LINE + max(q.y - HEAD_LINES, 0.0) * (1.0 / 0.62 - 1.0) / LINE;
+    float dl = abs(fract(phase + 0.5) - 0.5);
+    float line = (1.0 - smoothstep(width * 0.5, width, dl)) * min(1.0, 0.1 / width);
+    line = mix(line, 0.15, smoothstep(0.35, 0.7, blur));
+    float key = max(dot(n, lamp), 0.0) * u_lamp.w / (1.0 + 0.6 * dot(lq - q, lq - q));
+    float sky = 0.3 + 0.45 * max(dot(n, normalize(vec3(-0.3, 0.8, 0.5))), 0.0);
+    vec3 toNotch = toLocal(u_voice.xyz) - q;
+    float voice = u_voice.w * exp(-length(toNotch) / 0.045) * (0.4 + 0.6 * max(dot(n, normalize(toNotch + vec3(0.0, 0.0, 0.03))), 0.0));
+    // A faint fill between the lines shows the form of her face.
+    c = u_cold * (0.02 + rim * 0.35)
+      + mix(u_cold, u_pale, 0.3) * (0.05 * sky + 0.14 * key)
+      + mix(u_cold, u_pale, 0.45) * line * sky
+      + mix(u_pale, u_warm, 0.35) * line * key * 1.3
+      + u_warm * voice * (0.35 + 1.2 * line);
+  }
+  // Where she meets the water.
+  float crest;
+  float level = waves(p.xz, crest);
+  c += mix(u_cold, u_pale, 0.6) * 0.55 * exp(-abs(p.y - level) / 0.0025);
+  if (under) {
+    c *= exp(-t * MURK) * (0.75 + 0.25 * exp(p.y * 5.0));
+    c = mix(c, u_cold * dot(c, vec3(0.3, 0.5, 0.2)), 0.35);
+  }
+  return c;
+}
+// A glow along her outline where a ray just misses her.
+vec3 outline(float closest, float t, bool under) {
+  if (closest > 0.03) return vec3(0.0);
+  float px = max(closest, 0.0) / (pixel * t);
+  return u_cold * (under ? 0.25 * exp(-t * MURK) : 0.45) * exp(-px * px / (under ? 6.0 : 0.8));
+}
+
+// ---------- above the water
+vec3 surface(vec3 p, vec3 rd, float t) {
+  float crest;
+  waves(p.xz, crest);
+  float fade = exp(-t * 0.18);
+  vec3 c = u_cold * 0.025 * fade + mix(u_cold, u_pale, 0.6) * crest * 0.5 * fade;
+  // The words mirrored in the water.
+  return c + strokes(p, vec3(rd.x, -rd.y, rd.z), 1e9, false) * 0.35;
+}
+vec3 air(vec2 l, float ys) {
+  vec3 rd = normalize(u_fwd.xyz + u_right.xyz * l.x + u_up.xyz * l.y);
+  vec3 ro = u_eye.xyz;
+  float tw = rd.y < -1e-5 ? -ro.y / rd.y : 1e9;
+  float closest;
+  float tc;
+  float th = march(ro, rd, tw, closest, tc);
+  vec3 c = u_cold * 0.012 * exp(-max(l.y - ys, 0.0) * 9.0);
+  float tMax = tw;
+  if (th > 0.0) {
+    tMax = th;
+    c += shade(ro + rd * th, rd, th, false);
+  } else {
+    if (tw < 1e8) c += surface(ro + rd * tw, rd, tw);
+    c += outline(closest, tc, false);
+  }
+  c += strokes(ro, rd, tMax, false);
+  return c + notch(ro, rd, tMax, 1.0);
+}
+
+// ---------- under the water
+// One layer of slowly falling code at distance `far`: a 0 or a 1 in some of
+// its cells.
+float glyph(vec2 f, bool one, float px) {
+  float d;
+  if (one) {
+    vec2 a = vec2(0.04, -0.62);
+    vec2 b = vec2(0.04, 0.62);
+    vec2 pa = f - a;
+    vec2 ba = b - a;
+    d = length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
+    vec2 c = vec2(-0.2, 0.4);
+    vec2 pc = f - b;
+    vec2 cb = c - b;
+    d = min(d, length(pc - cb * clamp(dot(pc, cb) / dot(cb, cb), 0.0, 1.0)));
+  } else {
+    vec2 q = abs(f) - vec2(0.16, 0.52);
+    d = abs(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.08);
+  }
+  float s = 0.07;
+  return (1.0 - smoothstep(s - px * 0.5, s + px * 0.5, d)) * min(1.0, 0.18 / (s + px));
+}
+vec3 code(vec3 ro, vec3 rd, float tMax) {
+  vec3 c = vec3(0.0);
+  float sea = u_head.z;
+  float ahead = max(dot(rd, u_fwd.xyz), 0.05);
+  const float CW = 0.012;
+  const float CH = 0.02;
+  for (int k = 0; k < 5; k++) {
+    float far = 0.9 * pow(1.5, float(k));
+    float t = far / ahead;
+    if (t > tMax) continue;
+    vec3 p = ro + rd * t;
+    if (p.y > -0.004) continue;
+    float u = p.x / CW + float(k) * 17.0;
+    float col = floor(u);
+    // Each column falls at its own whole number of cells per loop, so the
+    // loop closes; in it, streams of code, brightest at their lower end.
+    float fall = 4.0 + floor(hash2(vec2(col, float(k)), 1u) * 9.0);
+    float v = p.y / CH + fall * time / LOOP_SECONDS;
+    float row = floor(v);
+    float stream = 7.0 + floor(hash2(vec2(col, float(k)), 2u) * 10.0);
+    float s = fract((row + floor(hash2(vec2(col, float(k)), 4u) * stream)) / stream);
+    if (s > 0.35 + 0.4 * sea) continue;
+    vec2 cell = vec2(col, row);
+    if (hash2(cell, uint(k) + 3u) > 0.75) continue;
+    float head = pow(max(1.0 - s / (0.35 + 0.4 * sea), 0.0), 1.6);
+    vec2 f = vec2(fract(u) - 0.5, (fract(v) - 0.5) * CH / CW);
+    float px = pixel * t / CW;
+    // A digit changes now and then.
+    float turn = floor(hash2(cell, 5u) * 3.0 + time / LOOP_SECONDS * 88.0 * hash2(cell, 6u));
+    float g = glyph(f, hash2(cell + turn * 7.0, uint(k) + 7u) > 0.5, px) * (1.0 - smoothstep(0.3, 0.7, px));
+    c += mix(u_cold, u_pale, 0.25 * head) * g * (0.15 + 0.85 * head) * (0.35 + 0.65 * sea) * exp(-t * MURK) * 0.42;
+  }
+  return c;
+}
+// The voice reaching down through the water to the knot.
+vec3 beam(vec3 ro, vec3 rd, float tMax) {
+  if (u_beam.w < 0.001) return vec3(0.0);
+  vec3 r = raySeg(ro, rd, vec3(u_beam.x, -0.005, u_beam.y), vec3(u_beam.x, u_beam.z, u_beam.y));
+  if (r.y > tMax) return vec3(0.0);
+  float width = max(0.0012, pixel * r.y) + 0.004 * r.y;
+  float down = 0.5 + 0.5 * r.z;
+  return u_warm * u_beam.w * (0.5 * exp(-sq(r.x / width)) + 0.1 * exp(-r.x / (width * 6.0))) * exp(-r.y * MURK) * down;
+}
+vec3 water(vec2 lens, float ys) {
+  vec2 l = vec2(lens.x / ZOOM, ys + (lens.y - ys) / ZOOM);
+  l += 0.002 * vec2(sin(l.y * 47.0 + TAU * 13.0 * time / LOOP_SECONDS), sin(l.x * 31.0 - TAU * 10.0 * time / LOOP_SECONDS));
+  pixel /= ZOOM;
+  vec3 rd = normalize(u_fwd.xyz + u_right.xyz * l.x + u_up.xyz * l.y);
+  vec3 ro = vec3(u_eye.x, WATER_EYE, u_eye.z);
+  float ts = rd.y > 1e-5 ? -ro.y / rd.y : 1e9;
+  float closest;
+  float tc;
+  float th = march(ro, rd, ts, closest, tc);
+  float depth = ys - l.y;
+  // Light from the surface, fading with depth, and its slow shafts.
+  vec3 c = u_cold * (0.02 + 0.055 * exp(-depth * 7.0));
+  float shafts = 0.0;
+  for (int k = 0; k < 3; k++) {
+    float fk = float(k);
+    shafts += pow(max(sin(l.x * (9.0 + 5.0 * fk) + depth * (2.0 - fk) + TAU * float(2 + k) * time / LOOP_SECONDS + fk * 2.1), 0.0), 10.0);
+  }
+  c += mix(u_cold, u_pale, 0.3) * shafts * 0.03 * exp(-depth * 2.5);
+  float tMax = th > 0.0 ? th : ts;
+  c += code(ro, rd, tMax);
+  if (th > 0.0) {
+    c += shade(ro + rd * th, rd, th, true);
+  } else {
+    c += outline(closest, tc, true);
+  }
+  c += strokes(ro, rd, tMax, true);
+  c += beam(ro, rd, tMax);
+  // The voice where her throat meets the water, a soft halo under it.
+  return c + notch(ro, rd, tMax, 4.0) * 0.3;
+}
+
+void main() {
+  vec2 frag = gl_FragCoord.xy;
+  time = u_eye.w;
+  pixel = 2.0 / (u_view.y * u_view.w);
+  bc = cos(u_body.w);
+  bs = sin(u_body.w);
+  hf = vec3(sin(u_head.x) * cos(u_head.y), sin(u_head.y), cos(u_head.x) * cos(u_head.y));
+  hr = normalize(cross(vec3(0.0, 1.0, 0.0), hf));
+  hu = cross(hf, hr);
+  vec2 lens = (frag / u_view.zw * 2.0 - 1.0) / u_view.xy;
+  float ys = splitAt(lens.x);
+  float px = pixel;
+  vec3 light = lens.y < ys ? water(lens, ys) : air(lens, ys);
+  // The waterline on the lens: a thin bright edge, a glow just under it.
+  float d = (lens.y - ys) / px;
+  light += mix(u_cold, u_pale, 0.5) * 0.32 * exp(-d * d / 1.4);
+  light += u_cold * 0.06 * exp(min(d, 0.0) / 10.0) * step(d, 0.0);
+
+  // A soft shoulder where light piles up, then onto the page.
+  vec3 over = 0.7 + 0.3 * (1.0 - exp(-(light - 0.7) / 0.3));
+  vec3 c = mix(light, over, step(0.7, light));
+  if (u_out.x > 0.5) {
+    c *= smoothstep(0.0, u_edges.x, v_uv.x) * smoothstep(0.0, u_edges.y, 1.0 - v_uv.x)
+       * smoothstep(0.0, u_edges.z, 1.0 - v_uv.y) * smoothstep(0.0, u_edges.w, v_uv.y);
+  }
+  c = u_backdrop + c + (hash2(frag * 1.37 + 0.5, 0u) - 0.5) / 255.0;
+  o = vec4(clamp(c, 0.0, 1.0), 1.0);
+}

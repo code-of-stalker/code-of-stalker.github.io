@@ -135,6 +135,52 @@ pub fn in_palm(body: &Body, side: usize) -> V3 {
 /// How far a phone at his ear stands off his head's axis: the skull's
 /// half-width, the phone's half-thickness and a gap.
 const CHEEK: f32 = 0.106;
+/// Where the middle of the hand holding it stands: on the phone's back,
+/// outside it, so the fingers lie along it and never through it.
+const CHEEK_HAND: f32 = CHEEK - 0.004;
+
+/// Which way the fingers of the hand on `side` point at his ear: up, and
+/// leaning in over the phone toward his temple.
+fn ear_up(body: &Body, side: usize) -> V3 {
+    let sign = if side == 0 { 1.0 } else { -1.0 };
+    (Y - body.face.left * (0.3 * sign)).normalize()
+}
+
+/// The hand on `side` bends at the wrist to point as near `dir` as the
+/// wrist's hinge lets it, `a` of the way: at his ear the fingers stand up
+/// along the phone instead of running on into his face.
+fn point_hand(pose: &mut Pose, side: usize, dir: V3, a: f32) {
+    if a <= 0.001 {
+        return;
+    }
+    let body = build(pose);
+    let c = &body.cones;
+    let at = |i: usize| v3(c[i][0], c[i][1], c[i][2]);
+    let shoulder = at(3 * (19 + side));
+    let elbow = at(3 * (19 + side) + 1);
+    let wrist = at(3 * (21 + side) + 1);
+    let upper = elbow - shoulder;
+    let lower = wrist - elbow;
+    if upper.length() < 1e-4 || lower.length() < 1e-4 {
+        return;
+    }
+    let lower = lower.normalize();
+    let axis = upper.normalize().cross(body.chest_axes.forward);
+    if axis.length() < 1e-4 {
+        return;
+    }
+    let axis = axis.normalize();
+    let along = lower - axis * axis.dot(lower);
+    let turn = dir.dot(axis.cross(lower)).atan2(dir.dot(along));
+    pose.wrists[side] = mix(pose.wrists[side], 0.1 - turn, a.min(1.0));
+}
+
+/// A point beside his head on the side of the hand `side` (0 left, 1
+/// right), `out` off the head's axis, at the ear's height.
+fn at_cheek(body: &Body, side: usize, out: f32) -> V3 {
+    let sign = if side == 0 { 1.0 } else { -1.0 };
+    body.head + body.face.left * (sign * out) + body.face.forward * 0.015 - Y * 0.045
+}
 
 /// The hand on `side` aims its wrist at `w` (the walk's frame), `a` of the
 /// way: what it reached for before keeps its share, so one reach hands
@@ -929,8 +975,9 @@ impl Cast {
         let at_ear = window(s, w + 7.9, w + 8.6, w + 13.4, w + 14.0);
         if at_ear > 0.0 {
             let b = build(pose);
-            let ear = local.world(b.head - b.face.left * 0.14 + b.face.forward * 0.01 - Y * 0.05);
+            let ear = local.world(at_cheek(&b, 1, CHEEK_HAND));
             reach(pose, local, 1, ear, at_ear);
+            point_hand(pose, 1, ear_up(&b, 1), at_ear);
         }
         // Listening, his eyes down and still.
         pose.nod += 0.2 * window(s, w + 8.8, w + 9.4, w + 13.0, w + 13.6);
@@ -1244,7 +1291,7 @@ impl Cast {
                     window(s, d + 5.0, d + 5.3, d + 6.0, d + 6.4),
                 );
                 let call = window(s, d + 5.6, d + 6.1, d + 10.6, d + 11.2);
-                let ear = local.world(pose.pelvis + v3(0.12, 0.7, 0.05));
+                let ear = local.world(at_cheek(&build(pose), 0, CHEEK_HAND));
                 reach(
                     pose,
                     local,
@@ -1255,6 +1302,13 @@ impl Cast {
                         smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s),
                     ),
                     call,
+                );
+                let up = ear_up(&build(pose), 0);
+                point_hand(
+                    pose,
+                    0,
+                    up,
+                    call * (smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s)),
                 );
                 // On the call his other hand talks, then rubs his brow.
                 let talk = window(s, d + 7.0, d + 7.4, d + 9.6, d + 10.0);
@@ -1757,10 +1811,11 @@ impl Cast {
         // he records, then at his ear.
         let w = k.wall;
         if s > w + 1.45 && s < w + 14.0 {
-            held.phone = in_palm(h, 1);
+            // At his ear it lies on his cheek, the hand on its back.
+            let ear = smooth(w + 8.0, w + 8.6, s) * (1.0 - smooth(w + 13.4, w + 13.9, s));
+            held.phone = in_palm(h, 1).lerp(at_cheek(h, 1, CHEEK), ear);
             let to = h.head - held.phone;
             held.phone_yaw = to.x.atan2(to.z);
-            let ear = smooth(w + 8.0, w + 8.6, s) * (1.0 - smooth(w + 13.4, w + 13.9, s));
             held.phone_tilt = mix(1.0, FRAC_PI_2, ear);
         } else {
             // On the desk: it buzzes, then at his ear.
@@ -1788,6 +1843,7 @@ impl Cast {
             held.phone = held.phone.lerp(in_palm(h, 0), call);
             // At his ear it stands up, its face to his cheek.
             let ear = smooth(d + 6.2, d + 6.7, s) - smooth(d + 10.2, d + 10.7, s);
+            held.phone = held.phone.lerp(at_cheek(h, 0, CHEEK), ear.max(0.0));
             let to = h.head - held.phone;
             held.phone_yaw = to.x.atan2(to.z);
             held.phone_tilt = FRAC_PI_2 * ear;

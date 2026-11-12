@@ -947,9 +947,10 @@ vec2 essence(vec3 p, vec3 n, vec2 L, float k) {
   float d = sqrt(d2);
   float inside = smoothstep(R + 0.02, R - 0.06, d);
   float c = codeOn(p, n, 0.05, 0.85, 500u);
-  vec2 inner = L * mix(1.0, 0.12, k) + vec2(ESSENCE_LIGHT * k * (0.05 + c), 0.0);
+  // While his voice is in it (MELT.w) the code burns brighter, warm.
+  vec2 inner = L * mix(1.0, 0.12, k) + vec2(ESSENCE_LIGHT * k * (0.05 + c) * (1.0 + 2.5 * MELT.w), 0.35 * MELT.w * k * c);
   L = mix(L, inner, inside);
-  L.x += RINGS.w * k * 0.2 * sline(d - R, 0.012);
+  L.x += RINGS.w * k * (0.2 + 1.2 * MELT.w) * sline(d - R, 0.012);
   return L;
 }
 
@@ -1246,7 +1247,9 @@ vec2 rings(vec3 ro, vec3 rd, float T) {
       float trail = 0.015 * exp(-6.0 * lag);
       // Glass right at the lens would smear across the frame: it fades.
       float fade = (k == 0 ? 1.0 : 0.7) * smoothstep(0.45, 1.3, t);
-      float cold = 0.005 * graze * RINGVIS.w + RINGVIS.x * (0.45 * first + 0.7 * bead) + RINGVIS.z * (0.4 * third + 2.0 * trail);
+      // His voice lights the glass itself: the sphere's whole shell glows.
+      float shell = MELT.w * (0.025 * graze + 0.02);
+      float cold = (0.005 * graze + shell) * RINGVIS.w + RINGVIS.x * (0.45 * first + 0.7 * bead) + RINGVIS.z * (0.4 * third + 2.0 * trail);
       float warm = RINGFX.x * (0.9 * first + 1.2 * bead + 0.02 * graze) + RINGFX.z * (0.9 * third + 6.0 * trail);
       L += vec2(cold + 0.3 * warm, warm) * fade;
     }

@@ -106,6 +106,9 @@ pub const DROP_SPEED: f32 = 8.0;
 /// Dawn from here: the camera rises out of the water to the house, whole
 /// again (it came back while the camera was under).
 const DAWN: f32 = LOOP - 8.0;
+/// Under the water the camera turns over once round its own axis as it
+/// rises, and is level again just before it breaks the surface.
+const TURN: (f32, f32) = (DAWN - 6.0, DAWN - 0.6);
 
 /// Reduced motion holds this moment: the night house with the line of his
 /// day drawn through it, every place of it lit and him at each, the rings
@@ -360,45 +363,58 @@ const CLOCK_RIDE: f32 = 1.5;
 const SKY_TRAM: f32 = 50.0;
 const SKY_RIDE: f32 = 40.0;
 
-/// How present he is, 0 … 1. The day wears the sphere down: it narrows
-/// and pales. Speaking his day aloud and hearing it back fills it out
-/// again, a breath more than full, then it settles.
-fn presence(s: f32, k: &Keys) -> f32 {
+/// When he speaks his day aloud and hears it back: (worn from, speaks,
+/// listens, done, how low the day wore him).
+fn voice_spans(k: &Keys) -> [(f32, f32, f32, f32, f32); 3] {
     let (w, d, w2) = (k.wall, k.desk, k.wall2);
-    // (worn from, speaks, listens, done, how low it got)
-    let spans = [
-        (k.rise, w + 2.6, w + 8.9, w + 13.5, 0.5),
+    [
+        (k.rise, w + 2.6, w + 8.9, w + 13.5, 0.22),
         (
             w + 13.5,
             d + DESK_SPEAK[0],
             d + DESK_LISTEN[0],
             d + DESK_LISTEN[1],
-            0.42,
+            0.15,
         ),
-        (d + DESK_LISTEN[1], w2 + 3.4, w2 + 8.8, w2 + 13.3, 0.5),
-    ];
+        (d + DESK_LISTEN[1], w2 + 3.4, w2 + 8.8, w2 + 13.3, 0.22),
+    ]
+}
+
+/// How present he is, 0 … 1.4. The day wears the sphere down: it narrows
+/// and pales to a ghost. Speaking his day aloud and hearing it back fills
+/// it out again, well past full while his voice is in it, then it settles.
+fn presence(s: f32, k: &Keys) -> f32 {
     let mut p = 1.0;
-    for (from, speak, listen, done, low) in spans {
+    for (from, speak, listen, done, low) in voice_spans(k) {
         if s < from {
             break;
         }
         p = if s < speak {
             mix(1.0, low, smooth(from, speak, s))
         } else {
-            let back = 0.55 * smooth(speak, listen - 0.4, s) + 0.45 * smooth(listen, done, s);
-            mix(low, 1.0, back) + 0.12 * window(s, done - 1.5, done + 0.5, done + 1.0, done + 5.0)
+            let back = 0.6 * smooth(speak, speak + 2.0, s) + 0.4 * smooth(listen, listen + 2.0, s);
+            mix(low, 1.0, back) + 0.4 * window(s, speak + 0.5, speak + 2.5, done, done + 4.0)
         };
     }
     p
 }
 
+/// How much his own voice is in the sphere, 0 … 1: from his first word to
+/// a little after the last he hears.
+fn voice(s: f32, k: &Keys) -> f32 {
+    voice_spans(k)
+        .iter()
+        .map(|&(_, speak, _, done, _)| window(s, speak, speak + 1.2, done, done + 2.5))
+        .fold(0.0, f32::max)
+}
+
 /// How the presence shows: the sphere's size, how plainly it and its rings
 /// show.
 pub fn presence_size(p: f32) -> f32 {
-    0.7 + 0.3 * p
+    0.5 + 0.5 * p
 }
 pub fn presence_seen(p: f32) -> f32 {
-    0.2 + 0.8 * p
+    0.08 + 0.92 * p
 }
 
 /// How much of the line of his day is drawn.
@@ -525,7 +541,11 @@ impl Story {
         let lens = curve(|k| k.lens);
         let aperture = curve(|k| k.aperture).max(0.0);
         let forward = (look - eye).normalize();
-        let right = forward.cross(Y).normalize();
+        let level = forward.cross(Y).normalize();
+        // Under the water at dawn the camera turns over once round its own
+        // axis, and comes up level.
+        let (sr, cr) = (TAU * smooth(TURN.0, TURN.1, s)).sin_cos();
+        let right = level * cr + level.cross(forward) * sr;
         let up = right.cross(forward);
         let focus = (look - eye).length().max(0.3);
 
@@ -629,18 +649,9 @@ impl Story {
             (1.0 - 0.5 * pov) * back(2) * shown * (1.0 - grow),
             (1.0 - 0.6 * pov) * (1.0 + 2.0 * grow) * shown,
         ];
-        // As he speaks and listens the rings glow up, with his breath.
-        let (w, w2) = (k.wall, k.wall2);
-        let filling = (window(s, w + 2.6, w + 3.4, w + 13.5, w + 15.5)
-            + window(
-                s,
-                d + DESK_SPEAK[0],
-                d + DESK_SPEAK[0] + 0.8,
-                d + DESK_LISTEN[1],
-                d + DESK_LISTEN[1] + 2.0,
-            )
-            + window(s, w2 + 3.4, w2 + 4.2, w2 + 13.3, w2 + 15.3))
-            * (0.25 + 0.15 * b);
+        // As he speaks and listens the rings burn warm, with his breath.
+        let spoken = voice(s, &k);
+        let filling = spoken * (0.75 + 0.25 * b);
         let chord = pulse(s - CHORD) + 0.4 * pulse(s - CHORD - 0.9);
         // The three strike once more as the drop meets its reflection.
         let met = pulse(s - DROP - DROP_FALL);
@@ -673,8 +684,10 @@ impl Story {
         let melt = [
             window(s, GROW + 1.5, GROW + 9.5, DAWN - 8.0, DAWN - 2.5),
             gloss,
-            0.8 * shown * (1.0 - 0.7 * pov) * (1.0 - grow),
-            0.0,
+            (0.8 * shown * (1.0 - 0.7 * pov) * (1.0 - grow)).min(1.0),
+            // His voice in the sphere: its glass, its code and its edge
+            // burn.
+            spoken * (1.0 - 0.5 * pov) * (1.0 - grow),
         ];
 
         // The desk: the screen, the lamp, what he has typed, the call's news.
@@ -735,7 +748,9 @@ impl Story {
         let water = [
             if eye.y < TABLE { 1.0 } else { 0.0 },
             smooth(LIQUID, LIQUID + 4.0, s) * (1.0 - smooth(DAWN + 1.0, DAWN + 5.0, s)),
-            (TABLE - eye.y).max(0.0),
+            // The water clears as the house builds back toward dawn, so its
+            // reflection shows plainly while the camera turns over.
+            (TABLE - eye.y).max(0.0) * (1.0 - 0.9 * smooth(DAWN - 8.0, DAWN - 5.0, s)),
             (s - DROP - DROP_FALL).clamp(-99.0, 99.0),
         ];
         let movers = [props::tram(tc, doors), props::movers(s, world, &held)];
@@ -1424,28 +1439,43 @@ fn shots(k: &Keys, cast: &Cast) -> Vec<Key> {
         ),
         // Through the surface, into the reflection: the globe hangs below
         // it, the world above shines through it, light comes down in
-        // shafts.
+        // shafts. Under the water the camera only sinks, it comes no
+        // nearer and draws no farther.
         fixed(
             f + 59.0,
-            v3(0.3, -1.35, 29.5),
-            v3(0.0, -1.2, 0.0),
+            v3(0.2, -1.35, 32.0),
+            v3(0.0, -1.3, 0.0),
             1.75,
             0.0,
         ),
-        fixed(f + 62.5, v3(1.6, -2.6, 26.0), v3(0.0, -1.3, 0.0), 1.8, 0.0),
-        fixed(f + 66.5, v3(4.0, -4.3, 21.0), v3(0.0, -0.7, 0.0), 1.9, 0.0),
-        // Into the globe, deep under the line of his day, looking up.
-        fixed(f + 70.5, v3(3.0, -5.6, 13.5), v3(0.0, 0.2, -2.0), 1.8, 0.0),
-        // Up and out at dawn: the house is whole again round the camera.
+        fixed(f + 63.0, v3(0.5, -2.5, 31.3), v3(0.0, -2.9, 0.0), 1.8, 0.0),
+        // Deep: the house's reflection builds back out of its code.
+        fixed(f + 66.0, v3(0.7, -3.4, 30.8), v3(0.0, -3.8, 0.0), 1.85, 0.0),
         fixed(
-            DAWN - 1.5,
-            v3(1.4, -2.0, 22.0),
-            v3(0.0, 1.0, -1.0),
+            DAWN - 6.5,
+            v3(0.7, -3.6, 30.6),
+            v3(0.0, -3.4, 0.0),
             1.85,
             0.0,
         ),
-        fixed(DAWN + 0.5, v3(0.6, 0.5, 29.5), v3(0.0, 2.8, 0.0), 1.9, 0.0),
-        fixed(DAWN + 4.0, v3(0.2, 4.0, 31.0), v3(0.0, 5.4, 0.0), 2.0, 0.0),
+        // It turns over once round its own axis as it rises (TURN) and
+        // comes up into the world level, the house whole.
+        fixed(
+            DAWN - 3.5,
+            v3(0.6, -2.6, 30.4),
+            v3(0.0, -0.4, 0.0),
+            1.85,
+            0.0,
+        ),
+        fixed(
+            DAWN - 0.6,
+            v3(0.5, -1.15, 30.2),
+            v3(0.0, 2.2, 0.0),
+            1.9,
+            0.0,
+        ),
+        fixed(DAWN + 0.5, v3(0.45, 0.2, 30.1), v3(0.0, 3.0, 0.0), 1.9, 0.0),
+        fixed(DAWN + 4.0, v3(0.2, 4.0, 30.8), v3(0.0, 5.4, 0.0), 2.0, 0.0),
         wide(LOOP),
     ];
     // Monotone keys need rising times.

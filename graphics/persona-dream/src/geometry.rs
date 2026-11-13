@@ -1492,6 +1492,7 @@ mod tests {
                 crate::EYE,
                 crate::HEEL,
                 crate::BALL,
+                crate::TOE,
                 crate::on_figure(85.0, crate::CROWN_SVG),
             ] {
                 let q = cam.project(p).unwrap();

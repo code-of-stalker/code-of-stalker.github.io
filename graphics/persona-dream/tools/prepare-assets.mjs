@@ -1,26 +1,31 @@
-// Rasterizes the declarative sources once: the standing person (Art's
-// approved figure, spoken-thought-person.svg, above the waist; the hanging
-// arm and the legs of tools/standing.js below it), the three other people
-// of the room (task-person, task-woman, task-author-person: a man, a woman
-// and a stocky adult in a shirt, all standing, facing us) and the words of
-// the page in Disket Mono. Figure: red = the opaque cover, green = ink
-// lines, blue = the body (the same cover: no chair any more). Others: one
-// cell each, red = cover, green = ink. The labels are white on black, one
-// 128 px row each. Also writes src/generated.rs: the body's edges per row,
-// the plates the character is built of (sites of a relaxed Voronoi mosaic
-// over the body) and the ink of every label.
+// Rasterizes the sources once. The standing person: his head and neck are
+// Art's approved drawing (spoken-thought-person.svg) down to the cut row,
+// the body below is drawn by the Rust baker (examples/bake_people: a posed
+// body of rounded forms, inked by outline, contour and the folds under the
+// muscles); the drawing's sternomastoid line runs on down the baked neck.
+// The three other people of the room come from the same baker, one cell
+// each. Also the words of the page in Disket Mono. Figure: red = the opaque
+// cover, green = ink lines, blue = the body (the same cover). Others: red =
+// cover, green = ink. The labels are white on black, one 128 px row each.
+// Writes src/generated.rs too: the body's edges per row, the plates the
+// character is built of (sites of a relaxed Voronoi mosaic over the body)
+// and the ink of every label.
 // Motion, light and color stay in Rust; these are immutable inputs.
-// Run from the project root: node graphics/persona-dream/tools/prepare-assets.mjs
+// Run from the project root (needs cargo and Playwright):
+//   node graphics/persona-dream/tools/prepare-assets.mjs
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const scene = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const engine = path.resolve(scene, '../product-engine/engine/assets');
+const baked = path.join(scene, 'target/people');
+execFileSync('cargo', ['run', '--release', '--example', 'bake_people', '--', baked], { cwd: scene, stdio: 'inherit' });
+const png = async name => 'data:image/png;base64,' + (await readFile(path.join(baked, name))).toString('base64');
+const [body, others] = [await png('figure-body.png'), await png('others.png')];
 const svg = await readFile(path.join(engine, 'spoken-thought-person.svg'), 'utf8');
-const people = await Promise.all(['task-person', 'task-woman', 'task-author-person']
-  .map(name => readFile(path.join(engine, `${name}.svg`), 'utf8')));
 const font = (await readFile(path.join(engine, 'fonts/Disket-Mono-Regular.ttf'))).toString('base64');
 // The page's words, in the order of the film. The three cards (one per
 // paragraph): a quiet half, a bright half, and the parts lit in turn. Then
@@ -32,16 +37,16 @@ const words = [
   'Я ТАКОЙ-ТО', 'Я НЕ ТАКОЙ', 'Я ДОЛЖЕН', 'Я ХОЧУ',
   'МОЖНО', 'НЕЛЬЗЯ', 'ХОРОШО', 'ПЛОХО',
 ];
-// 4 px per SVG unit: the close-ups on the face stay crisp.
-const K = 4, VIEW = [200, 672], W = VIEW[0] * K, H = VIEW[1] * K, ATLAS = 1536;
-// The others' cells: CELL px each, OTHER_CELL metres in the world (lib.rs),
-// and how tall each person stands in it (m).
-const CELL = [280, 760], OTHER_CELL = [0.7, 1.9], HEIGHTS = [1.8, 1.63, 1.72];
+// 4 px per SVG unit: the close-ups on the face stay crisp. The figure's
+// frame is the baker's (examples/bake_people/main.rs FIGURE).
+const K = 4, VIEW = [240, 672], W = VIEW[0] * K, H = VIEW[1] * K, ATLAS = 1536;
+// The drawing gives way to the baked body over these rows (the baker cuts
+// its neck to the drawn one's width there), and the sternomastoid's drawn
+// line carries on down to the collarbones.
+const CUT = 112, BAND = 3, MASTOID = { end: 136, fade: 6, half: 3.5, x0: 86, y0: 106, slope: 13 / 29 };
 const browser = await chromium.launch();
 const page = await browser.newPage();
-await page.addScriptTag({ path: path.join(scene, 'tools/standing.js') });
-const { figure, others, labels, edges, cells, ink, band } = await page.evaluate(async ({ svg, people, font, words, K, VIEW, W, H, ATLAS, CELL, OTHER_CELL, HEIGHTS }) => {
-  const pose = globalThis.standing;
+const { figure, atlas, labels, edges, cells, ink, band } = await page.evaluate(async ({ svg, body, others, font, words, K, VIEW, W, H, ATLAS, CUT, BAND, MASTOID }) => {
   const face = new FontFace('Disket', `url(data:font/ttf;base64,${font})`);
   await face.load(); document.fonts.add(face);
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
@@ -53,78 +58,57 @@ const { figure, others, labels, edges, cells, ink, band } = await page.evaluate(
     const g = c.getContext('2d'); g.setTransform(K, 0, 0, K, 0, 0); draw(g);
     return g.getImageData(0, 0, W, H).data;
   };
-  // The seated drawing above the waist, the standing part below it.
-  const cover = layer(g => {
-    g.fillStyle = g.strokeStyle = '#fff';
-    g.save(); pose.keep(g); g.fill(new Path2D(outline), 'nonzero'); g.restore();
-    pose.cover(g);
-  });
-  const lines = layer(g => {
-    g.fillStyle = g.strokeStyle = '#fff';
-    g.save(); pose.keep(g); for (const d of inks) g.fill(new Path2D(d), 'evenodd'); g.restore();
-    pose.ink(g);
-  });
+  const pixels = async url => {
+    const node = new Image(); node.src = url; await node.decode();
+    const c = document.createElement('canvas'); c.width = node.width; c.height = node.height;
+    const g = c.getContext('2d'); g.drawImage(node, 0, 0);
+    return { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
+  };
+  const drawnCover = layer(g => { g.fillStyle = '#fff'; g.fill(new Path2D(outline), 'nonzero'); });
+  const drawnInk = layer(g => { g.fillStyle = '#fff'; for (const d of inks) g.fill(new Path2D(d), 'evenodd'); });
+  const bake = await pixels(body);
+  if (bake.w !== W || bake.h !== H) throw new Error(`figure-body.png is ${bake.w} × ${bake.h}, not ${W} × ${H}`);
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const o = out.getContext('2d'); const img = o.createImageData(W, H);
-  const body = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) {
-    const c = cover[i * 4 + 3], l = lines[i * 4 + 3];
-    body[i] = c;
-    img.data[i * 4] = c; img.data[i * 4 + 1] = l; img.data[i * 4 + 2] = c; img.data[i * 4 + 3] = 255;
+  const cover = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) {
+    const ry = (j + 0.5) / K;
+    const t = Math.min(1, Math.max(0, (ry - (CUT - BAND)) / (2 * BAND)));
+    const lineX = MASTOID.x0 + (ry - MASTOID.y0) * MASTOID.slope;
+    const fade = Math.min(1, Math.max(0, (MASTOID.end - ry) / MASTOID.fade));
+    for (let i = 0; i < W; i++) {
+      const n = j * W + i;
+      const dc = drawnCover[n * 4 + 3], di = drawnInk[n * 4 + 3];
+      const bc = bake.data[n * 4], bi = bake.data[n * 4 + 1];
+      const c = Math.round(dc * (1 - t) + bc * t);
+      let l = Math.round(di * (1 - t) + bi * t);
+      const rx = (i + 0.5) / K;
+      if (ry > CUT - BAND && ry < MASTOID.end && Math.abs(rx - lineX) < MASTOID.half) l = Math.max(l, Math.round(di * fade));
+      cover[n] = c;
+      img.data[n * 4] = c; img.data[n * 4 + 1] = l; img.data[n * 4 + 2] = c; img.data[n * 4 + 3] = 255;
+    }
   }
   o.putImageData(img, 0, 0);
-  // The others: each SVG fragment drawn into its cell, feet on the cell's
-  // floor, as tall as HEIGHTS says. Cover: every filled shape; ink: the
-  // drawing's own lines (filled or stroked).
-  const fragment = (source, css) => {
-    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    s.innerHTML = source.replace(/<defs>/g, '<g>').replace(/<\/defs>/g, '</g>').replace(/<clipPath[\s\S]*?<\/clipPath>/g, '');
-    document.body.append(s);
-    const b = s.getBBox();
-    s.remove();
-    const text = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.x} ${b.y} ${b.width} ${b.height}" style="color:#fff;--book-cover:#fff"><style>${css}</style>${s.innerHTML}</svg>`;
-    return { box: b, text };
-  };
-  const draw = async (g, text, x, y, w, h) => {
-    const node = new Image();
-    node.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(text)));
-    await node.decode();
-    g.drawImage(node, x, y, w, h);
-  };
-  const atlas = document.createElement('canvas'); atlas.width = CELL[0] * 3; atlas.height = CELL[1];
-  const pass = async css => {
-    const c = document.createElement('canvas'); c.width = atlas.width; c.height = atlas.height;
-    const g = c.getContext('2d');
-    for (const [k, source] of people.entries()) {
-      const { box, text } = fragment(source, css(k));
-      const h = HEIGHTS[k] / OTHER_CELL[1] * CELL[1];
-      const w = box.width * h / box.height;
-      await draw(g, text, CELL[0] * (k + 0.5) - w / 2, CELL[1] - 3 - h, w, h);
-    }
-    return g.getImageData(0, 0, c.width, c.height).data;
-  };
-  const shapes = ['#task-person-shape', '#task-woman-shape', '#task-author-person'];
-  const coverPx = await pass(k => `path{fill:none;stroke:none}${shapes[k]} path:not([fill=none]){fill:#fff;stroke:#fff}`);
-  const inkPx = await pass(k => k < 2
-    ? `${shapes[k]}{display:none}path{stroke:#fff}`
-    : 'path{fill:none!important;stroke:#fff}');
-  const oc = atlas.getContext('2d'); const oi = oc.createImageData(atlas.width, atlas.height);
-  for (let i = 0; i < atlas.width * atlas.height; i++) {
-    oi.data[i * 4] = coverPx[i * 4 + 3]; oi.data[i * 4 + 1] = inkPx[i * 4 + 3]; oi.data[i * 4 + 3] = 255;
+  // The others, as baked (re-encoded here, compressed).
+  const people = await pixels(others);
+  const a = document.createElement('canvas'); a.width = people.w; a.height = people.h;
+  const ac = a.getContext('2d'); const ai = ac.createImageData(people.w, people.h);
+  for (let n = 0; n < people.w * people.h; n++) {
+    ai.data[n * 4] = people.data[n * 4]; ai.data[n * 4 + 1] = people.data[n * 4 + 1]; ai.data[n * 4 + 3] = 255;
   }
-  oc.putImageData(oi, 0, 0);
+  ac.putImageData(ai, 0, 0);
   // The body's back and front (SVG x) on 65 rows from the top (0) to the
   // bottom of the SVG, a few rows merged so the marks glide.
   const edges = Array.from({ length: 65 }, (_, i) => {
     const y = Math.round(i / 64 * (H - 1));
     let x0 = W, x1 = -1;
     for (let yy = Math.max(0, y - 6); yy <= Math.min(H - 1, y + 6); yy++)
-      for (let x = 0; x < W; x++) if (body[yy * W + x] > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+      for (let x = 0; x < W; x++) if (cover[yy * W + x] > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
     return x1 < 0 ? [0, 0] : [x0 / K, (x1 + 1) / K];
   });
   // The plates: a jittered grid of sites over the body (SVG units), relaxed
   // three times towards the centres of their cells, so the mosaic is even.
-  const inside = (x, y) => x >= 0 && y >= 0 && x < VIEW[0] && y < VIEW[1] && body[Math.floor(y * K) * W + Math.floor(x * K)] > 127;
+  const inside = (x, y) => x >= 0 && y >= 0 && x < VIEW[0] && y < VIEW[1] && cover[Math.floor(y * K) * W + Math.floor(x * K)] > 127;
   const rand = (n => () => ((n = (n * 1664525 + 1013904223) >>> 0) / 4294967296))(7);
   const S = 31;
   let sites = [];
@@ -163,14 +147,14 @@ const { figure, others, labels, edges, cells, ink, band } = await page.evaluate(
     }
     return [x0, x1 + 1];
   });
-  return { figure: out.toDataURL('image/png'), others: atlas.toDataURL('image/png'), labels: l.toDataURL('image/png'), edges, cells: sites, ink, band: [top, bottom + 1] };
-}, { svg, people, font, words, K, VIEW, W, H, ATLAS, CELL, OTHER_CELL, HEIGHTS });
+  return { figure: out.toDataURL('image/png'), atlas: a.toDataURL('image/png'), labels: l.toDataURL('image/png'), edges, cells: sites, ink, band: [top, bottom + 1] };
+}, { svg, body, others, font, words, K, VIEW, W, H, ATLAS, CUT, BAND, MASTOID });
 await browser.close();
 await writeFile(path.join(scene, 'assets/figure.png'), Buffer.from(figure.split(',')[1], 'base64'));
-await writeFile(path.join(scene, 'assets/others.png'), Buffer.from(others.split(',')[1], 'base64'));
+await writeFile(path.join(scene, 'assets/others.png'), Buffer.from(atlas.split(',')[1], 'base64'));
 await writeFile(path.join(scene, 'assets/labels.png'), Buffer.from(labels.split(',')[1], 'base64'));
 const rows = list => list.map(([a, b]) => `    [${a.toFixed(1)}, ${b.toFixed(1)}],`).join('\n');
-await writeFile(path.join(scene, 'src/generated.rs'), `//! Generated by tools/prepare-assets.mjs from the figure's SVG and the labels.
+await writeFile(path.join(scene, 'src/generated.rs'), `//! Generated by tools/prepare-assets.mjs from the figure and the labels.
 
 /// The standing body: back and front (SVG x) on 65 rows, from the top (0)
 /// to the bottom (${VIEW[1]}) of the SVG; [0, 0] where there is no body.
@@ -194,4 +178,4 @@ ${rows(ink)}
 /// commas included. Capitals stand 44 px tall in it.
 pub const LABEL_BAND: [f32; 2] = [${band[0].toFixed(1)}, ${band[1].toFixed(1)}];
 `);
-console.log(`Prepared figure.png (${W} × ${H}), others.png (${CELL[0] * 3} × ${CELL[1]}), labels.png (${ATLAS} × ${128 * words.length}), ${cells.length} plates and src/generated.rs.`);
+console.log(`Prepared figure.png (${W} × ${H}), others.png, labels.png (${ATLAS} × ${128 * words.length}), ${cells.length} plates and src/generated.rs.`);

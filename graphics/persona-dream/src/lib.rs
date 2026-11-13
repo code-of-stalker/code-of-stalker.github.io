@@ -42,13 +42,14 @@ pub const LOOP_SECONDS: f32 = 66.0;
 /// behind it and the four tags, «не в живое Я, не в Присутствие» on the card.
 pub const STILL: f32 = 52.4;
 
-/// Metres per unit of the figure: the approved seated drawing
-/// (spoken-thought-person.svg, 1.3 m from the soles to the crown) above the
-/// waist and its standing legs (tools/standing.js) below. Standing, the
-/// person is 1.66 m tall.
+/// Metres per unit of the figure: the head and neck are the approved
+/// drawing's (spoken-thought-person.svg, drawn at 1.3 m from the soles to
+/// the crown seated); the standing body below is baked from a posed body in
+/// Rust (examples/bake_people) to the same scale. Standing, the person is
+/// 1.66 m tall.
 pub const UNIT: f32 = 1.3 / 505.0;
-/// Size of the figure's SVG in its own units.
-pub const FIGURE_SVG: [f32; 2] = [200.0, 672.0];
+/// Size of the figure's frame in its own (SVG) units.
+pub const FIGURE_SVG: [f32; 2] = [240.0, 672.0];
 /// The soles of the figure stand on this SVG row.
 pub const FLOOR_SVG: f32 = 660.0;
 /// The SVG column placed at the world's x = 0: under the middle of the body.
@@ -68,8 +69,10 @@ pub const FIGURE: [f32; 4] = [
     FLOOR_SVG * UNIT,
 ];
 pub const EYE: [f32; 3] = on_figure(117.0, 56.0);
-pub const HEEL: [f32; 3] = on_figure(64.0, FLOOR_SVG);
-pub const BALL: [f32; 3] = on_figure(140.0, FLOOR_SVG);
+/// The near foot's heel and toes, and the far foot's toes.
+pub const HEEL: [f32; 3] = on_figure(52.0, FLOOR_SVG);
+pub const BALL: [f32; 3] = on_figure(137.0, FLOOR_SVG);
+pub const TOE: [f32; 3] = on_figure(206.0, FLOOR_SVG);
 /// The middle of the body: where the pieces gather around.
 pub const CENTRE: [f32; 3] = on_figure(90.0, 330.0);
 
@@ -125,13 +128,15 @@ pub fn arrives(i: usize) -> f32 {
 }
 
 /// The other people deep in the room the attitudes are borrowed from: where
-/// each stands (world x, z), facing us, and who it is: 0 a tall man, 1 a
-/// woman, 2 a stocky adult in a shirt (cells of others.png).
+/// each stands (world x, z) and who it is (cells of others.png, baked by
+/// examples/bake_people): 0 a tall bearded man, arms folded; 1 a slight
+/// woman in a dress, a hand on her hip; 2 a heavy man in a sweater, hands
+/// behind his back. All stand, each turned his or her own way.
 pub const OTHERS: [(f32, f32, usize); 3] = [(-1.65, 3.4, 0), (2.25, 2.8, 1), (0.95, 4.6, 2)];
 /// The size of one cell of others.png in the world (m), its feet on the
-/// floor, and how tall each of them stands in it (tools/prepare-assets.mjs).
+/// floor, and how tall each of them stands in it (examples/bake_people).
 pub const OTHER_CELL: [f32; 2] = [0.7, 1.9];
-pub const OTHER_HEIGHTS: [f32; 3] = [1.8, 1.63, 1.72];
+pub const OTHER_HEIGHTS: [f32; 3] = [1.84, 1.63, 1.7];
 /// Where an attitude leaves another person: just before their face.
 pub fn other_face(k: usize) -> [f32; 3] {
     let (x, z, who) = OTHERS[k % OTHERS.len()];
@@ -176,10 +181,10 @@ pub const VERDICT_SECONDS: f32 = 1.7;
 /// tag hangs (world offset from that plate) and when it is pinned. The
 /// words: «Я ТАКОЙ-ТО», «Я НЕ ТАКОЙ», «Я ДОЛЖЕН», «Я ХОЧУ».
 pub const TAGS: [(usize, [f32; 2], f32); 4] = [
-    (5, [0.2, 0.15], 41.0),
-    (9, [0.31, -0.01], 43.4),
+    (3, [0.2, 0.15], 41.0),
+    (10, [0.31, -0.01], 43.4),
     (7, [-0.14, 0.4], 45.8),
-    (20, [0.24, 0.1], 48.2),
+    (22, [0.24, 0.1], 48.2),
 ];
 /// The tags hang a little nearer the camera than the person.
 pub const TAG_Z: f32 = -0.16;
@@ -961,7 +966,7 @@ mod tests {
             let q = c.project(p).unwrap();
             q.at[0] > 50.0 && q.at[0] < SIZE[0] - 50.0 && q.at[1] > 30.0 && q.at[1] < SIZE[1] - 50.0
         };
-        let body = [EYE, HEEL, BALL, on_figure(85.0, CROWN_SVG)];
+        let body = [EYE, HEEL, BALL, TOE, on_figure(85.0, CROWN_SVG)];
         for t in [0.0, 3.0, 10.0, 18.0, 22.0, 30.0, 58.0, 65.0] {
             for p in body {
                 assert!(inside(&camera(t), p), "{t} {p:?}");

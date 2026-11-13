@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
-// The standing person (Art's approved figure above the waist, its standing
-// legs below): red = opaque cover, green = ink contour, blue = the body.
+// The standing person (Art's approved head and neck, the body below baked
+// in Rust): red = opaque cover, green = ink contour, blue = the body.
 // The lens blurs it by its circle of confusion. Inside the body an even,
 // quiet light: the living one, Presence; a form, not a point. The other
 // people deep in the room (three cells of u_others: red cover, green ink)
@@ -14,8 +14,8 @@ uniform vec4 u_light; // contour, breath, time (s), exposure
 uniform float u_presence;
 in vec2 v_local;
 out vec4 o;
-const vec2 SVG = vec2(200.0, 672.0);
-const vec2 TEX = vec2(800.0, 2688.0);
+const vec2 SVG = vec2(240.0, 672.0);
+const vec2 TEX = vec2(960.0, 2688.0);
 const vec2 OTHERS_TEX = vec2(840.0, 760.0);
 const float FLOOR = 660.0;
 // Loops start from a uniform-derived zero so the compiler cannot unroll them.

@@ -4,10 +4,10 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 import type { PressableStateCallbackType, StyleProp, ViewStyle } from 'react-native';
 
 import { DiaryDesignPanel } from '../../product/diary/DiaryDesignPanel';
-import { DiaryChoiceFace } from '../../product/diary/DiaryFilters';
 import { DiaryGlass } from '../../product/diary/DiaryGlass';
 import { useProductLayout, useProductSpacing } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
+import { fitPanelPath } from '../../product/motion/glassShape';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
 import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
@@ -19,7 +19,7 @@ import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
 import type { GlyphName } from './chrome';
 import { GlassField, Glyph, ListGroup, ListItem, useRoleInks } from './chrome';
-import { formatTime, Note, problemText, Skeleton, Tabs } from './parts';
+import { Chip, formatTime, Note, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 import { isStaff, PersonCard, plain, RoleTags, waitedFor } from './PersonCard';
 import { RoleMark } from './RoleMark';
@@ -44,6 +44,11 @@ const TABLE_CONTOURS: Record<Cut, string> = {
   both: 'M275.947 .125L287.875 12.0527V63.875H12.0527L.125 51.9473V.125Z',
   bottomLeft: 'M287.875 .125V63.875H12.0527L.125 51.9473V.125Z',
   topRight: 'M275.947 .125L287.875 12.0527V63.875H.125V.125Z',
+};
+const TABLE_GLASS: Record<Cut, (width: number, height: number) => string> = {
+  both: (width, height) => fitPanelPath(TABLE_CONTOURS.both, 288, 64, width, height),
+  bottomLeft: (width, height) => fitPanelPath(TABLE_CONTOURS.bottomLeft, 288, 64, width, height),
+  topRight: (width, height) => fitPanelPath(TABLE_CONTOURS.topRight, 288, 64, width, height),
 };
 
 const filterSets: Record<Tab, Filter[]> = {
@@ -82,18 +87,16 @@ function walkerState(entry: DirectoryEntry, now: number): { label: string; tone:
 function useTableFrame(cut: Cut) {
   const colors = useThemeColors();
   return useMemo(() => {
-    const tag = colors.accent.replace('#', ''), contour = TABLE_CONTOURS[cut];
     return { uri: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg width="288" height="64" viewBox="0 0 288 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="${contour}" fill="${colors.background}" fill-opacity="0.9"/>
-<path d="${contour}" fill="url(#intensive-table-${tag})" fill-opacity="0.08" stroke="${colors.accent}" stroke-width="0.25"/>
-<defs><linearGradient id="intensive-table-${tag}" x1="0" y1="32" x2="288" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="${colors.accent}"/><stop offset="1" stop-color="${colors.muted}"/></linearGradient></defs></svg>`) };
-  }, [colors, cut]);
+<path d="${TABLE_CONTOURS[cut]}" stroke="${colors.accent}" stroke-width="0.25"/></svg>`) };
+  }, [colors.accent, cut]);
 }
 
-/** A framed pane: the diary contour fitted to its content, corners kept whole. */
+/** A framed pane: the diary's glass under its contour, fitted to the content with corners kept whole (never see-through, Art 2026-11-12). */
 function Framed({ children, style, cut = 'both' }: { children: ReactNode; style?: StyleProp<ViewStyle>; cut?: Cut }) {
   const frame = useTableFrame(cut);
   return <View style={[{ position: 'relative' }, style]}>
+    <DiaryGlass contour={TABLE_GLASS[cut]} />
     <PanelArtwork source={frame} />
     {children}
   </View>;
@@ -110,17 +113,6 @@ function CheckBox({ checked, label, onPress, mixed = false }: { checked: boolean
 }
 
 /** A filter as the diary's filter choices: the chosen one filled with the accent, its text dark (Art 2026-11-12). */
-function Chip({ label, count, on, alert = false, onPress }: { label: string; count: number; on: boolean; alert?: boolean; onPress: () => void }) {
-  const colors = useThemeColors(), styles = useThemeStyles(createStyles);
-  return <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${label}: ${count}`} onPress={onPress}
-    style={(state: Pointer) => [styles.chip, !on && state.hovered && { backgroundColor: colors.subtle }, state.pressed && { opacity: .7 }]}>
-    <DiaryChoiceFace selected={on} fillStyle={styles.chipFill} content={ink => <>
-      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? colors.muted} style={styles.chipText}>{label}</ProductText>
-      <ProductText variant="label" numberOfLines={1} maxFontSize={12} color={ink ?? (alert && count ? colors.accent : colors.faint)} style={styles.chipText}>{String(count)}</ProductText>
-    </>} />
-  </Pressable>;
-}
-
 /** `mark` puts a role's mark right of the text, as the chat does after a role. */
 function Cell({ children, flex, tone = 'text', align = 'left', title = false, detail, mark }: {
   children: ReactNode; flex: number; tone?: Tone; align?: 'left' | 'right'; title?: boolean; detail?: string; mark?: { role: Place; ink: string };
@@ -377,7 +369,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
               return <ListItem key={guide.userId} title={guide.name}
                 detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
                 onPress={() => { void moveTo(guide); }} last={index === guides.length - 1} />;
-            }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из команды" last />}
+            }) : <ListItem glyph="people" title="Проводников пока нет" hint="Дайте права проводника кому-нибудь из команды" last />}
           </ListGroup>}
     </DiaryDesignPanel>
   </BottomSheet>;
@@ -421,7 +413,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
         return <ListItem key={guide.userId} title={guide.name}
           detail={`ИДУЩИХ ${own.walkers}${own.waiting ? ` · ЖДУТ ОТВЕТА ${own.waiting}` : ''}`}
           onPress={() => setSelected(guide.userId)} last={index === guides.length - 1} />;
-      }) : <ListItem glyph="people" title="Проводников пока нет" detail="Дайте права проводника кому-нибудь из людей" last />}
+      }) : <ListItem glyph="people" title="Проводников пока нет" hint="Дайте права проводника кому-нибудь из людей" last />}
     </ListGroup>
     <ProductText maxFontSize={13} style={styles.hint}>Откройте человека в списке, чтобы назначить проводника или изменить права. Отметьте нескольких идущих, чтобы перевести их разом.</ProductText>
   </View>;
@@ -472,9 +464,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   listColumn: { flex: 1, minWidth: 0, minHeight: 0, gap: 12 },
   // The chips and the bulk bar share one height, so the panes below stay put when people are picked.
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 48, alignItems: 'center' },
-  chip: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  chipFill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
-  chipText: { fontSize: 10, lineHeight: 14, letterSpacing: .8 },
   bulk: { minHeight: 48, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 16, paddingRight: 4, backgroundColor: colors.subtle },
   bulkNarrow: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 10, paddingRight: 16 },
   bulkText: { color: colors.accent, letterSpacing: 1.2 },

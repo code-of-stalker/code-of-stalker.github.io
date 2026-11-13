@@ -13,10 +13,11 @@ const contours = {
   card: cutPanelPath,
 };
 
-/** Material under an existing frame; no outline, content wrapper or touch handler. */
-export function DiaryGlass({ shape = 'rectangle', style }: { shape?: keyof typeof contours; style?: StyleProp<ViewStyle> }) {
+/** Material under an existing frame; no outline, content wrapper or touch handler. `contour` fits a frame of the caller's own. */
+export function DiaryGlass({ shape = 'rectangle', contour, style }: { shape?: keyof typeof contours; contour?: (width: number, height: number) => string; style?: StyleProp<ViewStyle> }) {
   const { ref, size, onLayout } = usePanelSize({ width: 1, height: 1 });
-  const glass = useMemo(() => ({ ...size, path: contours[shape](size.width, size.height), background: 'clear' as const }), [size, shape]);
+  const fit = contour ?? contours[shape];
+  const glass = useMemo(() => ({ ...size, path: fit(size.width, size.height), background: 'clear' as const }), [size, fit]);
   return <View ref={ref} testID="diary-glass" pointerEvents="none" onLayout={onLayout} style={[StyleSheet.absoluteFill, style]}>
     <Art kind="glass" glass={glass} width={size.width} height={size.height} scanOnMount={false}
       style={Platform.OS === 'web' ? { clipPath: "path('" + glass.path + "')" } as ViewStyle : undefined} />

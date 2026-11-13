@@ -20,6 +20,10 @@ out vec4 o;
 
 const vec2 SIZE = vec2(1536.0, 1024.0);
 const float TAU = 6.28318531;
+// 0, but not known to the compiler: loops counted from it stay loops.
+// Windows (ANGLE -> D3D11) unrolls every loop with constant bounds and
+// inlines every call, which once held the page still for seconds.
+int ZERO;
 
 uint mixBits(uint x) {
   x ^= x >> 16;
@@ -67,7 +71,7 @@ float seg(vec2 p, vec4 s) {
 // Distance from f to glyph g's strokes, in cells.
 float strokes(vec2 f, int g) {
   float d = 9.0;
-  for (int i = 0; i < 4; i++) d = min(d, seg(f, STROKES[g * 4 + i]));
+  for (int i = ZERO; i < 4; i++) d = min(d, seg(f, STROKES[g * 4 + i]));
   return d;
 }
 // Coverage at distance d from a stroke; px is one target pixel (plus any
@@ -166,16 +170,20 @@ vec2 carried(vec2 q, float i, float fk, float depth, float time) {
   return out_ * (go + along) + vec2(-out_.y, out_.x) * swirl + vec2(0.0, 12.0 * a);
 }
 
-// The rain at p, near layer to far. A glyph stands until the voice reaches
+// The rain at p, near layer to far, kept off her body (`body`, her
+// silhouette): the nearest layer, large and out of focus, falls in front of
+// her too, faint there. A glyph stands until the voice reaches
 // it, and flares. In the middle layers it then comes apart into grains (6 x 8
 // to a cell, each going one of three ways), which fly, shrink and fade; in
 // the nearest and the far layers it drifts a little and melts, block by
 // block. Written back, it stands again, bright for a moment behind the
 // writing head.
-vec3 rain(vec2 p, float px, float time, int near, int far, float ring) {
+vec3 rain(vec2 p, float px, float time, float ring, float body) {
   vec3 c = vec3(0.0);
   bool dusty = heard(p, 0.0, time) > -0.3 && time < WRITE_AT + 0.4;
-  for (int k = near; k < far; k++) {
+  for (int k = ZERO; k < LAYERS; k++) {
+    float keep = k == 0 ? 1.0 - 0.65 * body : 1.0 - body;
+    if (keep <= 0.0) continue;
     float fk = float(k);
     float depth = DEPTH[k];
     float soft = px + L_BLUR[k];
@@ -193,10 +201,10 @@ vec3 rain(vec2 p, float px, float time, int near, int far, float ring) {
         float cover = ink(strokes(s.f, glyphOf(s, k, time)), soft / s.size);
         float lead = max(smoothstep(0.86, 1.0, s.head), max(atHead, 0.8 * fresh));
         float bright = max(shine(s, k) * (1.0 + 1.2 * fresh), atHead * L_GAIN[k]);
-        c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead) * on;
+        c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead) * on * keep;
         // The lit heads glow a little round themselves.
-        c += u_cold * lead * L_GAIN[k] * 0.07 * exp(-dot(s.f, s.f) * 5.0) * on;
-        c += mix(u_cold, u_pale, 0.5) * cover * rung * L_GAIN[k] * 0.5;
+        c += u_cold * lead * L_GAIN[k] * 0.07 * exp(-dot(s.f, s.f) * 5.0) * on * keep;
+        c += mix(u_cold, u_pale, 0.5) * cover * rung * L_GAIN[k] * 0.5 * keep;
       }
     }
     if (!dusty) continue;
@@ -219,16 +227,16 @@ vec3 rain(vec2 p, float px, float time, int near, int far, float ring) {
       float alive = smoothstep(gone - 0.1, gone, hm);
       float flare = exp(-sq((ag - 0.1) / 0.16));
       float bright = (shine(g, k) + 0.6 * flare * L_GAIN[k]) * alive;
-      c += mix(u_cold, u_pale, 0.7 * flare) * cover * bright * (0.62 + 0.5 * flare);
+      c += mix(u_cold, u_pale, 0.7 * flare) * cover * bright * (0.62 + 0.5 * flare) * keep;
       continue;
     }
     float grain = s.size / 6.0;
-    for (int i = 0; i < 3; i++) {
+    for (int i = ZERO; i < 3; i++) {
       float fi = float(i);
       // Which grain of this way lies here now: undo its flight (a few
       // steps, as the flight depends on where it started).
       vec2 q = p;
-      for (int n = 0; n < 5; n++) q = p - carried(q, fi, fk, depth, time);
+      for (int n = ZERO; n < 5; n++) q = p - carried(q, fi, fk, depth, time);
       Cell g = cellAt(q, k, time);
       if (g.lit < 0.5) continue;
       float ag = heard(g.centre, depth, time);
@@ -264,7 +272,7 @@ vec3 rain(vec2 p, float px, float time, int near, int far, float ring) {
       float glint = 0.55 + 0.45 * sin(2.3 * time + 40.0 * fract(h * 3.7));
       float flare = exp(-sq((ag - 0.1) / 0.16));
       float bright = (shine(g, k) * (0.8 + 0.6 * lasting) + 0.75 * flare * L_GAIN[k]) * life + 0.8 * glint * hangs * L_GAIN[k];
-      c += mix(u_cold, u_pale, 0.75 * flare) * mix(whole, speck, m) * bright * (0.62 + 0.6 * flare);
+      c += mix(u_cold, u_pale, 0.75 * flare) * mix(whole, speck, m) * bright * (0.62 + 0.6 * flare) * keep;
     }
   }
   return c;
@@ -305,6 +313,7 @@ vec2 wave(vec2 p, float time) {
 }
 
 void main() {
+  ZERO = min(int(u_hum.w), 0);
   // Cover the target with the image, kept on its middle.
   float scale = max(u_res.x / SIZE.x, u_res.y / SIZE.y);
   vec2 frag = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
@@ -330,13 +339,11 @@ void main() {
   vec2 away = p - MOUTH;
   float rw = max(length(away), 1.0);
   vec3 col = u_backdrop;
-  // A crest lights the code and the dust it passes through. The nearest
-  // layer, large and out of focus, falls in front of her too, faint there.
+  // A crest lights the code and the dust it passes through.
   vec2 bent = p - away / rw * w.y;
   float lift = 1.0 + 4.0 * w.x;
   float ring = 1.6 * w.x;
-  col += rain(bent, px, time, 1, LAYERS, ring) * lift * (1.0 - body);
-  col += rain(bent, px, time, 0, 1, ring) * lift * (1.0 - 0.65 * body);
+  col += rain(bent, px, time, ring, body) * lift;
   // The wave itself: warm at her lips, paler as it goes.
   col += mix(u_warm, mix(u_cold, u_pale, 0.6), smoothstep(15.0, 140.0, rw)) * w.x * 0.42 * (1.0 - body);
   col += u_cold * light * 1.05 + u_pale * pow(light, 2.6) * 0.5;

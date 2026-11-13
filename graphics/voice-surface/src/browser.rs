@@ -4,6 +4,9 @@
 //! strokes of the words and the code in the deep, and adds the light straight
 //! onto the page in the theme's own cold, warm and pale (`look`). The scene
 //! is two-toned, so it does not go through the monochrome theme recolor.
+//! Windows' shader compiler takes a few seconds over the program; with
+//! KHR_parallel_shader_compile it links in the background and the page keeps
+//! running (`ready`).
 use crate::{
     compose, look, Look, DRY, EYES, FRAME_ASPECT, LENS, LOOP_SECONDS, NECK, RINGS, RING_SPEED,
     SEGMENTS, STILL, WATER_EYE, WORDS, WORD_STARTS, ZOOM,
@@ -16,6 +19,8 @@ use web_sys::{
 
 const SCENE: &str = include_str!("shaders/scene.frag");
 const SCREEN: &str = include_str!("shaders/screen.vert");
+/// KHR_parallel_shader_compile's query: whether a program has linked yet.
+const COMPLETION_STATUS: u32 = 0x91B1;
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
@@ -71,20 +76,102 @@ fn defines() -> String {
         .collect()
 }
 
+/// Hands the GPU a shader to compile; whether it compiled is asked once its
+/// program has linked.
 fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     let s = gl.create_shader(kind).ok_or("Cannot allocate shader")?;
     gl.shader_source(&s, source);
     gl.compile_shader(&s);
-    if !gl
-        .get_shader_parameter(&s, Gl::COMPILE_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        let log = gl.get_shader_info_log(&s).unwrap_or_default();
-        gl.delete_shader(Some(&s));
-        return Err(log.into());
-    }
     Ok(s)
+}
+
+/// Why a shader step failed, never blank: when the GPU drops the context
+/// mid-link the driver leaves no log at all.
+fn failure(gl: &Gl, step: &str, log: &str) -> String {
+    let log = log.trim();
+    if !log.is_empty() {
+        format!("{step} failed: {log}")
+    } else if gl.is_context_lost() {
+        format!("{step} failed: the GPU dropped the WebGL context")
+    } else {
+        format!("{step} failed without a log")
+    }
+}
+
+/// The program while the GPU may still be compiling and linking it.
+struct Linking {
+    program: WebGlProgram,
+    shaders: [WebGlShader; 2],
+}
+
+impl Linking {
+    fn start(gl: &Gl, vertex: &str, frag: &str) -> Result<Self, JsValue> {
+        let shaders = [
+            shader(gl, Gl::VERTEX_SHADER, vertex)?,
+            shader(gl, Gl::FRAGMENT_SHADER, frag)?,
+        ];
+        let program = gl.create_program().ok_or("Cannot allocate program")?;
+        for s in &shaders {
+            gl.attach_shader(&program, s);
+        }
+        gl.link_program(&program);
+        Ok(Self { program, shaders })
+    }
+    /// Whether asking about the link would not wait: always without
+    /// KHR_parallel_shader_compile, where asking simply waits.
+    fn done(&self, gl: &Gl, parallel: bool) -> bool {
+        !parallel
+            || gl
+                .get_program_parameter(&self.program, COMPLETION_STATUS)
+                .as_bool()
+                .unwrap_or(true)
+    }
+    /// The linked program with its uniforms found, or why it failed, from
+    /// the shader's log when one did not compile.
+    fn finish(self, gl: &Gl) -> Result<Prog, String> {
+        let linked = gl
+            .get_program_parameter(&self.program, Gl::LINK_STATUS)
+            .as_bool()
+            .unwrap_or(false);
+        let error = (!linked).then(|| {
+            let compile = self.shaders.iter().find_map(|s| {
+                let ok = gl
+                    .get_shader_parameter(s, Gl::COMPILE_STATUS)
+                    .as_bool()
+                    .unwrap_or(false);
+                (!ok).then(|| gl.get_shader_info_log(s).unwrap_or_default())
+            });
+            match compile {
+                Some(log) => failure(gl, "shader compile", &log),
+                None => failure(
+                    gl,
+                    "shader link",
+                    &gl.get_program_info_log(&self.program).unwrap_or_default(),
+                ),
+            }
+        });
+        for s in &self.shaders {
+            gl.delete_shader(Some(s));
+        }
+        if let Some(error) = error {
+            gl.delete_program(Some(&self.program));
+            return Err(error);
+        }
+        let uniforms = NAMES
+            .iter()
+            .map(|name| (*name, gl.get_uniform_location(&self.program, name)))
+            .collect();
+        Ok(Prog {
+            program: self.program,
+            uniforms,
+        })
+    }
+    fn dispose(self, gl: &Gl) {
+        for s in &self.shaders {
+            gl.delete_shader(Some(s));
+        }
+        gl.delete_program(Some(&self.program));
+    }
 }
 
 struct Prog {
@@ -93,33 +180,6 @@ struct Prog {
 }
 
 impl Prog {
-    fn new(gl: &Gl, vertex: &str, frag: &str) -> Result<Self, JsValue> {
-        let v = shader(gl, Gl::VERTEX_SHADER, vertex)?;
-        let f = shader(gl, Gl::FRAGMENT_SHADER, frag)?;
-        let p = gl.create_program().ok_or("Cannot allocate program")?;
-        gl.attach_shader(&p, &v);
-        gl.attach_shader(&p, &f);
-        gl.link_program(&p);
-        gl.delete_shader(Some(&v));
-        gl.delete_shader(Some(&f));
-        if !gl
-            .get_program_parameter(&p, Gl::LINK_STATUS)
-            .as_bool()
-            .unwrap_or(false)
-        {
-            let log = gl.get_program_info_log(&p).unwrap_or_default();
-            gl.delete_program(Some(&p));
-            return Err(log.into());
-        }
-        let uniforms = NAMES
-            .iter()
-            .map(|name| (*name, gl.get_uniform_location(&p, name)))
-            .collect();
-        Ok(Self {
-            program: p,
-            uniforms,
-        })
-    }
     fn at(&self, name: &str) -> Option<&WebGlUniformLocation> {
         self.uniforms
             .iter()
@@ -132,7 +192,11 @@ impl Prog {
 pub struct VoiceSurface {
     gl: Gl,
     canvas: HtmlCanvasElement,
-    scene: Prog,
+    /// The program once it has linked.
+    scene: Option<Prog>,
+    linking: Option<Linking>,
+    parallel: bool,
+    failed: Option<String>,
     empty: WebGlVertexArrayObject,
     look: Look,
     soft_edges: bool,
@@ -147,7 +211,9 @@ pub struct VoiceSurface {
 
 #[wasm_bindgen]
 impl VoiceSurface {
-    /// Everything is traced in the shader: no images to load.
+    /// Everything is traced in the shader: no images to load. The program
+    /// links in the background; `ready` says when the scene can draw, and
+    /// frames before that draw nothing.
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement) -> Result<VoiceSurface, JsValue> {
         let options = js_sys::Object::new();
@@ -158,7 +224,12 @@ impl VoiceSurface {
             .get_context_with_context_options("webgl2", &options)?
             .ok_or("WebGL2 unavailable")?
             .dyn_into()?;
-        let scene = Prog::new(
+        let parallel = gl
+            .get_extension("KHR_parallel_shader_compile")
+            .ok()
+            .flatten()
+            .is_some();
+        let linking = Linking::start(
             &gl,
             SCREEN,
             &format!("#version 300 es\n{}{SCENE}", defines()),
@@ -169,7 +240,10 @@ impl VoiceSurface {
         Ok(Self {
             gl,
             canvas,
-            scene,
+            scene: None,
+            linking: Some(linking),
+            parallel,
+            failed: None,
             empty,
             look: look(2),
             soft_edges: false,
@@ -181,6 +255,16 @@ impl VoiceSurface {
             disposed: false,
             frames: 0,
         })
+    }
+    /// Whether the program has linked and the scene draws; it never waits
+    /// where the GPU can say. An error says why it did not link.
+    pub fn ready(&mut self) -> Result<bool, JsValue> {
+        let was = self.scene.is_some();
+        let now = self.poll().map_err(|e| JsValue::from_str(&e))?;
+        if now && !was {
+            self.draw();
+        }
+        Ok(now)
     }
     pub fn resize(&mut self, width: u32, height: u32) {
         let width = width.clamp(2, 3072);
@@ -266,14 +350,49 @@ impl VoiceSurface {
         }
         let gl = &self.gl;
         gl.delete_vertex_array(Some(&self.empty));
-        gl.delete_program(Some(&self.scene.program));
+        if let Some(p) = self.scene.take() {
+            gl.delete_program(Some(&p.program));
+        }
+        if let Some(l) = self.linking.take() {
+            l.dispose(gl);
+        }
         self.disposed = true;
     }
 }
 
 impl VoiceSurface {
+    /// Takes the program once the GPU has linked it; true when it draws.
+    fn poll(&mut self) -> Result<bool, String> {
+        if self.scene.is_some() {
+            return Ok(true);
+        }
+        if let Some(error) = &self.failed {
+            return Err(error.clone());
+        }
+        let gl = &self.gl;
+        let waiting = match &self.linking {
+            Some(l) => gl.is_context_lost() || !l.done(gl, self.parallel),
+            None => true,
+        };
+        if waiting {
+            return Ok(false);
+        }
+        let Some(linking) = self.linking.take() else {
+            return Ok(false);
+        };
+        match linking.finish(gl) {
+            Ok(p) => {
+                self.scene = Some(p);
+                Ok(true)
+            }
+            Err(e) => {
+                self.failed = Some(e.clone());
+                Err(e)
+            }
+        }
+    }
     fn draw(&mut self) {
-        if self.disposed || self.gl.is_context_lost() {
+        if self.disposed || self.gl.is_context_lost() || !matches!(self.poll(), Ok(true)) {
             return;
         }
         let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
@@ -294,7 +413,9 @@ impl VoiceSurface {
             w,
             h,
         ];
-        let p = &self.scene;
+        let Some(p) = &self.scene else {
+            return;
+        };
         let [ex, ey, ez] = f.eye;
         let [rx, ry, rz] = f.right;
         let [ux, uy, uz] = f.up;

@@ -263,8 +263,13 @@ async function start() {
     show();
   }));
   document.addEventListener('visibilitychange', () => { if (document.hidden) scene.suspend(); });
-  status.hidden = true;
+  // The program links in the background; the scene shows once it draws.
+  let linked = false;
   const tick = now => {
+    if (!linked) {
+      try { linked = scene.ready(); } catch (error) { fail(`Сцена не собралась: ${error && error.message ? error.message : error}`); return; }
+      if (linked) status.hidden = true;
+    }
     scene.frame(now);
     show();
     requestAnimationFrame(tick);

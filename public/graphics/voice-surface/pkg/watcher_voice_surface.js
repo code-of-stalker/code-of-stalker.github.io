@@ -50,7 +50,9 @@ export class VoiceSurface {
         return ret >>> 0;
     }
     /**
-     * Everything is traced in the shader: no images to load.
+     * Everything is traced in the shader: no images to load. The program
+     * links in the background; `ready` says when the scene can draw, and
+     * frames before that draw nothing.
      * @param {HTMLCanvasElement} canvas
      */
     constructor(canvas) {
@@ -82,6 +84,26 @@ export class VoiceSurface {
      */
     pause(value) {
         wasm.voicesurface_pause(this.__wbg_ptr, value);
+    }
+    /**
+     * Whether the program has linked and the scene draws; it never waits
+     * where the GPU can say. An error says why it did not link.
+     * @returns {boolean}
+     */
+    ready() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.voicesurface_ready(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Reduced motion holds one moment: three words over a calm sea.
@@ -173,6 +195,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getError();
             return ret;
         },
+        __wbg_getExtension_abfda2c5db286b07: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = getObject(arg0).getExtension(getStringFromWasm0(arg1, arg2));
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        }, arguments); },
         __wbg_getProgramInfoLog_3276b294d6d42fe2: function(arg0, arg1, arg2) {
             const ret = getObject(arg1).getProgramInfoLog(getObject(arg2));
             var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export2, wasm.__wbindgen_export3);

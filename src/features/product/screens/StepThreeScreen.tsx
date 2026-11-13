@@ -85,7 +85,7 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
             }
           }}
           hero={active => <Reveal reducedMotion={reducedMotion} style={{ height: hero.height, width: hero.width, alignSelf: 'center' }}>
-            <Art kind="voice-presence" width={hero.width} height={hero.height} active={active && focused} reducedMotion={reducedMotion} />
+            <Art kind="voice-presence" webScene="voice-fork" width={hero.width} height={hero.height} active={active && focused} reducedMotion={reducedMotion} />
           </Reveal>}>
           {reading => <Reveal delay={160} reducedMotion={reducedMotion} style={styles.fill}>
             <StepPanel title="ШАГ 3. ГОЛОС КАК МОСТ" background="clear" expanded={open} onSelect={() => setOpen(value => !value)}

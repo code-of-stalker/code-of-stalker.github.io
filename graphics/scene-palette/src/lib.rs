@@ -6,6 +6,10 @@
 mod target;
 #[cfg(target_arch = "wasm32")]
 pub use target::Themed;
+#[cfg(target_arch = "wasm32")]
+mod warm;
+#[cfg(target_arch = "wasm32")]
+pub use warm::Warm;
 
 pub const VERTEX: &str = include_str!("recolor.vert");
 pub const FRAGMENT: &str = include_str!("recolor.frag");

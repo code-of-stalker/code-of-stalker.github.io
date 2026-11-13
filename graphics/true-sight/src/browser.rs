@@ -7,6 +7,7 @@ use crate::{
     FIGURE_HEIGHT, IRIS_R, LOOP_SECONDS, SIZE, STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
     WebGlFramebuffer, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -14,6 +15,9 @@ use web_sys::{
 };
 
 const SCREEN: &str = include_str!("shaders/screen.vert");
+const FINISH: &str = include_str!("shaders/finish.frag");
+const TEXT_VERTEX: &str = include_str!("shaders/text.vert");
+const TEXT: &str = include_str!("shaders/text.frag");
 const ATLAS_UNIT: i32 = 0;
 const SCENE_UNIT: i32 = 1;
 /// The scene pass stays under this many pixels; the lashes stay fine at it.
@@ -223,6 +227,30 @@ fn upload(gl: &Gl, buffer: &WebGlBuffer, floats: &[f32], bytes: &mut Vec<u8>) {
     gl.buffer_data_with_u8_array(Gl::ARRAY_BUFFER, bytes, Gl::DYNAMIC_DRAW);
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs: [(&str, String); 3] = [
+        (SCREEN, scene_source()),
+        (SCREEN, FINISH.into()),
+        (TEXT_VERTEX, TEXT.into()),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct TrueSight {
     gl: Gl,
@@ -252,14 +280,7 @@ pub struct TrueSight {
 impl TrueSight {
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement, labels: HtmlImageElement) -> Result<TrueSight, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl = context(&canvas)?;
         let scene = Pass::new(
             &gl,
             SCREEN,
@@ -272,7 +293,7 @@ impl TrueSight {
         let finish = Pass::new(
             &gl,
             SCREEN,
-            include_str!("shaders/finish.frag"),
+            FINISH,
             &[
                 "u_scene",
                 "u_paper",
@@ -285,8 +306,8 @@ impl TrueSight {
         )?;
         let text = Pass::new(
             &gl,
-            include_str!("shaders/text.vert"),
-            include_str!("shaders/text.frag"),
+            TEXT_VERTEX,
+            TEXT,
             &["u_atlas", "u_size"],
         )?;
         let atlas = image_texture(&gl, ATLAS_UNIT, &labels)?;

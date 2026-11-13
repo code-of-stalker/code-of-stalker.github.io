@@ -62,6 +62,21 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - He chose a labyrinth told by the camera: first person inside, then a pull back over the plan; the figure of light at the end breaks the labyrinth.
 - A light figure in a one-hue theme (Матрица, Искра) clips into a blot: dim the body, ink the drawing paler.
 
+## Step 3 «Голос»
+- The heroine's eyes are always open: calm, attentive, looking where her voice goes. Never "eyes closed, serene" in a brief. 2026-11-12, painted hero concepts: «у нее опять закрыты глаза, они должны быть открыты».
+- Her voice comes from her lips when she speaks: «почему разрез идет от ярёмной впадины а не от проговаривания девушки?» (2026-11-12, hero). The old rule «voice from the jugular notch» holds only for the shipped stage-5 scenes.
+- Screen 6 «Всплытие» v1: she must not surface by herself; the water level changes because she speaks, the words surface because she speaks, and the code is matrix code, not binary («двоичный код должен быть матричным кодом»). 2026-11-12.
+- Камертон v1: no line or cut at the start; not sparse; the voice must change the whole field, not one channel; she must open her mouth, drawn (dispatcher image), not a shader cut («ты просто разрезал рот?»). 2026-11-12.
+- Всплытие v2: the water must drain fully; hair, brows and stripes read as one psychedelic mass; the water above the line must read as water. 2026-11-12.
+- Камертон v2: the code must not gather into a pattern (Chladni arcs and rays read as a web): «он должен рассеиваться, таять или разрушаться но не превращаться в паутину». The voice breaks glyphs into dust that drifts and fades. 2026-11-13.
+- Камертон v3: more detail; the spoken sound wave must be visible, and the code needs depth of layers («не хватает звуковой волны от проговаривания, какой-то глубины слоёв»). Answer: six layers (blurred near, hazy far), crests from her lips that ripple the code before breaking it, rings in the clear air. 2026-11-13.
+- Всплытие v3: the frame starts fully under water («должно изначально полностью залито водой»), and she must be dressed («одень её в одежду»): dark long-sleeved dress, no pattern. 2026-11-13.
+- Камертон v4 approved in Тишина: «камертон ок». 2026-11-13.
+- Всплытие v4: the SDF face read as a nightmare («разрез глаз странный, подбородок как жопа… скулы, ухо, челюсть, брови — всё нелепое»). Cause: child proportions (mouth ~3 cm, narrow nose, round eye slits, jaw "wings", a chin of two balls, hair lobe like an ear, flat light). Answer: build a face to adult measurements (mouth ~4.5 cm along the dental arch, eye fissure 3 × 1 cm with lids, nose wings ~3 cm, one small chin), light it from slightly above like a portrait, and judge it at scene size. 2026-11-13.
+- Всплытие v5: «её сделал хорошо кроме глаз»; eyes sat in a pit with the lids inside («глаза внутри дырки… веки внутри»), and she showed through («почему она просвечивает?»: the horizon glow was added over her body, bright edges read as glass). Lids must lie on the eyeball flush with the face, whites visible; a figure is opaque, nothing behind her shows. 2026-11-13.
+- Screen 6 «Проговоренное — уже не скрытое», direction A (the old room, figure and card, executed richer) rejected 2026-11-12: «ты добавил деталей но саму сцену не переработал. она выглядит слабо, топорно. а твои детали на и так слабую основу сделали только шум». A rework means a new central image and a new base, never more detail on the old staging.
+- A prototype must play the moment he opens it: screen 6 v1 froze on its first frame («не проигрывается»). Before sending, check in headless Chrome that the clock runs and the frame rate holds.
+
 ## Step 5 «Внешнее кольцо»
 - Painted panoramas want depth and a living head: parallax from a depth map, a small sway, leaning toward where something happens. A static raster element (the bird painted in the sky) «выглядит тупо»: keep the camera away from it. (Page 01.)
 - «Якорь» first take lacked detail, depth and breathing; a crooked outline read badly. Wanted: a background (Matrix-like rain is fine), breathing, an even outline. (Page 02.)

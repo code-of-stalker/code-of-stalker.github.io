@@ -40,6 +40,12 @@ parallel headless runs time out and leave skeleton placeholders on screen.
   makes the engine panic on SwiftShader. On Blade a normal browser with the real GPU works.
 - Deterministic frames in Playwright: `page.clock.install()`, `pauseAt(now + 100)`, then
   `runFor(1000 / 60)` per shot. Scene renderers also expose `seek(seconds)`.
+- Shader compile time: on Windows ANGLE compiles WebGL2 through D3D11 (FXC), which unrolls
+  every loop with constant bounds and inlines every call. A raymarch shader can then take
+  minutes to link while the page sits frozen on frame 0; Art sees «не проигрывается». Before
+  showing a prototype, time `linkProgram` with a real-GPU Chrome over CDP: it must be a few
+  seconds at most. Remedies: start loops from `#define ZERO min(int(u_uniform), 0)` so they stay
+  loops, and keep one call site of the SDF march (compute normals in the same loop).
 - Wheel input in tests: 120 px steps ~140 ms apart, and stop on state change, or «Всё открыто»
   lets the wheel run through all four Step 4 questions at once.
 

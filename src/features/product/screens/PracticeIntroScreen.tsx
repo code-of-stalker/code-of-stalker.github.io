@@ -228,7 +228,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
                   readingSelection={{ availableAt, testUnlockAll, onSelectStep: value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); } }}>
                   <ContentSwap value={readingChapter} fill dissolve duration={600} exitDuration={260} reducedMotion={reducedMotion} render={chapter => {
                     const current = chapter === readingChapter;
-                    return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused && !selectorOpen} enabled={canNavigate}
+                    return <EconomyReadingPages step={currentStep} chapter={chapter} active={current && stage === 0 && focused} enabled={canNavigate}
                       initialIndex={destination?.chapter === chapter ? destination.page : 0}
                       canAdvance={canAdvance} startAtEnd={!destination?.section && (chapter === 1 ? returnToDream : currentStep === 1 ? economyPage.index > 0 : returnToBook)} reading={reading} width={insightWidth} reducedMotion={reducedMotion}
                       onReady={current ? setReady : ignoreMeasuredHeight} onProgress={current ? setProgress : ignoreMeasuredHeight}
@@ -251,12 +251,12 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
             <View pointerEvents={selectorOpen ? 'none' : 'auto'} style={styles.panelSpace}>
             {currentStep === 2 ? <ContentSwap value={stage} fill dissolve duration={520} exitDuration={220} reducedMotion={reducedMotion} render={part => part === 3
               ? renderQuestions?.(stage === 3 && !changing, () => changeStage(2), registerNavigation, ignoreMeasuredHeight, !selectorOpen, () => changeStage(4))
-              : <StepTwoTaskPage key={part} part={part === 4 ? 4 : part === 2 ? 2 : 1} active={stage > 0 && stage === part && focused && !selectorOpen} enabled={stage > 0 && stage === part && canNavigate}
+              : <StepTwoTaskPage key={part} part={part === 4 ? 4 : part === 2 ? 2 : 1} active={stage > 0 && stage === part && focused} enabled={stage > 0 && stage === part && canNavigate}
                 width={illustrationWidth} reducedMotion={reducedMotion} startAtEnd={startAtEnd && initialStage === 4} onNext={advance} onPrevious={() => changeStage(part === 4 ? 3 : part - 1)}
                 onComplete={onCompleteSecondStep ?? (async () => {})} onReady={part === stage ? setReady : ignoreMeasuredHeight} onProgress={part === stage ? setProgress : ignoreMeasuredHeight} onBackReady={registerStepTwoBack} />} />
             : <ContentSwap value={stage === questionStage ? 'recording' : 'explanation'} fill dissolve exitDuration={200} reducedMotion={reducedMotion} render={kind => kind === 'recording'
               ? renderQuestions?.(stage === 4, () => changeStage(3), registerNavigation, ignoreMeasuredHeight, !selectorOpen)
-              : <TaskExplanationSwap value={explanationStage} active={stage < 4 && !selectorOpen}
+              : <TaskExplanationSwap value={explanationStage} active={stage < 4}
                 scale={stage < 4 ? motion.scale : leavingScale}
                 leavingScale={leavingScale} reducedMotion={reducedMotion} onTextHeight={ignoreMeasuredHeight}
                 pulledBack={stage < 4 && ready}

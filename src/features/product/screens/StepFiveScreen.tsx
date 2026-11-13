@@ -73,11 +73,11 @@ export function StepFiveScreen({ onSelectStep, onPreviousStep, onNextStep, onClo
               readingSelection={{ availableAt, testUnlockAll, onSelectStep: select }}
               menu={open ? <StepDropdown step={5} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion}
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
-              <EconomyReadingPages step={5} chapter={0} active={focused && !open} enabled={focused && !open}
+              <EconomyReadingPages step={5} chapter={0} active={focused} enabled={focused && !open}
                 initialIndex={initial.page} initialOffset={initial.offset} canAdvance={!!onNextStep} startAtEnd={false}
                 reading={layout} width={width} reducedMotion={reducedMotion}
                 onReady={setReady} onProgress={setProgress} onAdvance={() => { if (onNextStep) { flush(); onNextStep(); } }} onRetreat={retreat} onPageChange={reportPage}
-                endContent={<StepSignature active={focused && !open} reducedMotion={reducedMotion} />} />
+                endContent={<StepSignature active={focused} reducedMotion={reducedMotion} />} />
             </StepPanel>
           </Reveal>}
         </ReadingExpansion>

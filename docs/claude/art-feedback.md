@@ -15,6 +15,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   people are different people, not copies of one figure («других сделать разными и они не
   должны сидеть на стуле»). Words must fit inside their frame cells. The next page
   «Механизм обусловленности» was rejected as is («надо переработать анимацию»).
+- «Персонаж» standing try 1 (2026-11-13) rejected: «рука как культя, человек стоит так словно
+  у него одна нога», and the others were old ready drawings. Never reuse earlier drawings for
+  new people; draw them anew. Whole arms with hands, two readable legs, weight on both feet.
+  The redo baked in Rust (`bake_people`) was approved («"Персонаж" окей»).
 - Approve Тишина first, then the other 6 themes. Never do all themes at once.
 - Live HTML prototype instead of video (videos took ~50 min to render and he had to wait).
 - Approved changes often ship together. When he says «пушим всё вместе», wait for every part.

@@ -1,11 +1,16 @@
 //! «Камертон»: the hero of Step 3 «Голос».
 //!
 //! A close portrait: the woman on the left, eyes open, looking up and to the
-//! right. Behind her the code rain falls, whole, with no line in it. She
-//! draws one long note: her mouth opens and her voice leaves her lips and
-//! crosses the whole frame. Every glyph it reaches flares once and comes
-//! apart: it breaks into grains that the voice carries away from her, and
-//! they drift, settle and fade. While she sings, the air round her is clear.
+//! right. Behind her the code rain falls in six layers, from a near one,
+//! large and out of focus, to a far one, fine and hazy; it is whole, with
+//! no line in it. She draws one long note: her mouth opens and her voice
+//! leaves her lips as a wave, crest after crest, and crosses the whole
+//! frame, the air rippling as it goes. It reaches the near code first and
+//! the far code later, so the break runs back through the layers. Every
+//! glyph it reaches flares once and comes apart: in the middle layers it
+//! breaks into grains that the voice carries away from her, and they drift,
+//! settle and fade; the nearest and the far ones melt where they stand. While
+//! she sings, the air round her is clear and only her voice moves in it.
 //! When she falls silent the code is written back, column by column, from
 //! the top, as the code rain always writes.
 //!
@@ -35,17 +40,34 @@ pub const MOUTH_SHIFT: f32 = 800.0;
 /// The note: when it starts, and how long it sounds.
 pub const HUM: f32 = 1.0;
 pub const HUM_SECONDS: f32 = 5.0;
-const ATTACK: f32 = 0.5;
-const RELEASE: f32 = 1.2;
+pub const ATTACK: f32 = 0.5;
+pub const RELEASE: f32 = 1.2;
 /// The mouth opens this long before the sound.
 const ANTICIPATE: f32 = 0.25;
 /// How fast the voice crosses the frame, px/s.
 pub const SOUND_SPEED: f32 = 760.0;
-/// When the voice, loud enough, breaks the code at her lips; everywhere
-/// else `distance / SOUND_SPEED` later.
-pub const BREAK_AT: f32 = HUM + 0.15;
+/// The wave of her voice: a crest leaves her lips this often, s.
+pub const WAVE_PERIOD: f32 = 0.3;
+/// Where she sings: the axis of the wave, up and to the right, y down.
+pub const VOICE_DIR: [f32; 2] = [0.93, -0.36];
+/// The code rain's layers, near to far, and how far each stands behind her
+/// lips, px: the voice reaches a layer `hypot(distance, depth) /
+/// SOUND_SPEED` after it leaves her lips.
+pub const LAYERS: usize = 6;
+pub const DEPTH: [f32; LAYERS] = [30.0, 90.0, 180.0, 300.0, 440.0, 600.0];
+/// The middle layers, sharp, break into flying grains; the others melt
+/// where they stand.
+pub const GRAINY: [usize; 2] = [1, 3];
+/// The first crest leaves her lips at full voice. It and the next run
+/// through the code whole: it ripples and rings. The crest after them,
+/// louder, breaks it, from her lips outwards.
+pub const FIRST_CREST: f32 = HUM + 0.15;
+pub const RINGING: f32 = 2.0;
+pub const BREAK_AT: f32 = FIRST_CREST + RINGING * WAVE_PERIOD;
 /// How long a broken glyph's grains drift before the last one fades.
-pub const DUST_SECONDS: f32 = 3.0;
+pub const DUST_SECONDS: f32 = 2.4;
+/// How long a melting glyph takes to go.
+pub const MELT_SECONDS: f32 = 1.4;
 /// The code is written back from this moment: each column starts within
 /// `WRITE_SPREAD` and runs down at a speed in `WRITE_SPEED`, px/s.
 pub const WRITE_AT: f32 = HUM + HUM_SECONDS - 0.2;
@@ -56,7 +78,7 @@ pub const WRITE_SPEED: [f32; 2] = [800.0, 1600.0];
 pub const BREATH_SECONDS: f32 = LOOP_SECONDS;
 /// The still frame for reduced motion: the voice halfway across the frame,
 /// the code broken round her and still whole far off.
-pub const STILL: f32 = 1.95;
+pub const STILL: f32 = 2.5;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
@@ -81,6 +103,11 @@ pub fn reach() -> f32 {
     let dx = SIZE[0] - MOUTH[0];
     let dy = SIZE[1] - MOUTH[1];
     dx.hypot(dy)
+}
+
+/// When the voice breaks the code `distance` px from her lips in `layer`.
+pub fn breaks(distance: f32, layer: usize) -> f32 {
+    BREAK_AT + distance.hypot(DEPTH[layer]) / SOUND_SPEED
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -169,12 +196,14 @@ mod tests {
 
     #[test]
     fn the_air_is_clear_before_the_code_is_written_back() {
-        // The voice reaches the far corner while she still sings at full
-        // voice, and the last drifting grain fades before the writing
-        // starts; only a few glinting motes hang on until the code returns.
-        let crossed = BREAK_AT + reach() / SOUND_SPEED;
+        // The voice reaches the far corner of the farthest layer while she
+        // still sings at full voice, and the last drifting grain and the
+        // last melting glyph go before the writing starts; only a few
+        // glinting motes hang on until the code returns.
+        let crossed = breaks(reach(), LAYERS - 1);
         assert!(crossed < HUM + HUM_SECONDS - RELEASE);
-        assert!(crossed + DUST_SECONDS <= WRITE_AT);
+        assert!(breaks(reach(), GRAINY[1]) + DUST_SECONDS <= WRITE_AT);
+        assert!(crossed + MELT_SECONDS <= WRITE_AT);
         // The writing starts as her voice fades, not before.
         const { assert!(WRITE_AT > HUM + HUM_SECONDS - RELEASE) };
     }
@@ -187,6 +216,22 @@ mod tests {
         assert!(done + 1.0 < LOOP_SECONDS + HUM - ANTICIPATE, "{done}");
         assert!(done < LOOP_SECONDS);
         const { assert!(WRITE_SPEED[0] < WRITE_SPEED[1]) };
+    }
+
+    #[test]
+    fn the_voice_reaches_the_near_code_first() {
+        for k in 1..LAYERS {
+            assert!(DEPTH[k] > DEPTH[k - 1]);
+            assert!(breaks(400.0, k) > breaks(400.0, k - 1));
+        }
+        assert!(GRAINY[0] > 0 && GRAINY[1] < LAYERS - 1 && GRAINY[0] <= GRAINY[1]);
+        // The first crest leaves once the wave is on (scene.frag's sung()
+        // takes 0.12 s), and the code breaks on a later crest, after it has
+        // rung through the code whole.
+        assert!(FIRST_CREST - HUM >= 0.12 && compose(BREAK_AT).hum > 0.95);
+        const { assert!(RINGING >= 1.0 && RINGING == RINGING as u32 as f32) };
+        let [x, y] = VOICE_DIR;
+        assert!((x.hypot(y) - 1.0).abs() < 0.01 && x > 0.0 && y < 0.0);
     }
 
     #[test]

@@ -14,4 +14,4 @@ await mkdir(path.join(output, 'assets'), { recursive: true });
 await copyFile(path.join(scene, 'assets/figure.webp'), path.join(output, 'assets/figure.webp'));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_voice_fork_bg.wasm')))) throw new Error('Invalid voice-fork WASM');
-console.log('Packaged Rust «Камертон»: 10-second seamless loop, one note: her mouth opens, the code rain crumbles into dust where her voice reaches, the dust drifts and fades, then the code is written back from the top.');
+console.log('Packaged Rust «Камертон»: 10-second seamless loop, one note: her mouth opens and her voice leaves her lips as a wave through six layers of code rain; the first crests ripple through it, the next breaks it into dust and melt, rings run on through the clear air, then the code is written back from the top.');

@@ -2,9 +2,9 @@ precision highp float;
 // «Камертон». Positions are the image's own pixels, y down; lib.rs's
 // constants arrive as #defines (browser.rs). The woman is the one raster:
 // R her light, G her silhouette, B her mouth half open and open (see main).
-// Everything else is drawn here: the matrix code behind her, which her voice
-// breaks into grains as it reaches it, and which is written back, column by
-// column, when she falls silent.
+// Everything else is drawn here: the wave of her voice, and the matrix code
+// behind her in six layers, which her voice breaks as it reaches it and
+// which is written back, column by column, when she falls silent.
 uniform sampler2D u_fig;
 uniform vec2 u_res;          // target px
 uniform vec4 u_hum;          // loudness, -, -, seconds into the loop
@@ -70,12 +70,21 @@ float strokes(vec2 f, int g) {
   for (int i = 0; i < 4; i++) d = min(d, seg(f, STROKES[g * 4 + i]));
   return d;
 }
-// Coverage at distance d from a stroke; px is one target pixel in cells.
+// Coverage at distance d from a stroke; px is one target pixel (plus any
+// defocus) in cells.
 float ink(float d, float px) {
   return (1.0 - smoothstep(STROKE - px * 0.5, STROKE + px * 0.5, d)) * min(1.0, 0.16 / (STROKE + px));
 }
 
-// One glyph's cell in layer k (0 near .. 3 far) at q.
+// The layers, near to far: glyph width, defocus (px), light, how many of the
+// stream's glyphs show, and how far behind her lips each stands (lib.rs).
+const float L_SIZE[LAYERS] = float[](64.0, 30.0, 21.0, 15.0, 10.5, 7.5);
+const float L_BLUR[LAYERS] = float[](9.0, 0.0, 0.0, 0.35, 0.8, 1.2);
+const float L_GAIN[LAYERS] = float[](0.6, 1.0, 0.82, 0.64, 0.48, 0.34);
+const float L_KEEP[LAYERS] = float[](0.3, 0.93, 0.93, 0.93, 0.93, 0.93);
+const float DEPTH[LAYERS] = float[](DEPTHS);
+
+// One glyph's cell in layer k (0 near .. LAYERS-1 far) at q.
 struct Cell {
   vec2 id;      // column, row
   vec2 f;       // q in the glyph: -0.5..0.5 across, -0.65..0.65 up
@@ -88,9 +97,9 @@ const float SHOW = 0.72;
 Cell cellAt(vec2 q, int k, float time) {
   float fk = float(k);
   Cell c;
-  c.size = 30.0 / pow(1.42, fk);
+  c.size = L_SIZE[k];
   float ch = c.size * 1.3;
-  float sway = 6.0 * (4.0 - fk) * sin(TAU * time / LOOP_SECONDS);
+  float sway = 4.8 * (float(LAYERS) - fk) * sin(TAU * time / LOOP_SECONDS);
   float u = (q.x + sway) / c.size + fk * 17.0;
   float col = floor(u);
   // Whole cells per loop, so the loop closes.
@@ -102,7 +111,7 @@ Cell cellAt(vec2 q, int k, float time) {
   c.centre = vec2((col + 0.5 - fk * 17.0) * c.size - sway, (row + 0.5 + drop) * ch);
   float stream = 8.0 + floor(hash2(vec2(col, fk), 2u) * 14.0);
   float s = fract((row + floor(hash2(vec2(col, fk), 4u) * stream)) / stream);
-  c.lit = step(s, SHOW) * step(hash2(c.id, uint(k) + 3u), 0.93);
+  c.lit = step(s, SHOW) * step(hash2(c.id, uint(k) + 3u), L_KEEP[k]);
   c.head = c.lit * s / SHOW;
   return c;
 }
@@ -114,13 +123,20 @@ int glyphOf(Cell c, int k, float t) {
 }
 // The stream's light on a glyph: dim at its top, bright at its lower end.
 float shine(Cell c, int k) {
-  return (0.1 + 0.9 * pow(c.head, 1.6)) * (1.0 - 0.24 * float(k));
+  return (0.1 + 0.9 * pow(c.head, 1.6)) * L_GAIN[k];
 }
 
 // ---------- the voice
-// Seconds since her voice reached q and broke the code there (< 0 before).
-float heard(vec2 q, float time) {
-  return time - BREAK_AT - length(q - MOUTH) / SOUND_SPEED;
+// Seconds since her voice reached q in a layer `depth` px behind her lips
+// and broke the code there (< 0 before): lib.rs's breaks().
+float heard(vec2 q, float depth, float time) {
+  return time - BREAK_AT - length(vec2(length(q - MOUTH), depth)) / SOUND_SPEED;
+}
+// How loud the wave that left her lips at time te looks: it comes on fast,
+// so the crest that breaks the code is already bright.
+float sung(float te) {
+  float a = te - HUM;
+  return smoothstep(0.0, 0.12, a) * (1.0 - smoothstep(HUM_SECONDS - RELEASE, HUM_SECONDS, a));
 }
 // How far the writing in c's column has run past c, px (< 0: not yet).
 float written(Cell c, int k, float time) {
@@ -130,15 +146,17 @@ float written(Cell c, int k, float time) {
   return (time - start) * speed - c.size * 1.3 - c.centre.y;
 }
 // Where the voice has carried a grain that lay at q, way i of three (slow,
-// middle, fast), layer k: pushed out from her lips at once, then drifting
-// on the air of her voice, swirling a little and settling.
-vec2 carried(vec2 q, float i, float fk, float time) {
-  float a = max(heard(q, time), 0.0);
+// middle, fast), in the layer `depth` px behind her: pushed out from her
+// lips at once, then drifting on the air of her voice, swirling a little
+// and settling. Farther layers move less across the frame.
+vec2 carried(vec2 q, float i, float fk, float depth, float time) {
+  float a = max(heard(q, depth, time), 0.0);
   vec2 v = q - MOUTH;
   float r = max(length(v), 1.0);
   vec2 out_ = v / r;
-  float push = (80.0 + 80.0 * i) * (1.0 - 0.15 * fk);
-  float go = push * 0.9 * (1.0 - exp(-a / 0.9)) + (8.0 + 8.0 * i) * a;
+  // Gentler right at her lips, so the dust thins there but leaves no hole.
+  float push = (100.0 + 100.0 * i) * 600.0 / (600.0 + depth);
+  float go = (push * 0.9 * (1.0 - exp(-a / 0.9)) + (8.0 + 8.0 * i) * a) * r / (r + 260.0);
   // Broad eddies gather the grains into wisps. Kept gentle (the flight
   // changes by well under a px per px), so rain() can undo it.
   vec2 w = q * 0.008 + vec2(1.3 * i, 0.7 * fk);
@@ -148,41 +166,72 @@ vec2 carried(vec2 q, float i, float fk, float time) {
   return out_ * (go + along) + vec2(-out_.y, out_.x) * swirl + vec2(0.0, 12.0 * a);
 }
 
-// The rain at p: four layers, near to far. A glyph stands until the voice
-// reaches it. Then it flares and comes apart into grains (6 x 8 to a cell,
-// each going one of three ways), which fly, shrink and fade. Written back,
-// it stands again, bright for a moment behind the writing head.
-vec3 rain(vec2 p, float px, float time) {
+// The rain at p, near layer to far. A glyph stands until the voice reaches
+// it, and flares. In the middle layers it then comes apart into grains (6 x 8
+// to a cell, each going one of three ways), which fly, shrink and fade; in
+// the nearest and the far layers it drifts a little and melts, block by
+// block. Written back, it stands again, bright for a moment behind the
+// writing head.
+vec3 rain(vec2 p, float px, float time, int near, int far, float ring) {
   vec3 c = vec3(0.0);
-  float ap = heard(p, time);
-  bool dusty = ap > -0.3 && time < WRITE_AT + 0.4;
-  for (int k = 0; k < 4; k++) {
+  bool dusty = heard(p, 0.0, time) > -0.3 && time < WRITE_AT + 0.4;
+  for (int k = near; k < far; k++) {
     float fk = float(k);
+    float depth = DEPTH[k];
+    float soft = px + L_BLUR[k];
     Cell s = cellAt(p, k, time);
     float back = written(s, k, time);
-    if (back > 0.0 || heard(s.centre, time) < 0.0) {
+    if (back > 0.0 || heard(s.centre, depth, time) < 0.0) {
       // The writing head: one bright glyph, lit or not, and a trail.
       float atHead = back > 0.0 ? 1.0 - step(s.size * 1.3, back) : 0.0;
       float fresh = back > 0.0 ? exp(-back / (s.size * 5.0)) : 0.0;
       float on = max(s.lit, atHead);
-      if (on > 0.0) {
-        float cover = ink(strokes(s.f, glyphOf(s, k, time)), px / s.size);
+      // A crest of her voice rings through the code and shows, for a moment,
+      // the glyphs between its streams too.
+      float rung = (1.0 - on) * min(ring, 1.0);
+      if (on > 0.0 || rung > 0.02) {
+        float cover = ink(strokes(s.f, glyphOf(s, k, time)), soft / s.size);
         float lead = max(smoothstep(0.86, 1.0, s.head), max(atHead, 0.8 * fresh));
-        float bright = max(shine(s, k) * (1.0 + 1.2 * fresh), atHead * (1.0 - 0.24 * fk));
-        c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead);
+        float bright = max(shine(s, k) * (1.0 + 1.2 * fresh), atHead * L_GAIN[k]);
+        c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead) * on;
+        // The lit heads glow a little round themselves.
+        c += u_cold * lead * L_GAIN[k] * 0.07 * exp(-dot(s.f, s.f) * 5.0) * on;
+        c += mix(u_cold, u_pale, 0.5) * cover * rung * L_GAIN[k] * 0.5;
       }
     }
     if (!dusty) continue;
+    if (k < GRAIN_FIRST || k > GRAIN_LAST) {
+      // Melting: the glyph drifts whole and goes block by block. Find the
+      // cell whose own drift brings it here (two steps).
+      vec2 fly = carried(p, 1.0, fk, depth, time);
+      Cell g = cellAt(p - fly, k, time);
+      fly = carried(g.centre, 1.0, fk, depth, time);
+      g = cellAt(p - fly, k, time);
+      if (g.lit < 0.5) continue;
+      fly = carried(g.centre, 1.0, fk, depth, time);
+      float ag = heard(g.centre, depth, time);
+      if (ag < 0.0) continue;
+      vec2 lf = (g.centre - p + fly) / g.size;
+      float cover = ink(strokes(lf, glyphOf(g, k, time - ag)), soft / g.size);
+      vec2 at = floor((lf + vec2(0.5, 0.65)) * vec2(4.0, 5.0 / 1.3));
+      float hm = hash2(g.id * vec2(4.0, 5.0) + at, uint(k) + 30u);
+      float gone = 1.15 * smoothstep(0.05, MELT_SECONDS, ag);
+      float alive = smoothstep(gone - 0.1, gone, hm);
+      float flare = exp(-sq((ag - 0.1) / 0.16));
+      float bright = (shine(g, k) + 0.6 * flare * L_GAIN[k]) * alive;
+      c += mix(u_cold, u_pale, 0.7 * flare) * cover * bright * (0.62 + 0.5 * flare);
+      continue;
+    }
     float grain = s.size / 6.0;
     for (int i = 0; i < 3; i++) {
       float fi = float(i);
       // Which grain of this way lies here now: undo its flight (a few
       // steps, as the flight depends on where it started).
       vec2 q = p;
-      for (int n = 0; n < 5; n++) q = p - carried(q, fi, fk, time);
+      for (int n = 0; n < 5; n++) q = p - carried(q, fi, fk, depth, time);
       Cell g = cellAt(q, k, time);
       if (g.lit < 0.5) continue;
-      float ag = heard(g.centre, time);
+      float ag = heard(g.centre, depth, time);
       if (ag < 0.0) continue;
       vec2 at = floor((g.f + vec2(0.5, 0.65)) * vec2(6.0, 8.0 / 1.3));
       float h = hash2(g.id * vec2(6.0, 8.0) + at, uint(k) + 20u);
@@ -190,21 +239,21 @@ vec3 rain(vec2 p, float px, float time) {
       // The grain's centre in the glyph and in the image; its own flight.
       vec2 gc = (at + 0.5) / vec2(6.0, 8.0 / 1.3) - vec2(0.5, 0.65);
       vec2 home = g.centre - gc * g.size;
-      vec2 fly = carried(home, fi, fk, time);
+      vec2 fly = carried(home, fi, fk, depth, time);
       int gl = glyphOf(g, k, time - ag);
       // First the glyph's own strokes, cut along the grains; then each
       // grain a round speck, shrinking.
       float m = smoothstep(0.05, 0.4, ag);
       float kind = fract(h * 13.7);
       float hangs = step(kind, 0.1) * smoothstep(0.6, 1.4, ag) * (1.0 - smoothstep(WRITE_AT - 0.6, WRITE_AT + 0.3, time));
-      float whole = m < 1.0 ? ink(strokes((g.centre - p + fly) / g.size, gl), px / g.size) : 0.0;
+      float whole = m < 1.0 ? ink(strokes((g.centre - p + fly) / g.size, gl), soft / g.size) : 0.0;
       float speck = 0.0;
       if (m > 0.0) {
         float near = 1.0 - smoothstep(STROKE + 0.03, STROKE + 0.13, strokes(gc, gl));
         float rad = grain * mix(mix(0.5, 0.28, smoothstep(0.4, DUST_SECONDS, ag)), 0.45, hangs);
-        float soft = max(rad, 0.7 * px);
+        float edge = max(rad, 0.7 * px);
         float d = length(p - home - fly);
-        speck = near * (1.0 - smoothstep(soft - 0.6 * px, soft + 0.6 * px, d)) * sq(rad / soft) * 0.8;
+        speck = near * (1.0 - smoothstep(edge - 0.6 * px, edge + 0.6 * px, d)) * sq(rad / edge) * 0.8;
       }
       // Grains go out one by one, not all together: most soon after the
       // glyph breaks, some drift on for seconds, and a few hang in the air,
@@ -214,12 +263,45 @@ vec3 rain(vec2 p, float px, float time) {
       float life = 1.0 - smoothstep(0.5, 1.0, ag / span);
       float glint = 0.55 + 0.45 * sin(2.3 * time + 40.0 * fract(h * 3.7));
       float flare = exp(-sq((ag - 0.1) / 0.16));
-      float bright = (shine(g, k) * (0.8 + 0.6 * lasting) + 0.75 * flare) * life + 0.8 * glint * hangs;
-      bright *= 1.0 - 0.24 * fk;
+      float bright = (shine(g, k) * (0.8 + 0.6 * lasting) + 0.75 * flare * L_GAIN[k]) * life + 0.8 * glint * hangs * L_GAIN[k];
       c += mix(u_cold, u_pale, 0.75 * flare) * mix(whole, speck, m) * bright * (0.62 + 0.6 * flare);
     }
   }
   return c;
+}
+
+// The wave of her voice at p: crests leave her lips every WAVE_PERIOD and
+// run out at SOUND_SPEED, each with a sharp front and a soft tail, strongest
+// where she sings, broken along its arc, fading with distance. Returns its
+// light (x) and how far it bends the air (y, px, along the way out).
+vec2 wave(vec2 p, float time) {
+  vec2 v = p - MOUTH;
+  float r = max(length(v), 1.0);
+  float te = time - r / SOUND_SPEED;
+  float loud = sung(te);
+  if (loud <= 0.0) return vec2(0.0);
+  float phase = (te - BREAK_AT) / WAVE_PERIOD;
+  // The crests grow until the one that breaks the code.
+  loud *= mix(0.55, 1.0, smoothstep(FIRST_CREST, BREAK_AT, te));
+  float x = fract(phase);
+  // A sharp front and a soft tail that is gone before the next crest.
+  float rise = smoothstep(0.0, 0.03, x) * (1.0 - smoothstep(0.6, 1.0, x));
+  float front = rise * exp(-9.0 * x);
+  float tail = rise * 0.18 * exp(-4.0 * x);
+  float along = dot(v / r, VOICE_DIR);
+  float aim = 0.08 + 0.92 * smoothstep(-0.3, 0.95, along);
+  // Each front is broken differently along its arc (its soft tail is not,
+  // so no seams run out from her lips), keeps its breaks as it runs, and is
+  // a little louder or softer than the one before.
+  float n = 8.0 * atan(v.y, v.x);
+  float wf = floor(phase);
+  float broken = mix(hash2(vec2(floor(n), wf), 40u), hash2(vec2(floor(n) + 1.0, wf), 40u), smoothstep(0.0, 1.0, fract(n)));
+  broken = 0.15 + 0.85 * smoothstep(0.1, 0.9, broken);
+  float swell = 0.65 + 0.35 * hash2(vec2(wf, 3.0), 41u);
+  // It leaves her lips and thins out as it spreads.
+  float fall = smoothstep(6.0, 60.0, r) / (1.0 + r / 520.0);
+  float bend = sin(TAU * x) * exp(-3.0 * x) * smoothstep(0.0, 0.05, x) * (1.0 - smoothstep(0.6, 1.0, x));
+  return vec2((front * broken + tail) * swell, 12.0 * bend) * loud * aim * fall;
 }
 
 void main() {
@@ -243,12 +325,26 @@ void main() {
   }
   float body = fig.g;
 
+  // The air bends where a crest passes, and the code behind it with it.
+  vec2 w = wave(p, time);
+  vec2 away = p - MOUTH;
+  float rw = max(length(away), 1.0);
   vec3 col = u_backdrop;
-  col += rain(p, px, time) * (1.0 - body);
+  // A crest lights the code and the dust it passes through. The nearest
+  // layer, large and out of focus, falls in front of her too, faint there.
+  vec2 bent = p - away / rw * w.y;
+  float lift = 1.0 + 4.0 * w.x;
+  float ring = 1.6 * w.x;
+  col += rain(bent, px, time, 1, LAYERS, ring) * lift * (1.0 - body);
+  col += rain(bent, px, time, 0, 1, ring) * lift * (1.0 - 0.65 * body);
+  // The wave itself: warm at her lips, paler as it goes.
+  col += mix(u_warm, mix(u_cold, u_pale, 0.6), smoothstep(15.0, 140.0, rw)) * w.x * 0.42 * (1.0 - body);
   col += u_cold * light * 1.05 + u_pale * pow(light, 2.6) * 0.5;
-  // The voice: a warm glow deep in her open mouth.
+  // The voice: a warm glow deep in her open mouth, beating with the crests
+  // it sends out.
   float dl = length((p - MOUTH - vec2(-36.0, 0.0)) / vec2(1.0, 0.45));
-  col += u_warm * u_say.y * u_say.x * (0.22 * exp(-sq(dl / 16.0)) + 0.06 * exp(-dl / 40.0));
+  float beat = 0.82 + 0.18 * cos(TAU * (time - BREAK_AT) / WAVE_PERIOD);
+  col += u_warm * u_say.y * u_say.x * beat * (0.22 * exp(-sq(dl / 16.0)) + 0.06 * exp(-dl / 40.0));
 
   // A soft shoulder instead of clipping the brightest glows.
   vec3 over = max(col - 0.85, 0.0);

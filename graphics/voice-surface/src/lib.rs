@@ -1,9 +1,10 @@
 //! «Всплытие»: Step 3, page 6 «Проговоренное — уже не скрытое».
 //!
-//! A woman of soft light (her skin, her hair drawn up, her brows apart) stands still in a dark sea of
-//! matrix code, the water over her eyes. The lens is half in the water: its
-//! waterline is the water's level, so when the level falls the line slides
-//! down the frame and uncovers her. She never moves up; only her speaking
+//! A woman of soft light (her skin, her hair drawn up, her brows apart, a
+//! dark dress with long sleeves) stands still in a dark sea of matrix code,
+//! deep under it: at first the water fills the whole frame. The lens is half
+//! in the water: its waterline is the water's level, so when the level falls
+//! the line comes down into the frame and slides down it, uncovering her. She never moves up; only her speaking
 //! moves the water. Each time she speaks, her lips move and the voice leaves
 //! her mouth as a ray down into the depth; there it lights a knot and draws it
 //! up. The knot breaks the surface and opens, stroke by stroke, into a word in
@@ -66,9 +67,16 @@ pub const KNOT_DEPTH: f32 = -0.78;
 pub const KNOT_RADIUS: f32 = 0.05;
 /// Syllables: how often her mouth opens while she speaks, per loop (3.2 a second).
 pub const SYLLABLES: f32 = 140.0;
-/// The water's level (world y) before the first word and after each: over
-/// her eyes (she says the first word under the water), then at her neck,
-/// under her breast, and after the last word it is gone: far under the frame.
+/// Before she speaks the water is over the whole frame (Art, 13.11: «всплытие
+/// должно изначально полностью залито водой»); her first word draws it down
+/// to her brow while its knot rises (FIRST_FALL, s after the word starts and
+/// before the knot is out).
+pub const FLOOD: f32 = 0.56;
+pub const FIRST_FALL: [f32; 2] = [0.3, CALL + ASCENT - 0.3];
+/// The water's level (world y) as each knot breaks the surface and after
+/// the last: over her eyes (she says the first word under the water), then
+/// at her neck, under her breast, and after the last word it is gone: far
+/// under the frame.
 pub const LEVELS: [f32; WORDS + 1] = [0.21, 0.03, -0.16, -1.2];
 /// How long the water takes to fall each step once the knot is out; the
 /// last step drains it away.
@@ -76,7 +84,7 @@ pub const DROPS: [f32; WORDS] = [2.6, 2.6, 4.6];
 /// Under this level no water is left in the frame (the far sea has faded).
 pub const DRY: f32 = -0.9;
 /// In the silence at the end the water comes back.
-pub const RETURN: [f32; 2] = [37.0, 43.6];
+pub const RETURN: [f32; 2] = [36.4, 43.8];
 /// Where each word opens, in front of her and nearer the camera, and the
 /// height it opens at: above the water as it was when she said it.
 pub const FORM: [f32; 3] = [0.24, 0.14, -1.2];
@@ -315,14 +323,17 @@ pub fn feet(t: f32) -> [f32; 3] {
 pub fn surfaces(w: usize) -> f32 {
     WORD_AT[w] + CALL + ASCENT
 }
-/// The water's level: a step down after each word is out, back up in the
-/// silence at the end.
+/// The water's level: over the frame until she speaks, down to her brow
+/// with her first word, a step down after each word is out, back over the
+/// frame in the silence at the end.
 pub fn level(t: f32) -> f32 {
-    let mut l = LEVELS[0];
+    let first = WORD_AT[0];
+    let mut l =
+        FLOOD + (LEVELS[0] - FLOOD) * smooth(first + FIRST_FALL[0], first + FIRST_FALL[1], t);
     for w in 0..WORDS {
         l += (LEVELS[w + 1] - LEVELS[w]) * smooth(surfaces(w), surfaces(w) + DROPS[w], t);
     }
-    l + (LEVELS[0] - LEVELS[WORDS]) * smooth(RETURN[0], RETURN[1], t)
+    l + (FLOOD - LEVELS[WORDS]) * smooth(RETURN[0], RETURN[1], t)
 }
 /// Where the waterline crosses the lens, as a tangent.
 pub fn split(t: f32) -> f32 {
@@ -761,12 +772,21 @@ mod tests {
             assert!((feet(t)[1] - STAND[1]).abs() <= BREATH + 1e-6);
         }
         let mouth_y = |t: f32| compose(t).voice[1];
-        // The first word she says under the water.
+        // At first the water fills the whole frame, over her crown.
+        let crown = STAND[1] + HEIGHT;
+        for t in [0.0, WORD_AT[0], LOOP_SECONDS - 0.01] {
+            assert!(split(t) > LENS * 1.05 && level(t) > crown + 0.2, "at {t}");
+        }
+        // The first word she says under the water; it draws the water down
+        // to her brow before its knot is out.
         let first = mouth_y(WORD_AT[0] + 1.0);
         assert!(level(WORD_AT[0] + 1.0) > first + 0.05, "mouth {first}");
+        assert!(near(level(surfaces(0) - 0.3), LEVELS[0], 1e-4));
         for w in 0..WORDS {
             // The water stands while she speaks the word, falls a step once it is out.
-            assert!(near(level(WORD_AT[w]), LEVELS[w], 1e-4), "before word {w}");
+            if w > 0 {
+                assert!(near(level(WORD_AT[w]), LEVELS[w], 1e-4), "before word {w}");
+            }
             assert!(near(level(surfaces(w) - 0.01), LEVELS[w], 1e-4), "word {w}");
             assert!(
                 near(level(surfaces(w) + DROPS[w]), LEVELS[w + 1], 1e-4),
@@ -790,7 +810,7 @@ mod tests {
             last = level(t);
             t += 0.05;
         }
-        assert!(near(level(LOOP_SECONDS - 0.001), LEVELS[0], 1e-3));
+        assert!(near(level(LOOP_SECONDS - 0.001), FLOOD, 1e-3));
         // Her mouth moves only while she speaks, and opens and closes then.
         assert!(mouth(1.0) < 1e-4 && mouth(STILL) < 1e-4);
         let (lo, hi) = (0..40)

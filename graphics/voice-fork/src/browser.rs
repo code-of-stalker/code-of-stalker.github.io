@@ -3,8 +3,9 @@
 //! colour from `look`; the shader draws the code, its dust and its writing
 //! round her raster, and opens her mouth.
 use crate::{
-    compose, look, Look, BREAK_AT, DUST_SECONDS, LOOP_SECONDS, MOUTH, MOUTH_BOX, MOUTH_SHIFT, SIZE,
-    SOUND_SPEED, STILL, WRITE_AT, WRITE_SPEED, WRITE_SPREAD,
+    compose, look, Look, ATTACK, BREAK_AT, DEPTH, DUST_SECONDS, FIRST_CREST, GRAINY, HUM,
+    HUM_SECONDS, LAYERS, LOOP_SECONDS, MELT_SECONDS, MOUTH, MOUTH_BOX, MOUTH_SHIFT, RELEASE, SIZE,
+    SOUND_SPEED, STILL, VOICE_DIR, WAVE_PERIOD, WRITE_AT, WRITE_SPEED, WRITE_SPREAD,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -42,8 +43,20 @@ fn defines() -> String {
         ("MOUTH_BOX", v4(MOUTH_BOX)),
         ("MOUTH_SHIFT", f(MOUTH_SHIFT)),
         ("SOUND_SPEED", f(SOUND_SPEED)),
+        ("HUM", f(HUM)),
+        ("HUM_SECONDS", f(HUM_SECONDS)),
+        ("ATTACK", f(ATTACK)),
+        ("RELEASE", f(RELEASE)),
+        ("WAVE_PERIOD", f(WAVE_PERIOD)),
+        ("VOICE_DIR", v2(VOICE_DIR)),
+        ("LAYERS", LAYERS.to_string()),
+        ("DEPTHS", DEPTH.map(f).join(", ")),
+        ("GRAIN_FIRST", GRAINY[0].to_string()),
+        ("GRAIN_LAST", GRAINY[1].to_string()),
         ("BREAK_AT", f(BREAK_AT)),
+        ("FIRST_CREST", f(FIRST_CREST)),
         ("DUST_SECONDS", f(DUST_SECONDS)),
+        ("MELT_SECONDS", f(MELT_SECONDS)),
         ("WRITE_AT", f(WRITE_AT)),
         ("WRITE_SPREAD", f(WRITE_SPREAD)),
         ("WRITE_SPEED", v2(WRITE_SPEED)),

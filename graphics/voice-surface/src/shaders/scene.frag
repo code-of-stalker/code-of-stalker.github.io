@@ -158,19 +158,37 @@ float skull(vec3 h) {
 float eyeballs(vec3 h) {
   return length(vec3(abs(h.x), h.y, h.z) - vec3(0.031, EYES.y, EYES.z)) - 0.0122;
 }
+// Her dress (Art, 13.11: «одень её»): a round neckline under the collarbones
+// in front, higher at the back, over her shoulders; long sleeves to the
+// wrists. Returns how covered q is (soft at the hem) and how far q is from
+// the hem, m.
+vec2 dress(vec3 q) {
+  float ax = abs(q.x);
+  float front = smoothstep(-0.03, 0.05, q.z);
+  float neck = mix(1.402, 1.318, front) + 0.09 * front * smoothstep(0.015, 0.115, ax);
+  float hem = q.y - neck;
+  // The cuffs: her hands are bare.
+  float arm = smoothstep(0.165, 0.18, ax);
+  float cuff = q.y - 0.872;
+  float e = arm > 0.5 ? min(abs(hem), abs(cuff)) : abs(hem);
+  float covered = (1.0 - smoothstep(-0.0012, 0.0012, hem)) * mix(1.0, smoothstep(-0.0012, 0.0012, cuff), arm);
+  return vec2(covered, e);
+}
 float torso(vec3 q) {
   vec3 m = vec3(abs(q.x), q.y, q.z);
   float d = sdCap(q, vec3(0.0, 1.35, -0.02), vec3(0.0, 1.47, -0.01), 0.034);
   d = smin(d, sdCap(m, vec3(0.03, 1.402, -0.03), vec3(0.158, 1.356, -0.03), 0.044), 0.05);
   d = smin(d, sdEll(q - vec3(0.0, 1.235, -0.005), vec3(0.148, 0.165, 0.09)), 0.05);
-  d = smin(d, sdEll(m - vec3(0.06, 1.215, 0.055), vec3(0.058, 0.052, 0.048)), 0.035);
-  d = smin(d, sdEll(q - vec3(0.0, 1.03, -0.002), vec3(0.118, 0.14, 0.082)), 0.06);
+  // Under the dress the breast is one soft form, the waist eased.
+  d = smin(d, sdEll(m - vec3(0.058, 1.212, 0.05), vec3(0.058, 0.05, 0.044)), 0.06);
+  d = smin(d, sdEll(q - vec3(0.0, 1.03, -0.002), vec3(0.126, 0.15, 0.088)), 0.07);
   d = smin(d, sdEll(q - vec3(0.0, 0.88, -0.008), vec3(0.158, 0.115, 0.098)), 0.06);
   d = smin(d, sdCap(m, vec3(0.014, 1.371, 0.045), vec3(0.135, 1.392, 0.0), 0.006), 0.022);
   float a = sdRC(m, vec3(0.172, 1.342, -0.03), vec3(0.203, 1.1, -0.035), 0.042, 0.032);
   a = smin(a, sdRC(m, vec3(0.205, 1.1, -0.035), vec3(0.205, 0.875, 0.03), 0.031, 0.024), 0.02);
   a = smin(a, sdEll(m - vec3(0.2, 0.815, 0.045), vec3(0.018, 0.052, 0.032)), 0.02);
-  return smin(d, a, 0.03);
+  // The cloth stands a little off her skin, so its hem is an edge.
+  return smin(d, a, 0.03) - 0.0026 * dress(q).x;
 }
 // Her distance at q, and how much nearer the eyeball is than the skull.
 vec2 figure(vec3 q) {
@@ -437,6 +455,15 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
     c = mix(skin, locks, hair);
     c = mix(c, u_cold * (0.012 + 0.08 * rim), brow * (1.0 - hair) * 0.85);
     c = mix(c, mix(c, u_warm * (0.05 + 0.32 * key), 0.45), lip * (1.0 - hair));
+    // The dress: darker than her skin, matte, its light at the grazing edges
+    // like velvet; soft folds fall from the breast; a fine hem.
+    vec2 dr = dress(q);
+    float fold = 0.8 + 0.2 * sin(q.x * 70.0 + 1.3 * sin(q.y * 9.0)) * smoothstep(1.2, 1.0, q.y);
+    vec3 cloth = mix(u_cold, u_warm, 0.12) * (0.004 + 0.016 * sky) * fold
+      + mix(u_cold, u_pale, 0.3) * 0.1 * key * fold
+      + mix(u_cold, u_pale, 0.25) * 0.28 * pow(1.0 - facing, 2.2);
+    cloth += mix(u_cold, u_pale, 0.5) * 0.05 * (1.0 - smoothstep(0.0, 0.0022, dr.y)) * (0.5 + key);
+    c = mix(c, cloth, dr.x);
     c += u_warm * voice * 0.7;
   }
   // Where she meets the water.

@@ -1,10 +1,10 @@
 //! Browser adapter: one WebGL2 program, one texture (the woman). Every
-//! motion value comes from `compose` (and `track`, the voice over the loop)
-//! and every colour from `look`; the shader draws the code, the rings and the
-//! note's pattern round her raster, and opens her mouth.
+//! motion value comes from `compose` and lib.rs's timing constants, every
+//! colour from `look`; the shader draws the code, its dust and its writing
+//! round her raster, and opens her mouth.
 use crate::{
-    compose, look, track, Look, LOOP_SECONDS, MOUTH, MOUTH_BOX, MOUTH_SHIFT, SIZE, SOUND_SPEED,
-    STILL, TRACK, TREMBLE,
+    compose, look, Look, BREAK_AT, DUST_SECONDS, LOOP_SECONDS, MOUTH, MOUTH_BOX, MOUTH_SHIFT, SIZE,
+    SOUND_SPEED, STILL, WRITE_AT, WRITE_SPEED, WRITE_SPREAD,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -18,12 +18,10 @@ const SCENE: &str = include_str!("shaders/scene.frag");
 const EDGES: [f32; 4] = [0.0, 0.08, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 13] = [
+const NAMES: [&str; 10] = [
     "u_res",
     "u_hum",
     "u_say",
-    "u_track[0]",
-    "u_spare",
     "u_cold",
     "u_warm",
     "u_pale",
@@ -31,7 +29,6 @@ const NAMES: [&str; 13] = [
     "u_edges",
     "u_out",
     "u_fig",
-    "u_unused",
 ];
 
 /// lib.rs's constants as the shader's `#define`s, so both read one source.
@@ -45,8 +42,11 @@ fn defines() -> String {
         ("MOUTH_BOX", v4(MOUTH_BOX)),
         ("MOUTH_SHIFT", f(MOUTH_SHIFT)),
         ("SOUND_SPEED", f(SOUND_SPEED)),
-        ("TREMBLE", f(TREMBLE)),
-        ("TRACK", TRACK.to_string()),
+        ("BREAK_AT", f(BREAK_AT)),
+        ("DUST_SECONDS", f(DUST_SECONDS)),
+        ("WRITE_AT", f(WRITE_AT)),
+        ("WRITE_SPREAD", f(WRITE_SPREAD)),
+        ("WRITE_SPEED", v2(WRITE_SPEED)),
     ]
     .iter()
     .map(|(name, value)| format!("#define {name} {value}\n"))
@@ -110,8 +110,6 @@ pub struct VoiceFork {
     reduced: bool,
     disposed: bool,
     frames: u32,
-    /// The voice over the loop, flattened for `u_track`.
-    track: Vec<f32>,
 }
 
 #[wasm_bindgen]
@@ -177,7 +175,6 @@ impl VoiceFork {
             reduced: false,
             disposed: false,
             frames: 0,
-            track: track().iter().flatten().copied().collect(),
         };
         fork.gl.use_program(Some(&fork.program));
         fork.gl.uniform1i(fork.at("u_fig"), 0);
@@ -224,7 +221,7 @@ impl VoiceFork {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: the first hum at full voice.
+    /// Reduced motion holds one moment: the voice halfway across the frame.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -296,9 +293,8 @@ impl VoiceFork {
         gl.active_texture(Gl::TEXTURE0);
         gl.bind_texture(Gl::TEXTURE_2D, Some(&self.figure));
         gl.uniform2f(self.at("u_res"), width as f32, height as f32);
-        gl.uniform4f(self.at("u_hum"), f.hum, f.mode, f.phase, f.time);
+        gl.uniform4f(self.at("u_hum"), f.hum, 0.0, 0.0, f.time);
         gl.uniform4f(self.at("u_say"), f.mouth, f.lips, f.breath, 0.0);
-        gl.uniform4fv_with_f32_array(self.at("u_track[0]"), &self.track);
         gl.uniform3fv_with_f32_array(self.at("u_cold"), &l.cold);
         gl.uniform3fv_with_f32_array(self.at("u_warm"), &l.warm);
         gl.uniform3fv_with_f32_array(self.at("u_pale"), &l.pale);

@@ -86,7 +86,7 @@ export class VoiceFork {
         wasm.voicefork_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: the first hum at full voice.
+     * Reduced motion holds one moment: the voice halfway across the frame.
      * @param {boolean} value
      */
     reduced(value) {

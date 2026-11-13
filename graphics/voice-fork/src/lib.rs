@@ -1,18 +1,18 @@
 //! «Камертон»: the hero of Step 3 «Голос».
 //!
 //! A close portrait: the woman on the left, eyes open, looking up and to the
-//! right. Behind her the code rain falls, whole, with no line in it. When she
-//! sounds a note her mouth opens and the sound leaves her lips in rings that
-//! cross the whole frame. Where they pass, all the code answers at once, like
-//! sand on a sounding plate: it is shaken off the places that ring and
-//! gathers, lit, along the still lines of the note (arcs round her lips and
-//! rays out from them). When she falls silent the pattern melts back into the
-//! rain. Two notes per loop, the second higher: a finer pattern.
+//! right. Behind her the code rain falls, whole, with no line in it. She
+//! draws one long note: her mouth opens and her voice leaves her lips and
+//! crosses the whole frame. Every glyph it reaches flares once and comes
+//! apart: it breaks into grains that the voice carries away from her, and
+//! they drift, settle and fade. While she sings, the air round her is clear.
+//! When she falls silent the code is written back, column by column, from
+//! the top, as the code rain always writes.
 //!
 //! Only the woman is a raster (Art's chosen heroine, `assets/figure.png`),
 //! with her mouth drawn closed, half open and open (`tools/prepare.py`).
-//! The shader passes through the three as she opens it. The rain, the rings, the
-//! pattern and its light are drawn in `shaders/scene.frag`. Positions are the
+//! The shader passes through the three as she opens it. The rain, its dust
+//! and its writing are drawn in `shaders/scene.frag`. Positions are the
 //! image's own pixels, y down.
 
 #[cfg(target_arch = "wasm32")]
@@ -23,7 +23,7 @@ use watcher_scene_palette::Palette;
 /// The image and the frame: 3:2.
 pub const SIZE: [f32; 2] = [1536.0, 1024.0];
 /// One loop, seamless.
-pub const LOOP_SECONDS: f32 = 12.0;
+pub const LOOP_SECONDS: f32 = 10.0;
 /// The front of her open mouth: the sound leaves here.
 pub const MOUTH: [f32; 2] = [576.0, 417.0];
 /// Where her mouth and jaw change as she sings, [x0, y0, x1, y1]; the
@@ -32,45 +32,37 @@ pub const MOUTH: [f32; 2] = [576.0, 417.0];
 pub const MOUTH_BOX: [f32; 4] = [220.0, 340.0, 700.0, 620.0];
 pub const MOUTH_SHIFT: f32 = 800.0;
 
-/// The notes: when each starts, and how long it sounds.
-pub const HUMS: [f32; 2] = [0.8, 6.6];
-pub const HUM_SECONDS: f32 = 3.6;
+/// The note: when it starts, and how long it sounds.
+pub const HUM: f32 = 1.0;
+pub const HUM_SECONDS: f32 = 5.0;
 const ATTACK: f32 = 0.5;
 const RELEASE: f32 = 1.2;
 /// The mouth opens this long before the sound.
 const ANTICIPATE: f32 = 0.25;
-/// The order of the pattern for each note: the second is higher, finer.
-pub const MODES: [f32; 2] = [4.0, 6.0];
-/// How fast the sound crosses the frame, px/s.
-pub const SOUND_SPEED: f32 = 900.0;
-/// Rings per second (a whole number per loop); they run at the speed of
-/// sound, so they lie `SOUND_SPEED / TREMBLE` apart.
-pub const TREMBLE: f32 = 2.5;
-/// The pattern gathers this long after a note reaches a place, and melts
-/// back into the rain from the note's end over `MELT`.
-const GATHER: f32 = 0.9;
-const MELT: f32 = 1.4;
+/// How fast the voice crosses the frame, px/s.
+pub const SOUND_SPEED: f32 = 760.0;
+/// When the voice, loud enough, breaks the code at her lips; everywhere
+/// else `distance / SOUND_SPEED` later.
+pub const BREAK_AT: f32 = HUM + 0.15;
+/// How long a broken glyph's grains drift before the last one fades.
+pub const DUST_SECONDS: f32 = 3.0;
+/// The code is written back from this moment: each column starts within
+/// `WRITE_SPREAD` and runs down at a speed in `WRITE_SPEED`, px/s.
+pub const WRITE_AT: f32 = HUM + HUM_SECONDS - 0.2;
+pub const WRITE_SPREAD: f32 = 0.5;
+pub const WRITE_SPEED: [f32; 2] = [800.0, 1600.0];
 
-/// The voice over the whole loop, for the shader: every place in the frame
-/// hears it `distance / SOUND_SPEED` late.
-pub const TRACK: usize = 128;
-
-/// Her breath: two per loop, the note on the out-breath.
-pub const BREATH_SECONDS: f32 = 6.0;
-/// The still frame for reduced motion: the first note at full voice.
-pub const STILL: f32 = 2.9;
+/// Her breath: one per loop, in before the note, out along it.
+pub const BREATH_SECONDS: f32 = LOOP_SECONDS;
+/// The still frame for reduced motion: the voice halfway across the frame,
+/// the code broken round her and still whole far off.
+pub const STILL: f32 = 1.95;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
     pub time: f32,
     /// How loud the note is, 0..1.
     pub hum: f32,
-    /// The order of the pattern (glides between notes, never during one).
-    pub mode: f32,
-    /// The rings' phase, radians.
-    pub phase: f32,
-    /// How far the code has gathered into the note's pattern, 0..1.
-    pub order: f32,
     /// How far her mouth is open, 0 (closed) .. 1 (singing).
     pub mouth: f32,
     /// -1 (out) .. 1 (in).
@@ -83,58 +75,27 @@ fn smooth(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
-/// Seconds since `at`, counted round the loop.
-fn since(t: f32, at: f32) -> f32 {
-    (t - at).rem_euclid(LOOP_SECONDS)
-}
 
-/// The loudness of note `h` at time t.
-fn hum_of(h: usize, t: f32) -> f32 {
-    let a = since(t, HUMS[h]);
-    smooth(0.0, ATTACK, a) * (1.0 - smooth(HUM_SECONDS - RELEASE, HUM_SECONDS, a))
-}
-/// How far the code at her lips has gathered into note `h`'s pattern.
-fn order_of(h: usize, t: f32) -> f32 {
-    let a = since(t, HUMS[h]);
-    smooth(0.0, GATHER, a) * (1.0 - smooth(HUM_SECONDS - 0.2, HUM_SECONDS + MELT, a))
-}
-/// How far her mouth is open for note `h`, 0..1.
-fn mouth_of(h: usize, t: f32) -> f32 {
-    let a = since(t, HUMS[h] - ANTICIPATE);
-    smooth(0.0, 0.45, a) * (1.0 - smooth(HUM_SECONDS - 0.3, HUM_SECONDS + 0.35, a))
+/// The farthest the voice has to go: from her lips to the far corner.
+pub fn reach() -> f32 {
+    let dx = SIZE[0] - MOUTH[0];
+    let dy = SIZE[1] - MOUTH[1];
+    dx.hypot(dy)
 }
 
 pub fn compose(t: f32) -> Frame {
     let t = t.rem_euclid(LOOP_SECONDS);
-    let hum = hum_of(0, t) + hum_of(1, t);
-    // Glide to the next note's order in the quiet after each note.
-    let first_end = HUMS[0] + HUM_SECONDS + MELT;
-    let second_end = HUMS[1] + HUM_SECONDS + MELT;
-    let up = smooth(first_end, HUMS[1] - 0.1, t);
-    let down = smooth(second_end, LOOP_SECONDS, t);
-    let mode = MODES[0] + (MODES[1] - MODES[0]) * (up - down);
-    let open = mouth_of(0, t) + mouth_of(1, t);
+    let a = t - HUM;
+    let hum = smooth(0.0, ATTACK, a) * (1.0 - smooth(HUM_SECONDS - RELEASE, HUM_SECONDS, a));
+    let m = a + ANTICIPATE;
+    let mouth = smooth(0.0, 0.45, m) * (1.0 - smooth(HUM_SECONDS - 0.3, HUM_SECONDS + 0.35, m));
     Frame {
         time: t,
         hum,
-        mode,
-        phase: std::f32::consts::TAU * TREMBLE * t,
-        order: order_of(0, t) + order_of(1, t),
-        mouth: open,
-        breath: (std::f32::consts::TAU * (t - HUMS[0]) / BREATH_SECONDS).cos(),
+        mouth,
+        breath: (std::f32::consts::TAU * a / BREATH_SECONDS).cos(),
         lips: hum,
     }
-}
-
-/// The voice over the loop for the shader: loudness, order, mode, 0 at
-/// `TRACK` even steps.
-pub fn track() -> [[f32; 4]; TRACK] {
-    let mut out = [[0.0; 4]; TRACK];
-    for (i, o) in out.iter_mut().enumerate() {
-        let f = compose(i as f32 * LOOP_SECONDS / TRACK as f32);
-        *o = [f.hum, f.order, f.mode, 0.0];
-    }
-    out
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -185,41 +146,21 @@ mod tests {
     }
 
     #[test]
-    fn the_loop_starts_in_silence_with_the_rain_whole() {
-        for t in samples().take_while(|t| *t < HUMS[0] - ANTICIPATE) {
+    fn the_loop_starts_in_silence_with_the_code_whole() {
+        for t in samples().take_while(|t| *t < HUM - ANTICIPATE) {
             let f = compose(t);
-            assert!(
-                f.hum < 1e-4 && f.order < 1e-4 && f.mouth < 1e-3 && f.lips < 1e-4,
-                "at {t}"
-            );
+            assert!(f.hum < 1e-4 && f.mouth < 1e-3 && f.lips < 1e-4, "at {t}");
         }
-        // Between the notes the pattern melts away entirely.
-        let f = compose(HUMS[1] - 0.05);
-        assert!(f.order < 1e-3 && f.hum < 1e-3);
+        // Nothing breaks before she sings.
+        const { assert!(BREAK_AT > HUM) };
     }
 
     #[test]
-    fn two_notes_each_one_mode() {
-        for (h, at) in HUMS.iter().enumerate() {
-            let f = compose(at + HUM_SECONDS * 0.5);
-            assert!(f.hum > 0.99, "note {h} at full voice");
-            assert!(f.order > 0.99, "the pattern of note {h} gathers");
-            assert!((f.mode - MODES[h]).abs() < 1e-3, "mode of note {h}");
-            // The mode never moves while the pattern stands.
-            for k in 0..40 {
-                let t = at + (HUM_SECONDS + MELT) * k as f32 / 40.0;
-                assert!((compose(t).mode - MODES[h]).abs() < 1e-3, "mode at {t}");
-            }
-        }
-    }
-
-    #[test]
-    fn her_mouth_opens_for_each_note() {
-        for at in HUMS {
-            assert!(compose(at).mouth > 0.1, "it opens before the sound");
-            assert!(compose(at + HUM_SECONDS * 0.5).mouth > 0.99);
-            assert!(compose(at + HUM_SECONDS + 0.5).mouth < 1e-3);
-        }
+    fn her_mouth_opens_for_the_note() {
+        assert!(compose(HUM).mouth > 0.1, "it opens before the sound");
+        assert!(compose(HUM + HUM_SECONDS * 0.5).mouth > 0.99);
+        assert!(compose(HUM + HUM_SECONDS * 0.5).hum > 0.99);
+        assert!(compose(HUM + HUM_SECONDS + 0.5).mouth < 1e-3);
         // The mouth is in its box, and the half-open copy is in the image.
         let [x0, y0, x1, y1] = MOUTH_BOX;
         assert!(MOUTH[0] > x0 && MOUTH[0] < x1 && MOUTH[1] > y0 && MOUTH[1] < y1);
@@ -227,40 +168,39 @@ mod tests {
     }
 
     #[test]
-    fn the_rings_run_at_the_speed_of_sound() {
-        assert!((TREMBLE * LOOP_SECONDS).fract().abs() < 1e-4);
-        let gap = SOUND_SPEED / TREMBLE;
-        assert!(gap > 200.0 && gap < SIZE[0] / 2.0);
+    fn the_air_is_clear_before_the_code_is_written_back() {
+        // The voice reaches the far corner while she still sings at full
+        // voice, and the last drifting grain fades before the writing
+        // starts; only a few glinting motes hang on until the code returns.
+        let crossed = BREAK_AT + reach() / SOUND_SPEED;
+        assert!(crossed < HUM + HUM_SECONDS - RELEASE);
+        assert!(crossed + DUST_SECONDS <= WRITE_AT);
+        // The writing starts as her voice fades, not before.
+        const { assert!(WRITE_AT > HUM + HUM_SECONDS - RELEASE) };
     }
 
     #[test]
-    fn the_track_is_the_voice() {
-        let tr = track();
-        for (i, s) in tr.iter().enumerate() {
-            let f = compose(i as f32 * LOOP_SECONDS / TRACK as f32);
-            assert_eq!(*s, [f.hum, f.order, f.mode, 0.0]);
-        }
-        // Fine enough for the attack: no step jumps more than a third.
-        for i in 0..TRACK {
-            let (a, b) = (tr[i], tr[(i + 1) % TRACK]);
-            assert!((a[0] - b[0]).abs() < 0.34 && (a[1] - b[1]).abs() < 0.34);
-        }
+    fn the_code_is_whole_again_before_the_loop_ends() {
+        // The slowest column, starting last, writes past the bottom (and a
+        // cell more) with a quiet second to spare.
+        let done = WRITE_AT + WRITE_SPREAD + (SIZE[1] + 2.0 * 39.0) / WRITE_SPEED[0];
+        assert!(done + 1.0 < LOOP_SECONDS + HUM - ANTICIPATE, "{done}");
+        assert!(done < LOOP_SECONDS);
+        const { assert!(WRITE_SPEED[0] < WRITE_SPEED[1]) };
     }
 
     #[test]
-    fn the_still_frame_is_full_voice() {
+    fn the_still_frame_is_the_voice_halfway() {
         let f = compose(STILL);
-        assert!(f.hum > 0.99 && f.order > 0.99 && f.mouth > 0.99);
-        // The sound has crossed the whole frame by then.
-        assert!((STILL - HUMS[0]) * SOUND_SPEED > SIZE[0]);
+        assert!(f.hum > 0.95 && f.mouth > 0.99);
+        let front = (STILL - BREAK_AT) * SOUND_SPEED;
+        assert!(front > 0.3 * reach() && front < 0.7 * reach(), "{front}");
     }
 
     #[test]
     fn the_loop_closes_and_nothing_jumps() {
         let close = |a: &Frame, b: &Frame| {
             (a.hum - b.hum).abs() < 0.02
-                && (a.mode - b.mode).abs() < 0.05
-                && (a.order - b.order).abs() < 0.02
                 && (a.mouth - b.mouth).abs() < 0.03
                 && (a.breath - b.breath).abs() < 0.02
         };

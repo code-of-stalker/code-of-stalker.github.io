@@ -1,14 +1,14 @@
 precision highp float;
 // «Камертон». Positions are the image's own pixels, y down; lib.rs's
 // constants arrive as #defines (browser.rs). The woman is the one raster:
-// R her light, G her silhouette, B her mouth half open and open (see main). Everything else is drawn here: the matrix code behind
-// her; the rings of her voice, which cross the whole frame; and, where they
-// have passed, the code gathered along the still lines of the note.
+// R her light, G her silhouette, B her mouth half open and open (see main).
+// Everything else is drawn here: the matrix code behind her, which her voice
+// breaks into grains as it reaches it, and which is written back, column by
+// column, when she falls silent.
 uniform sampler2D u_fig;
 uniform vec2 u_res;          // target px
-uniform vec4 u_hum;          // loudness, mode, ring phase, seconds into the loop
+uniform vec4 u_hum;          // loudness, -, -, seconds into the loop
 uniform vec4 u_say;          // mouth open 0..1, glow in the mouth, breath, -
-uniform vec4 u_track[TRACK]; // over the loop: loudness, order, mode, -
 uniform vec3 u_cold;
 uniform vec3 u_warm;
 uniform vec3 u_pale;
@@ -19,10 +19,7 @@ in vec2 v_uv;
 out vec4 o;
 
 const vec2 SIZE = vec2(1536.0, 1024.0);
-const float PI = 3.14159265;
 const float TAU = 6.28318531;
-// The pattern's axis follows her gaze, up and to the right.
-const float GAZE = 0.12;
 
 uint mixBits(uint x) {
   x ^= x >> 16;
@@ -38,36 +35,6 @@ float hash2(vec2 cell, uint k) {
 }
 float sq(float x) {
   return x * x;
-}
-
-// ---------- the voice in the field
-// What the voice was doing at time t (seconds, round the loop).
-vec4 trackAt(float t) {
-  float x = fract(t / LOOP_SECONDS) * float(TRACK);
-  int i = min(int(floor(x)), TRACK - 1);
-  return mix(u_track[i], u_track[(i + 1) % TRACK], fract(x));
-}
-// At p: the note's standing wave (0 on its still lines), how far the code
-// there has gathered, and the loudness that has reached it, all heard
-// distance / SOUND_SPEED late.
-vec3 field(vec2 p) {
-  vec2 v = p - MOUTH;
-  float r = length(v);
-  vec4 tr = trackAt(u_hum.w - r / SOUND_SPEED);
-  float th = atan(-v.y, v.x) - GAZE;
-  float wave = cos(TAU * r * tr.z / 900.0) * cos((tr.z - 1.0) * th);
-  // Right at her lips the note is too close to have a shape.
-  float near = smoothstep(30.0, 110.0, r);
-  return vec3(wave, tr.y * near, tr.x);
-}
-// The rings of her voice, running out from her lips across the frame.
-float rings(vec2 p) {
-  vec2 v = p - MOUTH;
-  float r = length(v);
-  float loud = trackAt(u_hum.w - r / SOUND_SPEED).x;
-  float gap = SOUND_SPEED / TREMBLE;
-  float crest = pow(0.5 + 0.5 * cos(TAU * r / gap - u_hum.z), 40.0);
-  return crest * loud * smoothstep(8.0, 60.0, r) / (1.0 + r / 700.0);
 }
 
 // ---------- matrix code
@@ -91,58 +58,166 @@ const vec4 STROKES[GLYPHS * 4] = vec4[](
   vec4(-0.2, 0.42, 0.2, 0.42), vec4(0.2, 0.42, 0.2, -0.42), vec4(0.2, -0.42, -0.2, -0.42), vec4(-0.2, -0.42, -0.2, 0.42),
   vec4(0.0, 0.45, 0.0, -0.45), vec4(0.0, 0.45, -0.15, 0.3), NONE, NONE
 );
+const float STROKE = 0.055;
 float seg(vec2 p, vec4 s) {
   vec2 pa = p - s.xy;
   vec2 ba = s.zw - s.xy;
   return length(pa - ba * clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0));
 }
-// Coverage of glyph g at f; px is the cell's size of one target pixel.
-float glyph(vec2 f, int g, float px) {
+// Distance from f to glyph g's strokes, in cells.
+float strokes(vec2 f, int g) {
   float d = 9.0;
   for (int i = 0; i < 4; i++) d = min(d, seg(f, STROKES[g * 4 + i]));
-  const float w = 0.055;
-  return (1.0 - smoothstep(w - px * 0.5, w + px * 0.5, d)) * min(1.0, 0.16 / (w + px));
+  return d;
+}
+// Coverage at distance d from a stroke; px is one target pixel in cells.
+float ink(float d, float px) {
+  return (1.0 - smoothstep(STROKE - px * 0.5, STROKE + px * 0.5, d)) * min(1.0, 0.16 / (STROKE + px));
 }
 
-// The rain at p. Four layers, near to far. Each glyph asks the voice's
-// field at its own cell, so a glyph is kept or shaken off whole: on the
-// still lines of the note it stays and lights; elsewhere it is shaken off.
-vec3 rain(vec2 p, float px) {
+// One glyph's cell in layer k (0 near .. 3 far) at q.
+struct Cell {
+  vec2 id;      // column, row
+  vec2 f;       // q in the glyph: -0.5..0.5 across, -0.65..0.65 up
+  vec2 centre;  // image px
+  float size;   // the cell's width, px
+  float lit;    // 1 where the stream shows a glyph
+  float head;   // 0..1 down the stream, brightest at its lower end
+};
+const float SHOW = 0.72;
+Cell cellAt(vec2 q, int k, float time) {
+  float fk = float(k);
+  Cell c;
+  c.size = 30.0 / pow(1.42, fk);
+  float ch = c.size * 1.3;
+  float sway = 6.0 * (4.0 - fk) * sin(TAU * time / LOOP_SECONDS);
+  float u = (q.x + sway) / c.size + fk * 17.0;
+  float col = floor(u);
+  // Whole cells per loop, so the loop closes.
+  float drop = (5.0 + floor(hash2(vec2(col, fk), 1u) * 8.0)) * time / LOOP_SECONDS;
+  float v = q.y / ch - drop;
+  float row = floor(v);
+  c.id = vec2(col, row);
+  c.f = vec2(-(fract(u) - 0.5), -(fract(v) - 0.5) * 1.3);
+  c.centre = vec2((col + 0.5 - fk * 17.0) * c.size - sway, (row + 0.5 + drop) * ch);
+  float stream = 8.0 + floor(hash2(vec2(col, fk), 2u) * 14.0);
+  float s = fract((row + floor(hash2(vec2(col, fk), 4u) * stream)) / stream);
+  c.lit = step(s, SHOW) * step(hash2(c.id, uint(k) + 3u), 0.93);
+  c.head = c.lit * s / SHOW;
+  return c;
+}
+// The glyph cell c shows at time t: each changes now and then.
+int glyphOf(Cell c, int k, float t) {
+  float rate = 1.0 + floor(hash2(c.id, 6u) * 30.0);
+  float turn = mod(floor(t / LOOP_SECONDS * rate + hash2(c.id, 5u) * rate), rate);
+  return int(hash2(c.id + turn * 7.0, uint(k) + 7u) * float(GLYPHS)) % GLYPHS;
+}
+// The stream's light on a glyph: dim at its top, bright at its lower end.
+float shine(Cell c, int k) {
+  return (0.1 + 0.9 * pow(c.head, 1.6)) * (1.0 - 0.24 * float(k));
+}
+
+// ---------- the voice
+// Seconds since her voice reached q and broke the code there (< 0 before).
+float heard(vec2 q, float time) {
+  return time - BREAK_AT - length(q - MOUTH) / SOUND_SPEED;
+}
+// How far the writing in c's column has run past c, px (< 0: not yet).
+float written(Cell c, int k, float time) {
+  vec2 column = vec2(c.id.x, float(k));
+  float start = WRITE_AT + WRITE_SPREAD * hash2(column, 8u);
+  float speed = mix(WRITE_SPEED.x, WRITE_SPEED.y, hash2(column, 9u));
+  return (time - start) * speed - c.size * 1.3 - c.centre.y;
+}
+// Where the voice has carried a grain that lay at q, way i of three (slow,
+// middle, fast), layer k: pushed out from her lips at once, then drifting
+// on the air of her voice, swirling a little and settling.
+vec2 carried(vec2 q, float i, float fk, float time) {
+  float a = max(heard(q, time), 0.0);
+  vec2 v = q - MOUTH;
+  float r = max(length(v), 1.0);
+  vec2 out_ = v / r;
+  float push = (80.0 + 80.0 * i) * (1.0 - 0.15 * fk);
+  float go = push * 0.9 * (1.0 - exp(-a / 0.9)) + (8.0 + 8.0 * i) * a;
+  // Broad eddies gather the grains into wisps. Kept gentle (the flight
+  // changes by well under a px per px), so rain() can undo it.
+  vec2 w = q * 0.008 + vec2(1.3 * i, 0.7 * fk);
+  float grow = 1.6 * (1.0 - exp(-a / 1.6));
+  float swirl = (10.0 + 6.0 * i) * grow * sin(w.x + 1.1 * a) * cos(0.8 * w.y - 0.6 * a + 1.7 * i);
+  float along = 8.0 * grow * sin(0.9 * w.y + 0.7 * w.x + 2.3 * i);
+  return out_ * (go + along) + vec2(-out_.y, out_.x) * swirl + vec2(0.0, 12.0 * a);
+}
+
+// The rain at p: four layers, near to far. A glyph stands until the voice
+// reaches it. Then it flares and comes apart into grains (6 x 8 to a cell,
+// each going one of three ways), which fly, shrink and fade. Written back,
+// it stands again, bright for a moment behind the writing head.
+vec3 rain(vec2 p, float px, float time) {
   vec3 c = vec3(0.0);
-  float time = u_hum.w;
+  float ap = heard(p, time);
+  bool dusty = ap > -0.3 && time < WRITE_AT + 0.4;
   for (int k = 0; k < 4; k++) {
     float fk = float(k);
-    float cw = 30.0 / pow(1.42, fk);
-    float ch = cw * 1.3;
-    float sway = 6.0 * (4.0 - fk) * sin(TAU * time / LOOP_SECONDS);
-    float u = (p.x + sway) / cw + fk * 17.0;
-    float col = floor(u);
-    // Whole cells per loop, so the loop closes.
-    float fall = 5.0 + floor(hash2(vec2(col, fk), 1u) * 8.0);
-    float v = p.y / ch - fall * time / LOOP_SECONDS;
-    float row = floor(v);
-    vec2 cell = vec2(col, row);
-    if (hash2(cell, uint(k) + 3u) > 0.93) continue;
-    float stream = 8.0 + floor(hash2(vec2(col, fk), 2u) * 14.0);
-    float s = fract((row + floor(hash2(vec2(col, fk), 4u) * stream)) / stream);
-    const float SHOW = 0.72;
-    float lit = step(s, SHOW);
-    vec2 centre = vec2((col + 0.5 - fk * 17.0) * cw - sway, (row + 0.5 + fall * time / LOOP_SECONDS) * ch);
-    vec3 f3 = field(centre);
-    float still = 1.0 - smoothstep(0.08, 0.4, abs(f3.x));
-    float keep = mix(1.0, still, f3.y);
-    float hold = still * f3.y;
-    float on = max(lit * keep, hold);
-    if (on < 0.01) continue;
-    float head = lit > 0.5 ? s / SHOW : 0.0;
-    vec2 f = vec2(-(fract(u) - 0.5), -(fract(v) - 0.5) * 1.3);
-    float rate = 1.0 + floor(hash2(cell, 6u) * 30.0);
-    float turn = mod(floor(time / LOOP_SECONDS * rate + hash2(cell, 5u) * rate), rate);
-    int g = int(hash2(cell + turn * 7.0, uint(k) + 7u) * float(GLYPHS)) % GLYPHS;
-    float cover = glyph(f, g, px / cw);
-    float lead = max(smoothstep(0.86, 1.0, head), 0.6 * hold);
-    float bright = max((0.1 + 0.9 * pow(head, 1.6)) * lit * keep, hold * (0.55 + 0.25 * f3.z)) * (1.0 - 0.24 * fk);
-    c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead);
+    Cell s = cellAt(p, k, time);
+    float back = written(s, k, time);
+    if (back > 0.0 || heard(s.centre, time) < 0.0) {
+      // The writing head: one bright glyph, lit or not, and a trail.
+      float atHead = back > 0.0 ? 1.0 - step(s.size * 1.3, back) : 0.0;
+      float fresh = back > 0.0 ? exp(-back / (s.size * 5.0)) : 0.0;
+      float on = max(s.lit, atHead);
+      if (on > 0.0) {
+        float cover = ink(strokes(s.f, glyphOf(s, k, time)), px / s.size);
+        float lead = max(smoothstep(0.86, 1.0, s.head), max(atHead, 0.8 * fresh));
+        float bright = max(shine(s, k) * (1.0 + 1.2 * fresh), atHead * (1.0 - 0.24 * fk));
+        c += mix(u_cold, u_pale, 0.7 * lead) * cover * bright * (0.62 + 0.5 * lead);
+      }
+    }
+    if (!dusty) continue;
+    float grain = s.size / 6.0;
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      // Which grain of this way lies here now: undo its flight (a few
+      // steps, as the flight depends on where it started).
+      vec2 q = p;
+      for (int n = 0; n < 5; n++) q = p - carried(q, fi, fk, time);
+      Cell g = cellAt(q, k, time);
+      if (g.lit < 0.5) continue;
+      float ag = heard(g.centre, time);
+      if (ag < 0.0) continue;
+      vec2 at = floor((g.f + vec2(0.5, 0.65)) * vec2(6.0, 8.0 / 1.3));
+      float h = hash2(g.id * vec2(6.0, 8.0) + at, uint(k) + 20u);
+      if (int(h * 3.0) != i) continue;
+      // The grain's centre in the glyph and in the image; its own flight.
+      vec2 gc = (at + 0.5) / vec2(6.0, 8.0 / 1.3) - vec2(0.5, 0.65);
+      vec2 home = g.centre - gc * g.size;
+      vec2 fly = carried(home, fi, fk, time);
+      int gl = glyphOf(g, k, time - ag);
+      // First the glyph's own strokes, cut along the grains; then each
+      // grain a round speck, shrinking.
+      float m = smoothstep(0.05, 0.4, ag);
+      float kind = fract(h * 13.7);
+      float hangs = step(kind, 0.1) * smoothstep(0.6, 1.4, ag) * (1.0 - smoothstep(WRITE_AT - 0.6, WRITE_AT + 0.3, time));
+      float whole = m < 1.0 ? ink(strokes((g.centre - p + fly) / g.size, gl), px / g.size) : 0.0;
+      float speck = 0.0;
+      if (m > 0.0) {
+        float near = 1.0 - smoothstep(STROKE + 0.03, STROKE + 0.13, strokes(gc, gl));
+        float rad = grain * mix(mix(0.5, 0.28, smoothstep(0.4, DUST_SECONDS, ag)), 0.45, hangs);
+        float soft = max(rad, 0.7 * px);
+        float d = length(p - home - fly);
+        speck = near * (1.0 - smoothstep(soft - 0.6 * px, soft + 0.6 * px, d)) * sq(rad / soft) * 0.8;
+      }
+      // Grains go out one by one, not all together: most soon after the
+      // glyph breaks, some drift on for seconds, and a few hang in the air,
+      // glinting, as long as she sings.
+      float lasting = step(kind, 0.4);
+      float span = mix(0.45 + 0.5 * fract(h * 7.31), DUST_SECONDS * (0.55 + 0.45 * fract(h * 7.31)), lasting);
+      float life = 1.0 - smoothstep(0.5, 1.0, ag / span);
+      float glint = 0.55 + 0.45 * sin(2.3 * time + 40.0 * fract(h * 3.7));
+      float flare = exp(-sq((ag - 0.1) / 0.16));
+      float bright = (shine(g, k) * (0.8 + 0.6 * lasting) + 0.75 * flare) * life + 0.8 * glint * hangs;
+      bright *= 1.0 - 0.24 * fk;
+      c += mix(u_cold, u_pale, 0.75 * flare) * mix(whole, speck, m) * bright * (0.62 + 0.6 * flare);
+    }
   }
   return c;
 }
@@ -153,6 +228,7 @@ void main() {
   vec2 frag = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
   vec2 p = (frag - 0.5 * u_res) / scale + 0.5 * SIZE;
   float px = 1.0 / scale;
+  float time = u_hum.w;
 
   // Her breath lifts her chest and shoulders a pixel or two.
   vec2 s = p + vec2(0.0, 1.4 * u_say.z * smoothstep(560.0, 1000.0, p.y));
@@ -168,12 +244,7 @@ void main() {
   float body = fig.g;
 
   vec3 col = u_backdrop;
-  vec3 f3 = field(p);
-  float behind = 1.0 - body;
-  col += rain(p, px) * behind;
-  // Between the still lines the field shivers with the note.
-  col += u_cold * 0.05 * f3.y * f3.z * sq(f3.x) * (0.6 + 0.4 * cos(u_hum.z)) * behind;
-  col += mix(u_cold, u_pale, 0.5) * rings(p) * 0.3 * behind;
+  col += rain(p, px, time) * (1.0 - body);
   col += u_cold * light * 1.05 + u_pale * pow(light, 2.6) * 0.5;
   // The voice: a warm glow deep in her open mouth.
   float dl = length((p - MOUTH - vec2(-36.0, 0.0)) / vec2(1.0, 0.45));

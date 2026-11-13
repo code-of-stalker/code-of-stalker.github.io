@@ -51,13 +51,12 @@ export class PersonaProgram {
     }
     /**
      * @param {HTMLCanvasElement} canvas
-     * @param {HTMLImageElement} figure
      * @param {HTMLImageElement} labels
      */
-    constructor(canvas, figure, labels) {
+    constructor(canvas, labels) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.personaprogram_new(retptr, addHeapObject(canvas), addHeapObject(figure), addHeapObject(labels));
+            wasm.personaprogram_new(retptr, addHeapObject(canvas), addHeapObject(labels));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -72,7 +71,8 @@ export class PersonaProgram {
         }
     }
     /**
-     * The app theme by its `graphicsPalette` code (0 Искра … 6 Рассвет).
+     * The app theme by its `graphicsPalette` code (0 Искра, 2 Тишина,
+     * 3 Астрал, 4 Матрица; anything else gets Тишина).
      * @param {number} code
      */
     palette(code) {
@@ -85,8 +85,8 @@ export class PersonaProgram {
         wasm.personaprogram_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one composed moment: the circuit and the living
-     * body apart, the impulse's way traced.
+     * Reduced motion holds one composed moment: the drum stopped, the
+     * figurine frozen mid-gesture under the lamp, «И РАЗЛИЧАТЬ.» lit.
      * @param {boolean} value
      */
     reduced(value) {
@@ -151,12 +151,6 @@ function __wbg_get_imports() {
         },
         __wbg_bufferData_ec7957bcbbf38591: function(arg0, arg1, arg2, arg3, arg4) {
             getObject(arg0).bufferData(arg1 >>> 0, getArrayU8FromWasm0(arg2, arg3), arg4 >>> 0);
-        },
-        __wbg_clearColor_796427e8ac60fe14: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).clearColor(arg1, arg2, arg3, arg4);
-        },
-        __wbg_clear_cb96796cc568b7c8: function(arg0, arg1) {
-            getObject(arg0).clear(arg1 >>> 0);
         },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
@@ -305,14 +299,14 @@ function __wbg_get_imports() {
         __wbg_texStorage2D_cf2bd991072d9efb: function(arg0, arg1, arg2, arg3, arg4, arg5) {
             getObject(arg0).texStorage2D(arg1 >>> 0, arg2, arg3 >>> 0, arg4, arg5);
         },
-        __wbg_uniform1f_b5856e35a43b65a1: function(arg0, arg1, arg2) {
-            getObject(arg0).uniform1f(getObject(arg1), arg2);
-        },
         __wbg_uniform1i_531b98c4a7177366: function(arg0, arg1, arg2) {
             getObject(arg0).uniform1i(getObject(arg1), arg2);
         },
         __wbg_uniform2f_a92b5bb95dc5b4d9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform2f(getObject(arg1), arg2, arg3);
+        },
+        __wbg_uniform2fv_319c49f0ce340f26: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniform2fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
         },
         __wbg_uniform3fv_055ea5ac38af4fce: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform3fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
@@ -322,6 +316,9 @@ function __wbg_get_imports() {
         },
         __wbg_uniform4fv_cf8ff646c36232c8: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform4fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
+        },
+        __wbg_uniform4uiv_a6fb3237d9df7ed4: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniform4uiv(getObject(arg1), getArrayU32FromWasm0(arg2, arg3));
         },
         __wbg_useProgram_e075c2902e420761: function(arg0, arg1) {
             getObject(arg0).useProgram(getObject(arg1));
@@ -339,6 +336,10 @@ function __wbg_get_imports() {
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
+            return addHeapObject(ret);
+        },
+        __wbindgen_object_clone_ref: function(arg0) {
+            const ret = getObject(arg0);
             return addHeapObject(ret);
         },
         __wbindgen_object_drop_ref: function(arg0) {
@@ -375,6 +376,11 @@ function getArrayF32FromWasm0(ptr, len) {
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
@@ -398,6 +404,14 @@ function getFloat32ArrayMemory0() {
 
 function getStringFromWasm0(ptr, len) {
     return decodeText(ptr >>> 0, len);
+}
+
+let cachedUint32ArrayMemory0 = null;
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
 }
 
 let cachedUint8ArrayMemory0 = null;
@@ -506,6 +520,7 @@ function __wbg_finalize_init(instance, module) {
     wasmModule = module;
     cachedDataViewMemory0 = null;
     cachedFloat32ArrayMemory0 = null;
+    cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     return wasm;
 }

@@ -97,13 +97,13 @@ export function StepThreeScreen({ onSelectStep, onPreviousStep, onNextStep, onCl
               <ContentSwap value={chapter} fill dissolve duration={600} exitDuration={240} reducedMotion={reducedMotion}
                 onComplete={value => { if (value === chapter) setChanging(false); }} render={part => {
                   const current = part === chapter, enabled = current && focused && !open && !changing;
-                  return <EconomyReadingPages step={3} chapter={part} active={current && focused && !open} enabled={enabled}
+                  return <EconomyReadingPages step={3} chapter={part} active={current && focused} enabled={enabled}
                     initialIndex={entry.chapter === part ? entry.page : 0} initialOffset={entry.chapter === part ? entry.offset : 0}
                     canAdvance={part === 0 || !!onNextStep} startAtEnd={part === 0 && returnToReading || part === 1 && startAtEnd && entry.chapter === 1 && entry.page === stepThreePractice.length - 1}
                     reading={reading} width={width} reducedMotion={reducedMotion}
                     onReady={current ? setReady : () => {}} onProgress={current ? setProgress : () => {}}
                     onAdvance={() => advance(part)} onRetreat={retreat} onPageChange={current ? reportPage : () => {}}
-                    endContent={part === 1 ? <StepSignature active={current && focused && !open} reducedMotion={reducedMotion} /> : undefined} />;
+                    endContent={part === 1 ? <StepSignature active={current && focused} reducedMotion={reducedMotion} /> : undefined} />;
                 }} />
             </StepPanel>
           </Reveal>}

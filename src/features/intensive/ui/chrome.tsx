@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -12,12 +12,14 @@ import { useProductLayout } from '../../product/layout';
 import { BottomSheet } from '../../product/motion/BottomSheet';
 import { fitPanelPath } from '../../product/motion/glassShape';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
+import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductText } from '../../product/ui';
 import type { Place } from '../backend';
+import { RoleMark } from './RoleMark';
 
 /** Stroke glyphs on a 24 grid, drawn like the diary icons. */
 export const glyphs = {
@@ -86,6 +88,24 @@ const ROLE_TINTS: Partial<Record<string, Partial<Record<Place, string>>>> = {
 // On a black page a bright ink washes the bubble harder, so those themes tint it less.
 const ROLE_WASH: Partial<Record<string, number>> = { matrix: .55, dark: .55 };
 const places: Place[] = ['walker', 'guide', 'admin', 'main'];
+const roleInksOf = (theme: string, accent: string) => Object.fromEntries(places.map(place => [place, ROLE_TINTS[theme]?.[place] ?? accent])) as Record<Place, string>;
+
+/** Ink of each role's name line and mark: one source for the chat, the admin list and the person card. */
+export function useRoleInks() {
+  const colors = useThemeColors();
+  const { settings } = useProduct();
+  return useMemo(() => roleInksOf(settings.theme, colors.accent), [colors.accent, settings.theme]);
+}
+
+/** A role named as the chat names it: the label in the role's ink with the role's live mark on its right. */
+export function RoleTag({ role, label, size }: { role: Place; label: string; size?: number }) {
+  const styles = useThemeStyles(createStyles);
+  const ink = useRoleInks()[role];
+  return <View style={styles.roleTag}>
+    <ProductText numberOfLines={1} maxFontSize={11} style={[styles.roleLabel, { color: ink }]}>{label}</ProductText>
+    <RoleMark role={role} ink={ink} size={size} />
+  </View>;
+}
 export const bubbleSpot = (first: boolean, last: boolean): BubbleSpot => first ? last ? 'alone' : 'head' : last ? 'tail' : 'middle';
 
 /** Authored frames for this section; PanelArtwork moves their anchors to the layout size. */
@@ -112,7 +132,7 @@ export function useIntensiveFrames() {
     }
     return {
       /** Ink of each role's name line and mark. */
-      inks: Object.fromEntries(places.map(place => [place, tints?.[place] ?? colors.accent])) as Record<Place, string>,
+      inks: roleInksOf(settings.theme, colors.accent),
       roles,
       own: Object.fromEntries(spots.map(spot => [spot, own(OWN_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
       other: Object.fromEntries(spots.map(spot => [spot, other(OTHER_CONTOURS[spot])])) as Record<BubbleSpot, { uri: string }>,
@@ -121,7 +141,7 @@ export function useIntensiveFrames() {
       input: diaryArtwork('input', colors, true),
       prompt: diaryArtwork('prompt', colors),
     };
-  }, [colors, tints, wash]);
+  }, [colors, settings.theme, tints, wash]);
 }
 
 /** The diary's icon contour with the person's initial; roles with a light hand get the accent outline. */
@@ -231,12 +251,13 @@ export function Hero({ glyph, title, lines = [], tight = false }: { glyph: Glyph
   </View>;
 }
 
-/** A profile head as in Telegram settings: a large avatar, the name and quiet lines below. */
-export function ProfileHead({ name, lines, accent = false, avatar = true }: { name: string; lines: string[]; accent?: boolean; avatar?: boolean }) {
+/** A profile head as in Telegram settings: a large avatar, the name, `extra` (the roles) and quiet lines below. */
+export function ProfileHead({ name, lines, accent = false, avatar = true, extra }: { name: string; lines: string[]; accent?: boolean; avatar?: boolean; extra?: ReactNode }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.profile}>
     {avatar ? <Avatar name={name} size={76} accent={accent} /> : null}
     <ProductText variant="title" selectable numberOfLines={2} style={styles.profileName}>{name}</ProductText>
+    {extra}
     {lines.map(line => <ProductText key={line} selectable maxFontSize={12} style={styles.profileLine}>{line}</ProductText>)}
   </View>;
 }
@@ -258,31 +279,50 @@ export function ConfirmSheet({ open, title, text, confirmLabel, busy = false, on
   </BottomSheet>;
 }
 
-/** A settings-style list: rows separated by hairlines, a caption above. */
-export function ListGroup({ caption, children, footer }: { caption?: string; children: ReactNode; footer?: string }) {
+const CardContext = createContext(false);
+const DividedContext = createContext(false);
+
+/**
+ * A settings-style list: rows separated by hairlines, a caption above. `card` draws the rows on a
+ * glass card instead (the diary's material under a thin frame, never see-through: Art 2026-11-12
+ * «почему … полупрозрачные? сделай стекло»), with no lines between them («куча полосок, лучше сделать карточки»). `divided` adds the hairline back between a card's rows
+ * (the two «ПРАВА» switches, Art 2026-11-12: «нужно добавить один разделитель между ними»).
+ */
+export function ListGroup({ caption, children, footer, card = false, divided = false }: { caption?: string; children: ReactNode; footer?: string; card?: boolean; divided?: boolean }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.group}>
     {caption ? <ProductText maxFontSize={10} style={styles.caption}>{caption}</ProductText> : null}
-    <View style={styles.groupBody}>{children}</View>
+    <CardContext.Provider value={card}><DividedContext.Provider value={divided}>
+      <View style={card ? styles.card : styles.groupBody}>
+        {card ? <><DiaryGlass /><PanelBorder /></> : null}
+        {children}
+      </View>
+    </DividedContext.Provider></CardContext.Provider>
     {footer ? <ProductText maxFontSize={12} style={styles.groupFooter}>{footer}</ProductText> : null}
   </View>;
 }
 
-/** `checked` makes the row a switch for screen readers; the caller draws the toggle on the right. */
-export function ListItem({ title, detail, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, chevron = !!onPress && checked === undefined, last = false, accessibilityLabel }: {
-  title: string; detail?: string; glyph?: GlyphName; avatar?: ReactNode; right?: ReactNode; onPress?: () => void;
+/**
+ * `checked` makes the row a switch for screen readers; the caller draws the toggle on the right. `badge` sits under the title, after the detail (a role tag).
+ * `detail` is a data line in the body's capitals; `hint` is a sentence about the row in plain small text (Art 2026-11-12: capitals there read «ужасно»).
+ */
+export function ListItem({ title, detail, hint, badge, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, chevron = !!onPress && checked === undefined, last = false, accessibilityLabel }: {
+  title: string; detail?: string; hint?: string; badge?: ReactNode; glyph?: GlyphName; avatar?: ReactNode; right?: ReactNode; onPress?: () => void;
   tone?: 'text' | 'accent' | 'error'; selected?: boolean; checked?: boolean; chevron?: boolean; last?: boolean; accessibilityLabel?: string;
 }) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
+  const card = useContext(CardContext), divided = useContext(DividedContext);
   const ink = tone === 'error' ? colors.error : tone === 'accent' ? colors.accent : colors.text;
   const role = checked !== undefined ? 'switch' : onPress ? 'button' : undefined;
   return <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel} accessibilityState={role ? { selected, checked, disabled: !onPress } : undefined} disabled={!onPress} onPress={onPress}
-    style={({ pressed }) => [styles.item, (pressed || selected) && { backgroundColor: colors.subtle }]}>
+    style={({ pressed }) => [styles.item, card && styles.cardItem, (pressed || selected) && { backgroundColor: colors.subtle }]}>
     {avatar ?? (glyph ? <View style={styles.itemGlyph}><Glyph name={glyph} size={20} color={tone === 'error' ? colors.error : colors.accent} /></View> : null)}
-    <View style={[styles.itemBody, !last && styles.itemLine]}>
+    <View style={[styles.itemBody, card && styles.cardItemBody, (!card || divided) && !last && styles.itemLine]}>
       <View style={styles.itemCopy}>
         <ProductText variant="title" numberOfLines={1} color={ink} style={styles.itemTitle}>{title}</ProductText>
         {detail ? <ProductText numberOfLines={2} maxFontSize={12} style={styles.itemDetail}>{detail}</ProductText> : null}
+        {hint ? <ProductText numberOfLines={3} maxFontSize={14} color={colors.muted} style={styles.itemHint}>{hint}</ProductText> : null}
+        {badge}
       </View>
       {right}
       {chevron ? <Glyph name="right" size={16} color={colors.faint} /> : null}
@@ -320,6 +360,11 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   group: { gap: 8 },
   caption: { fontSize: 8, lineHeight: 12, letterSpacing: 1.6, color: colors.muted, paddingHorizontal: 2 },
   groupBody: { borderTopWidth: .25, borderBottomWidth: .25, borderColor: colors.border },
+  // A glass card, no hairlines; a picked row's tint spans its full width and touches the card's
+  // edge (no inner padding: a strip above a picked first row read as a gap, Art 2026-11-12).
+  card: { position: 'relative', overflow: 'hidden' },
+  cardItem: { paddingLeft: 14 },
+  cardItemBody: { paddingRight: 14 },
   groupFooter: { fontSize: 8, lineHeight: 13, color: colors.faint, paddingHorizontal: 2 },
   item: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 4 },
   itemGlyph: { width: 28, alignItems: 'center' },
@@ -328,4 +373,7 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   itemCopy: { flex: 1, minWidth: 0, gap: 3 },
   itemTitle: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
   itemDetail: { fontSize: 8, lineHeight: 13, color: colors.muted },
+  itemHint: { fontFamily: fonts.title, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  roleTag: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+  roleLabel: { fontSize: 9, lineHeight: 13, letterSpacing: .8, flexShrink: 1 },
 });

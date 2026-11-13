@@ -23,6 +23,7 @@ import { isNightScene, NightCity } from './NightCity.web';
 import { RopeDawn } from './RopeDawn.web';
 import { VoiceFork } from './VoiceFork.web';
 import { VoiceSurface } from './VoiceSurface.web';
+import { DayHouse } from './DayHouse.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
   const systemReduced = useSystemReducedMotion();
@@ -39,6 +40,7 @@ function scene(props: ArtProps) {
   if (props.webScene === 'rope-dawn') return <RopeDawn {...props} />;
   if (props.webScene === 'voice-fork') return <VoiceFork {...props} />;
   if (props.webScene === 'voice-surface') return <VoiceSurface {...props} />;
+  if (props.webScene === 'day-house') return <DayHouse {...props} />;
   if (props.webScene === 'hear-state') return <HearState {...props} />;
   if (props.webScene === 'tuning-questions') return <TuningQuestions {...props} />;
   if (props.webScene === 'persona-dream') return <PersonaDream {...props} />;

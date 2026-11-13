@@ -33,10 +33,10 @@ type Step =
   | { kind: 'welcome'; notice?: string }
   | { kind: 'phrase'; words: string[]; entropy: Bytes }
   | { kind: 'confirm'; words: string[]; entropy: Bytes; positions: number[] }
-  | { kind: 'restore'; notice?: string }
+  | { kind: 'restore'; notice?: string; fromPin?: boolean }
   | { kind: 'name'; adding?: boolean }
   | { kind: 'pin'; first?: string; change?: boolean }
-  | { kind: 'unlock'; forgot?: boolean }
+  | { kind: 'unlock'; forgot?: boolean; other?: boolean }
   | { kind: 'totp-enroll'; required: boolean; enrollment: TotpEnrollment | null; back: 'home' | 'account' }
   | { kind: 'totp-verify' }
   | { kind: 'home' }
@@ -186,8 +186,11 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
       break;
     case 'restore':
       subtitle = adminPage ? 'АДМИНКА · ВХОД' : 'ВХОД ПО СЛОВАМ';
-      if (!adminPage) back = () => go({ kind: 'welcome' });
-      body = <RestoreStep notice={step.notice ?? (adminPage ? 'На этом устройстве нет сохранённого аккаунта. Войдите по 12 словам главного админа: вход действует, пока открыта эта страница. Чтобы входить по PIN, задайте его в Интенсиве.' : undefined)}
+      if (step.fromPin) back = () => go({ kind: 'unlock' });
+      else if (!adminPage) back = () => go({ kind: 'welcome' });
+      body = <RestoreStep notice={step.notice ?? (!adminPage ? step.fromPin ? 'Прежний аккаунт останется на этом устройстве, пока ты не задашь PIN новому. Потом он вернётся только по своим 12 словам.' : undefined : step.fromPin
+        ? 'Вход по словам действует, пока открыта эта страница. Аккаунт на этом устройстве и его PIN не меняются. Чтобы входить сюда по PIN, в Интенсиве нажмите «Войти в другой аккаунт», войдите по 12 словам главного админа и задайте PIN.'
+        : 'На этом устройстве нет сохранённого аккаунта. Войдите по 12 словам главного админа: вход действует, пока открыта эта страница. Чтобы входить сюда по PIN, войдите этими словами в Интенсив и задайте там PIN.')}
         busy={busy} error={error} onSubmit={text => {
         const entropy = parseSecret(text);
         if (!entropy) { setError(say('Не похоже на 12 слов или строку из 32 знаков. Проверь написание.', 'Не похоже на 12 слов или строку из 32 знаков. Проверьте написание.')); return; }
@@ -239,9 +242,15 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
           leave(say('После 5 неверных PIN аккаунт убран с этого устройства. Войди снова по 12 словам.', 'После 5 неверных PIN аккаунт убран с этого устройства. Войдите снова по 12 словам.'));
         }, say('Не удалось открыть. Проверь интернет: попытка не засчитана.', 'Не удалось открыть. Проверьте интернет: попытка не засчитана.')); }} />
         <ProductButton label={say('ЗАБЫЛ PIN', 'ЗАБЫЛИ PIN?')} kind="ghost" onPress={() => go({ kind: 'unlock', forgot: true })} disabled={busy} />
+        {/* Another account by its words (Art 2026-11-12). The admin page signs it in for this page only and leaves the
+            device as it is; the app keeps one account per device, so it first says the new one replaces it once its PIN is set. */}
+        <ProductButton label="ВОЙТИ В ДРУГОЙ АККАУНТ" kind="ghost" onPress={() => go(adminPage ? { kind: 'restore', fromPin: true } : { kind: 'unlock', other: true })} disabled={busy} />
         <ConfirmSheet open={!!step.forgot} title={say('ЗАБЫЛ PIN?', 'ЗАБЫЛИ PIN?')} confirmLabel="ВОЙТИ ПО СЛОВАМ"
           text="Без PIN аккаунт открывается только по 12 словам. Убрать его с этого устройства и войти по словам?"
           onConfirm={() => { wipeDevice(); go({ kind: 'restore' }); }} onClose={() => go({ kind: 'unlock' })} />
+        {adminPage ? null : <ConfirmSheet open={!!step.other} title="ДРУГОЙ АККАУНТ" confirmLabel="ВОЙТИ ПО СЛОВАМ"
+          text="На устройстве хранится один аккаунт. Когда ты задашь PIN другому, нынешний вернётся только по своим 12 словам."
+          onConfirm={() => go({ kind: 'restore', fromPin: true })} onClose={() => go({ kind: 'unlock' })} />}
       </View>;
       break;
     case 'totp-enroll':

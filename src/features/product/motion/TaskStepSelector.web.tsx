@@ -31,6 +31,10 @@ export function TaskStepSelector({ step, availableAt, testUnlockAll = false, ope
   const ready = open && naturalHeight !== null;
   const { width: deviceWidth } = useWindowDimensions(), shortWidth = deviceWidth >= 375 ? 136 : 106;
   const pinned = anchor === 'top';
+  // The pinned menu reveals inside a clip. Below 2x the outline's hairline is drawn one
+  // device pixel wide on its centre line, so a clip at the menu's own height cut the
+  // bottom edge away at display scales such as 125%. The clip opens one pixel further.
+  const bleed = pinned ? 1 : 0;
   const headerHeight = triggerSize?.height ?? 26, below: readonly [number, number, number, number, number, number] = [0, 0, pinned ? 0 : menuHeight - headerHeight, 1, 0, 100];
   if (open && !present) setPresent(true);
   useBackSwipeBlocked(open || present);
@@ -45,9 +49,9 @@ export function TaskStepSelector({ step, availableAt, testUnlockAll = false, ope
     {trailing && <RustMotion initial={shown} target={[open ? 0 : 1, 0, 0, 1, 0, 100]} duration={reducedMotion ? 0 : 120} curve={[0, 0, .58, 1]} aria-hidden={open}
       style={{ position: 'absolute', left: shortWidth + 12, right: 0, bottom: 0, minHeight: 26, pointerEvents: open ? 'none' : 'auto' }}>{trailing}</RustMotion>}
     {present && <RustMotion initial={below} target={ready ? shown : below} duration={reducedMotion ? 0 : open ? 360 : 240}
-      initialHeight={pinned ? 0 : undefined} height={pinned ? ready ? menuHeight : 0 : undefined}
+      initialHeight={pinned ? 0 : undefined} height={pinned ? ready ? menuHeight + bleed : 0 : undefined}
       onComplete={() => { if (!open) setPresent(false); }} aria-hidden={!open} data-testid="task-step-menu"
-      style={{ position: 'absolute', left: 0, ...(pinned ? { top: menuOffset, overflow: 'hidden' } : { bottom: 0 }), width, height: menuHeight, pointerEvents: ready ? 'auto' : 'none', display: 'flex', flexDirection: 'column' }}>
+      style={{ position: 'absolute', left: 0, ...(pinned ? { top: menuOffset, overflow: 'hidden' } : { bottom: 0 }), width, height: menuHeight + bleed, pointerEvents: ready ? 'auto' : 'none', display: 'flex', flexDirection: 'column' }}>
       <View style={{ width, height: menuHeight, flexShrink: 0 }}>
         <StepDropdown step={step} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion} inset={inset} headerless={pinned} cutout={menuCutout} frameSize={{ width, height: menuHeight }} onNaturalHeight={setNaturalHeight} onClose={onToggle} onSelect={onSelect} />
       </View>

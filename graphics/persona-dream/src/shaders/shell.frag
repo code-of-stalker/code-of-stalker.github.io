@@ -14,7 +14,7 @@ uniform vec4 u_shell;      // blur radius (SVG units), the living light, time (s
 uniform vec4 u_count;      // plates, breath
 in vec2 v_local;
 out vec4 o;
-const vec2 SVG = vec2(335.0, 530.0);
+const vec2 SVG = vec2(200.0, 672.0);
 const float TEXELS = 4.0; // per SVG unit
 float body(vec2 p, float lod) { return textureLod(u_figure, p / SVG, lod).b; }
 // The body grown by `r` SVG units: the shell lies just outside the skin.

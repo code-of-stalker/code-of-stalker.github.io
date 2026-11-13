@@ -74,11 +74,11 @@ export function StepSevenScreen({ onSelectStep, onPreviousStep, onClose, availab
               readingSelection={{ availableAt, testUnlockAll, onSelectStep: select }}
               menu={open ? <StepDropdown step={7} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion}
                 inset={inset} embedded onNaturalHeight={setMenuHeight} onClose={() => setOpen(false)} onSelect={select} /> : undefined}>
-              <EconomyReadingPages step={7} chapter={0} active={focused && !open} enabled={focused && !open}
+              <EconomyReadingPages step={7} chapter={0} active={focused} enabled={focused && !open}
                 initialIndex={initial.page} initialOffset={initial.offset} canAdvance={false} startAtEnd={false}
                 reading={layout} width={width} reducedMotion={reducedMotion}
                 onReady={setReady} onProgress={setProgress} onAdvance={() => {}} onRetreat={retreat} onPageChange={reportPage}
-                endContent={<StepSignature active={focused && !open} reducedMotion={reducedMotion} />} />
+                endContent={<StepSignature active={focused} reducedMotion={reducedMotion} />} />
             </StepPanel>
           </Reveal>}
         </ReadingExpansion>

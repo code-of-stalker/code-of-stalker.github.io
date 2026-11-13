@@ -132,31 +132,82 @@ vec3 headLocal(vec3 q) {
   vec3 v = q - NECK;
   return NECK + vec3(dot(v, hr), dot(v, hu), dot(v, hf));
 }
+// Her eyeballs, and the lids over them: a sphere a little larger.
+const float EYE_R = 0.013;
+const float LID_R = EYE_R + 0.0022;
+// The opening of her lids round an eye, by the direction from the eyeball's
+// centre e (head frame, mirrored so +x is outwards): an almond, highest a
+// little towards her nose above and lowest a little outwards below, its outer
+// corner a touch higher than the inner. Negative inside, in metres on the lids.
+float almond(vec3 e) {
+  vec3 n = e / max(length(e), 1e-5);
+  vec2 p = vec2(n.x * 0.996 + n.y * 0.087, n.y * 0.996 - n.x * 0.087);
+  float o = max(length(p - vec2(0.094, -1.097)) - 1.410, length(p - vec2(-0.023, 0.931)) - 1.269);
+  return max(o, -n.z) * (LID_R - 0.001);
+}
+// Where her hair starts: high on the forehead, down past the temples and
+// over her ears, low at the nape.
+float hairline(vec3 m) {
+  float front = 1.598 - 0.026 * smoothstep(0.0, 0.06, m.x);
+  return mix(1.485, mix(1.502, front, smoothstep(-0.005, 0.05, m.z)), smoothstep(-0.07, -0.035, m.z));
+}
+// Each half of the upper lip, tilted down to the corner, so they meet in a
+// bow under the nose.
+vec3 arch(vec3 h) {
+  return vec3(h.x, h.y, h.z + 26.0 * h.x * h.x);
+}
+vec3 upperLip(vec3 m) {
+  vec3 u = arch(m) - vec3(0.0105, 1.4715, 0.0925);
+  return vec3(u.x * 0.982 - u.y * 0.191, u.x * 0.191 + u.y * 0.982, u.z);
+}
+// The line between her lips, which opens into her mouth as she speaks;
+// negative inside the opening.
+float mouthCut(vec3 h) {
+  float drop = 0.0075 * speak;
+  return sdEll(arch(h) - vec3(0.0, 1.4675 - 0.5 * drop, 0.096), vec3(0.021 - 0.004 * speak, 0.0005 + 0.45 * drop, 0.01 + 0.004 * speak));
+}
 float skull(vec3 h) {
   vec3 m = vec3(abs(h.x), h.y, h.z);
-  float d = sdEll(h - vec3(0.0, 1.565, -0.02), vec3(0.069, 0.088, 0.092));
-  // Hair drawn up into a knot high at the back.
+  // The cranium and the forehead; the hair drawn up into a knot high at the
+  // back and swept back over her ears, standing a little off her head.
+  float d = sdEll(h - vec3(0.0, 1.567, -0.01), vec3(0.071, 0.088, 0.093));
   d = smin(d, sdEll(h - vec3(0.0, 1.612, -0.116), vec3(0.04, 0.038, 0.036)), 0.024);
-  d = smin(d, sdEll(h - vec3(0.0, 1.505, 0.03), vec3(0.053, 0.078, 0.072)), 0.03);
+  d = smin(d, sdEll(h - vec3(0.0, 1.577, 0.038), vec3(0.06, 0.052, 0.056)), 0.02);
+  d = smin(d, sdEll(m - vec3(0.057, 1.53, -0.03), vec3(0.014, 0.034, 0.04)), 0.02);
+  // The face: one oval mass narrowing to the chin, soft high cheekbones, the
+  // brow and the upper cheek round the eyes, a clean jaw line from its angles
+  // to one small rounded chin, the mouth's soft rise round the teeth.
   // As she speaks the jaw and the lower lip drop and the mouth opens.
   float drop = 0.0075 * speak;
-  d = smin(d, sdEll(h - vec3(0.0, 1.447 - 0.8 * drop, 0.053 - 0.3 * drop), vec3(0.02, 0.02, 0.027)), 0.022);
-  d = smin(d, sdCap(m, vec3(0.05, 1.474, -0.006), vec3(0.014, 1.436, 0.062), 0.008), 0.022);
-  d = smin(d, sdEll(m - vec3(0.04, 1.515, 0.062), vec3(0.018, 0.012, 0.016)), 0.016);
-  d = smin(d, sdCap(m, vec3(0.012, 1.556, 0.086), vec3(0.042, 1.557, 0.075), 0.0045), 0.018);
-  // The almond opening of the lids over each eye.
-  d = smax(d, -sdEll(m - vec3(0.031, 1.535, 0.09), vec3(0.0145, 0.0062, 0.012)), 0.003);
-  d = smin(d, sdRC(h, vec3(0.0, 1.536, 0.094), vec3(0.0, 1.502, 0.106), 0.004, 0.0062), 0.008);
-  d = smin(d, sdEll(m - vec3(0.0085, 1.4985, 0.097), vec3(0.0048, 0.004, 0.005)), 0.006);
-  d = smin(d, sdEll(h - vec3(0.0, 1.474, 0.091), vec3(0.015, 0.0055, 0.008)), 0.006);
-  d = smin(d, sdEll(h - vec3(0.0, 1.463 - drop, 0.087 - 0.25 * drop), vec3(0.014, 0.0062, 0.008)), 0.006);
-  if (speak > 0.02) {
-    d = smax(d, -sdEll(h - vec3(0.0, 1.4685 - 0.5 * drop, 0.1), vec3(0.0115, 0.0005 + 0.45 * drop, 0.014)), 0.002);
-  }
-  return smin(d, sdEll(m - vec3(0.068, 1.523, -0.02), vec3(0.006, 0.021, 0.012)), 0.012);
+  d = smin(d, sdEll(h - vec3(0.0, 1.502, 0.03), vec3(0.052, 0.064, 0.06)), 0.025);
+  d = smin(d, sdEll(m - vec3(0.049, 1.523, 0.043), vec3(0.017, 0.011, 0.02)), 0.03);
+  d = smin(d, sdEll(h - vec3(0.0, 1.541, 0.057), vec3(0.057, 0.024, 0.039)), 0.02);
+  d = smin(d, sdCap(m, vec3(0.043, 1.474, -0.004), vec3(0.012, 1.438 - drop, 0.062), 0.009), 0.02);
+  d = smin(d, sdEll(h - vec3(0.0, 1.472, 0.062), vec3(0.032, 0.026, 0.029)), 0.02);
+  d = smin(d, sdEll(h - vec3(0.0, 1.481, 0.084), vec3(0.013, 0.011, 0.012)), 0.01);
+  d = smin(d, sdEll(h - vec3(0.0, 1.439 - drop, 0.075 - 0.3 * drop), vec3(0.0145, 0.0135, 0.016)), 0.014);
+  d -= 0.0022 * smoothstep(-0.004, 0.01, h.y - hairline(m));
+  // The lids follow the eyeball: the skin in front of it is taken back to a
+  // sphere round it, and opens in an almond where the eyeball shows.
+  vec3 e = m - vec3(0.031, EYES.y, EYES.z);
+  float r = length(e);
+  d = min(d, max(r - EYE_R - 0.0008, sdEll(e - vec3(0.0, 0.0, 0.006), vec3(0.018, 0.013, 0.018))));
+  d = smax(d, -max(sdEll(e - vec3(0.0, 0.002, 0.006), vec3(0.0155, 0.01, 0.016)), LID_R - r), 0.004);
+  d = smax(d, -max(max(almond(e), EYE_R + 0.0001 - r), r - LID_R - 0.002), 0.0007);
+  // A small straight nose, a neat tip, the wings tucked in.
+  d = smin(d, sdRC(h, vec3(0.0, 1.545, 0.0885), vec3(0.0, 1.5055, 0.1045), 0.0032, 0.005), 0.01);
+  d = smin(d, sdEll(h - vec3(0.0, 1.5005, 0.1062), vec3(0.0058, 0.0046, 0.0055)), 0.007);
+  d = smin(d, sdEll(m - vec3(0.0085, 1.4982, 0.0945), vec3(0.0042, 0.0034, 0.0062)), 0.012);
+  // The lips: low reliefs over the teeth, the lower one fuller, a closed
+  // line between them that opens as she speaks.
+  d = smin(d, sdEll(upperLip(m), vec3(0.0135, 0.0039, 0.0062)), 0.008);
+  d = smin(d, sdEll(h - vec3(0.0, 1.4703, 0.0962), vec3(0.0055, 0.003, 0.0042)), 0.004);
+  d = smin(d, sdEll(arch(h) - vec3(0.0, 1.4628 - drop, 0.0905 - 0.25 * drop), vec3(0.018, 0.0052, 0.0068)), 0.008);
+  d = smax(d, -mouthCut(h), 0.0012 + 0.0008 * speak);
+  return d;
 }
 float eyeballs(vec3 h) {
-  return length(vec3(abs(h.x), h.y, h.z) - vec3(0.031, EYES.y, EYES.z)) - 0.0122;
+  return length(vec3(abs(h.x), h.y, h.z) - vec3(0.031, EYES.y, EYES.z)) - EYE_R;
 }
 // Her dress (Art, 13.11: «одень её»): a round neckline under the collarbones
 // in front, higher at the back, over her shoulders; long sleeves to the
@@ -176,7 +227,7 @@ vec2 dress(vec3 q) {
 }
 float torso(vec3 q) {
   vec3 m = vec3(abs(q.x), q.y, q.z);
-  float d = sdCap(q, vec3(0.0, 1.35, -0.02), vec3(0.0, 1.47, -0.01), 0.034);
+  float d = sdCap(q, vec3(0.0, 1.35, -0.022), vec3(0.0, 1.47, -0.016), 0.038);
   d = smin(d, sdCap(m, vec3(0.03, 1.402, -0.03), vec3(0.158, 1.356, -0.03), 0.044), 0.05);
   d = smin(d, sdEll(q - vec3(0.0, 1.235, -0.005), vec3(0.148, 0.165, 0.09)), 0.05);
   // Under the dress the breast is one soft form, the waist eased.
@@ -212,27 +263,33 @@ vec2 box(vec3 ro, vec3 inv, vec3 lo, vec3 hi) {
 // The nearest point of her along the ray before tMax (-1 if none), and how
 // near the ray passes her, for the rim of light round her outline. One walk:
 // up to 110 steps to her surface, then four probes round the hit for its
-// normal n (her frame), so her distance field is compiled in only once.
+// normal n (her frame) and two out along the normal for how open the hit is
+// (occ: 1 open, less in the folds by her nose, mouth, eyes and under her
+// jaw), so her distance field is compiled in only once.
 // eye: the eyeball, not the skull, is the surface hit.
-float march(vec3 ro, vec3 rd, float tMax, out float closest, out float tClosest, out vec3 n, out bool eye) {
+float march(vec3 ro, vec3 rd, float tMax, out float closest, out float tClosest, out vec3 n, out bool eye, out float occ) {
   vec3 lo = toLocal(ro);
   vec3 ld = dirLocal(rd);
   closest = 1e9;
   tClosest = 1.0;
   n = vec3(0.0, 1.0, 0.0);
   eye = false;
+  occ = 1.0;
   vec2 b = box(lo, safeInv(ld), BOX_FROM, BOX_TO);
   if (b.x >= b.y) return -1.0;
   float t = b.x;
   float end = min(b.y, tMax);
   float hit = -1.0;
   vec3 sum = vec3(0.0);
+  float shut = 0.0;
   int probe = 0;
-  for (int i = ZERO; i < 114; i++) {
-    // The probes sit on a tetrahedron round the hit.
+  for (int i = ZERO; i < 116; i++) {
+    // The normal's probes sit on a tetrahedron round the hit; then two
+    // steps out along the normal.
     int j = probe - 1;
     vec3 k = probe > 0 ? 2.0 * vec3(float(((j + 3) >> 1) & 1), float((j >> 1) & 1), float(j & 1)) - 1.0 : vec3(0.0);
-    vec2 f = figure(lo + ld * t + 0.0005 * k);
+    float a = probe == 5 ? 0.004 : 0.012;
+    vec2 f = figure(lo + ld * t + (probe > 4 ? n * a : 0.0005 * k));
     if (probe == 0) {
       if (f.x < closest) {
         closest = f.x;
@@ -246,13 +303,20 @@ float march(vec3 ro, vec3 rd, float tMax, out float closest, out float tClosest,
       }
       t += f.x * 0.9;
       if (t > end || i >= 109) break;
-    } else {
+    } else if (probe <= 4) {
       sum += k * f.x;
       probe++;
-      if (probe > 4) break;
+      if (probe > 4) n = normalize(sum);
+    } else {
+      shut += (a - f.x) * (probe == 5 ? 1.0 : 0.5);
+      probe++;
+      if (probe > 6) break;
     }
   }
-  if (hit > 0.0) n = normalize(sum);
+  if (hit > 0.0) {
+    n = normalize(sum);
+    occ = clamp(1.0 - 70.0 * shut, 0.0, 1.0);
+  }
   return hit;
 }
 
@@ -388,7 +452,7 @@ vec3 eye(vec3 h, vec3 n, vec3 rd, vec3 lamp, vec3 target) {
   float k = dot(normalize(h - centre), aim);
   float iris = smoothstep(0.85, 0.87, k);
   float pupil = smoothstep(0.962, 0.972, k);
-  vec3 c = mix(mix(u_cold, u_pale, 0.5) * 0.14, u_cold * 0.07, iris) * (1.0 - pupil);
+  vec3 c = mix(mix(u_cold, u_pale, 0.5) * 0.18, u_cold * 0.07, iris) * (1.0 - pupil);
   vec3 rf = reflect(rd, n);
   c += u_pale * pow(max(dot(rf, normalize(vec3(-0.4, 0.7, 0.6))), 0.0), 300.0) * 1.4;
   c += mix(u_pale, u_warm, 0.3) * pow(max(dot(rf, lamp), 0.0), 160.0) * u_lamp.w * 1.2;
@@ -397,7 +461,7 @@ vec3 eye(vec3 h, vec3 n, vec3 rd, vec3 lamp, vec3 target) {
 // Her skin in soft light; her hair, drawn up into the knot, darker, with a
 // sheen along its strands; her brows; her lips. Lit by the word she looks at,
 // by her own voice and the sky; a cold rim; a line where she meets the water.
-vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
+vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye, float occ) {
   vec3 q = toLocal(p);
   vec3 rl = dirLocal(rd);
   vec3 lq = toLocal(u_lamp.xyz);
@@ -408,11 +472,15 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
   vec3 lh = vec3(dot(lamp, hr), dot(lamp, hu), dot(lamp, hf));
   vec3 c;
   if (isEye) {
-    c = eye(h, nh, rh, lh, headLocal(lq));
+    c = eye(h, nh, rh, lh, headLocal(lq)) * mix(1.0, occ, 0.8);
   } else {
     float facing = max(dot(n, -rl), 0.0);
     float rim = pow(1.0 - facing, 3.0);
-    float wrap = max(dot(n, lamp) * 0.75 + 0.25, 0.0);
+    vec3 hq = headLocal(q);
+    rim *= 1.0 - 0.75 * smoothstep(0.05, 0.075, hq.z) * (1.0 - smoothstep(0.03, 0.05, abs(hq.x))) * smoothstep(1.43, 1.45, hq.y);
+    // The word's light falls on her a little from above, as in a portrait,
+    // so her brow, cheekbones and jaw read.
+    float wrap = max(dot(n, normalize(lamp + vec3(0.0, 0.45, 0.0))) * 0.75 + 0.25, 0.0);
     float key = wrap * wrap * u_lamp.w / (1.0 + 0.6 * dot(lq - q, lq - q));
     float sky = 0.5 + 0.5 * dot(n, normalize(vec3(-0.3, 0.8, 0.5)));
     // The voice lights her lips, chin and cheek from the mouth.
@@ -426,9 +494,7 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
     // Her head's parts, in its own frame: the hair above a hairline that is
     // high on the forehead and low at the nape.
     vec3 m = vec3(abs(h.x), h.y, h.z);
-    vec3 v = h - vec3(0.0, 1.565, -0.02);
-    float hairline = -0.062 + 0.1 * smoothstep(-0.07, 0.085, v.z);
-    float hair = smoothstep(-0.003, 0.003, v.y - hairline);
+    float hair = smoothstep(-0.002, 0.004, h.y - hairline(m));
     // Strands run to the knot: a sheen across them, fine lines along them
     // where a pixel can hold them.
     vec3 knot = vec3(0.0, 1.612, -0.116);
@@ -442,19 +508,29 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
     vec3 wk = h - knot;
     float spacing = length(wk - ax * dot(wk, ax)) * TAU / 120.0;
     float fine = 1.0 - smoothstep(0.5, 1.2, pixel * t / max(spacing, 1e-5));
-    float strand = 1.0 - 0.4 * fine * (0.5 + 0.5 * sin(atan(dot(wk, e1), dot(wk, e2)) * 120.0));
+    float strand = 1.0 - 0.22 * fine * (0.5 + 0.5 * sin(atan(dot(wk, e1), dot(wk, e2)) * 120.0));
     vec3 locks = u_cold * (0.008 + 0.025 * sky)
       + mix(u_cold, u_pale, 0.35) * sheen * strand * (0.07 + 0.3 * key)
       + u_cold * 0.2 * rim;
-    // Brows: two dark arcs over the eyes.
-    float bd = sdCap(vec3(m.xy, 0.0), vec3(0.012, 1.5578, 0.0), vec3(0.043, 1.5598, 0.0), 0.0);
-    float brow = (1.0 - smoothstep(0.0016 + 0.001 * smoothstep(0.04, 0.012, m.x), 0.003, bd)) * smoothstep(0.055, 0.07, h.z);
+    // Brows: thin soft arcs, highest two thirds of the way out, tapering to
+    // the tail; a fine dark line along each upper lid.
+    float bs = (m.x - 0.013) / 0.04;
+    float by = 1.549 + 0.012 * bs - 0.011 * bs * bs;
+    float bw = mix(0.0032, 0.0012, clamp(bs, 0.0, 1.0));
+    float brow = (1.0 - smoothstep(0.4 * bw, bw, abs(h.y - by))) * smoothstep(-0.12, 0.08, bs) * (1.0 - smoothstep(0.8, 1.0, bs)) * smoothstep(0.05, 0.065, h.z);
+    vec3 e = m - vec3(0.031, EYES.y, EYES.z);
+    float lash = (1.0 - smoothstep(0.0, 0.0011, almond(e))) * smoothstep(0.0, 0.004, e.y + 0.001) * (1.0 - smoothstep(LID_R - 0.0003, LID_R + 0.0008, length(e)));
     // Lips, a little warmer; they part as she speaks.
     float drop = 0.0075 * speak;
-    float lip = 1.0 - smoothstep(0.8, 1.2, length((h - vec3(0.0, 1.468 - 0.5 * drop, 0.098)) / vec3(0.016, 0.0085 + drop, 0.03)));
+    float lip = max(
+      1.0 - smoothstep(0.85, 1.3, length(upperLip(m) / vec3(0.0135, 0.0039, 0.0062))),
+      1.0 - smoothstep(0.85, 1.3, length((arch(h) - vec3(0.0, 1.4628 - drop, 0.0905 - 0.25 * drop)) / vec3(0.018, 0.0052, 0.0068))));
+    float mouth = (1.0 - smoothstep(0.0, 0.0012, mouthCut(h) - 0.0006)) * smoothstep(0.08, 0.09, h.z);
     c = mix(skin, locks, hair);
-    c = mix(c, u_cold * (0.012 + 0.08 * rim), brow * (1.0 - hair) * 0.85);
-    c = mix(c, mix(c, u_warm * (0.05 + 0.32 * key), 0.45), lip * (1.0 - hair));
+    c = mix(c, mix(c, locks, 0.8), brow * (1.0 - hair) * 0.6);
+    c = mix(c, u_cold * 0.01, lash * 0.8);
+    c = mix(c, mix(c, u_warm * (0.04 + 0.26 * key), 0.3), lip * (1.0 - hair));
+    c = mix(c, c * 0.3, mouth);
     // The dress: darker than her skin, matte, its light at the grazing edges
     // like velvet; soft folds fall from the breast; a fine hem.
     vec2 dr = dress(q);
@@ -464,6 +540,8 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye) {
       + mix(u_cold, u_pale, 0.25) * 0.28 * pow(1.0 - facing, 2.2);
     cloth += mix(u_cold, u_pale, 0.5) * 0.05 * (1.0 - smoothstep(0.0, 0.0022, dr.y)) * (0.5 + key);
     c = mix(c, cloth, dr.x);
+    // The folds are in shadow.
+    c *= mix(1.0, occ, 0.8);
     c += u_warm * voice * 0.7;
   }
   // Where she meets the water.
@@ -591,7 +669,8 @@ vec3 view(vec2 lens, float ys) {
     float tc;
     vec3 n;
     bool eye;
-    float th = march(o, d, lim, closest, tc, n, eye);
+    float occ;
+    float th = march(o, d, lim, closest, tc, n, eye, occ);
     float tMax = th > 0.0 ? th : lim;
     if (under) {
       // Light from the surface, fading with depth, and its slow shafts.
@@ -608,7 +687,7 @@ vec3 view(vec2 lens, float ys) {
       c += code(o, d, tMax) * veil;
     }
     if (th > 0.0) {
-      c += k * shade(o + d * th, d, th, under, n, eye);
+      c += k * shade(o + d * th, d, th, under, n, eye, occ);
     } else {
       c += k * outline(closest, tc, under);
     }

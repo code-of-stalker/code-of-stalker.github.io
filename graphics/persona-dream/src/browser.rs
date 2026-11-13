@@ -2,7 +2,8 @@
 //! from `compose` and the generators in `geometry`.
 use crate::geometry::{self, Mesh, Scene};
 use crate::{
-    compose, look, site, Frame, Look, FIGURE, LOOP_SECONDS, OTHERS, PLATES, SIZE, STILL, TAGS, UNIT,
+    compose, look, site, Frame, Look, FIGURE, LOOP_SECONDS, OTHERS, OTHER_CELL, PLATES, SIZE,
+    STILL, TAGS, UNIT,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -18,6 +19,7 @@ const SCENE: i32 = 2;
 const BLOOM: i32 = 3;
 const WIDE: i32 = 4;
 const SPARE: i32 = 5;
+const OTHERS_UNIT: i32 = 6;
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.1, 0.1, 0.12, 0.16];
 /// Authored px → clip.
@@ -158,13 +160,18 @@ fn span(mesh: &mut Mesh, build: impl FnOnce(&mut Mesh)) -> Span {
     (start, mesh.vertices() - start)
 }
 /// One draw of the figure program: its quad, its mode (0 the person, 1
-/// the reflection, 2 someone else), the depth of its plane and its alpha.
+/// the reflection, 2 someone else), the depth of its plane, its alpha, who
+/// (the cell of others.png) and its size in the world (m).
 struct FigureDraw {
     quad: Span,
     mode: f32,
     z: f32,
     alpha: f32,
+    who: f32,
+    size: [f32; 2],
 }
+/// The size of the person's quad in the world (m).
+const PERSON: [f32; 2] = [FIGURE[2] - FIGURE[0], FIGURE[3] - FIGURE[1]];
 
 #[wasm_bindgen]
 pub struct PersonaDream {
@@ -177,6 +184,7 @@ pub struct PersonaDream {
     blur: Pass,
     composite: Pass,
     texture: WebGlTexture,
+    others: WebGlTexture,
     atlas: WebGlTexture,
     targets: Option<[Target; 4]>,
     vertices: WebGlBuffer,
@@ -201,6 +209,7 @@ impl PersonaDream {
     pub fn new(
         canvas: HtmlCanvasElement,
         figure: HtmlImageElement,
+        others: HtmlImageElement,
         labels: HtmlImageElement,
     ) -> Result<PersonaDream, JsValue> {
         let options = js_sys::Object::new();
@@ -215,7 +224,14 @@ impl PersonaDream {
         let figure_pass = Pass::new(
             &gl,
             include_str!("shaders/figure.frag"),
-            &["u_figure", "u_mode", "u_light", "u_presence"],
+            &[
+                "u_figure",
+                "u_others",
+                "u_who",
+                "u_mode",
+                "u_light",
+                "u_presence",
+            ],
         )?;
         let shell = Pass::new(
             &gl,
@@ -250,8 +266,10 @@ impl PersonaDream {
         )?;
         let texture = image_texture(&gl, FIGURE_UNIT, &figure)?;
         let atlas = image_texture(&gl, ATLAS_UNIT, &labels)?;
+        let others = image_texture(&gl, OTHERS_UNIT, &others)?;
         gl.use_program(Some(&figure_pass.program));
         gl.uniform1i(figure_pass.at("u_figure"), FIGURE_UNIT);
+        gl.uniform1i(figure_pass.at("u_others"), OTHERS_UNIT);
         gl.use_program(Some(&shell.program));
         gl.uniform1i(shell.at("u_figure"), FIGURE_UNIT);
         gl.use_program(Some(&text.program));
@@ -283,6 +301,7 @@ impl PersonaDream {
             blur,
             composite,
             texture,
+            others,
             atlas,
             targets: None,
             vertices,
@@ -386,6 +405,7 @@ impl PersonaDream {
         }
         self.gl.delete_texture(Some(&self.texture));
         self.gl.delete_texture(Some(&self.atlas));
+        self.gl.delete_texture(Some(&self.others));
         if let Some(targets) = self.targets.take() {
             for t in &targets {
                 t.delete(&self.gl);
@@ -495,10 +515,8 @@ impl PersonaDream {
         let depth = d.z - cam.eye[2];
         let coc = cam.coc(depth);
         let px_per_m = cam.focal / depth;
-        let size = [
-            (FIGURE[2] - FIGURE[0]) * px_per_m,
-            (FIGURE[3] - FIGURE[1]) * px_per_m,
-        ];
+        let size = [d.size[0] * px_per_m, d.size[1] * px_per_m];
+        gl.uniform1f(self.figure.at("u_who"), d.who);
         // The reflection lies a little deeper: softer.
         let extra = if d.mode == 1.0 { 1.8 } else { 1.0 };
         gl.uniform4f(
@@ -589,33 +607,39 @@ impl PersonaDream {
         let cam = f.camera;
         let mut figures = Vec::with_capacity(5);
         if f.others > 0.005 {
-            for (x, z, left) in OTHERS {
+            for (x, z, who) in OTHERS {
                 figures.push(FigureDraw {
                     quad: span(&mut mesh, |m| {
-                        geometry::figure_quad(m, &cam, [x, z], left, false);
+                        geometry::figure_quad(m, &cam, [x, z], geometry::other_rect(), false);
                     }),
                     mode: 2.0,
                     z,
                     alpha: f.others * f.light,
+                    who: who as f32,
+                    size: OTHER_CELL,
                 });
             }
         }
         figures.push(FigureDraw {
             quad: span(&mut mesh, |m| {
-                geometry::figure_quad(m, &cam, [0.0, 0.0], false, true);
+                geometry::figure_quad(m, &cam, [0.0, 0.0], FIGURE, true);
             }),
             mode: 1.0,
             z: 0.0,
             alpha: 1.0,
+            who: 0.0,
+            size: PERSON,
         });
         let person = span(&mut mesh, |m| {
-            geometry::figure_quad(m, &cam, [0.0, 0.0], false, false);
+            geometry::figure_quad(m, &cam, [0.0, 0.0], FIGURE, false);
         });
         figures.push(FigureDraw {
             quad: person,
             mode: 0.0,
             z: 0.0,
             alpha: 1.0,
+            who: 0.0,
+            size: PERSON,
         });
         let front = span(&mut mesh, |m| {
             geometry::pieces(m, &f, false);

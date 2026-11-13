@@ -12,8 +12,8 @@
 use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK};
 use crate::{
     card_rows, curve, hash, lerp3, plate_at, site, smooth, source, tag_row, verdict_row, Camera,
-    Frame, Kind, Piece, Projected, COLUMNS, FIGURE, FRAME_RECT, FRAME_Z, LOOP_SECONDS, ROWS, TAGS,
-    TAG_Z, UNIT, VERDICTS,
+    Frame, Kind, Piece, Projected, COLUMNS, FRAME_RECT, FRAME_Z, LOOP_SECONDS, OTHER_CELL, ROWS,
+    TAGS, TAG_Z, UNIT, VERDICTS,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -551,28 +551,45 @@ pub fn dust(m: &mut Mesh, s: &Scene, f: &Frame, near: bool) {
     }
 }
 
-/// The figure's quad in the world (the figure program draws it): the person
-/// at the origin, another person deep in the room (`at`: world x, z;
-/// `left`: facing left), or the person's reflection in the polished floor.
-pub fn figure_quad(m: &mut Mesh, cam: &Camera, at: [f32; 2], left: bool, mirrored: bool) -> bool {
+/// The figure's quad in the world (the figure program draws it): `rect`
+/// (left, bottom, right, top, m) stood at `at` (world x, z): the person at
+/// the origin (FIGURE), the person's reflection in the polished floor
+/// (`mirrored`), or one cell of others.png deep in the room (other_rect).
+pub fn figure_quad(
+    m: &mut Mesh,
+    cam: &Camera,
+    at: [f32; 2],
+    rect: [f32; 4],
+    mirrored: bool,
+) -> bool {
     let corner = |x: f32, y: f32| {
         let p = [at[0] + x, if mirrored { -y } else { y }, at[1]];
         cam.project(p).map(|q| q.at)
     };
-    let [l, b, r, t] = FIGURE;
+    let [l, b, r, t] = rect;
     let (Some(lt), Some(rt), Some(rb), Some(lb)) =
         (corner(l, t), corner(r, t), corner(r, b), corner(l, b))
     else {
         return false;
     };
-    let (u0, u1) = if left { (1.0, 0.0) } else { (0.0, 1.0) };
     m.quad(
         [lt, rt, rb, lb],
-        [[u0, 0.0], [u1, 0.0], [u1, 1.0], [u0, 1.0]],
+        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
         [[0.0; 4]; 4],
         [[0.0; 3]; 4],
     );
     true
+}
+
+/// One cell of others.png in the world: centred on its x, its feet on the
+/// floor.
+pub const fn other_rect() -> [f32; 4] {
+    [
+        -0.5 * OTHER_CELL[0],
+        0.0,
+        0.5 * OTHER_CELL[0],
+        OTHER_CELL[1],
+    ]
 }
 
 /// A rectangle facing the lens around `at` (world), `w` × `h` metres:
@@ -1475,6 +1492,7 @@ mod tests {
                 crate::EYE,
                 crate::HEEL,
                 crate::BALL,
+                crate::TOE,
                 crate::on_figure(85.0, crate::CROWN_SVG),
             ] {
                 let q = cam.project(p).unwrap();

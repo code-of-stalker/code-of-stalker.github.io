@@ -1,19 +1,30 @@
-// Rasterizes the declarative sources once: Art's approved seated figure
-// (spoken-thought-person.svg) and the words of the page in Disket Mono.
-// Red = the opaque cover (outer contour filled, chair included), green = ink
-// lines, blue = the body alone (the cover without the chair). The labels are
-// white on black, one 128 px row each. Also writes src/generated.rs: the
-// body's edges per row, the plates the character is built of (sites of a
-// relaxed Voronoi mosaic over the body) and the ink of every label.
+// Rasterizes the sources once. The standing person: his head and neck are
+// Art's approved drawing (spoken-thought-person.svg) down to the cut row,
+// the body below is drawn by the Rust baker (examples/bake_people: a posed
+// body of rounded forms, inked by outline, contour and the folds under the
+// muscles); the drawing's sternomastoid line runs on down the baked neck.
+// The three other people of the room come from the same baker, one cell
+// each. Also the words of the page in Disket Mono. Figure: red = the opaque
+// cover, green = ink lines, blue = the body (the same cover). Others: red =
+// cover, green = ink. The labels are white on black, one 128 px row each.
+// Writes src/generated.rs too: the body's edges per row, the plates the
+// character is built of (sites of a relaxed Voronoi mosaic over the body)
+// and the ink of every label.
 // Motion, light and color stay in Rust; these are immutable inputs.
-// Run from the project root: node graphics/persona-dream/tools/prepare-assets.mjs
+// Run from the project root (needs cargo and Playwright):
+//   node graphics/persona-dream/tools/prepare-assets.mjs
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const scene = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const engine = path.resolve(scene, '../product-engine/engine/assets');
+const baked = path.join(scene, 'target/people');
+execFileSync('cargo', ['run', '--release', '--example', 'bake_people', '--', baked], { cwd: scene, stdio: 'inherit' });
+const png = async name => 'data:image/png;base64,' + (await readFile(path.join(baked, name))).toString('base64');
+const [body, others] = [await png('figure-body.png'), await png('others.png')];
 const svg = await readFile(path.join(engine, 'spoken-thought-person.svg'), 'utf8');
 const font = (await readFile(path.join(engine, 'fonts/Disket-Mono-Regular.ttf'))).toString('base64');
 // The page's words, in the order of the film. The three cards (one per
@@ -26,11 +37,16 @@ const words = [
   'Я ТАКОЙ-ТО', 'Я НЕ ТАКОЙ', 'Я ДОЛЖЕН', 'Я ХОЧУ',
   'МОЖНО', 'НЕЛЬЗЯ', 'ХОРОШО', 'ПЛОХО',
 ];
-// 4 px per SVG unit: the close-ups on the face stay crisp.
-const K = 4, W = 335 * K, H = 530 * K, ATLAS = 1536;
+// 4 px per SVG unit: the close-ups on the face stay crisp. The figure's
+// frame is the baker's (examples/bake_people/main.rs FIGURE).
+const K = 4, VIEW = [240, 672], W = VIEW[0] * K, H = VIEW[1] * K, ATLAS = 1536;
+// The drawing gives way to the baked body over these rows (the baker cuts
+// its neck to the drawn one's width there), and the sternomastoid's drawn
+// line carries on down to the collarbones.
+const CUT = 112, BAND = 3, MASTOID = { end: 136, fade: 6, half: 3.5, x0: 86, y0: 106, slope: 13 / 29 };
 const browser = await chromium.launch();
 const page = await browser.newPage();
-const { figure, labels, edges, cells, ink, band } = await page.evaluate(async ({ svg, font, words, K, W, H, ATLAS }) => {
+const { figure, atlas, labels, edges, cells, ink, band } = await page.evaluate(async ({ svg, body, others, font, words, K, VIEW, W, H, ATLAS, CUT, BAND, MASTOID }) => {
   const face = new FontFace('Disket', `url(data:font/ttf;base64,${font})`);
   await face.load(); document.fonts.add(face);
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
@@ -42,48 +58,67 @@ const { figure, labels, edges, cells, ink, band } = await page.evaluate(async ({
     const g = c.getContext('2d'); g.setTransform(K, 0, 0, K, 0, 0); draw(g);
     return g.getImageData(0, 0, W, H).data;
   };
-  const cover = layer(g => { g.fillStyle = '#fff'; g.fill(new Path2D(outline), 'nonzero'); });
-  const lines = layer(g => { g.fillStyle = '#fff'; for (const d of inks) g.fill(new Path2D(d), 'evenodd'); });
-  // The chair: its backrest behind the back, the seat under the thigh and its
-  // legs; measured on the SVG grid (units). The body keeps the rest.
-  const chair = layer(g => {
-    g.fillStyle = '#fff';
-    g.beginPath();
-    g.moveTo(0, 190); g.lineTo(34, 190); g.lineTo(34, 262); g.lineTo(39, 272); g.lineTo(41, 345);
-    g.lineTo(212, 335); g.lineTo(220, 335); g.lineTo(220, 368); g.lineTo(200, 530); g.lineTo(0, 530); g.closePath();
-    g.fill();
-  });
+  const pixels = async url => {
+    const node = new Image(); node.src = url; await node.decode();
+    const c = document.createElement('canvas'); c.width = node.width; c.height = node.height;
+    const g = c.getContext('2d'); g.drawImage(node, 0, 0);
+    return { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
+  };
+  const drawnCover = layer(g => { g.fillStyle = '#fff'; g.fill(new Path2D(outline), 'nonzero'); });
+  const drawnInk = layer(g => { g.fillStyle = '#fff'; for (const d of inks) g.fill(new Path2D(d), 'evenodd'); });
+  const bake = await pixels(body);
+  if (bake.w !== W || bake.h !== H) throw new Error(`figure-body.png is ${bake.w} × ${bake.h}, not ${W} × ${H}`);
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const o = out.getContext('2d'); const img = o.createImageData(W, H);
-  const body = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) {
-    const c = cover[i * 4 + 3], l = lines[i * 4 + 3], k = chair[i * 4 + 3] / 255;
-    body[i] = Math.round(c * (1 - k));
-    img.data[i * 4] = c; img.data[i * 4 + 1] = l; img.data[i * 4 + 2] = body[i]; img.data[i * 4 + 3] = 255;
+  const cover = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) {
+    const ry = (j + 0.5) / K;
+    const t = Math.min(1, Math.max(0, (ry - (CUT - BAND)) / (2 * BAND)));
+    const lineX = MASTOID.x0 + (ry - MASTOID.y0) * MASTOID.slope;
+    const fade = Math.min(1, Math.max(0, (MASTOID.end - ry) / MASTOID.fade));
+    for (let i = 0; i < W; i++) {
+      const n = j * W + i;
+      const dc = drawnCover[n * 4 + 3], di = drawnInk[n * 4 + 3];
+      const bc = bake.data[n * 4], bi = bake.data[n * 4 + 1];
+      const c = Math.round(dc * (1 - t) + bc * t);
+      let l = Math.round(di * (1 - t) + bi * t);
+      const rx = (i + 0.5) / K;
+      if (ry > CUT - BAND && ry < MASTOID.end && Math.abs(rx - lineX) < MASTOID.half) l = Math.max(l, Math.round(di * fade));
+      cover[n] = c;
+      img.data[n * 4] = c; img.data[n * 4 + 1] = l; img.data[n * 4 + 2] = c; img.data[n * 4 + 3] = 255;
+    }
   }
   o.putImageData(img, 0, 0);
+  // The others, as baked (re-encoded here, compressed).
+  const people = await pixels(others);
+  const a = document.createElement('canvas'); a.width = people.w; a.height = people.h;
+  const ac = a.getContext('2d'); const ai = ac.createImageData(people.w, people.h);
+  for (let n = 0; n < people.w * people.h; n++) {
+    ai.data[n * 4] = people.data[n * 4]; ai.data[n * 4 + 1] = people.data[n * 4 + 1]; ai.data[n * 4 + 3] = 255;
+  }
+  ac.putImageData(ai, 0, 0);
   // The body's back and front (SVG x) on 65 rows from the top (0) to the
-  // bottom (530) of the SVG, a few rows merged so the marks glide.
+  // bottom of the SVG, a few rows merged so the marks glide.
   const edges = Array.from({ length: 65 }, (_, i) => {
     const y = Math.round(i / 64 * (H - 1));
     let x0 = W, x1 = -1;
     for (let yy = Math.max(0, y - 6); yy <= Math.min(H - 1, y + 6); yy++)
-      for (let x = 0; x < W; x++) if (body[yy * W + x] > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+      for (let x = 0; x < W; x++) if (cover[yy * W + x] > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
     return x1 < 0 ? [0, 0] : [x0 / K, (x1 + 1) / K];
   });
   // The plates: a jittered grid of sites over the body (SVG units), relaxed
   // three times towards the centres of their cells, so the mosaic is even.
-  const inside = (x, y) => x >= 0 && y >= 0 && x < 335 && y < 530 && body[Math.floor(y * K) * W + Math.floor(x * K)] > 127;
+  const inside = (x, y) => x >= 0 && y >= 0 && x < VIEW[0] && y < VIEW[1] && cover[Math.floor(y * K) * W + Math.floor(x * K)] > 127;
   const rand = (n => () => ((n = (n * 1664525 + 1013904223) >>> 0) / 4294967296))(7);
   const S = 31;
   let sites = [];
-  for (let y = S / 2; y < 530; y += S) for (let x = S / 2; x < 335; x += S) {
+  for (let y = S / 2; y < VIEW[1]; y += S) for (let x = S / 2; x < VIEW[0]; x += S) {
     const p = [x + (rand() - 0.5) * S * 0.7, y + (rand() - 0.5) * S * 0.7];
     if (inside(p[0], p[1])) sites.push(p);
   }
   for (let k = 0; k < 3; k++) {
     const sum = sites.map(() => [0, 0, 0]);
-    for (let y = 0.5; y < 530; y += 1) for (let x = 0.5; x < 335; x += 1) {
+    for (let y = 0.5; y < VIEW[1]; y += 1) for (let x = 0.5; x < VIEW[0]; x += 1) {
       if (!inside(x, y)) continue;
       let best = 0, d = 1e9;
       sites.forEach((s, i) => { const e = (s[0] - x) ** 2 + (s[1] - y) ** 2; if (e < d) { d = e; best = i; } });
@@ -112,16 +147,17 @@ const { figure, labels, edges, cells, ink, band } = await page.evaluate(async ({
     }
     return [x0, x1 + 1];
   });
-  return { figure: out.toDataURL('image/png'), labels: l.toDataURL('image/png'), edges, cells: sites, ink, band: [top, bottom + 1] };
-}, { svg, font, words, K, W, H, ATLAS });
+  return { figure: out.toDataURL('image/png'), atlas: a.toDataURL('image/png'), labels: l.toDataURL('image/png'), edges, cells: sites, ink, band: [top, bottom + 1] };
+}, { svg, body, others, font, words, K, VIEW, W, H, ATLAS, CUT, BAND, MASTOID });
 await browser.close();
 await writeFile(path.join(scene, 'assets/figure.png'), Buffer.from(figure.split(',')[1], 'base64'));
+await writeFile(path.join(scene, 'assets/others.png'), Buffer.from(atlas.split(',')[1], 'base64'));
 await writeFile(path.join(scene, 'assets/labels.png'), Buffer.from(labels.split(',')[1], 'base64'));
 const rows = list => list.map(([a, b]) => `    [${a.toFixed(1)}, ${b.toFixed(1)}],`).join('\n');
-await writeFile(path.join(scene, 'src/generated.rs'), `//! Generated by tools/prepare-assets.mjs from the figure's SVG and the labels.
+await writeFile(path.join(scene, 'src/generated.rs'), `//! Generated by tools/prepare-assets.mjs from the figure and the labels.
 
-/// The body without the chair: back and front (SVG x) on 65 rows, from the
-/// top (0) to the bottom (530) of the SVG; [0, 0] where there is no body.
+/// The standing body: back and front (SVG x) on 65 rows, from the top (0)
+/// to the bottom (${VIEW[1]}) of the SVG; [0, 0] where there is no body.
 pub const SILHOUETTE: [[f32; 2]; 65] = [
 ${rows(edges)}
 ];
@@ -142,4 +178,4 @@ ${rows(ink)}
 /// commas included. Capitals stand 44 px tall in it.
 pub const LABEL_BAND: [f32; 2] = [${band[0].toFixed(1)}, ${band[1].toFixed(1)}];
 `);
-console.log(`Prepared figure.png (${W} × ${H}), labels.png (${ATLAS} × ${128 * words.length}), ${cells.length} plates and src/generated.rs.`);
+console.log(`Prepared figure.png (${W} × ${H}), others.png, labels.png (${ATLAS} × ${128 * words.length}), ${cells.length} plates and src/generated.rs.`);

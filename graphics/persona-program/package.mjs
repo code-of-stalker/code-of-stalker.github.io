@@ -11,7 +11,7 @@ for (const file of ['watcher_persona_program.js', 'watcher_persona_program_bg.wa
 // One set of inputs for every theme: color is applied in Rust's composite pass.
 await mkdir(path.join(output, 'assets'), { recursive: true });
 // Lossless WebP copies of the authored PNGs (graphics/lossless-webp.py): same pixels, smaller download.
-for (const file of ['figure.webp', 'labels.webp']) await copyFile(path.join(scene, 'assets', file), path.join(output, 'assets', file));
+for (const file of ['labels.webp']) await copyFile(path.join(scene, 'assets', file), path.join(output, 'assets', file));
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_persona_program_bg.wasm')))) throw new Error('Invalid persona-program WASM');
-console.log('Packaged Rust «Механизм обусловленности»: 66-second seamless loop.');
+console.log('Packaged Rust «Механизм обусловленности»: 70-second seamless loop.');

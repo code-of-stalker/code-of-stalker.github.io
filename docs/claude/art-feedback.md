@@ -163,3 +163,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Icons (2026-11-11): chose «Характер» (each icon its own springy scene) over subtler variants, and wants every icon animated, none left still («давай всё сделаем классным»).
 - Diary filters (2026-11-11): the chosen option must read at a glance: 100% accent fill, dark text. No text/voice media filters.
 - Step menu (2026-11-13): scenes behind and under the open step menu keep moving («опять останавливает анимации, мы же правили это»), and the menu keeps all four edges at every display scale.
+- «Шкатулка» (2026-11-13): the Тишина look approved at the first prototype («Ок, дальше темы»): the ray-marched music box with a faceless wooden figurine, one beat per verb.

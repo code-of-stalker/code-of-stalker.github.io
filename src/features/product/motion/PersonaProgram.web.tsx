@@ -21,9 +21,9 @@ const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as 
   .catch(error => { runtime = undefined; throw error; });
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
- * frames; Rust owns the camera and its focus, the shell of plates, the circuit
- * under it, the triggers, the impulse and its ready reaction, the card and the
- * colors of every theme (one set of inputs serves light and dark pages alike). */
+ * frames; Rust owns the camera and its focus, the music box (drum, comb, gears,
+ * key, the figurine on the lid), the lamp, the captions and the colors of every
+ * dark theme. */
 export function PersonaProgram(props: ArtProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
@@ -51,8 +51,8 @@ export function PersonaProgram(props: ArtProps) {
       controller.report(id, { level: snapshot.level, surface: 'artwork', density: output.width / Math.max(1, rect.width),
         buffer: [output.width, output.height], source: [1536, 1024], blur: [output.width / 4, output.height / 4], draws: renderer.frame_count(),
         sourceUpdates: 1, blurUpdates: 4, contourUpdates: 0, idle: !removeJob, cadence,
-        backend: 'Rust · persona program WebGL2', textures: 6,
-        textureBytes: (1340 * 2120 + 1536 * 1792) * 4 * 4 / 3 + output.width * output.height * 4 * (2 + 1 / 8 + 1 / 64) });
+        backend: 'Rust · persona program WebGL2', textures: 2,
+        textureBytes: 1536 * 1792 * 4 * 4 / 3 + output.width * output.height * 4 * 2 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);

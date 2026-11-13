@@ -1,9 +1,9 @@
 //! Browser adapter: WebGL2 objects and draw order. Every motion value comes
-//! from `compose` and the generators in `geometry`.
-use crate::geometry::{self, Mesh, Scene};
+//! from `compose`; the shaders paint the music box and the lens.
+use crate::generated::{ATLAS, LABEL_BAND, LABEL_INK};
 use crate::{
-    compose, look, site, Frame, Look, APART, FIGURE, LOOP_SECONDS, OTHERS, PLATES, SIZE, STILL,
-    UNIT,
+    band_above, compose, line_place, look, smooth, words, Look, Program, JOINTS, LAMP,
+    LOOP_SECONDS, SIZE, STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{
@@ -12,17 +12,17 @@ use web_sys::{
     WebGlVertexArrayObject,
 };
 
-const VERTEX: &str = include_str!("shaders/shape.vert");
-const FIGURE_UNIT: i32 = 0;
-const ATLAS_UNIT: i32 = 1;
-const SCENE: i32 = 2;
-const BLOOM: i32 = 3;
-const WIDE: i32 = 4;
-const SPARE: i32 = 5;
+const SCREEN: &str = include_str!("shaders/screen.vert");
+const SCENE: &str = include_str!("shaders/scene.frag");
+const ATLAS_UNIT: i32 = 0;
+const SCENE_UNIT: i32 = 2;
+/// The ray-marched pass stays under this many pixels; the lens's blur hides
+/// the upscale.
+const SCENE_PIXELS: f32 = 1.1e6;
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.1, 0.1, 0.12, 0.16];
-/// Authored px → clip.
-const VIEW: [f32; 4] = [2.0 / SIZE[0], -2.0 / SIZE[1], -1.0, 1.0];
+/// Floats per text vertex: position, atlas position, color.
+const TEXT_STRIDE: usize = 8;
 
 fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     let s = gl.create_shader(kind).ok_or("Cannot allocate shader")?;
@@ -39,8 +39,8 @@ fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     }
     Ok(s)
 }
-fn program(gl: &Gl, frag: &str) -> Result<WebGlProgram, JsValue> {
-    let v = shader(gl, Gl::VERTEX_SHADER, VERTEX)?;
+fn program(gl: &Gl, vertex: &str, frag: &str) -> Result<WebGlProgram, JsValue> {
+    let v = shader(gl, Gl::VERTEX_SHADER, vertex)?;
     let f = shader(gl, Gl::FRAGMENT_SHADER, frag)?;
     let p = gl.create_program().ok_or("Cannot allocate program")?;
     gl.attach_shader(&p, &v);
@@ -66,11 +66,11 @@ struct Pass {
     uniforms: Vec<(&'static str, Option<WebGlUniformLocation>)>,
 }
 impl Pass {
-    fn new(gl: &Gl, fragment: &str, names: &[&'static str]) -> Result<Self, JsValue> {
-        let program = program(gl, fragment)?;
-        let uniforms = std::iter::once("u_view")
-            .chain(names.iter().copied())
-            .map(|name| (name, gl.get_uniform_location(&program, name)))
+    fn new(gl: &Gl, vertex: &str, fragment: &str, names: &[&'static str]) -> Result<Self, JsValue> {
+        let program = program(gl, vertex, fragment)?;
+        let uniforms = names
+            .iter()
+            .map(|name| (*name, gl.get_uniform_location(&program, name)))
             .collect();
         Ok(Self { program, uniforms })
     }
@@ -107,7 +107,7 @@ fn image_texture(gl: &Gl, slot: i32, image: &HtmlImageElement) -> Result<WebGlTe
     Ok(t)
 }
 
-/// An offscreen color target.
+/// An offscreen color target, bound to its own texture unit.
 struct Target {
     texture: WebGlTexture,
     frame: WebGlFramebuffer,
@@ -151,39 +151,68 @@ impl Target {
     }
 }
 
-/// First vertex and vertex count of one layer in the frame's shared buffer.
-type Span = (i32, i32);
-fn span(mesh: &mut Mesh, build: impl FnOnce(&mut Mesh)) -> Span {
-    let start = mesh.vertices();
-    build(mesh);
-    (start, mesh.vertices() - start)
-}
-/// One draw of the figure program: its quad, its mode (0 the person, 1
-/// the reflection, 2 someone else), the depth of its plane and its alpha.
-struct FigureDraw {
-    quad: Span,
-    mode: f32,
-    z: f32,
-    alpha: f32,
+/// The words of the caption at `t`: quads of the atlas, each cut into
+/// slices so a line can be written in from the left.
+fn caption(t: f32, look: &Look, out: &mut Vec<f32>) {
+    out.clear();
+    for line in words(t) {
+        if line.alpha < 0.004 {
+            continue;
+        }
+        let [left, cap_top, cap] = line_place(line.row);
+        let per = cap / 44.0;
+        let [ink0, ink1] = LABEL_INK[line.row];
+        let pad = 6.0;
+        let top = cap_top - band_above() * per;
+        let height = (LABEL_BAND[1] - LABEL_BAND[0]) * per;
+        let x0 = left - pad * per;
+        let width = (ink1 - ink0 + 2.0 * pad) * per;
+        let v0 = (line.row as f32 * 128.0 + LABEL_BAND[0]) / ATLAS[1];
+        let v1 = (line.row as f32 * 128.0 + LABEL_BAND[1]) / ATLAS[1];
+        let u0 = (ink0 - pad) / ATLAS[0];
+        let u1 = (ink1 + pad) / ATLAS[0];
+        let color = if line.key { look.word } else { look.lead };
+        let wipe = line.wipe * 1.25;
+        let n = 16;
+        let light = |s: usize| line.alpha * (1.0 - smooth(wipe - 0.25, wipe, s as f32 / n as f32));
+        for s in 0..n {
+            let (s0, s1) = (s as f32 / n as f32, (s + 1) as f32 / n as f32);
+            let (a0, a1) = (light(s), light(s + 1));
+            if a0 < 0.002 && a1 < 0.002 {
+                continue;
+            }
+            let (xa, xb) = (x0 + width * s0, x0 + width * s1);
+            let (ua, ub) = (u0 + (u1 - u0) * s0, u0 + (u1 - u0) * s1);
+            let corner = |x: f32, y: f32, u: f32, v: f32, a: f32| {
+                [x, y, u, v, color[0] * a, color[1] * a, color[2] * a, a]
+            };
+            let q = [
+                corner(xa, top, ua, v0, a0),
+                corner(xb, top, ub, v0, a1),
+                corner(xb, top + height, ub, v1, a1),
+                corner(xa, top + height, ua, v1, a0),
+            ];
+            for i in [0, 1, 2, 0, 2, 3] {
+                out.extend_from_slice(&q[i]);
+            }
+        }
+    }
 }
 
 #[wasm_bindgen]
 pub struct PersonaProgram {
     gl: Gl,
     canvas: HtmlCanvasElement,
-    soft: Pass,
-    figure: Pass,
-    shell: Pass,
+    program: Program,
+    scene: Pass,
+    finish: Pass,
     text: Pass,
-    blur: Pass,
-    composite: Pass,
-    texture: WebGlTexture,
     atlas: WebGlTexture,
-    targets: Option<[Target; 4]>,
-    vertices: WebGlBuffer,
+    view: Option<Target>,
+    screen: WebGlVertexArrayObject,
     layout: WebGlVertexArrayObject,
-    scene: Scene,
-    mesh: Mesh,
+    vertices: WebGlBuffer,
+    floats: Vec<f32>,
     bytes: Vec<u8>,
     look: Look,
     soft_edges: bool,
@@ -201,7 +230,6 @@ impl PersonaProgram {
     #[wasm_bindgen(constructor)]
     pub fn new(
         canvas: HtmlCanvasElement,
-        figure: HtmlImageElement,
         labels: HtmlImageElement,
     ) -> Result<PersonaProgram, JsValue> {
         let options = js_sys::Object::new();
@@ -212,85 +240,76 @@ impl PersonaProgram {
             .get_context_with_context_options("webgl2", &options)?
             .ok_or("WebGL2 unavailable")?
             .dyn_into()?;
-        let soft = Pass::new(&gl, include_str!("shaders/soft.frag"), &[])?;
-        let figure_pass = Pass::new(
+        let scene = Pass::new(
             &gl,
-            include_str!("shaders/figure.frag"),
-            &["u_figure", "u_mode", "u_light", "u_presence"],
+            SCREEN,
+            SCENE,
+            &[
+                "u_res", "u_eye", "u_view", "u_lens", "u_drum", "u_pins", "u_teeth", "u_joints",
+                "u_light", "u_lamp", "u_paper", "u_key", "u_fill",
+            ],
         )?;
-        let shell = Pass::new(
+        let finish = Pass::new(
             &gl,
-            include_str!("shaders/shell.frag"),
-            &["u_figure", "u_sites", "u_plates", "u_shell", "u_count"],
-        )?;
-        let text = Pass::new(&gl, include_str!("shaders/text.frag"), &["u_atlas"])?;
-        let blur = Pass::new(
-            &gl,
-            include_str!("shaders/bloom.frag"),
-            &["u_source", "u_step", "u_threshold", "u_body"],
-        )?;
-        let composite = Pass::new(
-            &gl,
-            include_str!("shaders/composite.frag"),
+            SCREEN,
+            include_str!("shaders/finish.frag"),
             &[
                 "u_scene",
-                "u_bloom",
-                "u_wide",
+                "u_res",
                 "u_paper",
-                "u_room",
-                "u_person",
-                "u_body",
-                "u_lamp",
                 "u_backdrop",
-                "u_cone_a",
-                "u_cone_b",
-                "u_air",
                 "u_post",
                 "u_edges",
             ],
         )?;
-        let texture = image_texture(&gl, FIGURE_UNIT, &figure)?;
+        let text = Pass::new(
+            &gl,
+            include_str!("shaders/text.vert"),
+            include_str!("shaders/text.frag"),
+            &["u_atlas", "u_size"],
+        )?;
         let atlas = image_texture(&gl, ATLAS_UNIT, &labels)?;
-        gl.use_program(Some(&figure_pass.program));
-        gl.uniform1i(figure_pass.at("u_figure"), FIGURE_UNIT);
-        gl.use_program(Some(&shell.program));
-        gl.uniform1i(shell.at("u_figure"), FIGURE_UNIT);
+        // The drum's pins are fixed for good: uploaded once.
+        let program = Program::new();
+        gl.use_program(Some(&scene.program));
+        gl.uniform4uiv_with_u32_array(scene.at("u_pins"), &program.packed());
+        gl.uniform3fv_with_f32_array(scene.at("u_lamp"), &LAMP);
+        gl.use_program(Some(&finish.program));
+        gl.uniform1i(finish.at("u_scene"), SCENE_UNIT);
+        gl.uniform4fv_with_f32_array(finish.at("u_edges"), &EDGES);
         gl.use_program(Some(&text.program));
         gl.uniform1i(text.at("u_atlas"), ATLAS_UNIT);
-        gl.use_program(Some(&composite.program));
-        gl.uniform1i(composite.at("u_scene"), SCENE);
-        gl.uniform1i(composite.at("u_bloom"), BLOOM);
-        gl.uniform1i(composite.at("u_wide"), WIDE);
-        gl.uniform4fv_with_f32_array(composite.at("u_edges"), &EDGES);
+        gl.uniform2f(text.at("u_size"), SIZE[0], SIZE[1]);
 
+        let screen = gl
+            .create_vertex_array()
+            .ok_or("Cannot allocate vertex array")?;
         let layout = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
         gl.bind_vertex_array(Some(&layout));
         let vertices = gl.create_buffer().ok_or("Cannot allocate buffer")?;
         gl.bind_buffer(Gl::ARRAY_BUFFER, Some(&vertices));
-        let stride = (geometry::STRIDE * 4) as i32;
-        for (index, size, offset) in [(0, 2, 0), (1, 2, 8), (2, 4, 16), (3, 3, 32)] {
+        let stride = (TEXT_STRIDE * 4) as i32;
+        for (index, size, offset) in [(0, 2, 0), (1, 2, 8), (2, 4, 16)] {
             gl.enable_vertex_attrib_array(index);
             gl.vertex_attrib_pointer_with_i32(index, size, Gl::FLOAT, false, stride, offset);
         }
+        gl.bind_vertex_array(None);
         Ok(Self {
             gl,
             canvas,
-            soft,
-            figure: figure_pass,
-            shell,
+            program,
+            scene,
+            finish,
             text,
-            blur,
-            composite,
-            texture,
             atlas,
-            targets: None,
-            vertices,
+            view: None,
+            screen,
             layout,
-            scene: Scene::new(),
-            mesh: Mesh::new(40_000),
-            bytes: Vec::with_capacity(40_000 * geometry::STRIDE * 4),
+            vertices,
+            floats: Vec::with_capacity(4096),
+            bytes: Vec::with_capacity(16384),
             look: look(0),
             soft_edges: false,
             backdrop: [0.0; 3],
@@ -343,8 +362,8 @@ impl PersonaProgram {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one composed moment: the circuit and the living
-    /// body apart, the impulse's way traced.
+    /// Reduced motion holds one composed moment: the drum stopped, the
+    /// figurine frozen mid-gesture under the lamp, «И РАЗЛИЧАТЬ.» lit.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -367,7 +386,8 @@ impl PersonaProgram {
             self.draw();
         }
     }
-    /// The app theme by its `graphicsPalette` code (0 Искра … 6 Рассвет).
+    /// The app theme by its `graphicsPalette` code (0 Искра, 2 Тишина,
+    /// 3 Астрал, 4 Матрица; anything else gets Тишина).
     pub fn palette(&mut self, code: u32) {
         let next = look(code);
         if self.look != next {
@@ -385,71 +405,41 @@ impl PersonaProgram {
         if self.disposed {
             return;
         }
-        self.gl.delete_texture(Some(&self.texture));
-        self.gl.delete_texture(Some(&self.atlas));
-        if let Some(targets) = self.targets.take() {
-            for t in &targets {
-                t.delete(&self.gl);
-            }
+        let gl = &self.gl;
+        gl.delete_texture(Some(&self.atlas));
+        if let Some(view) = self.view.take() {
+            view.delete(gl);
         }
-        self.gl.delete_buffer(Some(&self.vertices));
-        self.gl.delete_vertex_array(Some(&self.layout));
-        for pass in [
-            &self.soft,
-            &self.figure,
-            &self.shell,
-            &self.text,
-            &self.blur,
-            &self.composite,
-        ] {
-            self.gl.delete_program(Some(&pass.program));
+        gl.delete_buffer(Some(&self.vertices));
+        gl.delete_vertex_array(Some(&self.screen));
+        gl.delete_vertex_array(Some(&self.layout));
+        for pass in [&self.scene, &self.finish, &self.text] {
+            gl.delete_program(Some(&pass.program));
         }
         self.disposed = true;
     }
 }
 
 impl PersonaProgram {
-    fn ensure_targets(&mut self, width: i32, height: i32) -> Result<(), JsValue> {
-        let quarter = [(width / 4).max(1), (height / 4).max(1)];
-        let eighth = [(width / 8).max(1), (height / 8).max(1)];
-        if let Some(t) = &self.targets {
-            if t[0].size == [width, height] {
-                return Ok(());
-            }
+    /// The ray-marched pass's target: the canvas, or less on big canvases.
+    fn ensure_view(&mut self, width: i32, height: i32) -> Result<(), JsValue> {
+        let scale = (SCENE_PIXELS / (width * height).max(1) as f32)
+            .sqrt()
+            .min(1.0);
+        let size = [
+            ((width as f32 * scale) as i32).max(1),
+            ((height as f32 * scale) as i32).max(1),
+        ];
+        if self.view.as_ref().is_some_and(|v| v.size == size) {
+            return Ok(());
         }
-        if let Some(old) = self.targets.take() {
-            for t in &old {
-                t.delete(&self.gl);
-            }
+        if let Some(old) = self.view.take() {
+            old.delete(&self.gl);
         }
-        let gl = &self.gl;
-        self.targets = Some([
-            Target::new(gl, SCENE, [width, height])?,
-            Target::new(gl, BLOOM, quarter)?,
-            Target::new(gl, WIDE, eighth)?,
-            Target::new(gl, SPARE, quarter)?,
-        ]);
+        self.view = Some(Target::new(&self.gl, SCENE_UNIT, size)?);
         Ok(())
     }
-    fn upload(&mut self, mesh: &Mesh) {
-        self.bytes.clear();
-        for value in &mesh.data {
-            self.bytes.extend_from_slice(&value.to_le_bytes());
-        }
-        self.gl.bind_buffer(Gl::ARRAY_BUFFER, Some(&self.vertices));
-        self.gl
-            .buffer_data_with_u8_array(Gl::ARRAY_BUFFER, &self.bytes, Gl::DYNAMIC_DRAW);
-    }
-    fn begin(&self, pass: &Pass) {
-        self.gl.use_program(Some(&pass.program));
-        self.gl.uniform4fv_with_f32_array(pass.at("u_view"), &VIEW);
-    }
-    fn draw_span(&self, (first, count): Span) {
-        if count > 0 {
-            self.gl.draw_arrays(Gl::TRIANGLES, first, count);
-        }
-    }
-    fn render_to(&self, target: Option<&Target>) {
+    fn bind(&self, target: Option<&Target>) {
         let gl = &self.gl;
         match target {
             Some(t) => {
@@ -467,239 +457,65 @@ impl PersonaProgram {
             }
         }
     }
-    /// One blur direction from `source` (bound to `unit`) into `target`.
-    fn blur_pass(
-        &self,
-        unit: i32,
-        source: [i32; 2],
-        target: &Target,
-        along: [f32; 2],
-        threshold: f32,
-        quad: Span,
-    ) {
-        self.render_to(Some(target));
-        self.begin(&self.blur);
-        let gl = &self.gl;
-        gl.uniform1i(self.blur.at("u_source"), unit);
-        gl.uniform2f(
-            self.blur.at("u_step"),
-            along[0] / source[0] as f32,
-            along[1] / source[1] as f32,
-        );
-        gl.uniform1f(self.blur.at("u_threshold"), threshold);
-        gl.uniform1f(self.blur.at("u_body"), f32::from(unit == SCENE));
-        self.draw_span(quad);
-    }
-    fn figure_draw(&self, f: &Frame, d: &FigureDraw) {
-        let gl = &self.gl;
-        let cam = &f.camera;
-        let depth = d.z - cam.eye[2];
-        let coc = cam.coc(depth);
-        let px_per_m = cam.focal / depth;
-        let size = [
-            (FIGURE[2] - FIGURE[0]) * px_per_m,
-            (FIGURE[3] - FIGURE[1]) * px_per_m,
-        ];
-        // The reflection lies a little deeper: softer.
-        let extra = if d.mode == 1.0 { 1.8 } else { 1.0 };
-        gl.uniform4f(
-            self.figure.at("u_mode"),
-            d.mode,
-            d.alpha,
-            coc * extra / size[0],
-            coc * extra / size[1],
-        );
-        self.draw_span(d.quad);
-    }
-    /// The shell of plates: every site, the lens at the shell's depth, the
-    /// living light, how much of the pieces' marks is left and how much the
-    /// shell still hides of the body.
-    fn shell_draw(&self, f: &Frame, quad: Span) {
-        let gl = &self.gl;
-        let cam = &f.camera;
-        let depth = f.layer - cam.eye[2];
-        let svg_px = cam.focal / depth * UNIT;
-        let mut sites = [0.0_f32; 64 * 4];
-        let mut plates = [0.0_f32; 64];
-        for i in 0..PLATES.min(64) {
-            let [x, y] = site(i, f.time);
-            // A plate glints while the impulse passes its node.
-            sites[4 * i..4 * i + 4].copy_from_slice(&[
-                x,
-                y,
-                crate::piece(i) as f32,
-                0.6 * f.lit[i],
-            ]);
-            plates[i] = 1.0;
-        }
-        let s = &self.shell;
-        gl.uniform4fv_with_f32_array(s.at("u_sites"), &sites);
-        gl.uniform4fv_with_f32_array(s.at("u_plates"), &plates);
-        // Once it stands apart, the living light no longer shows through
-        // its seams: it stays in the body, and the shell dims.
-        let apart = -f.layer / APART;
-        gl.uniform4f(
-            s.at("u_shell"),
-            cam.coc(depth) / svg_px.max(1e-3),
-            f.presence * (1.0 - 0.85 * apart),
-            f.time,
-            f.light * (1.0 - 0.35 * apart),
-        );
-        // «Различать»: once apart, the shell hides less of the body.
-        gl.uniform4f(
-            s.at("u_count"),
-            PLATES.min(64) as f32,
-            f.breath,
-            f.marks,
-            1.0 - 0.4 * apart,
-        );
-        self.draw_span(quad);
-    }
-
     fn draw(&mut self) {
         if self.disposed || self.gl.is_context_lost() {
             return;
         }
         let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
-        if self.ensure_targets(width, height).is_err() {
+        if self.ensure_view(width, height).is_err() {
             return;
         }
-        let f = compose(if self.reduced { STILL } else { self.elapsed });
-        let mut mesh = std::mem::take(&mut self.mesh);
-        mesh.clear();
-        mesh.pixel = (SIZE[0] / width.max(1) as f32).max(0.5);
-        let s = &self.scene;
-        let quad = span(&mut mesh, |m| {
-            // The screen in texture coordinates (GL rows start at the bottom).
-            m.quad(
-                [
-                    [0.0, 0.0],
-                    [SIZE[0], 0.0],
-                    [SIZE[0], SIZE[1]],
-                    [0.0, SIZE[1]],
-                ],
-                [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-                [[0.0; 4]; 4],
-                [[0.0; 3]; 4],
-            )
-        });
-        let behind = span(&mut mesh, |m| {
-            geometry::floor(m, &f);
-            geometry::architecture(m, &f);
-            geometry::dust(m, s, &f, false);
-            geometry::occasions(m, &f, true);
-        });
-        let cam = f.camera;
-        let mut figures = Vec::with_capacity(4);
-        for (k, (x, z, left)) in OTHERS.into_iter().enumerate() {
-            if f.others[k] > 0.005 {
-                figures.push(FigureDraw {
-                    quad: span(&mut mesh, |m| {
-                        geometry::figure_quad(m, &cam, [x, z], left, false);
-                    }),
-                    mode: 2.0,
-                    z,
-                    alpha: f.others[k] * f.light,
-                });
-            }
-        }
-        figures.push(FigureDraw {
-            quad: span(&mut mesh, |m| {
-                geometry::figure_quad(m, &cam, [0.0, 0.0], false, true);
-            }),
-            mode: 1.0,
-            z: 0.0,
-            alpha: 1.0,
-        });
-        let person = span(&mut mesh, |m| {
-            geometry::figure_quad(m, &cam, [0.0, 0.0], false, false);
-        });
-        figures.push(FigureDraw {
-            quad: person,
-            mode: 0.0,
-            z: 0.0,
-            alpha: 1.0,
-        });
-        // The shell stands on the body, or before it once they part.
-        let shell = span(&mut mesh, |m| {
-            geometry::figure_quad(m, &cam, [0.0, f.layer], false, false);
-        });
-        let front = span(&mut mesh, |m| {
-            geometry::occasions(m, &f, false);
-            geometry::circuit(m, &f);
-            geometry::reaction(m, &f);
-            geometry::dust(m, s, &f, true);
-            geometry::card(m, &f);
-        });
-        let words = span(&mut mesh, |m| geometry::labels(m, &f));
-        self.upload(&mesh);
-        self.mesh = mesh;
+        let f = compose(
+            if self.reduced { STILL } else { self.elapsed },
+            &self.program,
+        );
+        let gl = self.gl.clone();
+        gl.disable(Gl::BLEND);
+        gl.bind_vertex_array(Some(&self.screen));
 
-        let Some(targets) = &self.targets else {
+        // The music box under its lamp.
+        let Some(view) = &self.view else {
             return;
         };
-        let gl = &self.gl;
-        gl.bind_vertex_array(Some(&self.layout));
-        self.render_to(Some(&targets[0]));
-        gl.clear_color(0.0, 0.0, 0.0, 0.0);
-        gl.clear(Gl::COLOR_BUFFER_BIT);
-        gl.enable(Gl::BLEND);
-        gl.blend_func(Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
-        self.begin(&self.soft);
-        self.draw_span(behind);
-        self.begin(&self.figure);
-        gl.uniform4f(
-            self.figure.at("u_light"),
-            f.contour,
-            f.breath,
-            f.time,
-            f.light,
-        );
-        gl.uniform1f(self.figure.at("u_presence"), f.presence);
-        for d in &figures {
-            self.figure_draw(&f, d);
-        }
-        self.begin(&self.shell);
-        self.shell_draw(&f, shell);
-        self.begin(&self.soft);
-        self.draw_span(front);
-        self.begin(&self.text);
-        self.draw_span(words);
-
-        // Bloom: a quarter-size glow and a wider eighth-size one.
-        gl.disable(Gl::BLEND);
-        let full = targets[0].size;
-        let quarter = targets[1].size;
-        self.blur_pass(SCENE, full, &targets[3], [2.0, 0.0], 0.03, quad);
-        self.blur_pass(SPARE, quarter, &targets[1], [0.0, 1.0], 0.0, quad);
-        self.blur_pass(BLOOM, quarter, &targets[3], [1.0, 0.0], 0.0, quad);
-        self.blur_pass(SPARE, quarter, &targets[2], [0.0, 2.0], 0.0, quad);
-
-        // The air, the theme, grain and the page edges, onto the canvas.
-        self.render_to(None);
-        self.begin(&self.composite);
+        self.bind(Some(view));
+        let s = &self.scene;
         let l = &self.look;
-        let c = &self.composite;
-        gl.uniform3fv_with_f32_array(c.at("u_paper"), &l.paper);
-        gl.uniform3fv_with_f32_array(c.at("u_room"), &l.room);
-        gl.uniform3fv_with_f32_array(c.at("u_person"), &l.person);
-        gl.uniform3fv_with_f32_array(c.at("u_body"), &l.body);
-        gl.uniform3fv_with_f32_array(c.at("u_lamp"), &l.lamp);
-        gl.uniform3fv_with_f32_array(c.at("u_backdrop"), &self.backdrop);
-        let cone = geometry::cone(&f.camera);
-        gl.uniform4fv_with_f32_array(c.at("u_cone_a"), &cone[..4]);
-        gl.uniform4fv_with_f32_array(c.at("u_cone_b"), &cone[4..]);
+        let c = &f.camera;
+        gl.use_program(Some(&s.program));
+        gl.uniform2f(s.at("u_res"), view.size[0] as f32, view.size[1] as f32);
+        gl.uniform3fv_with_f32_array(s.at("u_eye"), &c.eye);
         gl.uniform4f(
-            c.at("u_air"),
-            f.camera.center[1],
-            f.light,
-            f.time / LOOP_SECONDS * std::f32::consts::TAU,
-            f.camera.eye[0],
+            s.at("u_view"),
+            c.target[0],
+            c.target[1],
+            c.target[2],
+            c.zoom,
         );
+        gl.uniform2f(s.at("u_lens"), c.focus, c.aperture);
+        gl.uniform4fv_with_f32_array(s.at("u_drum"), &f.drum);
+        gl.uniform4fv_with_f32_array(s.at("u_teeth"), &f.teeth);
+        let mut joints = [0.0_f32; JOINTS * 4];
+        for (slot, joint) in joints.as_chunks_mut::<4>().0.iter_mut().zip(&f.joints) {
+            slot[..3].copy_from_slice(joint);
+        }
+        gl.uniform4fv_with_f32_array(s.at("u_joints"), &joints);
+        gl.uniform2fv_with_f32_array(s.at("u_light"), &f.light);
+        gl.uniform3fv_with_f32_array(s.at("u_paper"), &l.paper);
+        gl.uniform3fv_with_f32_array(s.at("u_key"), &l.key);
+        gl.uniform3fv_with_f32_array(s.at("u_fill"), &l.fill);
+        gl.draw_arrays(Gl::TRIANGLES, 0, 3);
+
+        // The lens's blur, grain and the page's edges, onto the canvas.
+        self.bind(None);
+        let p = &self.finish;
+        gl.use_program(Some(&p.program));
+        gl.uniform2f(p.at("u_res"), width as f32, height as f32);
+        gl.uniform3fv_with_f32_array(p.at("u_paper"), &l.paper);
+        gl.uniform3fv_with_f32_array(p.at("u_backdrop"), &self.backdrop);
         gl.uniform4f(
-            c.at("u_post"),
-            f32::from(l.light),
-            if l.light { 0.0 } else { 0.5 },
+            p.at("u_post"),
+            0.0,
+            f.shown,
             if self.reduced {
                 0.0
             } else {
@@ -707,7 +523,27 @@ impl PersonaProgram {
             },
             f32::from(self.soft_edges),
         );
-        self.draw_span(quad);
+        gl.draw_arrays(Gl::TRIANGLES, 0, 3);
+
+        // The words, always sharp, over everything.
+        let mut floats = std::mem::take(&mut self.floats);
+        caption(f.time, &self.look, &mut floats);
+        if !floats.is_empty() {
+            self.bytes.clear();
+            for value in &floats {
+                self.bytes.extend_from_slice(&value.to_le_bytes());
+            }
+            gl.bind_vertex_array(Some(&self.layout));
+            gl.bind_buffer(Gl::ARRAY_BUFFER, Some(&self.vertices));
+            gl.buffer_data_with_u8_array(Gl::ARRAY_BUFFER, &self.bytes, Gl::DYNAMIC_DRAW);
+            gl.enable(Gl::BLEND);
+            gl.blend_func(Gl::ONE, Gl::ONE_MINUS_SRC_ALPHA);
+            gl.use_program(Some(&self.text.program));
+            gl.draw_arrays(Gl::TRIANGLES, 0, (floats.len() / TEXT_STRIDE) as i32);
+            gl.disable(Gl::BLEND);
+        }
+        self.floats = floats;
+        gl.bind_vertex_array(None);
         self.frames = self.frames.wrapping_add(1);
     }
 }

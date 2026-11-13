@@ -20,7 +20,7 @@ SOURCES = {
     "simple-practice": ["figure"],
     "tuning-questions": ["figure", "labels"],
     "persona-dream": ["figure", "others", "labels"],
-    "persona-program": ["figure", "labels"],
+    "persona-program": ["labels"],
     "persona-belief": ["labels"],
     "call-bell": ["labels"],
     "essence-flame": ["labels"],

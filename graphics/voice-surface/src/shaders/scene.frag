@@ -142,7 +142,7 @@ const float LID_R = EYE_R + 0.0022;
 float almond(vec3 e) {
   vec3 n = e / max(length(e), 1e-5);
   vec2 p = vec2(n.x * 0.996 + n.y * 0.087, n.y * 0.996 - n.x * 0.087);
-  float o = max(length(p - vec2(0.094, -1.097)) - 1.410, length(p - vec2(-0.023, 0.931)) - 1.269);
+  float o = max(length(p - vec2(0.082, -0.892)) - 1.255, length(p - vec2(-0.018, 0.844)) - 1.207);
   return max(o, -n.z) * (LID_R - 0.001);
 }
 // Where her hair starts: high on the forehead, down past the temples and
@@ -187,12 +187,14 @@ float skull(vec3 h) {
   d = smin(d, sdEll(h - vec3(0.0, 1.481, 0.084), vec3(0.013, 0.011, 0.012)), 0.01);
   d = smin(d, sdEll(h - vec3(0.0, 1.439 - drop, 0.075 - 0.3 * drop), vec3(0.0145, 0.0135, 0.016)), 0.014);
   d -= 0.0022 * smoothstep(-0.004, 0.01, h.y - hairline(m));
-  // The lids follow the eyeball: the skin in front of it is taken back to a
-  // sphere round it, and opens in an almond where the eyeball shows.
+  // The eye in its orbit (Art, 13.11: the lids sat inside a hole): the skin
+  // in front of the eye eases back into a shallow bowl, and the lids, a shell
+  // over the eyeball, swell out of it, so they lie on the eye flush with the
+  // face; they open in an almond where the eyeball shows.
   vec3 e = m - vec3(0.031, EYES.y, EYES.z);
   float r = length(e);
-  d = min(d, max(r - EYE_R - 0.0008, sdEll(e - vec3(0.0, 0.0, 0.006), vec3(0.018, 0.013, 0.018))));
-  d = smax(d, -max(sdEll(e - vec3(0.0, 0.002, 0.006), vec3(0.0155, 0.01, 0.016)), LID_R - r), 0.004);
+  d = smax(d, -(length(e - vec3(0.0, 0.0015, 0.036)) - 0.024), 0.006);
+  d = smin(d, r - LID_R, 0.003);
   d = smax(d, -max(max(almond(e), EYE_R + 0.0001 - r), r - LID_R - 0.002), 0.0007);
   // A small straight nose, a neat tip, the wings tucked in.
   d = smin(d, sdRC(h, vec3(0.0, 1.545, 0.0885), vec3(0.0, 1.5055, 0.1045), 0.0032, 0.005), 0.01);
@@ -450,9 +452,14 @@ vec3 eye(vec3 h, vec3 n, vec3 rd, vec3 lamp, vec3 target) {
   vec3 centre = vec3(sign(h.x) * 0.031, EYES.y, EYES.z);
   vec3 aim = normalize(normalize(target - centre) + vec3(0.0, 0.0, 0.4));
   float k = dot(normalize(h - centre), aim);
-  float iris = smoothstep(0.85, 0.87, k);
-  float pupil = smoothstep(0.962, 0.972, k);
-  vec3 c = mix(mix(u_cold, u_pale, 0.5) * 0.18, u_cold * 0.07, iris) * (1.0 - pupil);
+  float iris = smoothstep(0.88, 0.895, k);
+  float pupil = smoothstep(0.968, 0.976, k);
+  // The white takes the word's light like her skin, a little less, and lies
+  // in the shadow of the upper lid, so the eye reads as an eye, not a slit.
+  float wrap = max(dot(n, normalize(lamp + vec3(0.0, 0.45, 0.0))) * 0.75 + 0.25, 0.0);
+  float shadow = 1.0 - 0.4 * smoothstep(-0.001, 0.004, h.y - centre.y);
+  vec3 white = mix(u_pale, u_cold, 0.3) * (0.035 + 0.36 * wrap * wrap * u_lamp.w) * shadow;
+  vec3 c = mix(white, mix(u_cold, u_pale, 0.2) * (0.03 + 0.1 * wrap * shadow), iris) * (1.0 - pupil);
   vec3 rf = reflect(rd, n);
   c += u_pale * pow(max(dot(rf, normalize(vec3(-0.4, 0.7, 0.6))), 0.0), 300.0) * 1.4;
   c += mix(u_pale, u_warm, 0.3) * pow(max(dot(rf, lamp), 0.0), 160.0) * u_lamp.w * 1.2;
@@ -472,7 +479,8 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye, float occ) 
   vec3 lh = vec3(dot(lamp, hr), dot(lamp, hu), dot(lamp, hf));
   vec3 c;
   if (isEye) {
-    c = eye(h, nh, rh, lh, headLocal(lq)) * mix(1.0, occ, 0.8);
+    // The lids shade the eye only a little: it sits right under them.
+    c = eye(h, nh, rh, lh, headLocal(lq)) * mix(1.0, occ, 0.35);
   } else {
     float facing = max(dot(n, -rl), 0.0);
     float rim = pow(1.0 - facing, 3.0);
@@ -536,8 +544,8 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye, float occ) 
     vec2 dr = dress(q);
     float fold = 0.8 + 0.2 * sin(q.x * 70.0 + 1.3 * sin(q.y * 9.0)) * smoothstep(1.2, 1.0, q.y);
     vec3 cloth = mix(u_cold, u_warm, 0.12) * (0.004 + 0.016 * sky) * fold
-      + mix(u_cold, u_pale, 0.3) * 0.1 * key * fold
-      + mix(u_cold, u_pale, 0.25) * 0.28 * pow(1.0 - facing, 2.2);
+      + mix(u_cold, u_pale, 0.3) * 0.16 * key * fold
+      + mix(u_cold, u_pale, 0.25) * 0.13 * pow(1.0 - facing, 2.2);
     cloth += mix(u_cold, u_pale, 0.5) * 0.05 * (1.0 - smoothstep(0.0, 0.0022, dr.y)) * (0.5 + key);
     c = mix(c, cloth, dr.x);
     // The folds are in shadow.
@@ -558,7 +566,7 @@ vec3 shade(vec3 p, vec3 rd, float t, bool under, vec3 n, bool isEye, float occ) 
 vec3 outline(float closest, float t, bool under) {
   if (closest > 0.03) return vec3(0.0);
   float px = max(closest, 0.0) / (pixel * t);
-  return u_cold * (under ? 0.25 * murk(t) : 0.45) * exp(-px * px / (under ? 6.0 : 0.8));
+  return u_cold * (under ? 0.2 * murk(t) : 0.28) * exp(-px * px / (under ? 6.0 : 0.8));
 }
 
 // ---------- under the water
@@ -658,7 +666,9 @@ vec3 view(vec2 lens, float ys) {
     wet = max(down, 0.0);
     limit = ro.y < L && rd.y > 1e-5 ? (L - ro.y) / rd.y : 1e9;
   }
-  vec3 c = under ? vec3(0.0) : u_cold * 0.012 * exp(-max(l.y - ys, 0.0) * 9.0) + sky(rd) * sea * step(1e8, limit);
+  // The night behind her; she hides it (Art, 13.11: «почему она просвечивает?»).
+  vec3 behind = under ? vec3(0.0) : u_cold * 0.012 * exp(-max(l.y - ys, 0.0) * 9.0) + sky(rd) * sea * step(1e8, limit);
+  vec3 c = vec3(0.0);
   vec3 o = ro;
   vec3 d = rd;
   float lim = limit;
@@ -672,6 +682,7 @@ vec3 view(vec2 lens, float ys) {
     float occ;
     float th = march(o, d, lim, closest, tc, n, eye, occ);
     float tMax = th > 0.0 ? th : lim;
+    if (pass == 0 && th <= 0.0) c += behind;
     if (under) {
       // Light from the surface, fading with depth, and its slow shafts.
       float depth = ys - l.y;

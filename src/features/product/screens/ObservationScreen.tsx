@@ -50,6 +50,7 @@ export type ObservationScreenProps = {
   onClose(): void;
   embedded?: boolean;
   active?: boolean;
+  /** False while a step menu covers the questions: it stops input only, the art keeps moving. */
   effectsActive?: boolean;
   startAtEnd?: boolean;
   onNavigationReady?: (actions: ObservationNavigation | null) => void;
@@ -254,7 +255,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <Fade opacity={review?.08:1} duration={360} reducedMotion={settings.reducedMotion} style={{width:'100%'}}>
         <RecordingGesture height={voiceHeight} label={isRecording ? 'Закончить запись' : selected ? 'Прослушать ответ' : 'Зажми и говори. Веди вверх, чтобы закрепить запись'}
           disabled={saving || !ready || !active || recorder.phase === 'stopping'} onBegin={beginHold} onMove={hold.move} onEnd={endHold} onCancel={() => { void hold.cancel(); }} onActivate={activateVoice}>
-          <Art kind="voice" height={voiceHeight} active={active && effectsActive && !sheet && !review}
+          <Art kind="voice" height={voiceHeight} active={active && !sheet && !review}
             lockProgress={lockProgress} locked={locked} mode={isRecording || preparing ? 'record' : selected ? 'playback' : 'idle'} spectrum={isRecording ? recorder.spectrum : undefined}
             audioSource={isRecording ? recorder.audioSource : undefined}
             reducedMotion={settings.reducedMotion} level={isRecording ? recorder.waveform.at(-1) ?? 0 : player.playing && selected
@@ -277,7 +278,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ObservationActionButton label="ДОПОЛНИТЬ ОТВЕТ" icon="lips" onPress={() => void startRecording('toggle')} disabled={busy || !ready} style={styles.addButton} />
       </View> : null}
       {!selected && <ProductText variant="label" style={[styles.localNote, { opacity: review ? 0 : 1 }]}>ЗАПИСИ СОХРАНЯЮТСЯ НА ЭТОМ УСТРОЙСТВЕ</ProductText>}
-      {progress.step === 1 && question === questions.length - 1 && <StepSignature center active={active && effectsActive && !sheet && !review} reducedMotion={settings.reducedMotion} style={[styles.signature, { opacity: review ? 0 : 1 }]} />}
+      {progress.step === 1 && question === questions.length - 1 && <StepSignature center active={active && !sheet && !review} reducedMotion={settings.reducedMotion} style={[styles.signature, { opacity: review ? 0 : 1 }]} />}
       </View>
       </ScrollGate>
       {!embedded && <View pointerEvents={review ? 'none' : 'auto'} style={{ opacity: review ? 0 : 1 }}><TaskStepSelector step={progress.step === 2 ? 2 : 1} availableAt={progress.availableAt} testUnlockAll={settings.testUnlockAll} open={selectorOpen}

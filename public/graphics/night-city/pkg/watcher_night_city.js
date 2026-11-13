@@ -183,6 +183,12 @@ function __wbg_get_imports() {
         __wbg_attachShader_9567ae57af6746d5: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
+        __wbg_bindBufferBase_25e0caf9f8af85b1: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).bindBufferBase(arg1 >>> 0, arg2 >>> 0, getObject(arg3));
+        },
+        __wbg_bindBuffer_0324f62b876c4403: function(arg0, arg1, arg2) {
+            getObject(arg0).bindBuffer(arg1 >>> 0, getObject(arg2));
+        },
         __wbg_bindFramebuffer_378eb18ef219d37a: function(arg0, arg1, arg2) {
             getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
         },
@@ -201,6 +207,9 @@ function __wbg_get_imports() {
         __wbg_blitFramebuffer_7b39bfec6cfece56: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
             getObject(arg0).blitFramebuffer(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 >>> 0, arg10 >>> 0);
         },
+        __wbg_bufferData_5fa44d94fe7a3878: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).bufferData(arg1 >>> 0, getObject(arg2), arg3 >>> 0);
+        },
         __wbg_checkFramebufferStatus_301a7db105ca966b: function(arg0, arg1) {
             const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
             return ret;
@@ -213,6 +222,10 @@ function __wbg_get_imports() {
         },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
+        },
+        __wbg_createBuffer_ffe613371d42cfd3: function(arg0) {
+            const ret = getObject(arg0).createBuffer();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_createFramebuffer_2c6b5b0f49c88e5d: function(arg0) {
             const ret = getObject(arg0).createFramebuffer();
@@ -237,6 +250,9 @@ function __wbg_get_imports() {
         __wbg_createVertexArray_b223ea69dd08fcab: function(arg0) {
             const ret = getObject(arg0).createVertexArray();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
+        __wbg_deleteBuffer_070e58aaaf2a7a8b: function(arg0, arg1) {
+            getObject(arg0).deleteBuffer(getObject(arg1));
         },
         __wbg_deleteFramebuffer_3f8ab330098bf8e6: function(arg0, arg1) {
             getObject(arg0).deleteFramebuffer(getObject(arg1));
@@ -318,6 +334,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getShaderParameter(getObject(arg1), arg2 >>> 0);
             return addHeapObject(ret);
         },
+        __wbg_getUniformBlockIndex_5e2252ceb34531a5: function(arg0, arg1, arg2, arg3) {
+            const ret = getObject(arg0).getUniformBlockIndex(getObject(arg1), getStringFromWasm0(arg2, arg3));
+            return ret;
+        },
         __wbg_getUniformLocation_50ba45dade572703: function(arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).getUniformLocation(getObject(arg1), getStringFromWasm0(arg2, arg3));
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
@@ -349,6 +369,10 @@ function __wbg_get_imports() {
         },
         __wbg_new_ee2291f50781bf1d: function() {
             const ret = new Array();
+            return addHeapObject(ret);
+        },
+        __wbg_new_from_slice_ca6ad97db1f4779a: function(arg0, arg1) {
+            const ret = new Float32Array(getArrayF32FromWasm0(arg0, arg1));
             return addHeapObject(ret);
         },
         __wbg_push_2baf45db356cf468: function(arg0, arg1) {
@@ -391,6 +415,9 @@ function __wbg_get_imports() {
         },
         __wbg_uniform4fv_cf8ff646c36232c8: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform4fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
+        },
+        __wbg_uniformBlockBinding_07116582301fb019: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniformBlockBinding(getObject(arg1), arg2 >>> 0, arg3 >>> 0);
         },
         __wbg_useProgram_e075c2902e420761: function(arg0, arg1) {
             getObject(arg0).useProgram(getObject(arg1));

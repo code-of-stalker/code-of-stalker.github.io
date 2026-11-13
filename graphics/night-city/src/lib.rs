@@ -156,7 +156,7 @@ pub const BLOOM: f32 = 0.09;
 pub const BYTE_KEEP: f32 = 0.5;
 
 /// The uniform slots the shaders read (common.glsl names them).
-pub const SLOTS: usize = 38;
+pub const SLOTS: usize = 40;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_PUFF: usize = 17;
 pub const SLOT_STEP: usize = 19;
@@ -169,17 +169,22 @@ pub const SLOT_SPHERE: usize = 33;
 /// support's rings; the car out of the side street; each ring's light and
 /// his own screen's.
 pub const SLOT_CHECK: usize = 35;
+/// His umbrella: the canopy's rim (centre, radius; 0 none), its crown and
+/// whether his own parts (thumbs, umbrella) are drawn.
+pub const SLOT_BROLLY: usize = 38;
 /// Every figure the shaders draw: him, then the passers-by.
 pub const FIGURES: usize = 1 + story::PASSERS;
-// The slots follow one another, and the world's uniforms fit the 256
-// vectors phones give a fragment shader (WebGL2 promises 224; ANGLE keeps
-// a few of its own).
+// The slots follow one another and fit the 224 vectors WebGL2 promises a
+// shader (ANGLE keeps a few of its own); the cones' uniform block fits the
+// 16 KB (1024 vectors) it promises a block.
 const _: () = {
     assert!(SLOT_STEP + STEP_MARKS <= SLOT_PASS);
     assert!(SLOT_PASS + 2 * story::PASSERS <= SLOT_SCREEN);
     assert!(SLOT_SPHERE + 2 <= SLOT_CHECK);
-    assert!(SLOT_CHECK + 3 <= SLOTS);
-    assert!(SLOTS + FIGURES * body::PRIMITIVES * 3 + 4 <= 250);
+    assert!(SLOT_CHECK + 3 <= SLOT_BROLLY);
+    assert!(SLOT_BROLLY + 2 <= SLOTS);
+    assert!(SLOTS + 4 <= 200);
+    assert!((FIGURES * body::PRIMITIVES + body::OWN) * 3 <= 1024);
 };
 pub const PUFFS: usize = 2;
 pub const STEP_MARKS: usize = 8;
@@ -316,14 +321,25 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[SLOT_CHECK] = f.check;
     s[SLOT_CHECK + 1] = f.cross_car;
     s[SLOT_CHECK + 2] = f.ring_light;
+    let at = |c: usize, j: usize| f.body.cones[3 * c + j];
+    let [cx, cy, cz, radius] = at(body::CANOPY, 0);
+    let [rx, ry, rz, _] = at(body::CANOPY, 1);
+    let open = radius > 0.01;
+    s[SLOT_BROLLY] = [rx, ry, rz, if open { radius } else { 0.0 }];
+    s[SLOT_BROLLY + 1] = [cx, cy, cz, if f.body.own { 1.0 } else { 0.0 }];
     s
 }
 
-/// Every figure's cones, him first, as the shaders' `u_b` reads them.
+/// Every figure's cones, him first, as the shaders' `Cones` block holds
+/// them; then his own parts, which the passers do not have.
 pub fn cones(f: &Frame) -> Vec<f32> {
+    let shared = 3 * body::PRIMITIVES;
     std::iter::once(&f.body)
         .chain(&f.passers)
-        .flat_map(|b| b.cones.iter().flatten().copied())
+        .flat_map(|b| &b.cones[..shared])
+        .chain(&f.body.cones[shared..])
+        .flatten()
+        .copied()
         .collect()
 }
 
@@ -361,7 +377,8 @@ mod tests {
     fn every_figure_is_sent() {
         for chapter in [Chapter::Fact, Chapter::Check, Chapter::Voice] {
             let f = Story::new(chapter).compose(10.0);
-            assert_eq!(cones(&f).len(), FIGURES * body::PRIMITIVES * 12);
+            let all = FIGURES * body::PRIMITIVES + body::OWN;
+            assert_eq!(cones(&f).len(), all * 12);
         }
     }
 

@@ -48,11 +48,36 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define CHECK    u_d[SLOT_CHECK]
 #define CROSSCAR u_d[SLOT_CHECK + 1]  // the side street's car: x, z, heading, how seen
 #define RINGVIS  u_d[SLOT_CHECK + 2]  // how seen the first ring, the second; the third's boost; his screen
+// His umbrella (page 07): its rim's centre and radius (0 none); its crown,
+// and whether his own parts (thumbs, umbrella) are drawn at all.
+#define BROLLY     u_d[SLOT_BROLLY]
+#define BROLLY_TOP u_d[SLOT_BROLLY + 1]
+// The umbrella's ribs; the cloth sags between them.
+#define RIBS 8.0
 // Page 07's tape: the loop's clock, how much the picture is a tape's
 // (0.35 standing, 1 running back), the flash as it stops.
 #define TAPE_T     RAINC.w
 #define TAPE_ON    PUDDLE.w
 #define TAPE_FLASH VOICE_L.w
+
+// The umbrella's axis up through its crown and two directions across it
+// that the ribs are counted from.
+void brollyAxes(out vec3 axis, out vec3 e1, out vec3 e2) {
+  axis = normalize(BROLLY_TOP.xyz - BROLLY.xyz);
+  e1 = normalize(cross(axis, vec3(0.0, 0.0, 1.0)));
+  e2 = cross(axis, e1);
+}
+// Its dome: the sphere's radius, and the dome's height over the rim at
+// `rho` from the axis.
+float brollySphere() {
+  float h = length(BROLLY_TOP.xyz - BROLLY.xyz);
+  return (BROLLY.w * BROLLY.w + h * h) / (2.0 * h);
+}
+float brollyHeight(float rho) {
+  float h = length(BROLLY_TOP.xyz - BROLLY.xyz);
+  float R = brollySphere();
+  return sqrt(max(R * R - rho * rho, 0.0)) - (R - h);
+}
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w

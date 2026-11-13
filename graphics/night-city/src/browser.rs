@@ -11,7 +11,9 @@
 //! program for all of it took Windows' shader compiler minutes, long enough
 //! for Chrome to give up on the page; each part takes it a few seconds, and
 //! with KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{BLEND, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, PRIMITIVES, PROPS};
+use crate::body::{
+    BLEND, CANOPY_CLOTH, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, OWN, PRIMITIVES, PROPS,
+};
 use crate::story::{voice_lines, PUFF_LIFE, RAIL_H, RAIL_IN, SPHERE_Y, VOICE_REACH};
 use crate::story::{PASSERS, PHONE, UMBRELLA};
 use crate::{
@@ -19,15 +21,15 @@ use crate::{
     CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FLAT, FLIGHT,
     FRAME_ASPECT, HAZE, LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, OPEN, PALM_DROPS, PUFFS,
     RAD_SCALE, RAIN, RAIN_BOX, RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, RISE, RISERS, ROAD,
-    SHOP_LIGHT, SLAB, SLOTS, SLOT_CHECK, SLOT_PASS, SLOT_PUFF, SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP,
-    SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, TREAD, UNDER_DEPTH, UNDER_LEN, UNDER_X, UNDER_Z,
-    WORLD_SCALE, WORLD_WIDTH,
+    SHOP_LIGHT, SLAB, SLOTS, SLOT_BROLLY, SLOT_CHECK, SLOT_PASS, SLOT_PUFF, SLOT_SCREEN,
+    SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, TREAD, UNDER_DEPTH,
+    UNDER_LEN, UNDER_X, UNDER_Z, WORLD_SCALE, WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
 use web_sys::{
-    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlFramebuffer, WebGlProgram, WebGlShader,
-    WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
+    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlFramebuffer, WebGlProgram,
+    WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
 };
 
 const COMMON: &str = include_str!("shaders/common.glsl");
@@ -41,9 +43,8 @@ const WARM: &str = include_str!("shaders/warm.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// Every uniform any program reads; a program without one ignores it.
-const NAMES: [&str; 14] = [
+const NAMES: [&str; 13] = [
     "u_d",
-    "u_b",
     "u_res",
     "u_world",
     "u_dof",
@@ -57,6 +58,9 @@ const NAMES: [&str; 14] = [
     "u_h2",
     "u_h3",
 ];
+/// The figures' cones are a uniform block (world.frag's `Cones`), more than
+/// a phone's plain uniforms hold, read through this binding point.
+const CONES_BINDING: u32 = 0;
 /// The texture units of the world's frame, the lens's and the rain's.
 const UNIT_WORLD: u32 = 0;
 const UNIT_DOF: u32 = 1;
@@ -84,6 +88,7 @@ fn defines() -> String {
         ("SLOT_SCREEN", SLOT_SCREEN.to_string()),
         ("SLOT_SPHERE", SLOT_SPHERE.to_string()),
         ("SLOT_CHECK", SLOT_CHECK.to_string()),
+        ("SLOT_BROLLY", SLOT_BROLLY.to_string()),
         ("PASSERS", PASSERS.to_string()),
         ("FIGURES", FIGURES.to_string()),
         ("FIG_UMBRELLA", (1 + UMBRELLA).to_string()),
@@ -95,6 +100,9 @@ fn defines() -> String {
         ("CONE_HAND_L", HANDS[0].to_string()),
         ("CONE_HAND_R", HANDS[1].to_string()),
         ("CONE_PROP", PROPS[0].to_string()),
+        ("OWN", OWN.to_string()),
+        ("CONE_OWN", (FIGURES * PRIMITIVES).to_string()),
+        ("CANOPY_CLOTH", f(CANOPY_CLOTH)),
         ("CUT_ROUND", f(CUT_ROUND)),
         (
             "BLENDS",
@@ -280,6 +288,10 @@ impl Linking {
             program: self.program,
             uniforms,
         };
+        let block = gl.get_uniform_block_index(&prog.program, "Cones");
+        if block != Gl::INVALID_INDEX {
+            gl.uniform_block_binding(&prog.program, block, CONES_BINDING);
+        }
         gl.use_program(Some(&prog.program));
         gl.uniform1i(prog.at("u_world"), UNIT_WORLD as i32);
         gl.uniform1i(prog.at("u_dof"), UNIT_DOF as i32);
@@ -580,6 +592,8 @@ pub struct NightCity {
     /// Whether the frames hold half floats.
     float: bool,
     empty: WebGlVertexArrayObject,
+    /// The figures' cones, filled each frame.
+    cones: WebGlBuffer,
     themed: Themed,
     look: Look,
     story: Story,
@@ -651,6 +665,7 @@ impl NightCity {
         let empty = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
+        let cones = gl.create_buffer().ok_or("Cannot allocate buffer")?;
         Ok(Self {
             world_frame: Target::new(&gl, true, false)?,
             lens_frame: Target::new(&gl, true, true)?,
@@ -666,6 +681,7 @@ impl NightCity {
             passes,
             float,
             empty,
+            cones,
             themed,
             look: look(4),
             story: Story::new(Chapter::Fact),
@@ -793,6 +809,7 @@ impl NightCity {
         self.rain_frame.dispose(gl);
         self.records.dispose(gl);
         gl.delete_vertex_array(Some(&self.empty));
+        gl.delete_buffer(Some(&self.cones));
         for l in self.linking.drain(..) {
             l.dispose(gl);
         }
@@ -927,7 +944,7 @@ impl NightCity {
             0.0,
         ];
         let flat: Vec<f32> = slots.iter().flatten().copied().collect();
-        let cones = cones(&f);
+        let cones = js_sys::Float32Array::from(cones(&f).as_slice());
         let keep = if self.float { 1.0 } else { BYTE_KEEP };
         let gl = &self.gl;
         gl.bind_vertex_array(Some(&self.empty));
@@ -943,9 +960,12 @@ impl NightCity {
         let Some(programs) = self.programs.as_ref() else {
             return;
         };
+        gl.bind_buffer(Gl::UNIFORM_BUFFER, Some(&self.cones));
+        gl.buffer_data_with_array_buffer_view(Gl::UNIFORM_BUFFER, &cones, Gl::DYNAMIC_DRAW);
+        gl.bind_buffer(Gl::UNIFORM_BUFFER, None);
+        gl.bind_buffer_base(Gl::UNIFORM_BUFFER, CONES_BINDING, Some(&self.cones));
         let world = |p: &Prog| {
             scene(p, ww, wh, 0.0);
-            gl.uniform4fv_with_f32_array(p.at("u_b"), &cones);
             gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         };
         match &programs.world {

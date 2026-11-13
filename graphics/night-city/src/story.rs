@@ -1992,6 +1992,15 @@ impl Story {
             pose.hands[1] = [hold.x, hold.y, hold.z, out];
             pose.wrists[1] = -0.15 * out;
         }
+        if self.chapter == Chapter::Check {
+            // His umbrella at last, in the left hand, the fist before the
+            // chest and a little to the left.
+            pose.umbrella = true;
+            let probe = build(&pose);
+            let c = probe.chest_axes;
+            let hold = probe.chest + c.forward * 0.26 + c.left * 0.14 - Y * 0.08;
+            pose.hands[0] = [hold.x, hold.y, hold.z, 1.0];
+        }
         if self.chapter == Chapter::Voice {
             // «Я Действую»: up the far flight, the right hand on the rail
             // a little ahead of the chest.
@@ -2302,6 +2311,7 @@ pub fn crossing(cell: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::{CANOPY, PRIMITIVES, PROPS};
     use crate::REPEAT;
 
     const CHAPTERS: [Chapter; 3] = [Chapter::Fact, Chapter::Check, Chapter::Voice];
@@ -2528,6 +2538,19 @@ mod tests {
         }
     }
 
+    /// The box round a body's cones `which`.
+    fn extent(b: &Body, which: std::ops::Range<usize>) -> (V3, V3) {
+        let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
+        for c in which {
+            for j in 0..2 {
+                let [x, y, z, r] = b.cones[3 * c + j];
+                low = low.min(v3(x - r, y - r, z - r));
+                high = high.max(v3(x + r, y + r, z + r));
+            }
+        }
+        (low, high)
+    }
+
     /// How far ahead of him (along the street, either way) `z` is, folded
     /// into one `REPEAT` as the street repeats its passers.
     fn ahead(z: f32, of: f32) -> f32 {
@@ -2562,7 +2585,7 @@ mod tests {
             for i in 0..(story.loop_seconds * 10.0) as i32 {
                 let t = i as f32 * 0.1;
                 let f = story.compose(t);
-                for p in &f.passers {
+                for (who, p) in f.passers.iter().enumerate() {
                     // Page 08's keep to the far pavement.
                     let (low, high) = if chapter == Chapter::Voice {
                         (-p.high.x, -p.low.x)
@@ -2574,11 +2597,26 @@ mod tests {
                         "{chapter:?} {t}"
                     );
                     assert!(p.low.y > -0.01, "{t}");
-                    // Never through him: their boxes part across the street
-                    // wherever they share his stretch of it.
+                    // Never through him: their bodies' boxes part across the
+                    // street wherever they share his stretch of it.
                     if ahead(p.pelvis.z, f.body.pelvis.z).abs() < 1.0 {
-                        let apart = (p.low.x - f.body.high.x).max(f.body.low.x - p.high.x);
+                        let (low, high) = extent(&f.body, 0..PRIMITIVES);
+                        let apart = (p.low.x - high.x).max(low.x - p.high.x);
                         assert!(apart > 0.0, "{chapter:?} {t} {apart}");
+                    }
+                    // His umbrella (page 07) rides over their heads and
+                    // clears the other umbrella.
+                    let [x, y, z, r] = f.body.cones[3 * CANOPY + 1];
+                    let radius = f.body.cones[3 * CANOPY][3];
+                    if radius > 0.01 && ahead(p.pelvis.z, z).abs() < 2.0 {
+                        let (_, head) = extent(p, 0..PROPS[0]);
+                        assert!(head.y < y - 0.05, "{chapter:?} {t} {}", head.y - y);
+                        if who == UMBRELLA {
+                            let [px, py, pz, pr] = p.cones[3 * PROPS[1]];
+                            let gap = (px - x).hypot(ahead(pz, z)) - radius - pr;
+                            assert!(gap > 0.03 || (py - y).abs() > 0.15, "{chapter:?} {t} {gap}");
+                        }
+                        assert!(r < 0.01);
                     }
                 }
             }

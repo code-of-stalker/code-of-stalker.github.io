@@ -1,7 +1,7 @@
 //! The figure: footsteps make a walk, the walk a pose, and the pose 23
 //! cones (rounded, or flat-ended where cloth ends) that the body shader
-//! blends into one surface of light. Metres; the figure faces +z, its left
-//! is +x, up is +y.
+//! blends into one surface of light, and for him `OWN` more: his thumbs
+//! and his umbrella. Metres; the figure faces +z, its left is +x, up is +y.
 use crate::math::{min_jerk, mix, monotone, rotate, smooth, softmin, v3, V3, Y};
 use std::f32::consts::{PI, TAU};
 
@@ -21,9 +21,124 @@ pub const HEAD: usize = 5;
 pub const COLLAR: usize = 6;
 pub const HANDS: [usize; 2] = [19, 20];
 pub const PROPS: [usize; 2] = [21, 22];
+/// His own parts after every figure's `PRIMITIVES` (the passers' are not
+/// drawn): a thumb on each hand, then his umbrella's handle, its shaft and
+/// its canopy. The canopy is no cone: its first end is the canopy's crown
+/// and its rim's radius, its second the rim's centre and the cloth's
+/// thickness (a thin dome, the shader draws it so).
+pub const OWN: usize = 5;
+pub const ALL: usize = PRIMITIVES + OWN;
+pub const THUMBS: [usize; 2] = [PRIMITIVES, PRIMITIVES + 1];
+pub const HANDLE: usize = PRIMITIVES + 2;
+pub const SHAFT: usize = PRIMITIVES + 3;
+pub const CANOPY: usize = PRIMITIVES + 4;
+/// His umbrella: the canopy's radius at the rim, how deep it domes, the
+/// cloth's thickness; its crown this high over his own and this far
+/// ahead of it and to his left.
+pub const CANOPY_R: f32 = 0.5;
+pub const CANOPY_DEPTH: f32 = 0.2;
+pub const CANOPY_CLOTH: f32 = 0.004;
+const CANOPY_UP: f32 = 0.45;
+const CANOPY_AHEAD: f32 = 0.12;
+const CANOPY_LEFT: f32 = 0.08;
 /// A cone's squash keep below zero marks it flat-ended (cut square, its
 /// edge rounded this much) instead of capped by spheres.
 pub const CUT_ROUND: f32 = 0.008;
+/// A phone's thickness, of its width, and half of it, metres.
+const PHONE_KEEP: f32 = 0.13;
+const PHONE_HALF: f32 = 0.036 * PHONE_KEEP;
+
+/// One cone before it is laid down.
+#[derive(Clone, Copy, Debug)]
+struct Part {
+    a: V3,
+    ra: f32,
+    b: V3,
+    rb: f32,
+    squash: Option<(V3, f32)>,
+}
+
+impl Part {
+    fn plain(a: V3, ra: f32, b: V3, rb: f32) -> Part {
+        Part {
+            a,
+            ra,
+            b,
+            rb,
+            squash: None,
+        }
+    }
+}
+
+/// A hand: from its wrist along `dir` for `length`, flattened along its
+/// palm's normal to `keep` of its width.
+#[derive(Clone, Copy, Debug)]
+struct Grip {
+    wrist: V3,
+    dir: V3,
+    palm: V3,
+    length: f32,
+    radii: [f32; 2],
+    keep: f32,
+}
+
+/// How far from the wrist a fist's curled fingers hold a handle.
+const FIST_HOLD: f32 = 0.048;
+
+impl Grip {
+    /// Open, as the arm carries it.
+    fn open(wrist: V3, dir: V3, palm: V3) -> Grip {
+        Grip {
+            wrist,
+            dir,
+            palm,
+            length: HAND,
+            radii: [0.028, 0.02],
+            keep: 0.55,
+        }
+    }
+
+    /// Closed round a handle that runs up to `toward`: shorter and rounder,
+    /// across the handle, which passes through its curled fingers.
+    fn fist(open: &Grip, toward: V3) -> Grip {
+        let mut dir = open.dir;
+        let mut up = Y;
+        for _ in 0..2 {
+            up = (toward - (open.wrist + dir * FIST_HOLD)).normalize();
+            dir = (open.dir - up * open.dir.dot(up)).normalize();
+        }
+        Grip {
+            wrist: open.wrist,
+            dir,
+            palm: up.cross(dir).normalize(),
+            length: 0.082,
+            radii: [0.03, 0.028],
+            keep: 0.86,
+        }
+    }
+
+    /// Flat, its palm turned to face `facing`.
+    fn flat(open: &Grip, facing: V3) -> Grip {
+        Grip {
+            wrist: open.wrist,
+            dir: (open.dir - facing * open.dir.dot(facing)).normalize(),
+            palm: facing,
+            length: 0.1,
+            radii: [0.028, 0.021],
+            keep: 0.5,
+        }
+    }
+
+    /// Where a fist holds its handle.
+    fn centre(&self) -> V3 {
+        self.wrist + self.dir * FIST_HOLD
+    }
+
+    /// Half its thickness across the palm, at its middle.
+    fn half_thickness(&self) -> f32 {
+        0.25 * (self.radii[0] + self.radii[1]) * self.keep
+    }
+}
 
 /// What a figure carries in its right hand, if anything.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -476,6 +591,7 @@ impl Walk {
             hands: [[0.0; 4]; 2],
             wrists: [0.0; 2],
             carry: Carry::Nothing,
+            umbrella: false,
             coat: RAINCOAT,
         }
     }
@@ -510,6 +626,8 @@ pub struct Pose {
     pub hands: [[f32; 4]; 2],
     pub wrists: [f32; 2],
     pub carry: Carry,
+    /// His open umbrella in the left hand.
+    pub umbrella: bool,
     pub coat: Coat,
 }
 
@@ -563,8 +681,11 @@ fn knee(hip: V3, ankle: V3, pole: V3) -> V3 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Body {
     /// Per cone: (end A, its radius), (end B, its radius), (squash axis,
-    /// how much of its width it keeps along it; below zero, flat-ended).
-    pub cones: [[f32; 4]; PRIMITIVES * 3],
+    /// how much of its width it keeps along it; below zero, flat-ended);
+    /// every figure's `PRIMITIVES`, then his `OWN`.
+    pub cones: [[f32; 4]; ALL * 3],
+    /// Whether any of the `OWN` parts is there.
+    pub own: bool,
     pub pelvis: V3,
     pub pelvic: Axes,
     pub chest: V3,
@@ -586,7 +707,7 @@ impl Body {
     fn mapped(&self, point: impl Fn(V3) -> V3, axis: impl Fn(V3) -> V3, k: f32) -> Body {
         let mut body = *self;
         let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
-        for c in 0..PRIMITIVES {
+        for c in 0..ALL {
             let mut r = 0.0f32;
             for j in 0..2 {
                 let [x, y, z, w] = body.cones[3 * c + j];
@@ -645,19 +766,26 @@ impl Body {
 }
 
 pub fn build(pose: &Pose) -> Body {
-    let mut cones = [[0.0; 4]; PRIMITIVES * 3];
+    let mut cones = [[0.0; 4]; ALL * 3];
     let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
     let mut n = 0;
+    // Lays the next cone and says how many there are; a radius of zero
+    // parks an empty slot, tiny and out of the box.
     let mut cone = |a: V3, ra: f32, b: V3, rb: f32, squash: Option<(V3, f32)>| {
         let (axis, keep) = squash.unwrap_or((Y, 1.0));
+        let empty = ra <= 0.0;
+        let (ra, rb) = if empty { (0.001, 0.001) } else { (ra, rb) };
         cones[3 * n] = [a.x, a.y, a.z, ra];
         cones[3 * n + 1] = [b.x, b.y, b.z, rb];
         cones[3 * n + 2] = [axis.x, axis.y, axis.z, keep];
         n += 1;
-        let r = ra.max(rb);
-        let pad = v3(r, r, r);
-        low = low.min(a - pad).min(b - pad);
-        high = high.max(a + pad).max(b + pad);
+        if !empty {
+            let r = ra.max(rb);
+            let pad = v3(r, r, r);
+            low = low.min(a - pad).min(b - pad);
+            high = high.max(a + pad).max(b + pad);
+        }
+        n
     };
     // Flat-ended, squashed along `axis` to `keep` of its width.
     let cut = |axis: V3, keep: f32| Some((axis, -keep));
@@ -779,68 +907,138 @@ pub fn build(pose: &Pose) -> Body {
     for a in &arms {
         cone(a.1, 0.044 + sleeve, a.2, 0.041 + sleeve, cut(Y, 1.0));
     }
-    for a in &arms {
-        cone(a.2, 0.028, a.3, 0.02, Some((a.4, 0.55)));
-    }
-    // What the right hand carries.
-    let (_, _, wrist, tip, palm) = arms[1];
-    let grip = wrist.lerp(tip, 0.5);
+    // What each hand holds shapes it: open, a fist round a handle, or flat
+    // under a phone it holds up to the eyes.
+    let mut hands = arms.map(|a| Grip::open(a.2, (a.3 - a.2).normalize(), a.4));
+    let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
+    // The right hand's umbrella (a passer's) or phone.
+    let mut props: Vec<Part> = Vec::new();
     let mut screen = [v3(0.0, 0.0, 0.0); 2];
+    let mut own: [Option<Part>; OWN] = [None; OWN];
     match pose.carry {
         Carry::Nothing => {}
         Carry::Umbrella => {
             let top = crown + Y * 0.33 + ch.forward * 0.05 - ch.left * 0.04;
-            let stick = (top - grip).normalize();
-            cone(grip - stick * 0.1, 0.009, top, 0.007, None);
-            cone(
-                top - stick * 0.2,
-                0.5,
-                top + stick * 0.02,
-                0.025,
-                cut(Y, 1.0),
-            );
+            let g = Grip::fist(&hands[1], top);
+            let stick = (top - g.centre()).normalize();
+            props.push(Part::plain(g.centre() - stick * 0.1, 0.009, top, 0.007));
+            props.push(Part {
+                a: top - stick * 0.2,
+                ra: 0.5,
+                b: top + stick * 0.02,
+                rb: 0.025,
+                squash: cut(Y, 1.0),
+            });
+            hands[1] = g;
         }
         Carry::Phone | Carry::Screen(_) => {
             let out = match pose.carry {
                 Carry::Screen(out) => smooth(0.0, 1.0, out),
                 _ => 1.0,
             };
-            let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
-            let at = grip + palm * 0.012;
-            let facing = (eyes - at).normalize();
-            let long = (Y - facing * Y.dot(facing)).normalize();
+            // The palm turns to face the eyes and the phone lies on it, its
+            // back on the palm, the thumb over its edge.
+            let open = hands[1];
+            let facing = (eyes - open.wrist - open.dir * 0.06).normalize();
+            let g = Grip::flat(&open, facing);
+            let thumb = g.dir.cross(facing).normalize();
+            let upright = (Y - facing * Y.dot(facing)).normalize();
+            let long = (upright * 0.6 + g.dir * 0.4).normalize();
+            let half = PHONE_HALF * out;
+            let at = g.wrist + g.dir * 0.062 + facing * (g.half_thickness() + half + 0.0015)
+                - thumb * 0.014;
             if out > 0.02 {
-                cone(
-                    at - long * (0.07 * out),
-                    0.036 * out,
-                    at + long * (0.07 * out),
-                    0.036 * out,
-                    cut(facing, 0.13),
-                );
-                screen = [at + facing * 0.005, facing];
+                props.push(Part {
+                    a: at - long * (0.07 * out),
+                    ra: 0.036 * out,
+                    b: at + long * (0.07 * out),
+                    rb: 0.036 * out,
+                    squash: cut(facing, PHONE_KEEP),
+                });
+                screen = [at + facing * (half + 0.0005), facing];
             }
+            own[0] = Some(Part::plain(
+                g.wrist + g.dir * 0.03 + thumb * 0.034 + facing * 0.004,
+                0.0115,
+                at + thumb * (0.036 * out - 0.017) + long * 0.012 + facing * (half + 0.0085),
+                0.0088,
+            ));
+            hands[1] = g;
         }
     }
     if pose.carry == Carry::Phone {
         // The hood up round the head, the face out of its front.
         let mid = jaw.lerp(crown, 0.5) + hd.up * 0.025;
-        cone(
-            mid - hd.forward * 0.075,
-            0.13,
-            mid + hd.forward * 0.04,
-            0.125,
-            cut(hd.left, 0.84),
+        props.push(Part {
+            a: mid - hd.forward * 0.075,
+            ra: 0.13,
+            b: mid + hd.forward * 0.04,
+            rb: 0.125,
+            squash: cut(hd.left, 0.84),
+        });
+    }
+    // His umbrella in the left hand: the fist round its handle, the shaft
+    // up through the canopy over his head.
+    if pose.umbrella {
+        let crown_at = crown + Y * CANOPY_UP + ch.forward * CANOPY_AHEAD + ch.left * CANOPY_LEFT;
+        let g = Grip::fist(&hands[0], crown_at);
+        let centre = g.centre();
+        let shaft = (crown_at - centre).normalize();
+        let mut side = shaft.cross(g.dir).normalize();
+        if side.dot(ch.left) > 0.0 {
+            side = -side;
+        }
+        own[1] = Some(Part::plain(
+            g.wrist + g.dir * 0.02 + shaft * 0.02 + side * 0.02,
+            0.0118,
+            g.wrist + g.dir * 0.055 + shaft * 0.024 + side * 0.026,
+            0.0088,
+        ));
+        own[2] = Some(Part::plain(
+            centre - shaft * 0.08,
+            0.0158,
+            centre + shaft * 0.06,
+            0.0142,
+        ));
+        own[3] = Some(Part::plain(
+            centre + shaft * 0.06,
+            0.0056,
+            crown_at + shaft * 0.05,
+            0.0042,
+        ));
+        own[4] = Some(Part {
+            a: crown_at,
+            ra: CANOPY_R,
+            b: crown_at - shaft * CANOPY_DEPTH,
+            rb: CANOPY_CLOTH,
+            squash: Some((shaft, 1.0)),
+        });
+        hands[0] = g;
+    }
+    let mut laid = 0;
+    for g in &hands {
+        laid = cone(
+            g.wrist,
+            g.radii[0],
+            g.wrist + g.dir * g.length,
+            g.radii[1],
+            Some((g.palm, g.keep)),
         );
     }
+    for part in &props {
+        laid = cone(part.a, part.ra, part.b, part.rb, part.squash);
+    }
     // The rest stand empty inside the pelvis, out of the box.
-    while n < PRIMITIVES {
-        cones[3 * n] = [p.x, p.y, p.z, 0.001];
-        cones[3 * n + 1] = [p.x, p.y + 0.01, p.z, 0.001];
-        cones[3 * n + 2] = [0.0, 1.0, 0.0, 1.0];
-        n += 1;
+    let parked = Part::plain(p, 0.0, p + Y * 0.01, 0.0);
+    while laid < PRIMITIVES {
+        laid = cone(parked.a, 0.0, parked.b, 0.0, None);
+    }
+    for part in own.iter().map(|part| part.unwrap_or(parked)) {
+        cone(part.a, part.ra, part.b, part.rb, part.squash);
     }
     Body {
         cones,
+        own: own.iter().any(Option::is_some),
         pelvis: p,
         pelvic,
         chest,

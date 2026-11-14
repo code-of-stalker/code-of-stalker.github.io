@@ -19,6 +19,7 @@ import { PersonaBelief } from './PersonaBelief.web';
 import { HeroLabyrinth } from './HeroLabyrinth.web';
 import { SphereHero } from './SphereHero.web';
 import { InnerHero } from './InnerHero.web';
+import { LighthouseHero } from './LighthouseHero.web';
 import { isNightScene, NightCity } from './NightCity.web';
 import { RopeDawn } from './RopeDawn.web';
 import { VoiceFork } from './VoiceFork.web';
@@ -36,6 +37,7 @@ function scene(props: ArtProps) {
   if (props.webScene === 'simple-practice') return <SimplePractice {...props} />;
   if (props.webScene === 'sphere-hero') return <SphereHero {...props} />;
   if (props.webScene === 'inner-hero') return <InnerHero {...props} />;
+  if (props.webScene === 'lighthouse-hero') return <LighthouseHero {...props} />;
   if (isNightScene(props.webScene)) return <NightCity {...props} />;
   if (props.webScene === 'rope-dawn') return <RopeDawn {...props} />;
   if (props.webScene === 'voice-fork') return <VoiceFork {...props} />;

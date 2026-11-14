@@ -1,9 +1,8 @@
-import { DynamicRings } from './DynamicRings.web';
-import { ScenePlaceholder } from './ScenePlaceholder';
-import { stepSevenHero } from '../stepSevenContent';
+import { LighthouseHero } from './LighthouseHero.web';
+import { StepSevenStill } from './StepSevenStill';
 
-/** The Rust scene «Динамическая сфера»; the placeholder stays only as its fallback. */
+/** The Rust scene «Маяк» (also the home card from step 7 on); Art's still stays only as its fallback. */
 export function StepSevenHero({ width, height, active, reducedMotion }: { width: number; height: number; active?: boolean; reducedMotion?: boolean }) {
-  return <DynamicRings kind="grounding-hero" webScene="dynamic-hero" width={width} height={height} active={active} reducedMotion={reducedMotion}
-    fallback={<ScenePlaceholder scene={stepSevenHero} width={width} height={height} />} />;
+  return <LighthouseHero kind="grounding-hero" webScene="lighthouse-hero" width={width} height={height} active={active} reducedMotion={reducedMotion}
+    fallback={<StepSevenStill width={width} height={height} />} />;
 }

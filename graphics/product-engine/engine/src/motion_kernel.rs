@@ -298,9 +298,113 @@ pub fn text_frame(text: &str, effect: u32, seconds: f64, reduced: bool) -> TextF
     }
     result
 }
+
+/// One link of a chain of words joined by arrows («стопы → опора → …»):
+/// how far its word has surfaced (0 hidden, 1 settled), how much of the
+/// arrow after it is drawn (its line, then its head) and how brightly
+/// both glow.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChainLink {
+    pub word: f64,
+    pub line: f64,
+    pub head: f64,
+    pub glow: f64,
+}
+
+/// The chain surfaces once, word after word, each arrow drawn out of its
+/// word towards the next; each word glows as it arrives. Then, every
+/// `CHAIN_WAVE` seconds, a quiet light runs along the settled chain from
+/// the first word to the last. Reduced motion shows it settled and still.
+pub const CHAIN_START: f64 = 0.35;
+pub const CHAIN_STEP: f64 = 1.0;
+pub const CHAIN_RISE: f64 = 0.8;
+pub const CHAIN_DRAW: f64 = 0.62;
+pub const CHAIN_WAVE: f64 = 9.0;
+pub fn chain_frame(count: usize, seconds: f64, reduced: bool) -> Vec<ChainLink> {
+    let smooth = |x: f64| {
+        let x = x.clamp(0., 1.);
+        x * x * (3. - 2. * x)
+    };
+    let settled = ChainLink {
+        word: 1.,
+        line: 1.,
+        head: 1.,
+        glow: 0.,
+    };
+    let last = CHAIN_START + count.saturating_sub(1) as f64 * CHAIN_STEP + CHAIN_RISE;
+    (0..count)
+        .map(|i| {
+            if reduced {
+                return settled;
+            }
+            let at = CHAIN_START + i as f64 * CHAIN_STEP;
+            let word = smooth((seconds - at) / CHAIN_RISE);
+            let drawn = ((seconds - at - 0.45) / CHAIN_DRAW).clamp(0., 1.);
+            let line = smooth(drawn / 0.72);
+            let head = smooth((drawn - 0.62) / 0.38);
+            // Arrival: a glow that rises with the word and fades after it.
+            let since = seconds - at - CHAIN_RISE * 0.6;
+            let arrival = if since < 0. {
+                word * word
+            } else {
+                (-since / 0.9).exp() * smooth(1. - since / 3.)
+            };
+            // The wave: a soft bump passing word by word.
+            let wave = if seconds > last + 1.8 {
+                let w = (seconds - last - 1.8).rem_euclid(CHAIN_WAVE) - i as f64 * 0.42;
+                (-(w / 0.38).powi(2)).exp()
+            } else {
+                0.
+            };
+            ChainLink {
+                word,
+                line,
+                head,
+                glow: (0.55 * arrival + 0.45 * wave).min(1.),
+            }
+        })
+        .collect()
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn chain_surfaces_word_by_word_and_settles() {
+        let links = |t| chain_frame(5, t, false);
+        // Nothing before it starts; every word and arrow in place after.
+        assert!(links(0.)
+            .iter()
+            .all(|l| l.word == 0. && l.line == 0. && l.head == 0.));
+        assert!(links(7.)
+            .iter()
+            .all(|l| l.word == 1. && l.line == 1. && l.head == 1.));
+        // One after another: a later word never ahead of an earlier one,
+        // and an arrow never ahead of its own word.
+        for k in 0..80 {
+            let f = links(k as f64 * 0.1);
+            for i in 0..5 {
+                assert!(f[i].line <= f[i].word && f[i].head <= f[i].line);
+                assert!((0.0..=1.).contains(&f[i].glow));
+                if i > 0 {
+                    assert!(f[i].word <= f[i - 1].word);
+                }
+            }
+        }
+        // While the second word surfaces the third is still hidden.
+        let mid = links(CHAIN_START + CHAIN_STEP + 0.4);
+        assert!(mid[1].word > 0.3 && mid[2].word == 0.);
+        // Settled and still with reduced motion.
+        assert!(chain_frame(5, 0., true)
+            .iter()
+            .all(|l| l.word == 1. && l.glow == 0.));
+        // The wave comes back every CHAIN_WAVE seconds.
+        for t in [8.0, 9.3, 12.1] {
+            let (a, b) = (links(t), links(t + CHAIN_WAVE));
+            for i in 0..5 {
+                assert!((a[i].glow - b[i].glow).abs() < 1e-9);
+            }
+        }
+    }
     #[test]
     fn native_mapping_and_transition_share_one_frame() {
         let mut k = Kernel::create();

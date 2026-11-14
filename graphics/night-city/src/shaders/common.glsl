@@ -48,11 +48,119 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define CHECK    u_d[SLOT_CHECK]
 #define CROSSCAR u_d[SLOT_CHECK + 1]  // the side street's car: x, z, heading, how seen
 #define RINGVIS  u_d[SLOT_CHECK + 2]  // how seen the first ring, the second; the third's boost; his screen
+// His umbrella (page 07): its rim's centre and radius (0 none); its crown,
+// and whether his own parts (thumbs, umbrella) are drawn at all.
+#define BROLLY     u_d[SLOT_BROLLY]
+#define BROLLY_TOP u_d[SLOT_BROLLY + 1]
+// The umbrella's ribs; the cloth sags between them.
+#define RIBS 8.0
+// His own phone (page 08, story.rs `voice_phone`): its centre and size (0
+// none); its right and half width; its up and half length; the screens it
+// goes between, how far, its light; the thumb over it (across, down,
+// pressed) and how much the finish redraws it sharp; the recording's clock
+// (< 0 not yet), the voice, -, whether its screens have loaded.
+#define PHONE_C   u_d[SLOT_PHONE]
+#define PHONE_X   u_d[SLOT_PHONE + 1]
+#define PHONE_Y   u_d[SLOT_PHONE + 2]
+#define PHONE_UI  u_d[SLOT_PHONE + 3]
+#define PHONE_TAP u_d[SLOT_PHONE + 4]
+#define PHONE_REC u_d[SLOT_PHONE + 5]
+// The phone's screens (assets/phone.png, tools/bake-phone.py): 0 its home
+// screen with our icon, 1 our app, 2 the Diary, 3 the Diary recording, each
+// UI_CELL px, UI_PITCH apart; under them the recording clock's seconds.
+uniform sampler2D u_ui;
+const vec2 UI_ATLAS = vec2(2400.0, 1298.0);
+const vec2 UI_CELL = vec2(585.0, 1266.0);
+const float UI_PITCH = 600.0;
+// Our icon on the home screen, its middle and its size (of the screen).
+const vec2 UI_ICON = vec2(0.374, 0.581);
+const vec2 UI_ICON_SIZE = vec2(96.0 / 585.0, 96.0 / 1266.0);
+// The record button, its middle (of the screen) and its radius (px).
+const vec2 UI_ORB = vec2(0.886, 0.936);
+const float UI_ORB_R = 42.0;
+// The clock's seconds digit in the recording's screen, and where the four
+// digits lie under the screens.
+const vec4 UI_DIGIT = vec4(115.0, 1178.0, 14.0, 19.0);
+const vec2 UI_DIGITS = vec2(10.0, 1272.0);
+
+// A rounded rectangle's distance, half size h, corner r.
+float roundRect(vec2 l, vec2 h, float r) {
+  vec2 q = abs(l) - h + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+// One screen at uv (0..1 down from its top left), `lod` its mip.
+float uiCell(float cell, vec2 uv, float lod) {
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
+  vec2 px = clamp(uv * UI_CELL, vec2(0.5), UI_CELL - 0.5);
+  vec2 d = px - UI_DIGIT.xy;
+  if (cell > 2.5 && PHONE_REC.x >= 0.0 && d.x >= 0.0 && d.y >= 0.0 && d.x < UI_DIGIT.z && d.y < UI_DIGIT.w) {
+    float n = min(floor(PHONE_REC.x), 3.0);
+    return textureLod(u_ui, (UI_DIGITS + vec2(20.0 * n, 0.0) + d) / UI_ATLAS, lod).r;
+  }
+  return textureLod(u_ui, (px + vec2(cell * UI_PITCH, 0.0)) / UI_ATLAS, lod).r;
+}
+// What the phone shows at uv, grey as the finish writes it: our app opens
+// out of its icon, the Diary slides in from the right, the recording
+// fades in; a touch where the thumb presses; the record button swells with
+// his voice.
+float phoneUi(vec2 uv, float lod) {
+  float light = PHONE_UI.w;
+  if (PHONE_REC.w < 0.5) return 0.1 * light;
+  float from = PHONE_UI.x, to = PHONE_UI.y, e = PHONE_UI.z;
+  float g;
+  if (e <= 0.0) {
+    g = uiCell(to, uv, lod);
+  } else if (to < 1.5) {
+    vec2 lo = mix(UI_ICON - 0.5 * UI_ICON_SIZE, vec2(0.0), e);
+    vec2 size = mix(UI_ICON_SIZE, vec2(1.0), e);
+    vec2 q = (uv - lo) / size;
+    float a = smoothstep(0.0, 0.3, e);
+    float under = uiCell(from, uv, lod) * (1.0 - 0.6 * e);
+    float over = uiCell(to, q, lod + max(log2(1.0 / min(size.x, size.y)), 0.0));
+    bool inside = q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0;
+    g = inside ? mix(under, over, a) : under;
+  } else if (to < 2.5) {
+    vec2 q = uv - vec2(1.0 - e, 0.0);
+    g = q.x >= 0.0 ? uiCell(to, q, lod) : uiCell(from, uv + vec2(0.3 * e, 0.0), lod) * (1.0 - 0.5 * e);
+  } else {
+    g = mix(uiCell(from, uv, lod), uiCell(to, uv, lod), e);
+  }
+  vec2 px = uv * UI_CELL;
+  vec2 tap = (uv - PHONE_TAP.xy) * UI_CELL;
+  g += 0.12 * PHONE_TAP.z * exp(-dot(tap, tap) / (60.0 * 60.0));
+  if (to > 2.5) {
+    float r = length(px - UI_ORB * UI_CELL);
+    float voice = PHONE_REC.y * (e > 0.0 ? e : 1.0);
+    g += 0.45 * voice * exp(-pow((r - UI_ORB_R - 6.0 - 16.0 * voice) / 5.0, 2.0));
+    g += 0.12 * voice * smoothstep(UI_ORB_R + 30.0, UI_ORB_R, r);
+  }
+  // A lit screen in the dark street: brighter than the atlas's greys.
+  return 1.3 * g * light;
+}
 // Page 07's tape: the loop's clock, how much the picture is a tape's
 // (0.35 standing, 1 running back), the flash as it stops.
 #define TAPE_T     RAINC.w
 #define TAPE_ON    PUDDLE.w
 #define TAPE_FLASH VOICE_L.w
+
+// The umbrella's axis up through its crown and two directions across it
+// that the ribs are counted from.
+void brollyAxes(out vec3 axis, out vec3 e1, out vec3 e2) {
+  axis = normalize(BROLLY_TOP.xyz - BROLLY.xyz);
+  e1 = normalize(cross(axis, vec3(0.0, 0.0, 1.0)));
+  e2 = cross(axis, e1);
+}
+// Its dome: the sphere's radius, and the dome's height over the rim at
+// `rho` from the axis.
+float brollySphere() {
+  float h = length(BROLLY_TOP.xyz - BROLLY.xyz);
+  return (BROLLY.w * BROLLY.w + h * h) / (2.0 * h);
+}
+float brollyHeight(float rho) {
+  float h = length(BROLLY_TOP.xyz - BROLLY.xyz);
+  float R = brollySphere();
+  return sqrt(max(R * R - rho * rho, 0.0)) - (R - h);
+}
 
 #define TIME     RIGHT.w
 #define APERTURE UP.w

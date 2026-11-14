@@ -35,7 +35,11 @@ uniform highp sampler2D u_h3;
 #define LIGHT_FULL 0
 #endif
 
-uniform vec4 u_b[FIGURES * CONES * 3];
+// Every figure's cones (lib.rs cones()): a uniform block, as they are more
+// than the plain uniforms a phone gives a fragment shader.
+layout(std140) uniform Cones {
+  vec4 u_b[(FIGURES * CONES + OWN) * 3];
+};
 const float BLEND[CONES] = float[CONES](BLENDS);
 
 #define SKY 0
@@ -121,6 +125,47 @@ float smin(float a, float b, float k) {
   float h = max(k - abs(a - b), 0.0) / k;
   return min(a, b) - h * h * k * 0.25;
 }
+// His umbrella's canopy (body.rs CANOPY): a thin dome cut from a sphere,
+// its crown at BROLLY_TOP, its rim round BROLLY; between the ribs the
+// cloth sags a little.
+float brollyCanopy(vec3 p) {
+  vec3 axis, e1, e2;
+  brollyAxes(axis, e1, e2);
+  float r = BROLLY.w;
+  float R = brollySphere();
+  vec3 q = p - (BROLLY_TOP.xyz - axis * R);
+  float y = dot(q, axis);
+  vec3 across = q - axis * y;
+  float x = length(across);
+  float phi = atan(dot(across, e2), dot(across, e1));
+  float sag = 1.0 - 0.03 * (0.5 - 0.5 * cos(RIBS * phi)) * smoothstep(0.1, r, x);
+  vec2 q2 = vec2(x, y) / sag;
+  vec2 rim = vec2(r, R - length(BROLLY_TOP.xyz - BROLLY.xyz));
+  float d = rim.y * q2.x > rim.x * q2.y ? length(q2 - rim) : abs(length(q2) - R);
+  return d * sag - CANOPY_CLOTH;
+}
+// His phone (page 08) at p, in its own frame: across, up its length, out of
+// its screen.
+vec3 phoneLocal(vec3 p) {
+  vec3 r = p - PHONE_C.xyz;
+  return vec3(dot(r, PHONE_X.xyz), dot(r, PHONE_Y.xyz), dot(r, cross(PHONE_X.xyz, PHONE_Y.xyz)));
+}
+// The phone: a slab with rounded corners and rounded edges.
+float phoneBox(vec3 p) {
+  float k = PHONE_C.w;
+  vec3 l = phoneLocal(p);
+  float e = PHONE_EDGE * k;
+  vec2 w = vec2(roundRect(l.xy, vec2(PHONE_X.w, PHONE_Y.w), PHONE_CORNER * k) + e, abs(l.z) - PHONE_T * k + e);
+  return min(max(w.x, w.y), 0.0) + length(max(w, 0.0)) - e;
+}
+// His own parts: the thumbs, the umbrella's handle and shaft, its canopy;
+// on page 08 his thumb and fingers round his phone, and the phone.
+float ownParts(vec3 p, float d) {
+  for (int c = 0 + ZERO; c < OWN - 1; c++) d = smin(d, cone(CONE_OWN + c, p), 0.006);
+  if (BROLLY.w > 0.0) d = min(d, brollyCanopy(p));
+  if (PHONE_C.w > 0.0) d = min(d, phoneBox(p));
+  return d;
+}
 // Figure `who` at p: 0 him (his head left out while the camera is in
 // it), then the passers-by as they stand in their first copy.
 float figure(int who, vec3 p) {
@@ -131,6 +176,7 @@ float figure(int who, vec3 p) {
     if (noHead && c >= CONE_NECK && c <= CONE_COLLAR) continue;
     d = smin(d, cone(o + c, p), BLEND[c]);
   }
+  if (who == 0 && BROLLY_TOP.w > 0.5) d = ownParts(p, d);
   return d;
 }
 // The normal from four samples round p, taken in a loop so the compiler
@@ -151,7 +197,10 @@ vec3 figureNormal(int who, vec3 p, out float d) {
 bool skin(int who, vec3 p, float d) {
   int o = who * CONES;
   float near = d + 0.012;
-  return ((who > 0 || FIG_LO.w < 0.5) && cone(o + CONE_HEAD, p) < near) || cone(o + CONE_HAND_L, p) < near || cone(o + CONE_HAND_R, p) < near;
+  bool thumbs = who == 0 && BROLLY_TOP.w > 0.5 && min(cone(CONE_OWN, p), cone(CONE_OWN + 1, p)) < near;
+  // Page 08: the fingers round his phone's edge.
+  thumbs = thumbs || (who == 0 && PHONE_C.w > 0.0 && min(cone(CONE_OWN + 2, p), cone(CONE_OWN + 3, p)) < near);
+  return ((who > 0 || FIG_LO.w < 0.5) && cone(o + CONE_HEAD, p) < near) || cone(o + CONE_HAND_L, p) < near || cone(o + CONE_HAND_R, p) < near || thumbs;
 }
 // A figure's box.
 void figureBox(int who, out vec3 lo, out vec3 hi) {
@@ -1324,7 +1373,41 @@ Mat figureMat(Hit h, vec3 p, vec3 rd) {
     screenLight = 0.15 * RINGVIS.w;
   }
   if (phone && dot(n, screenDir) > 0.5) return emits(vec2(6.0, 0.25) * (who == 0 ? RINGVIS.w : 0.4));
-  bool canopy = who == FIG_UMBRELLA && cone(o + CONE_PROP + 1, q) < d + 0.01;
+  if (who == 0 && PHONE_C.w > 0.0) {
+    // Page 08: his phone, unless his thumb or fingers are nearer. Its
+    // screen shows our app; the rest is black glass and its dark rim.
+    float k = PHONE_C.w;
+    vec3 face = cross(PHONE_X.xyz, PHONE_Y.xyz);
+    screenAt = PHONE_C.xyz + face * (PHONE_T * k);
+    screenDir = face;
+    screenLight = 0.06 * PHONE_UI.w;
+    float dp = phoneBox(q);
+    float fingers = min(min(cone(CONE_OWN, q), cone(CONE_OWN + 1, q)), min(cone(CONE_OWN + 2, q), cone(CONE_OWN + 3, q)));
+    if (dp < d + 0.002 && dp < min(fingers, cone(o + CONE_HAND_L, q))) {
+      vec3 l = phoneLocal(q);
+      vec2 half_ = vec2(PHONE_SCREEN_W, PHONE_SCREEN_H) * k;
+      float t = length(p - EYE.xyz);
+      Mat m;
+      if (dot(n, face) > 0.6 && roundRect(l.xy, half_, SCREEN_CORNER * k) < 0.0) {
+        vec2 uv = vec2(0.5 + 0.5 * l.x / half_.x, 0.5 - 0.5 * l.y / half_.y);
+        float lod = log2(max(pixelAt(t) * UI_CELL.y / (2.0 * half_.y), 1.0));
+        m = emits(vec2(phoneUi(uv, lod) / EXPOSURE, 0.0));
+        m.gleam = 0.5;
+      } else {
+        m = matte(0.02, n, 0.2, vec2(0.004));
+        m.gleam = 1.0;
+      }
+      m.gn = n;
+      m.a2 = 0.01;
+      m.essence = 0.0;
+      return m;
+    }
+  }
+  // His umbrella: the wet canopy, the shaft and the handle in his fist.
+  bool brolly = who == 0 && BROLLY.w > 0.0
+    && min(brollyCanopy(q), min(cone(CONE_OWN + 2, q), cone(CONE_OWN + 3, q))) < d + 0.004;
+  sk = sk && !brolly;
+  bool canopy = (who == FIG_UMBRELLA && cone(o + CONE_PROP + 1, q) < d + 0.01) || brolly;
   vec3 sh = shop(-1.0, cellOf(p.z));
   float fromShops = SHOP_LIGHT * 0.45 * sh.x * clamp(-n.x * 0.8 + 0.2, 0.0, 1.0);
   vec2 shops = sh.y > 0.5 ? vec2(0.0, fromShops) : vec2(fromShops, 0.0);
@@ -1337,6 +1420,9 @@ Mat figureMat(Hit h, vec3 p, vec3 rd) {
     extra.x += screenLight * max(dot(n, l), 0.0) * max(dot(-l, screenDir), 0.0) / (d2 + 0.02);
   }
   float albedo = sk ? 0.2 : (phone || canopy ? 0.025 : (who == FIG_PHONE ? 0.09 : 0.06));
+  // Page 08 in his eyes: his hand in the dark street, dimmer than the
+  // screen it holds.
+  if (sk && who == 0) albedo *= 1.0 - 0.4 * PHONE_TAP.w;
   Mat m = matte(albedo, n, 0.3, extra);
   float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * (who == 0 ? FIG_HI.w : 0.7);
   m.L = rim * vec2(0.2 * smoothstep(-0.3, 0.6, -n.x) + 0.05, 0.22 * smoothstep(-0.3, 0.6, n.x) + 0.04);

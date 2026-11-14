@@ -11,7 +11,10 @@
 //! program for all of it took Windows' shader compiler minutes, long enough
 //! for Chrome to give up on the page; each part takes it a few seconds, and
 //! with KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{BLEND, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, PRIMITIVES, PROPS};
+use crate::body::{
+    BLEND, CANOPY_CLOTH, COLLAR, CUT_ROUND, HANDS, HEAD, NECK, OWN, PHONE_ROUND, PHONE_SCREEN,
+    PHONE_SIZE, PRIMITIVES, PROPS,
+};
 use crate::story::{voice_lines, PUFF_LIFE, RAIL_H, RAIL_IN, SPHERE_Y, VOICE_REACH};
 use crate::story::{PASSERS, PHONE, UMBRELLA};
 use crate::{
@@ -19,15 +22,16 @@ use crate::{
     CARS, CAR_LANE, CAR_LIGHT, CELL, CROSS, CURB, EXPOSURE, FACADE, FIGURES, FLAT, FLIGHT,
     FRAME_ASPECT, HAZE, LAMP_GAP, LAMP_HEAD, LAMP_LIGHT, LAMP_POLE, LOOP, OPEN, PALM_DROPS, PUFFS,
     RAD_SCALE, RAIN, RAIN_BOX, RAIN_FALL, RAIN_LIGHT, RAIN_STREAK, REPEAT, RISE, RISERS, ROAD,
-    SHOP_LIGHT, SLAB, SLOTS, SLOT_CHECK, SLOT_PASS, SLOT_PUFF, SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP,
-    SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, TREAD, UNDER_DEPTH, UNDER_LEN, UNDER_X, UNDER_Z,
-    WORLD_SCALE, WORLD_WIDTH,
+    SHOP_LIGHT, SLAB, SLOTS, SLOT_BROLLY, SLOT_CHECK, SLOT_PASS, SLOT_PHONE, SLOT_PUFF,
+    SLOT_SCREEN, SLOT_SPHERE, SLOT_STEP, SLOT_VIEW, SPLASH, STEP_MARKS, TOWER_CELL, TREAD,
+    UNDER_DEPTH, UNDER_LEN, UNDER_X, UNDER_Z, WORLD_SCALE, WORLD_WIDTH,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
 use web_sys::{
-    HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlFramebuffer, WebGlProgram, WebGlShader,
-    WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
+    HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
+    WebGlFramebuffer, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation,
+    WebGlVertexArrayObject,
 };
 
 const COMMON: &str = include_str!("shaders/common.glsl");
@@ -43,7 +47,6 @@ const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// Every uniform any program reads; a program without one ignores it.
 const NAMES: [&str; 14] = [
     "u_d",
-    "u_b",
     "u_res",
     "u_world",
     "u_dof",
@@ -56,7 +59,11 @@ const NAMES: [&str; 14] = [
     "u_h1",
     "u_h2",
     "u_h3",
+    "u_ui",
 ];
+/// The figures' cones are a uniform block (world.frag's `Cones`), more than
+/// a phone's plain uniforms hold, read through this binding point.
+const CONES_BINDING: u32 = 0;
 /// The texture units of the world's frame, the lens's and the rain's.
 const UNIT_WORLD: u32 = 0;
 const UNIT_DOF: u32 = 1;
@@ -66,6 +73,8 @@ const UNIT_HITS: u32 = 4;
 /// The hit records: the eye's hit, its normal or the mirror's way, the
 /// mirror's hit, its normal.
 const RECORDS: u32 = 4;
+/// Page 08's phone screens, after the hit records.
+const UNIT_UI: u32 = UNIT_HITS + RECORDS;
 /// KHR_parallel_shader_compile's query: whether a program has linked yet.
 const COMPLETION_STATUS: u32 = 0x91B1;
 /// The world's parts, in the order they are linked.
@@ -84,6 +93,14 @@ fn defines() -> String {
         ("SLOT_SCREEN", SLOT_SCREEN.to_string()),
         ("SLOT_SPHERE", SLOT_SPHERE.to_string()),
         ("SLOT_CHECK", SLOT_CHECK.to_string()),
+        ("SLOT_BROLLY", SLOT_BROLLY.to_string()),
+        ("SLOT_PHONE", SLOT_PHONE.to_string()),
+        ("PHONE_T", f(PHONE_SIZE[2])),
+        ("PHONE_CORNER", f(PHONE_ROUND[0])),
+        ("PHONE_EDGE", f(PHONE_ROUND[1])),
+        ("SCREEN_CORNER", f(PHONE_ROUND[2])),
+        ("PHONE_SCREEN_W", f(PHONE_SCREEN[0])),
+        ("PHONE_SCREEN_H", f(PHONE_SCREEN[1])),
         ("PASSERS", PASSERS.to_string()),
         ("FIGURES", FIGURES.to_string()),
         ("FIG_UMBRELLA", (1 + UMBRELLA).to_string()),
@@ -95,6 +112,9 @@ fn defines() -> String {
         ("CONE_HAND_L", HANDS[0].to_string()),
         ("CONE_HAND_R", HANDS[1].to_string()),
         ("CONE_PROP", PROPS[0].to_string()),
+        ("OWN", OWN.to_string()),
+        ("CONE_OWN", (FIGURES * PRIMITIVES).to_string()),
+        ("CANOPY_CLOTH", f(CANOPY_CLOTH)),
         ("CUT_ROUND", f(CUT_ROUND)),
         (
             "BLENDS",
@@ -130,6 +150,7 @@ fn defines() -> String {
         ("BLUR_MAX", f(BLUR_MAX)),
         ("RAD_SCALE", f(RAD_SCALE)),
         ("BLOOM", f(BLOOM)),
+        ("EXPOSURE", f(EXPOSURE)),
         ("LAMP_LIGHT", f(LAMP_LIGHT)),
         ("SHOP_LIGHT", f(SHOP_LIGHT)),
         ("CAR_LIGHT", f(CAR_LIGHT)),
@@ -280,6 +301,10 @@ impl Linking {
             program: self.program,
             uniforms,
         };
+        let block = gl.get_uniform_block_index(&prog.program, "Cones");
+        if block != Gl::INVALID_INDEX {
+            gl.uniform_block_binding(&prog.program, block, CONES_BINDING);
+        }
         gl.use_program(Some(&prog.program));
         gl.uniform1i(prog.at("u_world"), UNIT_WORLD as i32);
         gl.uniform1i(prog.at("u_dof"), UNIT_DOF as i32);
@@ -287,6 +312,7 @@ impl Linking {
         for (i, name) in ["u_h0", "u_h1", "u_h2", "u_h3"].iter().enumerate() {
             gl.uniform1i(prog.at(name), (UNIT_HITS + i as u32) as i32);
         }
+        gl.uniform1i(prog.at("u_ui"), UNIT_UI as i32);
         Ok(prog)
     }
     fn dispose(self, gl: &Gl) {
@@ -580,6 +606,8 @@ pub struct NightCity {
     /// Whether the frames hold half floats.
     float: bool,
     empty: WebGlVertexArrayObject,
+    /// The figures' cones, filled each frame.
+    cones: WebGlBuffer,
     themed: Themed,
     look: Look,
     story: Story,
@@ -590,6 +618,8 @@ pub struct NightCity {
     paused: bool,
     reduced: bool,
     disposed: bool,
+    /// Page 08's phone screens, once the page has handed them over.
+    screens: Option<WebGlTexture>,
     frames: u32,
 }
 
@@ -651,6 +681,7 @@ impl NightCity {
         let empty = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
+        let cones = gl.create_buffer().ok_or("Cannot allocate buffer")?;
         Ok(Self {
             world_frame: Target::new(&gl, true, false)?,
             lens_frame: Target::new(&gl, true, true)?,
@@ -666,6 +697,7 @@ impl NightCity {
             passes,
             float,
             empty,
+            cones,
             themed,
             look: look(4),
             story: Story::new(Chapter::Fact),
@@ -676,6 +708,7 @@ impl NightCity {
             paused: false,
             reduced: false,
             disposed: false,
+            screens: None,
             frames: 0,
         })
     }
@@ -777,6 +810,49 @@ impl NightCity {
             self.draw();
         }
     }
+    /// Page 08's phone screens (assets/phone.webp: our app, its Diary, the
+    /// recording, tools/bake-phone.py). Until they come the phone's glass
+    /// only glows.
+    pub fn phone_screens(&mut self, image: HtmlImageElement) -> Result<(), JsValue> {
+        if self.disposed {
+            return Ok(());
+        }
+        let gl = &self.gl;
+        let t = gl.create_texture().ok_or("Cannot allocate texture")?;
+        gl.active_texture(Gl::TEXTURE0 + UNIT_UI);
+        gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
+        gl.tex_parameteri(
+            Gl::TEXTURE_2D,
+            Gl::TEXTURE_MIN_FILTER,
+            Gl::LINEAR_MIPMAP_LINEAR as i32,
+        );
+        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
+        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
+        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
+        gl.pixel_storei(Gl::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+        // Grey: one channel is all they need.
+        let uploaded = gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
+            Gl::TEXTURE_2D,
+            0,
+            Gl::R8 as i32,
+            Gl::RED,
+            Gl::UNSIGNED_BYTE,
+            &image,
+        );
+        if uploaded.is_ok() {
+            gl.generate_mipmap(Gl::TEXTURE_2D);
+        }
+        gl.bind_texture(Gl::TEXTURE_2D, None);
+        gl.active_texture(Gl::TEXTURE0);
+        if let Err(error) = uploaded {
+            gl.delete_texture(Some(&t));
+            return Err(error);
+        }
+        if let Some(old) = self.screens.replace(t) {
+            gl.delete_texture(Some(&old));
+        }
+        Ok(())
+    }
     pub fn frame_count(&self) -> u32 {
         self.frames
     }
@@ -793,6 +869,7 @@ impl NightCity {
         self.rain_frame.dispose(gl);
         self.records.dispose(gl);
         gl.delete_vertex_array(Some(&self.empty));
+        gl.delete_buffer(Some(&self.cones));
         for l in self.linking.drain(..) {
             l.dispose(gl);
         }
@@ -800,6 +877,9 @@ impl NightCity {
             programs.dispose(gl);
         }
         self.themed.dispose(gl);
+        if let Some(t) = self.screens.take() {
+            gl.delete_texture(Some(&t));
+        }
         self.disposed = true;
     }
 }
@@ -918,6 +998,7 @@ impl NightCity {
         };
         let f = self.story.compose(at);
         let mut slots = pack(&f);
+        slots[SLOT_PHONE + 5][3] = if self.screens.is_some() { 1.0 } else { 0.0 };
         // The whole 3:2 frame stays in view on a canvas of any shape.
         let aspect = width as f32 / height as f32;
         slots[SLOT_VIEW] = [
@@ -927,10 +1008,13 @@ impl NightCity {
             0.0,
         ];
         let flat: Vec<f32> = slots.iter().flatten().copied().collect();
-        let cones = cones(&f);
+        let cones = js_sys::Float32Array::from(cones(&f).as_slice());
         let keep = if self.float { 1.0 } else { BYTE_KEEP };
         let gl = &self.gl;
         gl.bind_vertex_array(Some(&self.empty));
+        gl.active_texture(Gl::TEXTURE0 + UNIT_UI);
+        gl.bind_texture(Gl::TEXTURE_2D, self.screens.as_ref());
+        gl.active_texture(Gl::TEXTURE0);
         let scene = |p: &Prog, w: i32, h: i32, kind: f32| {
             gl.use_program(Some(&p.program));
             gl.uniform4fv_with_f32_array(p.at("u_d"), &flat);
@@ -943,9 +1027,12 @@ impl NightCity {
         let Some(programs) = self.programs.as_ref() else {
             return;
         };
+        gl.bind_buffer(Gl::UNIFORM_BUFFER, Some(&self.cones));
+        gl.buffer_data_with_array_buffer_view(Gl::UNIFORM_BUFFER, &cones, Gl::DYNAMIC_DRAW);
+        gl.bind_buffer(Gl::UNIFORM_BUFFER, None);
+        gl.bind_buffer_base(Gl::UNIFORM_BUFFER, CONES_BINDING, Some(&self.cones));
         let world = |p: &Prog| {
             scene(p, ww, wh, 0.0);
-            gl.uniform4fv_with_f32_array(p.at("u_b"), &cones);
             gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         };
         match &programs.world {
@@ -1041,7 +1128,7 @@ impl NightCity {
         gl.uniform3fv_with_f32_array(programs.warm.at("u_warm"), &self.look.warm);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.disable(Gl::BLEND);
-        let units = [UNIT_WORLD, UNIT_DOF, UNIT_RAIN].into_iter();
+        let units = [UNIT_WORLD, UNIT_DOF, UNIT_RAIN, UNIT_UI].into_iter();
         for unit in units.chain(UNIT_HITS..UNIT_HITS + RECORDS) {
             gl.active_texture(Gl::TEXTURE0 + unit);
             gl.bind_texture(Gl::TEXTURE_2D, None);

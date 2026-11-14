@@ -1,7 +1,7 @@
 //! The figure: footsteps make a walk, the walk a pose, and the pose 23
 //! cones (rounded, or flat-ended where cloth ends) that the body shader
-//! blends into one surface of light. Metres; the figure faces +z, its left
-//! is +x, up is +y.
+//! blends into one surface of light, and for him `OWN` more: his thumbs
+//! and his umbrella. Metres; the figure faces +z, its left is +x, up is +y.
 use crate::math::{min_jerk, mix, monotone, rotate, smooth, softmin, v3, V3, Y};
 use std::f32::consts::{PI, TAU};
 
@@ -21,9 +21,133 @@ pub const HEAD: usize = 5;
 pub const COLLAR: usize = 6;
 pub const HANDS: [usize; 2] = [19, 20];
 pub const PROPS: [usize; 2] = [21, 22];
+/// His own parts after every figure's `PRIMITIVES` (the passers' are not
+/// drawn): a thumb on each hand, then his umbrella's handle, its shaft and
+/// its canopy. The canopy is no cone: its first end is the canopy's crown
+/// and its rim's radius, its second the rim's centre and the cloth's
+/// thickness (a thin dome, the shader draws it so).
+pub const OWN: usize = 5;
+pub const ALL: usize = PRIMITIVES + OWN;
+pub const THUMBS: [usize; 2] = [PRIMITIVES, PRIMITIVES + 1];
+pub const HANDLE: usize = PRIMITIVES + 2;
+pub const SHAFT: usize = PRIMITIVES + 3;
+pub const CANOPY: usize = PRIMITIVES + 4;
+/// His umbrella: the canopy's radius at the rim, how deep it domes, the
+/// cloth's thickness; its crown this high over his own and this far
+/// ahead of it and to his left.
+pub const CANOPY_R: f32 = 0.5;
+pub const CANOPY_DEPTH: f32 = 0.2;
+pub const CANOPY_CLOTH: f32 = 0.004;
+const CANOPY_UP: f32 = 0.45;
+const CANOPY_AHEAD: f32 = 0.12;
+const CANOPY_LEFT: f32 = 0.08;
 /// A cone's squash keep below zero marks it flat-ended (cut square, its
 /// edge rounded this much) instead of capped by spheres.
 pub const CUT_ROUND: f32 = 0.008;
+/// A phone's thickness, of its width, and half of it, metres.
+const PHONE_KEEP: f32 = 0.13;
+const PHONE_HALF: f32 = 0.036 * PHONE_KEEP;
+/// His own phone on page 08 (a box, not a cone): half its width, half its
+/// length and half its thickness; its screen's half width and half length.
+pub const PHONE_SIZE: [f32; 3] = [0.036, 0.0765, 0.0045];
+pub const PHONE_SCREEN: [f32; 2] = [0.0335, 0.0725];
+/// Its corners in its plane, its edges' rounding, its screen's corners (m).
+pub const PHONE_ROUND: [f32; 3] = [0.009, 0.003, 0.0065];
+/// Where its centre is from the wrist that holds it: to the right as he
+/// sees it, and up its length.
+const PHONE_WRIST: [f32; 2] = [0.025, 0.085];
+
+/// One cone before it is laid down.
+#[derive(Clone, Copy, Debug)]
+struct Part {
+    a: V3,
+    ra: f32,
+    b: V3,
+    rb: f32,
+    squash: Option<(V3, f32)>,
+}
+
+impl Part {
+    fn plain(a: V3, ra: f32, b: V3, rb: f32) -> Part {
+        Part {
+            a,
+            ra,
+            b,
+            rb,
+            squash: None,
+        }
+    }
+}
+
+/// A hand: from its wrist along `dir` for `length`, flattened along its
+/// palm's normal to `keep` of its width.
+#[derive(Clone, Copy, Debug)]
+struct Grip {
+    wrist: V3,
+    dir: V3,
+    palm: V3,
+    length: f32,
+    radii: [f32; 2],
+    keep: f32,
+}
+
+/// How far from the wrist a fist's curled fingers hold a handle.
+const FIST_HOLD: f32 = 0.048;
+
+impl Grip {
+    /// Open, as the arm carries it.
+    fn open(wrist: V3, dir: V3, palm: V3) -> Grip {
+        Grip {
+            wrist,
+            dir,
+            palm,
+            length: HAND,
+            radii: [0.028, 0.02],
+            keep: 0.55,
+        }
+    }
+
+    /// Closed round a handle that runs up to `toward`: shorter and rounder,
+    /// across the handle, which passes through its curled fingers.
+    fn fist(open: &Grip, toward: V3) -> Grip {
+        let mut dir = open.dir;
+        let mut up = Y;
+        for _ in 0..2 {
+            up = (toward - (open.wrist + dir * FIST_HOLD)).normalize();
+            dir = (open.dir - up * open.dir.dot(up)).normalize();
+        }
+        Grip {
+            wrist: open.wrist,
+            dir,
+            palm: up.cross(dir).normalize(),
+            length: 0.082,
+            radii: [0.03, 0.028],
+            keep: 0.86,
+        }
+    }
+
+    /// Flat, its palm turned to face `facing`.
+    fn flat(open: &Grip, facing: V3) -> Grip {
+        Grip {
+            wrist: open.wrist,
+            dir: (open.dir - facing * open.dir.dot(facing)).normalize(),
+            palm: facing,
+            length: 0.1,
+            radii: [0.028, 0.021],
+            keep: 0.5,
+        }
+    }
+
+    /// Where a fist holds its handle.
+    fn centre(&self) -> V3 {
+        self.wrist + self.dir * FIST_HOLD
+    }
+
+    /// Half its thickness across the palm, at its middle.
+    fn half_thickness(&self) -> f32 {
+        0.25 * (self.radii[0] + self.radii[1]) * self.keep
+    }
+}
 
 /// What a figure carries in its right hand, if anything.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -37,6 +161,22 @@ pub enum Carry {
     /// A phone and no hood: out of the pocket this much, 0 … 1 (it grows
     /// from nothing in the hand as the hand brings it up).
     Screen(f32),
+}
+
+/// His own phone in the left hand (page 08), each 0 … 1 unless said: how
+/// far the hand reaches for the pocket and then holds the phone; how far
+/// out of the pocket it is (it grows from nothing in the hand); how far the
+/// hand has brought it up from the pocket; where before him it is held (0
+/// at the chest, 1 before the eyes, 2 under the mouth); and the thumb over
+/// its screen: across (0 left … 1 right), down (0 top … 1 bottom) and how
+/// far pressed (0 lifted … 1 on the glass).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Held {
+    pub reach: f32,
+    pub out: f32,
+    pub raise: f32,
+    pub hold: f32,
+    pub thumb: [f32; 3],
 }
 
 pub const THIGH: f32 = 0.43;
@@ -476,6 +616,8 @@ impl Walk {
             hands: [[0.0; 4]; 2],
             wrists: [0.0; 2],
             carry: Carry::Nothing,
+            umbrella: false,
+            phone: None,
             coat: RAINCOAT,
         }
     }
@@ -510,6 +652,10 @@ pub struct Pose {
     pub hands: [[f32; 4]; 2],
     pub wrists: [f32; 2],
     pub carry: Carry,
+    /// His open umbrella in the left hand.
+    pub umbrella: bool,
+    /// His own phone in the left hand (page 08).
+    pub phone: Option<Held>,
     pub coat: Coat,
 }
 
@@ -563,8 +709,11 @@ fn knee(hip: V3, ankle: V3, pole: V3) -> V3 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Body {
     /// Per cone: (end A, its radius), (end B, its radius), (squash axis,
-    /// how much of its width it keeps along it; below zero, flat-ended).
-    pub cones: [[f32; 4]; PRIMITIVES * 3],
+    /// how much of its width it keeps along it; below zero, flat-ended);
+    /// every figure's `PRIMITIVES`, then his `OWN`.
+    pub cones: [[f32; 4]; ALL * 3],
+    /// Whether any of the `OWN` parts is there.
+    pub own: bool,
     pub pelvis: V3,
     pub pelvic: Axes,
     pub chest: V3,
@@ -575,7 +724,11 @@ pub struct Body {
     pub face: Axes,
     /// A phone's screen: its centre and the way it faces (zero: none).
     pub screen: [V3; 2],
-    /// The box around every cone.
+    /// His own phone (page 08): its centre, its right as he sees it and its
+    /// length's way up, and how far it has grown (0: none).
+    pub phone: [V3; 3],
+    pub phone_size: f32,
+    /// The box around every cone and his phone.
     pub low: V3,
     pub high: V3,
 }
@@ -586,7 +739,7 @@ impl Body {
     fn mapped(&self, point: impl Fn(V3) -> V3, axis: impl Fn(V3) -> V3, k: f32) -> Body {
         let mut body = *self;
         let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
-        for c in 0..PRIMITIVES {
+        for c in 0..ALL {
             let mut r = 0.0f32;
             for j in 0..2 {
                 let [x, y, z, w] = body.cones[3 * c + j];
@@ -621,8 +774,31 @@ impl Body {
         body.mouth = point(body.mouth);
         body.face = turn(body.face);
         body.screen = [point(body.screen[0]), axis(body.screen[1])];
+        let [c, x, up] = body.phone;
+        body.phone = [point(c), axis(x), axis(up)];
+        body.phone_size *= k;
+        for corner in body.phone_corners() {
+            low = low.min(corner);
+            high = high.max(corner);
+        }
         (body.low, body.high) = (low, high);
         body
+    }
+
+    /// His phone's eight corners (none when it has not grown).
+    fn phone_corners(&self) -> Vec<V3> {
+        if self.phone_size <= 0.0 {
+            return Vec::new();
+        }
+        let [c, x, up] = self.phone;
+        let facing = x.cross(up);
+        let [w, l, t] = PHONE_SIZE.map(|h| h * self.phone_size);
+        let mut corners = Vec::with_capacity(8);
+        for i in 0..8 {
+            let s = |bit: usize| if i >> bit & 1 == 0 { -1.0 } else { 1.0 };
+            corners.push(c + x * (w * s(0)) + up * (l * s(1)) + facing * (t * s(2)));
+        }
+        corners
     }
 
     /// The body with each of its points moved by `by` of where it is: the
@@ -645,19 +821,26 @@ impl Body {
 }
 
 pub fn build(pose: &Pose) -> Body {
-    let mut cones = [[0.0; 4]; PRIMITIVES * 3];
+    let mut cones = [[0.0; 4]; ALL * 3];
     let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
     let mut n = 0;
+    // Lays the next cone and says how many there are; a radius of zero
+    // parks an empty slot, tiny and out of the box.
     let mut cone = |a: V3, ra: f32, b: V3, rb: f32, squash: Option<(V3, f32)>| {
         let (axis, keep) = squash.unwrap_or((Y, 1.0));
+        let empty = ra <= 0.0;
+        let (ra, rb) = if empty { (0.001, 0.001) } else { (ra, rb) };
         cones[3 * n] = [a.x, a.y, a.z, ra];
         cones[3 * n + 1] = [b.x, b.y, b.z, rb];
         cones[3 * n + 2] = [axis.x, axis.y, axis.z, keep];
         n += 1;
-        let r = ra.max(rb);
-        let pad = v3(r, r, r);
-        low = low.min(a - pad).min(b - pad);
-        high = high.max(a + pad).max(b + pad);
+        if !empty {
+            let r = ra.max(rb);
+            let pad = v3(r, r, r);
+            low = low.min(a - pad).min(b - pad);
+            high = high.max(a + pad).max(b + pad);
+        }
+        n
     };
     // Flat-ended, squashed along `axis` to `keep` of its width.
     let cut = |axis: V3, keep: f32| Some((axis, -keep));
@@ -739,6 +922,28 @@ pub fn build(pose: &Pose) -> Body {
     for f in &pose.feet {
         cone(f.ball, 0.028, f.toe, 0.022, None);
     }
+    let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
+    let mouth = jaw + hd.forward * 0.06 - hd.up * 0.015;
+    // His own phone (page 08): the left wrist goes into the pocket, then
+    // where the phone in its palm is held before him.
+    let mut targets = pose.hands;
+    if let Some(held) = pose.phone {
+        let pocket = p + pelvic.left * 0.17 + pelvic.forward * 0.06 - Y * 0.05;
+        let chest_at = chest + ch.forward * 0.27 + ch.left * 0.05 - Y * 0.08;
+        let read = eyes + ch.forward * 0.25 - Y * 0.19;
+        let under_mouth = mouth + ch.forward * 0.13 - Y * 0.09;
+        let before = if held.hold <= 1.0 {
+            chest_at.lerp(read, held.hold)
+        } else {
+            read.lerp(under_mouth, held.hold - 1.0)
+        };
+        let facing = (eyes - before).normalize();
+        let up = (Y - facing * Y.dot(facing)).normalize();
+        let wrist =
+            before - up * PHONE_WRIST[1] - up.cross(facing) * PHONE_WRIST[0] - facing * 0.012;
+        let at = pocket.lerp(wrist, held.raise);
+        targets[0] = [at.x, at.y, at.z, held.reach];
+    }
     let arms = [0, 1].map(|i| {
         let s = sides[i];
         let shoulder = shoulder_line + ch.left * (SHOULDER * s);
@@ -747,7 +952,7 @@ pub fn build(pose: &Pose) -> Body {
         let across = upper.cross(ch.forward).normalize();
         let bend = 0.22 + 0.3 * pose.arms[i].max(0.0) / 0.28 + 0.03 * b + pose.bend[i];
         let lower = rotate(rotate(upper, across, bend), ch.forward, -ADDUCT * s);
-        let [tx, ty, tz, reach] = pose.hands[i];
+        let [tx, ty, tz, reach] = targets[i];
         let (upper, lower, across) = if reach > 0.0 {
             // The wrist reaches for its target, the elbow out and down.
             let d = v3(tx, ty, tz) - shoulder;
@@ -779,79 +984,215 @@ pub fn build(pose: &Pose) -> Body {
     for a in &arms {
         cone(a.1, 0.044 + sleeve, a.2, 0.041 + sleeve, cut(Y, 1.0));
     }
-    for a in &arms {
-        cone(a.2, 0.028, a.3, 0.02, Some((a.4, 0.55)));
-    }
-    // What the right hand carries.
-    let (_, _, wrist, tip, palm) = arms[1];
-    let grip = wrist.lerp(tip, 0.5);
+    // What each hand holds shapes it: open, a fist round a handle, or flat
+    // under a phone it holds up to the eyes.
+    let mut hands = arms.map(|a| Grip::open(a.2, (a.3 - a.2).normalize(), a.4));
+    // The right hand's umbrella (a passer's) or phone.
+    let mut props: Vec<Part> = Vec::new();
     let mut screen = [v3(0.0, 0.0, 0.0); 2];
+    let mut own: [Option<Part>; OWN] = [None; OWN];
     match pose.carry {
         Carry::Nothing => {}
         Carry::Umbrella => {
             let top = crown + Y * 0.33 + ch.forward * 0.05 - ch.left * 0.04;
-            let stick = (top - grip).normalize();
-            cone(grip - stick * 0.1, 0.009, top, 0.007, None);
-            cone(
-                top - stick * 0.2,
-                0.5,
-                top + stick * 0.02,
-                0.025,
-                cut(Y, 1.0),
-            );
+            let g = Grip::fist(&hands[1], top);
+            let stick = (top - g.centre()).normalize();
+            props.push(Part::plain(g.centre() - stick * 0.1, 0.009, top, 0.007));
+            props.push(Part {
+                a: top - stick * 0.2,
+                ra: 0.5,
+                b: top + stick * 0.02,
+                rb: 0.025,
+                squash: cut(Y, 1.0),
+            });
+            hands[1] = g;
         }
         Carry::Phone | Carry::Screen(_) => {
             let out = match pose.carry {
                 Carry::Screen(out) => smooth(0.0, 1.0, out),
                 _ => 1.0,
             };
-            let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
-            let at = grip + palm * 0.012;
-            let facing = (eyes - at).normalize();
-            let long = (Y - facing * Y.dot(facing)).normalize();
+            // The palm turns to face the eyes and the phone lies on it, its
+            // back on the palm, the thumb over its edge.
+            let open = hands[1];
+            let facing = (eyes - open.wrist - open.dir * 0.06).normalize();
+            let g = Grip::flat(&open, facing);
+            let thumb = g.dir.cross(facing).normalize();
+            let upright = (Y - facing * Y.dot(facing)).normalize();
+            let long = (upright * 0.6 + g.dir * 0.4).normalize();
+            let half = PHONE_HALF * out;
+            let at = g.wrist + g.dir * 0.062 + facing * (g.half_thickness() + half + 0.0015)
+                - thumb * 0.014;
             if out > 0.02 {
-                cone(
-                    at - long * (0.07 * out),
-                    0.036 * out,
-                    at + long * (0.07 * out),
-                    0.036 * out,
-                    cut(facing, 0.13),
-                );
-                screen = [at + facing * 0.005, facing];
+                props.push(Part {
+                    a: at - long * (0.07 * out),
+                    ra: 0.036 * out,
+                    b: at + long * (0.07 * out),
+                    rb: 0.036 * out,
+                    squash: cut(facing, PHONE_KEEP),
+                });
+                screen = [at + facing * (half + 0.0005), facing];
             }
+            own[0] = Some(Part::plain(
+                g.wrist + g.dir * 0.03 + thumb * 0.034 + facing * 0.004,
+                0.0115,
+                at + thumb * (0.036 * out - 0.017) + long * 0.012 + facing * (half + 0.0085),
+                0.0088,
+            ));
+            hands[1] = g;
         }
     }
     if pose.carry == Carry::Phone {
         // The hood up round the head, the face out of its front.
         let mid = jaw.lerp(crown, 0.5) + hd.up * 0.025;
-        cone(
-            mid - hd.forward * 0.075,
-            0.13,
-            mid + hd.forward * 0.04,
-            0.125,
-            cut(hd.left, 0.84),
+        props.push(Part {
+            a: mid - hd.forward * 0.075,
+            ra: 0.13,
+            b: mid + hd.forward * 0.04,
+            rb: 0.125,
+            squash: cut(hd.left, 0.84),
+        });
+    }
+    // His umbrella in the left hand: the fist round its handle, the shaft
+    // up through the canopy over his head.
+    if pose.umbrella {
+        let crown_at = crown + Y * CANOPY_UP + ch.forward * CANOPY_AHEAD + ch.left * CANOPY_LEFT;
+        let g = Grip::fist(&hands[0], crown_at);
+        let centre = g.centre();
+        let shaft = (crown_at - centre).normalize();
+        let mut side = shaft.cross(g.dir).normalize();
+        if side.dot(ch.left) > 0.0 {
+            side = -side;
+        }
+        own[1] = Some(Part::plain(
+            g.wrist + g.dir * 0.02 + shaft * 0.02 + side * 0.02,
+            0.0118,
+            g.wrist + g.dir * 0.055 + shaft * 0.024 + side * 0.026,
+            0.0088,
+        ));
+        own[2] = Some(Part::plain(
+            centre - shaft * 0.08,
+            0.0158,
+            centre + shaft * 0.06,
+            0.0142,
+        ));
+        own[3] = Some(Part::plain(
+            centre + shaft * 0.06,
+            0.0056,
+            crown_at + shaft * 0.05,
+            0.0042,
+        ));
+        own[4] = Some(Part {
+            a: crown_at,
+            ra: CANOPY_R,
+            b: crown_at - shaft * CANOPY_DEPTH,
+            rb: CANOPY_CLOTH,
+            squash: Some((shaft, 1.0)),
+        });
+        hands[0] = g;
+    }
+    // His own phone on the left palm, its screen to his eyes: the thumb
+    // over the glass, two fingers round its right edge.
+    let mut phone = [v3(0.0, 0.0, 0.0); 3];
+    let mut phone_size = 0.0;
+    if let Some(held) = pose.phone.filter(|h| h.out > 0.0) {
+        let k = held.out;
+        let wrist = hands[0].wrist;
+        let mut facing = (eyes - wrist).normalize();
+        let mut up = Y;
+        for _ in 0..2 {
+            up = (Y - facing * Y.dot(facing)).normalize();
+            facing = (eyes - (wrist + up * PHONE_WRIST[1])).normalize();
+        }
+        let x = up.cross(facing);
+        let [hw, _, ht] = PHONE_SIZE.map(|h| h * k);
+        let g = Grip {
+            wrist,
+            dir: (x * 0.055 + up * 0.08).normalize(),
+            palm: facing,
+            length: 0.1,
+            radii: [0.028, 0.021],
+            keep: 0.5,
+        };
+        let centre = wrist
+            + x * PHONE_WRIST[0]
+            + up * PHONE_WRIST[1]
+            + facing * (g.half_thickness() + ht + 0.0012);
+        let w = smooth(0.0, 0.4, k);
+        let open = hands[0];
+        hands[0] = Grip {
+            wrist,
+            dir: open.dir.lerp(g.dir, w).normalize(),
+            palm: open.palm.lerp(g.palm, w).normalize(),
+            length: mix(open.length, g.length, w),
+            radii: [
+                mix(open.radii[0], g.radii[0], w),
+                mix(open.radii[1], g.radii[1], w),
+            ],
+            keep: mix(open.keep, g.keep, w),
+        };
+        let [u, v, press] = held.thumb;
+        let base = centre - x * (hw + 0.006) - up * 0.05 - facing * 0.002;
+        let tip = centre
+            + x * ((u - 0.5) * 2.0 * PHONE_SCREEN[0] * k)
+            + up * ((0.5 - v) * 2.0 * PHONE_SCREEN[1] * k)
+            + facing * (ht + 0.0082 + 0.012 * (1.0 - press));
+        let knuckle = base.lerp(tip, 0.55) + facing * (0.01 + 0.005 * (1.0 - press));
+        own[0] = Some(Part::plain(knuckle, 0.009, tip, 0.0078));
+        own[1] = Some(Part::plain(base, 0.011, knuckle, 0.0093));
+        for (i, along) in [0.0f32, -0.024].into_iter().enumerate() {
+            own[2 + i] = Some(Part::plain(
+                centre + x * (hw - 0.01) + up * along - facing * (ht + 0.006),
+                0.0095,
+                centre + x * (hw + 0.0035) + up * (along + 0.004) - facing * (ht * 0.2),
+                0.008,
+            ));
+        }
+        phone = [centre, x, up];
+        phone_size = k;
+    }
+    let mut laid = 0;
+    for g in &hands {
+        laid = cone(
+            g.wrist,
+            g.radii[0],
+            g.wrist + g.dir * g.length,
+            g.radii[1],
+            Some((g.palm, g.keep)),
         );
     }
-    // The rest stand empty inside the pelvis, out of the box.
-    while n < PRIMITIVES {
-        cones[3 * n] = [p.x, p.y, p.z, 0.001];
-        cones[3 * n + 1] = [p.x, p.y + 0.01, p.z, 0.001];
-        cones[3 * n + 2] = [0.0, 1.0, 0.0, 1.0];
-        n += 1;
+    for part in &props {
+        laid = cone(part.a, part.ra, part.b, part.rb, part.squash);
     }
-    Body {
+    // The rest stand empty inside the pelvis, out of the box.
+    let parked = Part::plain(p, 0.0, p + Y * 0.01, 0.0);
+    while laid < PRIMITIVES {
+        laid = cone(parked.a, 0.0, parked.b, 0.0, None);
+    }
+    for part in own.iter().map(|part| part.unwrap_or(parked)) {
+        cone(part.a, part.ra, part.b, part.rb, part.squash);
+    }
+    let mut body = Body {
         cones,
+        own: own.iter().any(Option::is_some),
         pelvis: p,
         pelvic,
         chest,
         chest_axes: ch,
         head: crown,
-        mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
+        mouth,
         face: hd,
         screen,
+        phone,
+        phone_size,
         low,
         high,
+    };
+    for corner in body.phone_corners() {
+        body.low = body.low.min(corner);
+        body.high = body.high.max(corner);
     }
+    body
 }
 
 #[cfg(test)]

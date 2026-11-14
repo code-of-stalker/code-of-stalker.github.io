@@ -70,6 +70,12 @@ void main() {
     // Page 08: down the underpass's openings it falls onto the stairs.
     float floor_ = groundAt(p.x);
     if (underFoot(p.xz) && !underRoofed(underAlong(p.z))) floor_ = floorAt(p.xz);
+    // Page 07: over his umbrella the drops land on its canopy.
+    if (BROLLY.w > 0.0) {
+      vec2 off = p.xz - BROLLY.xz;
+      float rho = length(off);
+      if (rho < BROLLY.w) floor_ = BROLLY.y + brollyHeight(rho) + CANOPY_CLOTH;
+    }
     if (p.y < floor_) {
       // Fallen: a splash dot for a moment where it struck.
       float since = (floor_ - p.y) / RAIN_FALL;
@@ -99,10 +105,47 @@ void main() {
     a = p;
     b = p - vn * 0.02;
     light *= 2.2 * wet * (1.0 - age / 0.6);
+  } else if (HAND.w <= 0.0) {
+    // Page 07: drops bounce off his umbrella and drip from its ribs' tips.
+    int k = id - RAIN - SPLASH;
+    if (BROLLY.w <= 0.0) { hide(); return; }
+    vec3 axis, e1, e2;
+    brollyAxes(axis, e1, e2);
+    float r = BROLLY.w;
+    if (k < PALM_DROPS / 2) {
+      // A drop strikes the cloth somewhere and leaps off it.
+      float period = 0.35 + 0.4 * rand(u * 5u);
+      float clock = TIME + period * rand(u * 5u + 1u);
+      float age = mod(clock, period);
+      if (age > 0.16) { hide(); return; }
+      uint n = u * 131u + uint(floor(clock / period)) * 977u;
+      float ang = TAU * rand(n + 2u);
+      float rho = r * 0.92 * sqrt(rand(n + 3u));
+      vec3 side = e1 * cos(ang) + e2 * sin(ang);
+      vec3 at = BROLLY.xyz + side * rho + axis * (brollyHeight(rho) + 0.01);
+      vec3 v = side * (0.2 + 0.5 * rand(n + 4u)) + vec3(0.0, 0.5 + 0.7 * rand(n + 5u), 0.0);
+      vec3 p = at + v * age - vec3(0.0, 0.5 * GRAVITY * age * age, 0.0);
+      vec3 vn = v - vec3(0.0, GRAVITY * age, 0.0);
+      a = p;
+      b = p - vn * 0.02;
+      light *= 1.5 * (1.0 - age / 0.16);
+    } else {
+      // A drop swells at a rib's tip, lets go and falls to the pavement.
+      int rib = k % int(RIBS);
+      float period = 0.8 + 0.9 * rand(u * 5u);
+      float age = mod(TIME + period * rand(u * 5u + 1u), period) - 0.12;
+      float ang = TAU * float(rib) / RIBS;
+      vec3 tip = BROLLY.xyz + (e1 * cos(ang) + e2 * sin(ang)) * r - axis * 0.004;
+      float fall = age > 0.0 ? 0.5 * GRAVITY * age * age : 0.0;
+      vec3 p = tip - vec3(0.0, fall, 0.0);
+      if (p.y < groundAt(p.x) + 0.01) { hide(); return; }
+      a = p;
+      b = p + vec3(0.0, GRAVITY * max(age, 0.0) * 0.02, 0.0);
+      light *= age > 0.0 ? 1.2 : 0.6 * (1.0 + age / 0.12);
+    }
   } else {
     // Drops bouncing off his palm while he holds it up into the rain.
     int k = id - RAIN - SPLASH;
-    if (HAND.w <= 0.0) { hide(); return; }
     float period = 0.5 + 0.4 * rand(u * 5u);
     float age = mod(TIME + period * rand(u * 5u + 1u), period);
     if (age > 0.32) { hide(); return; }

@@ -1,4 +1,7 @@
-use crate::{clock::Clock, motion_kernel::text_frame};
+use crate::{
+    clock::Clock,
+    motion_kernel::{chain_frame, text_frame},
+};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlElement;
 #[wasm_bindgen]
@@ -22,6 +25,10 @@ impl TextTimeline {
             reduced: false,
         };
         model.resize();
+        // The chain starts hidden and surfaces once it is seen.
+        if model.effect == 5 {
+            model.paint();
+        }
         model
     }
     pub fn resize(&self) {
@@ -75,6 +82,61 @@ impl TextTimeline {
     pub fn dispose(&mut self) {
         self.active = false;
     }
+    /// Effect 5, the chain «стопы → опора → …»: each `[data-rust-chain-word]`
+    /// surfaces from a blur and a little below; each `[data-rust-chain-arrow]`
+    /// draws its `[data-rust-chain-line]` and then its `[data-rust-chain-head]`
+    /// (paths measured with `pathLength="1"`). The glow is the bridge's
+    /// `--chain-accent`.
+    fn paint_chain(&self) {
+        let select = |selector: &str| -> Vec<web_sys::Element> {
+            self.root
+                .query_selector_all(selector)
+                .map(|list| {
+                    (0..list.length())
+                        .filter_map(|i| list.item(i))
+                        .filter_map(|node| node.dyn_into::<web_sys::Element>().ok())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let words = select("[data-rust-chain-word]");
+        let arrows = select("[data-rust-chain-arrow]");
+        let links = chain_frame(words.len(), self.clock.elapsed, self.reduced);
+        let glow = |strength: f64, px: f64| {
+            format!(
+                "0 0 {px}px color-mix(in srgb,var(--chain-accent) {:.1}%,transparent)",
+                strength * 100.
+            )
+        };
+        for (word, link) in words.iter().zip(&links) {
+            if let Some(word) = word.dyn_ref::<HtmlElement>() {
+                let style = word.style();
+                let rest = 1. - link.word;
+                let _ = style.set_property("opacity", &format!("{:.3}", link.word));
+                let _ = style.set_property("transform", &format!("translateY({:.2}px)", 7. * rest));
+                let _ = style.set_property("filter", &format!("blur({:.2}px)", 5. * rest));
+                let _ = style.set_property("text-shadow", &glow(0.85 * link.glow, 12.));
+            }
+        }
+        for (arrow, link) in arrows.iter().zip(&links) {
+            if let Some(span) = arrow.dyn_ref::<HtmlElement>() {
+                let style = span.style();
+                let _ = style.set_property("opacity", &format!("{:.3}", link.line.max(link.head)));
+                let _ = style.set_property(
+                    "filter",
+                    &format!("drop-shadow({})", glow(0.9 * link.glow, 4.)),
+                );
+            }
+            for (part, drawn) in [
+                ("[data-rust-chain-line]", link.line),
+                ("[data-rust-chain-head]", link.head),
+            ] {
+                if let Ok(Some(path)) = arrow.query_selector(part) {
+                    let _ = path.set_attribute("stroke-dashoffset", &format!("{:.4}", 1. - drawn));
+                }
+            }
+        }
+    }
     fn paint(&self) {
         let frame = text_frame(&self.text, self.effect, self.clock.elapsed, self.reduced);
         if self.effect == 1 {
@@ -126,6 +188,9 @@ impl TextTimeline {
                     );
                 }
             }
+        }
+        if self.effect == 5 {
+            self.paint_chain();
         }
         let _ = self
             .root

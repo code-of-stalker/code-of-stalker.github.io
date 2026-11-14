@@ -45,8 +45,14 @@
 //!
 //! Page 08 «Используй свой голос» (104 s): down into the tiled underpass
 //! under the cross street; each phrase runs along the tiles as a shell
-//! and comes back as an echo that fixes one thing.
-//! 0–14 s     down the stairs, his steps ring («Проговори вслух»);
+//! and comes back as an echo that fixes one thing. He speaks it into the
+//! Diary of our app on his phone.
+//! 0–3 s      down the stairs; the phone comes out of his left pocket;
+//! 3–10.6 s   in his eyes, the phone: our app, its Diary, the record
+//!            button; the recording runs;
+//! 10.6–14 s  out of his eyes beside him, the phone at his chest; each
+//!            phrase he says into it, held under the mouth, the breath
+//!            leaving with each word («Проговори вслух»);
 //! 15.5 s     «Я Здесь»: the sphere sharpens;
 //! 22 s       «Я Слышу внешнее»: the echo comes back, the first ring lights;
 //! 29 s       «Я Ощущаю внутреннее»: the echo goes into him, the second;
@@ -57,7 +63,7 @@
 //!            the tiles keep a line of code from each phrase («Голос не
 //!            объясняет. Он фиксирует.»);
 //! 96–104 s   down behind him to the next stairs.
-use crate::body::{build, Body, Carry, Coat, Step, Walk, HANDS, SWING_SHARE};
+use crate::body::{build, Body, Carry, Coat, Held, Step, Walk, HANDS, PHONE_SIZE, SWING_SHARE};
 use crate::math::{mix, monotone, smooth, smooth_integral, v3, window, window_integral, V3, Y};
 use crate::{
     under_along, under_ramp, Chapter, CARS, CAR_LANE, CELL, CHECK_LOOP, CROSS, FLAT, FLIGHT, LOOP,
@@ -1073,6 +1079,56 @@ pub const RAIL_H: f32 = 0.92;
 const VOICE_DRIFT: f32 = -0.6;
 const VOICE_UMBRELLA_MEETS: f32 = 84.0;
 const VOICE_PHONE_MEETS: f32 = 95.0;
+/// When each word of each phrase leaves his mouth, s after the phrase,
+/// and how long a word sounds.
+const VOICE_WORDS: [&[f32]; 7] = [
+    &[0.0, 0.3],
+    &[0.0, 0.3, 0.8],
+    &[0.0, 0.3, 0.95],
+    &[0.0, 0.3],
+    &[0.0, 0.3],
+    &[0.0, 0.3, 0.95, 1.25],
+    &[0.0, 0.3],
+];
+const WORD_LONG: f32 = 0.55;
+/// His phone on page 08: how far the left hand reaches (for the pocket,
+/// then holding the phone), the phone out of the pocket, brought up.
+const PHONE_REACH: [(f32, f32); 4] = [(0.3, 0.0), (1.0, 1.0), (71.4, 1.0), (72.4, 0.0)];
+const PHONE_OUT: [(f32, f32); 4] = [(1.3, 0.0), (1.9, 1.0), (70.4, 1.0), (71.0, 0.0)];
+const PHONE_RAISE: [(f32, f32); 4] = [(1.1, 0.0), (2.4, 1.0), (70.0, 1.0), (71.2, 0.0)];
+/// Before his eyes until he leaves them, then at the chest.
+const PHONE_READ: [f32; 2] = [10.6, 12.4];
+/// His eyes look this far above the phone's middle (up its length).
+const PHONE_LOOK_ABOVE: f32 = 0.01;
+/// The screen wakes, and goes dark as the phone goes away.
+const PHONE_LIGHT: [f32; 4] = [1.9, 2.3, 70.5, 70.9];
+/// Its screens, the atlas's cells (0 the phone's own home screen with our
+/// icon, 1 the app's home, 2 the Diary, 3 recording): each change runs
+/// from to.
+const PHONE_SCREENS: [[f32; 2]; 3] = [[4.2, 4.8], [6.5, 7.05], [9.25, 9.6]];
+/// The recording's clock starts.
+const PHONE_RECORDS: f32 = 9.4;
+/// His thumb over the screen: across, down, pressed. It taps our icon,
+/// the Diary's card and the record button.
+const THUMB_REST: [f32; 3] = [0.08, 0.62, 0.0];
+const THUMB: [(f32, [f32; 3]); 16] = [
+    (3.3, THUMB_REST),
+    (3.85, [0.374, 0.581, 0.0]),
+    (3.95, [0.374, 0.581, 1.0]),
+    (4.1, [0.374, 0.581, 1.0]),
+    (4.25, [0.374, 0.581, 0.0]),
+    (5.6, [0.42, 0.66, 0.0]),
+    (6.15, [0.5, 0.725, 0.0]),
+    (6.25, [0.5, 0.725, 1.0]),
+    (6.4, [0.5, 0.725, 1.0]),
+    (6.55, [0.5, 0.725, 0.0]),
+    (8.4, [0.75, 0.86, 0.0]),
+    (8.95, [0.887, 0.937, 0.0]),
+    (9.05, [0.887, 0.937, 1.0]),
+    (9.2, [0.887, 0.937, 1.0]),
+    (9.35, [0.887, 0.937, 0.0]),
+    (10.1, THUMB_REST),
+];
 
 /// How far a shell of the voice reaches before it fades.
 pub const VOICE_REACH: f32 = 0.12 + VOICE_SPEED * VOICE_LIFE;
@@ -1175,34 +1231,64 @@ const VOICE_OPENING: Key = key(
     0.006,
     0.0,
 );
-const VOICE_SHOTS: [Key; 28] = [
+/// In his eyes on page 08: the lens that fills the view with his phone.
+const PHONE_LENS: f32 = 3.4;
+/// Where the phone is as he holds it up to his eyes.
+const AT_PHONE: [f32; 3] = [0.02, 1.38, 0.37];
+/// His eyes as he looks at the phone: where the ways into them and out
+/// of them end.
+const AT_EYES: [f32; 3] = [0.0, 1.65, 0.15];
+const VOICE_SHOTS: [Key; 34] = [
     // Behind him and above, down the stairs into the tubes' light.
     VOICE_OPENING,
+    // Up over his right shoulder as the phone comes out of the pocket.
     key(
-        8.4,
-        [0.0, 1.45, -2.3],
-        [0.0, 0.9, 4.0],
-        [0.0, 1.0, 0.1],
-        1.6,
-        0.006,
+        1.4,
+        [-0.25, 2.05, -0.35],
+        AT_PHONE,
+        AT_PHONE,
+        1.9,
+        0.005,
         0.0,
     ),
-    // Down to his heels: each step rings on the treads.
+    // High over his head, then on before it over the phone rising in his
+    // hand as the screen wakes: his crown sinks out of the view below,
+    // never before the lens, and his forearm stays short under the phone.
+    key(1.8, [-0.05, 2.25, 0.1], AT_PHONE, AT_PHONE, 2.2, 0.003, 0.0),
+    key(2.2, [0.0, 1.95, 0.3], AT_PHONE, AT_PHONE, 2.6, 0.004, 0.0),
+    // In his eyes: the phone, our app, the Diary, the record button.
+    key(3.0, AT_EYES, AT_PHONE, AT_PHONE, PHONE_LENS, 0.004, 1.0),
+    key(10.6, AT_EYES, AT_PHONE, AT_PHONE, PHONE_LENS, 0.004, 1.0),
+    // Out of his eyes sideways at their height, past his left cheek, then
+    // round to his profile over the phone, and down as he reaches the
+    // floor. Never over his head: under the underpass's lamps its crown
+    // shines.
+    key(11.4, [0.25, 1.66, 0.2], AT_PHONE, AT_PHONE, 2.7, 0.004, 0.0),
     key(
-        9.8,
-        [0.0, 0.6, -2.0],
-        [0.0, 1.0, 5.0],
-        [0.0, 0.9, 0.0],
-        1.6,
-        0.006,
+        12.2,
+        [0.7, 1.6, 0.35],
+        [0.0, 1.42, 0.25],
+        [0.0, 1.42, 0.25],
+        2.2,
+        0.005,
         0.0,
     ),
-    // Beside him as he stops on the floor.
+    key(
+        12.7,
+        [1.0, 1.65, 0.65],
+        [0.0, 1.25, 0.15],
+        [0.0, 1.25, 0.15],
+        2.0,
+        0.005,
+        0.0,
+    ),
+    // Beside him and below as he stops on the floor: up at the phone at
+    // his chest and his face over it.
     key(
         13.5,
         [0.8, 0.7, 0.6],
-        [0.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0],
+        [0.0, 1.2, 0.0],
+        [0.0, 1.3, 0.0],
         1.65,
         0.007,
         0.0,
@@ -1536,6 +1622,95 @@ fn voice_rings(at: f32) -> [f32; 4] {
     ]
 }
 
+/// Each phrase's start and the end of its last word.
+fn voice_spoken() -> impl Iterator<Item = (f32, f32)> {
+    VOICE_PHRASES
+        .iter()
+        .zip(VOICE_WORDS)
+        .map(|(&from, words)| (from, from + words[words.len() - 1] + WORD_LONG))
+}
+
+/// Every word's start through the lap.
+fn voice_word_starts() -> impl Iterator<Item = f32> {
+    VOICE_PHRASES
+        .iter()
+        .zip(VOICE_WORDS)
+        .flat_map(|(&from, words)| words.iter().map(move |w| from + w))
+}
+
+/// How loud his voice is at `at`: each word's swell.
+fn voice_level(at: f32) -> f32 {
+    voice_word_starts()
+        .map(|w| window(at, w, w + 0.06, w + 0.18, w + WORD_LONG))
+        .fold(0.0, f32::max)
+}
+
+/// The thumb at `at`: eased from key to key.
+fn voice_thumb(at: f32) -> [f32; 3] {
+    let n = THUMB.len();
+    if at <= THUMB[0].0 || at >= THUMB[n - 1].0 {
+        return THUMB_REST;
+    }
+    let i = THUMB.partition_point(|k| k.0 <= at) - 1;
+    let ((a, from), (b, to)) = (THUMB[i], THUMB[i + 1]);
+    let k = smooth(a, b, at);
+    [0, 1, 2].map(|j| mix(from[j], to[j], k))
+}
+
+/// His phone in the left hand at `at` of page 08: out before his eyes,
+/// then at his chest, up under the mouth for each phrase.
+fn voice_held(at: f32) -> Held {
+    let mut hold = 1.0 - smooth(PHONE_READ[0], PHONE_READ[1], at);
+    for (from, end) in voice_spoken() {
+        hold = hold.max(2.0 * window(at, from - 0.8, from - 0.1, end + 0.3, end + 1.1));
+    }
+    Held {
+        reach: monotone(&PHONE_REACH, at),
+        out: monotone(&PHONE_OUT, at),
+        raise: monotone(&PHONE_RAISE, at),
+        hold,
+        thumb: voice_thumb(at),
+    }
+}
+
+/// His phone for the shaders (lib.rs `SLOT_PHONE`): its centre and size,
+/// its right and half width, its up and half length; the screens it goes
+/// between, how far, its light; the thumb (across, down, pressed) and how
+/// much the finish redraws the screen sharp; the recording's clock and
+/// the voice's level.
+fn voice_phone(body: &Body, at: f32, crisp: f32) -> [[f32; 4]; 6] {
+    if body.phone_size <= 0.0 {
+        return [[0.0; 4]; 6];
+    }
+    let [c, x, up] = body.phone;
+    let k = body.phone_size;
+    let [l0, l1, l2, l3] = PHONE_LIGHT;
+    let light = window(at, l0, l1, l2, l3);
+    let mut screens = [0.0, 0.0, 0.0];
+    for (i, &[a, b]) in PHONE_SCREENS.iter().enumerate() {
+        let (from, to) = (i as f32, (i + 1) as f32);
+        if at >= b {
+            screens = [to, to, 0.0];
+        } else if at > a {
+            screens = [from, to, smooth(a, b, at)];
+        }
+    }
+    let [u, v, press] = voice_thumb(at);
+    let clock = if at >= PHONE_RECORDS {
+        at - PHONE_RECORDS
+    } else {
+        -1.0
+    };
+    [
+        [c.x, c.y, c.z, k],
+        [x.x, x.y, x.z, PHONE_SIZE[0] * k],
+        [up.x, up.y, up.z, PHONE_SIZE[1] * k],
+        [screens[0], screens[1], screens[2], light],
+        [u, v, press, crisp],
+        [clock, voice_level(at), 0.0, 0.0],
+    ]
+}
+
 /// A rectangle on the street: its middle (x, z), its heading (radians
 /// from +z toward +x), its half length along the heading and half width.
 #[derive(Clone, Copy, Debug)]
@@ -1708,6 +1883,8 @@ pub struct Frame {
     /// Page 07's tape: the loop's clock, how much the picture is a tape's
     /// (0.35 standing, 1 rewinding), and the flash as it stops.
     pub tape: [f32; 3],
+    /// Page 08: his own phone and its screen (`voice_phone`).
+    pub phone: [[f32; 4]; 6],
 }
 
 pub struct Story {
@@ -1957,7 +2134,13 @@ impl Story {
         match self.chapter {
             Chapter::Fact => 0.35 + 0.65 * window(at, 23.6, 24.8, 28.8, 29.8),
             Chapter::Check => monotone(&CHECK_BREATH, at),
-            Chapter::Voice => 0.3,
+            // Thicker as he speaks.
+            Chapter::Voice => {
+                0.3 + 0.5
+                    * voice_spoken()
+                        .map(|(from, end)| window(at, from - 0.1, from + 0.1, end, end + 1.5))
+                        .fold(0.0, f32::max)
+            }
         }
     }
 
@@ -1992,7 +2175,17 @@ impl Story {
             pose.hands[1] = [hold.x, hold.y, hold.z, out];
             pose.wrists[1] = -0.15 * out;
         }
+        if self.chapter == Chapter::Check {
+            // His umbrella at last, in the left hand, the fist before the
+            // chest and a little to the left.
+            pose.umbrella = true;
+            let probe = build(&pose);
+            let c = probe.chest_axes;
+            let hold = probe.chest + c.forward * 0.26 + c.left * 0.14 - Y * 0.08;
+            pose.hands[0] = [hold.x, hold.y, hold.z, 1.0];
+        }
         if self.chapter == Chapter::Voice {
+            pose.phone = Some(voice_held(at));
             // «Я Действую»: up the far flight, the right hand on the rail
             // a little ahead of the chest.
             let grip = window(at, 49.6, 50.4, 60.0, 60.8);
@@ -2046,11 +2239,22 @@ impl Story {
         let eye_own = body.mouth + face.up * 0.085 + face.forward * 0.01;
         let eye = eye_k.lerp(eye_own, own_eyes);
         let dir_k = (look_k - eye_k).normalize();
-        let forward = dir_k.lerp(face.forward, own_eyes).normalize();
+        // With his phone out (page 08) his eyes are on it, a little below
+        // the middle of the view.
+        let (look_own, focus_own) = if body.phone_size > 0.0 {
+            let at_phone = body.phone[0] + body.phone[2] * PHONE_LOOK_ABOVE;
+            (
+                (at_phone - eye_own).normalize(),
+                (body.phone[0] - eye_own).length(),
+            )
+        } else {
+            (face.forward, 6.0)
+        };
+        let forward = dir_k.lerp(look_own, own_eyes).normalize();
         let right = forward.cross(Y).normalize();
         let up = right.cross(forward);
         let focus_far = (focus_k - eye).length().max(0.3);
-        let focus = mix(focus_far, 6.0, own_eyes);
+        let focus = mix(focus_far, focus_own, own_eyes);
         let head_centre = body.head - face.up * 0.08;
         let head_hidden = f32::from((eye - head_centre).length() < 0.3);
 
@@ -2058,9 +2262,20 @@ impl Story {
         // back into his mouth as it rewinds.
         let breath_at = |k: i32| INHALE + BREATH * k as f32;
         let newest = ((own - INHALE) / BREATH).floor() as i32;
+        let mut births: Vec<f32> = (0..PUFFS as i32 + 1)
+            .map(|i| breath_at(newest - i))
+            .collect();
+        if voice_page {
+            // Page 08: as he speaks each word leaves with its own breath,
+            // and no other.
+            births.retain(|&b| {
+                !voice_spoken().any(|(from, end)| (from - 1.0..end + 1.2).contains(&b))
+            });
+            births.extend(voice_word_starts().filter(|&w| w <= own));
+            births.sort_by(|a, b| b.total_cmp(a));
+        }
         let mut puffs = [[0.0, 0.0, 0.0, -1.0]; PUFFS];
-        for (i, p) in puffs.iter_mut().enumerate() {
-            let born = breath_at(newest - i as i32);
+        for (p, &born) in puffs.iter_mut().zip(&births) {
             let age = own - born;
             if (0.0..PUFF_LIFE).contains(&age) {
                 let then = reel_of(self.chapter, born, r.right);
@@ -2262,6 +2477,7 @@ impl Story {
             cross_car: self.cross_car(t),
             ring_light,
             tape,
+            phone: voice_phone(&body, at, own_eyes),
         }
     }
 }
@@ -2302,6 +2518,7 @@ pub fn crossing(cell: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::{CANOPY, PRIMITIVES, PROPS};
     use crate::REPEAT;
 
     const CHAPTERS: [Chapter; 3] = [Chapter::Fact, Chapter::Check, Chapter::Voice];
@@ -2414,14 +2631,19 @@ mod tests {
                 let (most, least) = if rewind { (0.4, 0.97) } else { (0.2, 0.995) };
                 assert!(jump < most, "{chapter:?} {t} {jump}");
                 // His head never fills the lens: close to the camera it is
-                // hidden or well off the view's axis.
+                // hidden or kept out of the middle half of the view (its
+                // edge may pass at the frame's edge).
                 let to_head = f.body.head - f.eye;
-                let close = to_head.length() < 0.5;
-                assert!(
-                    f.head_hidden > 0.5 || !close || f.forward.dot(to_head.normalize()) < 0.6,
-                    "{chapter:?} {} the head before the lens",
-                    i as f32 * 0.01
-                );
+                let d = to_head.length();
+                if f.head_hidden < 0.5 && d < 0.5 {
+                    let off = f.forward.dot(to_head * (1.0 / d)).clamp(-1.0, 1.0).acos();
+                    let size = (0.14 / d).min(1.0).asin();
+                    let half_view = (1.0 / f.lens).atan();
+                    assert!(
+                        off - size > 0.5 * half_view,
+                        "{chapter:?} {t} the head before the lens"
+                    );
+                }
                 assert!(f.forward.dot(previous.forward) > least, "{chapter:?} {t}");
                 previous = f;
             }
@@ -2467,7 +2689,13 @@ mod tests {
         for chapter in [Chapter::Check, Chapter::Voice] {
             let story = Story::new(chapter);
             for i in 0..story.loop_seconds as i32 {
-                assert_eq!(story.compose(i as f32).head_hidden, 0.0, "{chapter:?} {i}");
+                // Page 08: in his eyes on the phone from 3 s to past 11 s.
+                let own = chapter == Chapter::Voice && (3..=11).contains(&i);
+                assert_eq!(
+                    story.compose(i as f32).head_hidden,
+                    f32::from(own),
+                    "{chapter:?} {i}"
+                );
             }
         }
     }
@@ -2528,6 +2756,19 @@ mod tests {
         }
     }
 
+    /// The box round a body's cones `which`.
+    fn extent(b: &Body, which: std::ops::Range<usize>) -> (V3, V3) {
+        let (mut low, mut high) = (v3(1e9, 1e9, 1e9), v3(-1e9, -1e9, -1e9));
+        for c in which {
+            for j in 0..2 {
+                let [x, y, z, r] = b.cones[3 * c + j];
+                low = low.min(v3(x - r, y - r, z - r));
+                high = high.max(v3(x + r, y + r, z + r));
+            }
+        }
+        (low, high)
+    }
+
     /// How far ahead of him (along the street, either way) `z` is, folded
     /// into one `REPEAT` as the street repeats its passers.
     fn ahead(z: f32, of: f32) -> f32 {
@@ -2562,7 +2803,7 @@ mod tests {
             for i in 0..(story.loop_seconds * 10.0) as i32 {
                 let t = i as f32 * 0.1;
                 let f = story.compose(t);
-                for p in &f.passers {
+                for (who, p) in f.passers.iter().enumerate() {
                     // Page 08's keep to the far pavement.
                     let (low, high) = if chapter == Chapter::Voice {
                         (-p.high.x, -p.low.x)
@@ -2574,11 +2815,26 @@ mod tests {
                         "{chapter:?} {t}"
                     );
                     assert!(p.low.y > -0.01, "{t}");
-                    // Never through him: their boxes part across the street
-                    // wherever they share his stretch of it.
+                    // Never through him: their bodies' boxes part across the
+                    // street wherever they share his stretch of it.
                     if ahead(p.pelvis.z, f.body.pelvis.z).abs() < 1.0 {
-                        let apart = (p.low.x - f.body.high.x).max(f.body.low.x - p.high.x);
+                        let (low, high) = extent(&f.body, 0..PRIMITIVES);
+                        let apart = (p.low.x - high.x).max(low.x - p.high.x);
                         assert!(apart > 0.0, "{chapter:?} {t} {apart}");
+                    }
+                    // His umbrella (page 07) rides over their heads and
+                    // clears the other umbrella.
+                    let [x, y, z, r] = f.body.cones[3 * CANOPY + 1];
+                    let radius = f.body.cones[3 * CANOPY][3];
+                    if radius > 0.01 && ahead(p.pelvis.z, z).abs() < 2.0 {
+                        let (_, head) = extent(p, 0..PROPS[0]);
+                        assert!(head.y < y - 0.05, "{chapter:?} {t} {}", head.y - y);
+                        if who == UMBRELLA {
+                            let [px, py, pz, pr] = p.cones[3 * PROPS[1]];
+                            let gap = (px - x).hypot(ahead(pz, z)) - radius - pr;
+                            assert!(gap > 0.03 || (py - y).abs() > 0.15, "{chapter:?} {t} {gap}");
+                        }
+                        assert!(r < 0.01);
                     }
                 }
             }

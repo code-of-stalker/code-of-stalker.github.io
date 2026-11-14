@@ -3,51 +3,33 @@
 //! blends into one surface of light. Metres; the figure faces +z, its left
 //! is +x, up is +y. (From «Ночной город»; here the feet land on one line,
 //! the rope, toes turned out, the swinging foot bowed round the other.)
-//! He wears a close jacket, a knit cap and a long scarf whose tail the wind
-//! takes; his face has a chin and a brow, so his profile reads against the
-//! dawn.
+//! He wears a close jacket with a stand-up collar and a knit cap; his face
+//! has a chin and a brow, so his profile reads against the dawn.
 use crate::math::{min_jerk, mix, monotone, rotate, smooth, softmin, v3, V3, Y};
 use std::f32::consts::{PI, TAU};
 
-pub const PRIMITIVES: usize = 32;
+pub const PRIMITIVES: usize = 25;
 /// How softly each cone melts into the ones before it, metres.
 pub const BLEND: [f32; PRIMITIVES] = [
     0.0, 0.07, 0.06, 0.06, // hips, belly, chest, shoulders
-    0.035, 0.03, 0.02, 0.01, 0.02, // neck, skull, face, cap, the scarf round the neck
+    0.035, 0.03, 0.02, 0.01, 0.02, // neck, skull, face, cap, the jacket's collar
     0.05, 0.05, 0.03, 0.03, 0.02, 0.02, // thighs, calves, shins
     0.025, 0.025, 0.012, 0.012, // feet, toes
     0.045, 0.045, 0.015, 0.015, 0.012, 0.012, // upper arms, sleeves, hands
-    0.012, 0.008, 0.008, 0.008, 0.008, 0.008, // the scarf's tail
-    0.008, // what it carries
 ];
 /// Cones by what they are, for the shader and the camera.
 pub const NECK: usize = 4;
 pub const HEAD: usize = 5;
 pub const FACE: usize = 6;
 pub const CAP: usize = 7;
-/// The scarf round his neck: the last cone of the head and neck.
+/// His jacket's collar round the neck: the last cone of the head and neck.
 pub const COLLAR: usize = 8;
 pub const FEET: [usize; 2] = [15, 16];
 pub const TOES: [usize; 2] = [17, 18];
 pub const HANDS: [usize; 2] = [23, 24];
-pub const SCARF: usize = 25;
-pub const SCARF_LINKS: usize = 6;
-pub const PROP: usize = 31;
-/// One link of the scarf's tail, metres.
-const SCARF_LINK: f32 = 0.11;
 /// A cone's squash keep below zero marks it flat-ended (cut square, its
 /// edge rounded this much) instead of capped by spheres.
 pub const CUT_ROUND: f32 = 0.008;
-
-/// What a figure carries in its right hand, if anything.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Carry {
-    #[default]
-    Nothing,
-    /// A phone: out of the pocket this much, 0 … 1 (it grows from nothing
-    /// in the hand as the hand brings it up).
-    Screen(f32),
-}
 
 pub const THIGH: f32 = 0.43;
 pub const SHIN: f32 = 0.42;
@@ -505,8 +487,6 @@ impl Walk {
             nod: 0.0,
             hands: [[0.0; 4]; 2],
             wrists: [0.0; 2],
-            carry: Carry::Nothing,
-            scarf: [0.0; 4],
         }
     }
 }
@@ -539,10 +519,6 @@ pub struct Pose {
     /// far the hand bends down at the wrist (radians).
     pub hands: [[f32; 4]; 2],
     pub wrists: [f32; 2],
-    pub carry: Carry,
-    /// The wind on the scarf's tail: which way it blows (x, z in the walk's
-    /// frame), the flutter's phase (cycles) and how hard, 0 it hangs … 1.
-    pub scarf: [f32; 4],
 }
 
 /// A body part's own left, up and forward.
@@ -593,8 +569,6 @@ pub struct Body {
     /// Where its voice leaves the head, and which way the head faces.
     pub mouth: V3,
     pub face: Axes,
-    /// A phone's screen: its centre and the way it faces (zero: none).
-    pub screen: [V3; 2],
     /// The box around every cone.
     pub low: V3,
     pub high: V3,
@@ -640,7 +614,6 @@ impl Body {
         body.head = point(body.head);
         body.mouth = point(body.mouth);
         body.face = turn(body.face);
-        body.screen = [point(body.screen[0]), axis(body.screen[1])];
         (body.low, body.high) = (low, high);
         body
     }
@@ -736,7 +709,7 @@ pub fn build(pose: &Pose) -> Body {
         None,
     );
     // The head: the skull, the face's ridge from chin to brow (his profile),
-    // a knit cap, and the scarf wound round the neck.
+    // a knit cap, and the jacket's collar standing round the neck.
     cone(neck, 0.046, head_base, 0.043, None);
     cone(jaw, 0.066, crown, 0.088, Some((hd.left, 0.84)));
     cone(
@@ -754,10 +727,10 @@ pub fn build(pose: &Pose) -> Body {
         cut(hd.left, 0.88),
     );
     cone(
-        neck - ch.up * 0.045,
-        0.074,
-        neck + ch.up * 0.035 - ch.forward * 0.012,
-        0.066,
+        neck - ch.up * 0.04,
+        0.064,
+        neck + ch.up * 0.03 - ch.forward * 0.01,
+        0.058,
         cut(ch.forward, 0.9),
     );
     for (hip, knee) in hips.iter().zip(&knees) {
@@ -819,53 +792,6 @@ pub fn build(pose: &Pose) -> Body {
     for a in &arms {
         cone(a.2, 0.026, a.3, 0.019, Some((a.4, 0.55)));
     }
-    // The scarf's tail from the back of his neck: it hangs down his back
-    // in still air and streams and flutters in the wind, a flat ribbon
-    // twisting as it goes.
-    let [wx, wz, phase, strength] = pose.scarf;
-    let wind = v3(wx, 0.0, wz);
-    let wind = if wind.length() > 1e-4 {
-        wind.normalize()
-    } else {
-        -ch.forward
-    };
-    let across = wind.cross(Y).normalize();
-    let mut at = neck + ch.up * 0.01 - ch.forward * 0.07 + ch.left * 0.03;
-    for k in 0..SCARF_LINKS {
-        let kf = k as f32;
-        let s = strength * (0.4 + 0.12 * kf).min(1.0);
-        let wave = TAU * phase - 1.1 * kf;
-        let flutter = wave.sin() * (0.08 + 0.07 * kf) * strength;
-        let lift = (1.3 * wave + 1.0).sin() * 0.05 * kf * strength;
-        let hang = (-Y - ch.forward * 0.3).normalize();
-        let d = (hang * (1.0 - s) + wind * s + across * flutter + Y * lift).normalize();
-        let next = at + d * SCARF_LINK;
-        let flat = rotate(across, d, 0.6 * wave.cos() * strength);
-        let r = mix(0.034, 0.025, kf / 5.0);
-        cone(at, r, next, 0.95 * r, Some((flat, 0.3)));
-        at = next;
-    }
-    // What the right hand carries.
-    let (_, _, wrist, tip, palm) = arms[1];
-    let grip = wrist.lerp(tip, 0.5);
-    let mut screen = [v3(0.0, 0.0, 0.0); 2];
-    if let Carry::Screen(out) = pose.carry {
-        let out = smooth(0.0, 1.0, out);
-        let eyes = jaw + hd.up * 0.06 + hd.forward * 0.05;
-        let at = grip + palm * 0.012;
-        let facing = (eyes - at).normalize();
-        let long = (Y - facing * Y.dot(facing)).normalize();
-        if out > 0.02 {
-            cone(
-                at - long * (0.07 * out),
-                0.036 * out,
-                at + long * (0.07 * out),
-                0.036 * out,
-                cut(facing, 0.13),
-            );
-            screen = [at + facing * 0.005, facing];
-        }
-    }
     // The rest stand empty inside the pelvis, out of the box.
     while n < PRIMITIVES {
         cones[3 * n] = [p.x, p.y, p.z, 0.001];
@@ -882,7 +808,6 @@ pub fn build(pose: &Pose) -> Body {
         head: crown,
         mouth: jaw + hd.forward * 0.06 - hd.up * 0.015,
         face: hd,
-        screen,
         low,
         high,
     }

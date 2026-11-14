@@ -11,9 +11,7 @@
 //! add their light. One program for all of it takes Windows' shader compiler too
 //! long; each part takes it a few seconds, and with
 //! KHR_parallel_shader_compile the page keeps running while it works.
-use crate::body::{
-    BLEND, CAP, COLLAR, CUT_ROUND, FACE, HANDS, HEAD, NECK, PRIMITIVES, PROP, SCARF, SCARF_LINKS,
-};
+use crate::body::{BLEND, CAP, COLLAR, CUT_ROUND, FACE, HANDS, HEAD, NECK, PRIMITIVES};
 use crate::story::{HEART, SPHERE_Y, WIND};
 use crate::{
     cones, look, pack, recolor_code, Chapter, Look, Story, BLOOM, BLUR_MAX, BYTE_KEEP, EXPOSURE,
@@ -76,9 +74,6 @@ fn defines() -> String {
         ("CONE_COLLAR", COLLAR.to_string()),
         ("CONE_FACE", FACE.to_string()),
         ("CONE_CAP", CAP.to_string()),
-        ("CONE_SCARF", SCARF.to_string()),
-        ("SCARF_LINKS", SCARF_LINKS.to_string()),
-        ("CONE_PROP", PROP.to_string()),
         ("CONE_HAND_L", HANDS[0].to_string()),
         ("CONE_HAND_R", HANDS[1].to_string()),
         ("CUT_ROUND", f(CUT_ROUND)),

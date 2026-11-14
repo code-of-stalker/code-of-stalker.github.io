@@ -27,8 +27,8 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define FIG_HI  u_d[6]   // his box, his outline's light
 #define SPHERE  u_d[7]   // the sphere round him: centre, how much its glass shows
 #define RING1   u_d[8]   // the first ring (the world round him): height, radius, lit, turn
-#define RING2   u_d[9]   // the second (inside him): centre round his chest, radius
-#define RING2B  u_d[10]  // the second's light, his heartbeat, his breath
+#define RING2   u_d[9]   // the second (inside him), scanning him: centre, radius
+#define RING2B  u_d[10]  // the second's light, his heartbeat, which way it runs (-1 down … 1 up)
 #define RING3   u_d[11]  // the third (his step), a wheel: centre height, radius, lit, roll
 #define RINGEV  u_d[12]  // the world's last touches on the first: azimuth, age; the one before
 #define BEAT    u_d[13]  // since his last step, its z; the three rings' chord; the thoughts' sparks
@@ -42,9 +42,10 @@ uniform vec4 u_res;  // target width, height px; light the target keeps; what th
 #define DOUBLE  u_d[21]  // the double: how high it rose, how seen, its waver; the thread's light
 #define BIRDS   u_d[22]  // the flock's middle, how seen
 #define BIRDS2  u_d[23]  // its heading (x, z), a bird's size, the flock's spread
-#define SHADOW  u_d[24]  // the persona: there, come apart, its pole, metres to the view's radians
+#define SHADOW  u_d[24]  // his shadow on the fog: there, (spare), its pole, metres to the view's radians
 #define SHADOW_BOX  u_d[25]  // its box on the shadow's plane
 #define SHADOW_POLE u_d[26]  // its pole's two tips there
+#define HEART_AT u_d[27] // his heart, where it glows
 #define SHADOW_CONE(i) u_d[SLOT_SHADOW + (i)]  // its cones there: end (x, y, radius)
 
 #define TIME     RIGHT.w
@@ -242,40 +243,22 @@ vec2 horizonSky(vec3 rd) {
 
 // ---- the fog and the haze ----
 
-// The fog's top rides in billows over its plane, drifting with the wind
-// (in the world's time: it stops when the world does).
+// The fog's top rides in long, low swells over its plane, drawn out along
+// the wind and drifting with it (in the world's time: it stops when the
+// world does): a sea of mist, not a field of heaps.
 vec2 fogPlace(vec2 xz) {
   return xz - vec2(WIND_X, WIND_Z) * 0.45 * WT;
 }
+// xz in the wind's frame: along it, across it.
+vec2 fogWind(vec2 xz) {
+  vec2 q = fogPlace(xz);
+  return vec2(dot(q, vec2(WIND_X, WIND_Z)), WIND_X * q.y - WIND_Z * q.x);
+}
 float fogHeight(vec2 xz) {
-  vec2 q = fogPlace(xz);
-  float big = fbm(q / 38.0, 4, 41u);
-  // Rounded heaps: the billows bulge up, the troughs between stay narrow.
-  float heap = 1.0 - abs(2.0 * noise2(q / 13.0, 43u) - 1.0);
-  return FOG.x + 8.0 * (big - 0.5) + 2.6 * (heap * heap - 0.4);
-}
-// The puffs on the billows' tops (in their cells' units): round domes
-// heaped against each other, narrow creases between them, as cloud tops
-// are from above.
-float puffs(vec2 x, uint salt) {
-  vec2 i = floor(x), f = fract(x);
-  float h = 0.0;
-  for (int b = -1 + ZERO; b <= 1; b++) {
-    for (int a = -1; a <= 1; a++) {
-      int cx = int(i.x) + a, cy = int(i.y) + b;
-      vec2 o = vec2(float(a), float(b)) + 0.2 + 0.6 * vec2(hash2(cx, cy, salt), hash2(cx, cy, salt + 1u));
-      float r = 0.62 + 0.4 * hash2(cx, cy, salt + 2u);
-      vec2 d = f - o;
-      h = max(h, sqrt(max(r * r - dot(d, d), 0.0)));
-    }
-  }
-  return h;
-}
-// The small curls on the billows' tops (metres), only near where they are
-// over a pixel.
-float fogCurl(vec2 xz) {
-  vec2 q = fogPlace(xz);
-  return 1.3 * puffs(q / 5.0, 51u) + 0.6 * puffs(q / 2.1 + 3.7, 55u) + 0.3 * noise2(q / 1.1 + 7.3, 53u);
+  vec2 q = fogWind(xz);
+  float big = fbm(q / vec2(110.0, 46.0), 3, 41u);
+  float swell = noise2(q / vec2(46.0, 17.0) + 9.1, 43u);
+  return FOG.x + 9.0 * (big - 0.5) + 1.6 * (swell - 0.5);
 }
 // How solid the fog is at xz (0 a hole onto the city … 1 solid): it
 // thins below him as the city wakes and stays thick far off.

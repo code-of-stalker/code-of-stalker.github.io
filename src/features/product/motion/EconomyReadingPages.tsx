@@ -7,6 +7,7 @@ import { quietText, softBold } from '../theme';
 import { typeset } from '../typeset';
 import { ProductText } from '../ui';
 import { Art } from './Art';
+import { ChainText } from './ChainText';
 import { ContentSwap } from './ContentSwap';
 import { DreamConclusion } from './DreamConclusion';
 import { DreamRealityText } from './DreamRealityText';
@@ -66,7 +67,9 @@ export function EconomyReadingPages({ step, chapter, active, enabled, canAdvance
             <ProductText testID="reading-page-count" variant="label" style={[styles.count, phone && { marginBottom: 16 }, { color: colors.muted }]}>{String(value + 1 + (step === 2 && chapter === 1 ? 3 : 0)).padStart(2, '0')} / {step >= 3 ? String(pages.length).padStart(2, '0') : step === 1 ? '02' : '07'}</ProductText>
             {page.title && <ProductText testID="dream-chapter-title" accessibilityRole="header" variant="title" style={[styles.title, phone && { marginBottom: 20 }]}>{typeset(page.title)}</ProductText>}
             <View testID="reading-page-copy" style={[styles.copy, phone && { gap: 20 }]}>
-              {page.paragraphs.map(text => <Paragraph key={text} text={text} style={page.bold?.includes(text) ? strong : plain} />)}
+              {page.paragraphs.map(text => text.includes(' → ')
+                ? <ChainText key={text} text={text} style={page.bold?.includes(text) ? strong : plain} active={playing} reducedMotion={reducedMotion} />
+                : <Paragraph key={text} text={text} style={page.bold?.includes(text) ? strong : plain} />)}
               {page.spoken?.map(text => <ProductText key={text} style={strong}>{typeset(text)}</ProductText>)}
               {page.after?.map(text => <ProductText key={text} style={plain}>{typeset(text)}</ProductText>)}
               {page.statement && <ProductText style={strong}>{typeset(page.statement)}</ProductText>}

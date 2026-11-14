@@ -36,6 +36,7 @@ SOURCES = {
     "inner-echo": ["labels"],
     "inner-frame": ["labels"],
     "voice-fork": ["figure"],
+    "night-city": ["phone"],
 }
 
 

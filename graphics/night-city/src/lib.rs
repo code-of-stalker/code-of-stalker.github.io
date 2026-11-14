@@ -156,7 +156,7 @@ pub const BLOOM: f32 = 0.09;
 pub const BYTE_KEEP: f32 = 0.5;
 
 /// The uniform slots the shaders read (common.glsl names them).
-pub const SLOTS: usize = 40;
+pub const SLOTS: usize = 46;
 pub const SLOT_VIEW: usize = 4;
 pub const SLOT_PUFF: usize = 17;
 pub const SLOT_STEP: usize = 19;
@@ -172,6 +172,8 @@ pub const SLOT_CHECK: usize = 35;
 /// His umbrella: the canopy's rim (centre, radius; 0 none), its crown and
 /// whether his own parts (thumbs, umbrella) are drawn.
 pub const SLOT_BROLLY: usize = 38;
+/// Page 08: his own phone and its screen (story.rs `voice_phone`).
+pub const SLOT_PHONE: usize = 40;
 /// Every figure the shaders draw: him, then the passers-by.
 pub const FIGURES: usize = 1 + story::PASSERS;
 // The slots follow one another and fit the 224 vectors WebGL2 promises a
@@ -182,7 +184,8 @@ const _: () = {
     assert!(SLOT_PASS + 2 * story::PASSERS <= SLOT_SCREEN);
     assert!(SLOT_SPHERE + 2 <= SLOT_CHECK);
     assert!(SLOT_CHECK + 3 <= SLOT_BROLLY);
-    assert!(SLOT_BROLLY + 2 <= SLOTS);
+    assert!(SLOT_BROLLY + 2 <= SLOT_PHONE);
+    assert!(SLOT_PHONE + 6 <= SLOTS);
     assert!(SLOTS + 4 <= 200);
     assert!((FIGURES * body::PRIMITIVES + body::OWN) * 3 <= 1024);
 };
@@ -327,6 +330,9 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     let open = radius > 0.01;
     s[SLOT_BROLLY] = [rx, ry, rz, if open { radius } else { 0.0 }];
     s[SLOT_BROLLY + 1] = [cx, cy, cz, if f.body.own { 1.0 } else { 0.0 }];
+    for (i, p) in f.phone.iter().enumerate() {
+        s[SLOT_PHONE + i] = *p;
+    }
     s
 }
 

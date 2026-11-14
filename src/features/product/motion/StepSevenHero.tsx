@@ -1,7 +1,6 @@
-import { ScenePlaceholder } from './ScenePlaceholder';
-import { stepSevenHero } from '../stepSevenContent';
+import { StepSevenStill } from './StepSevenStill';
 
-/** Native holds the hero's place; the browser plays the Rust scene (StepSevenHero.web.tsx). */
+/** Native keeps Art's still; the browser plays the Rust scene «Маяк» (StepSevenHero.web.tsx). */
 export function StepSevenHero({ width, height }: { width: number; height: number; active?: boolean; reducedMotion?: boolean }) {
-  return <ScenePlaceholder scene={stepSevenHero} width={width} height={height} />;
+  return <StepSevenStill width={width} height={height} />;
 }

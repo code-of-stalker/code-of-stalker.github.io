@@ -79,9 +79,10 @@ pub const MIST_HEIGHT: f32 = 8.0;
 /// The uniform slots the shaders read (common.glsl names them): the
 /// camera, the figure's box, the sphere and its rings, the beats, the pole,
 /// the rope, the sun, the light in him, the fog, the world's clock, the
-/// double, the birds, the shadow; then the shadow's cones, two slots each.
+/// double, the birds, the shadow, his heart; then the shadow's cones, two
+/// slots each.
 pub const SLOT_VIEW: usize = 4;
-pub const SLOT_SHADOW: usize = 27;
+pub const SLOT_SHADOW: usize = 28;
 pub const SLOTS: usize = SLOT_SHADOW + 2 * body::PRIMITIVES;
 // The world's uniforms fit the 256 vectors phones give a fragment shader
 // (WebGL2 promises 224; ANGLE keeps a few of its own).
@@ -180,6 +181,7 @@ pub fn pack(f: &Frame) -> [[f32; 4]; SLOTS] {
     s[24] = f.shadow;
     s[25] = f.shadow_box;
     s[26] = f.shadow_pole;
+    s[27] = v(f.heart, 0.0);
     for (i, c) in f.shadow_cones.iter().enumerate() {
         s[SLOT_SHADOW + i] = *c;
     }

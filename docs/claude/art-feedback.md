@@ -180,3 +180,4 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - Diary filters (2026-11-11): the chosen option must read at a glance: 100% accent fill, dark text. No text/voice media filters.
 - Step menu (2026-11-13): scenes behind and under the open step menu keep moving («опять останавливает анимации, мы же правили это»), and the menu keeps all four edges at every display scale.
 - «Шкатулка» (2026-11-13): the Тишина look approved at the first prototype («Ок, дальше темы»): the ray-marched music box with a faceless wooden figurine, one beat per verb.
+- Home cards are animated rasters, like the earlier steps' ones (Art's painting brought to life in Rust by a depth map: parallax, rings drawn in depth, light), never a fully 3D scene. The ray-traced 3D «Маяк» was rejected at once: «ну нет же нет. я хотел чтобы было как на главных страницах предыдущих шагов оживленный растр». (Step 7 home card, 2026-11-14.)

@@ -35,6 +35,7 @@ SOURCES = {
     "inner-hero": ["painting", "depth"],
     "inner-echo": ["labels"],
     "inner-frame": ["labels"],
+    "voice-fork": ["figure"],
     "night-city": ["phone"],
 }
 

@@ -21,6 +21,8 @@ import { SphereHero } from './SphereHero.web';
 import { InnerHero } from './InnerHero.web';
 import { isNightScene, NightCity } from './NightCity.web';
 import { RopeDawn } from './RopeDawn.web';
+import { VoiceFork } from './VoiceFork.web';
+import { VoiceSurface } from './VoiceSurface.web';
 import { DayHouse } from './DayHouse.web';
 import { ArtLoading, holdsPlace } from '../skeleton/ArtLoading';
 export function Art(input: ArtProps) {
@@ -36,6 +38,8 @@ function scene(props: ArtProps) {
   if (props.webScene === 'inner-hero') return <InnerHero {...props} />;
   if (isNightScene(props.webScene)) return <NightCity {...props} />;
   if (props.webScene === 'rope-dawn') return <RopeDawn {...props} />;
+  if (props.webScene === 'voice-fork') return <VoiceFork {...props} />;
+  if (props.webScene === 'voice-surface') return <VoiceSurface {...props} />;
   if (props.webScene === 'day-house') return <DayHouse {...props} />;
   if (props.webScene === 'hear-state') return <HearState {...props} />;
   if (props.webScene === 'tuning-questions') return <TuningQuestions {...props} />;

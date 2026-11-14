@@ -1,8 +1,8 @@
-import type { StepThreeArtKind } from './motion/types';
+import type { StepThreeArtKind, WebScene } from './motion/types';
 
 /** Editorial order only. Illustration geometry and clocks live in Rust. */
 export const stepThreeBlocks: readonly {
-  id: string; art: StepThreeArtKind; title?: string;
+  id: string; art: StepThreeArtKind; webScene?: WebScene; title?: string;
   paragraphs: readonly string[]; emphasis?: string;
 }[] = [
   {
@@ -54,7 +54,7 @@ export const stepThreeBlocks: readonly {
     ],
   },
   {
-    id: 'witness', art: 'voice-witness',
+    id: 'witness', art: 'voice-witness', webScene: 'voice-surface',
     title: 'Проговоренное — уже не скрытое',
     paragraphs: [
       'Как только мысль или фраза осознанно произнесена — она становится отдельной.',

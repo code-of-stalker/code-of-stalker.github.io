@@ -5,6 +5,7 @@ use crate::{
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer, WebGlProgram,
     WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -74,6 +75,37 @@ fn buffer(gl: &Gl, target: u32, bytes: i32) -> Result<WebGlBuffer, JsValue> {
     Ok(b)
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &true.into())?;
+    // Export creates each VideoFrame synchronously after seek(), before
+    // yielding to presentation; the interactive buffer can be discarded.
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs = [
+        (include_str!("image.vert"), include_str!("image.frag")),
+        (include_str!("solid.vert"), include_str!("solid.frag")),
+        (include_str!("particle.vert"), include_str!("particle.frag")),
+        (include_str!("rain.vert"), include_str!("rain.frag")),
+        (
+            watcher_scene_palette::VERTEX,
+            watcher_scene_palette::FRAGMENT,
+        ),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct Marionette {
     gl: Gl,
@@ -130,16 +162,7 @@ impl Marionette {
         background: HtmlImageElement,
         heroine: HtmlImageElement,
     ) -> Result<Marionette, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &true.into())?;
-        // Export creates each VideoFrame synchronously after seek(), before
-        // yielding to presentation; the interactive buffer can be discarded.
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let image = program(&gl, include_str!("image.vert"), include_str!("image.frag"))?;
         let line = program(&gl, include_str!("solid.vert"), include_str!("solid.frag"))?;
         let spark = program(

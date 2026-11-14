@@ -5,6 +5,7 @@
 use crate::{compose, look, parts, waves, Look, GEOMETRY, LOOP_SECONDS, SIZE, STILL};
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader,
     WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
@@ -90,6 +91,32 @@ fn painting(gl: &Gl, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> 
     Ok(t)
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs = [
+        (SCREEN, SCENE),
+        (
+            watcher_scene_palette::VERTEX,
+            watcher_scene_palette::FRAGMENT,
+        ),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct SphereLake {
     gl: Gl,
@@ -115,14 +142,7 @@ impl SphereLake {
     /// Art's dark lake; light themes engrave it on the page.
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement, lake: HtmlImageElement) -> Result<SphereLake, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let program = program(&gl, SCREEN, SCENE)?;
         let names = [
             "u_res",

@@ -304,12 +304,7 @@ impl TrueSight {
                 "u_edges",
             ],
         )?;
-        let text = Pass::new(
-            &gl,
-            TEXT_VERTEX,
-            TEXT,
-            &["u_atlas", "u_size"],
-        )?;
+        let text = Pass::new(&gl, TEXT_VERTEX, TEXT, &["u_atlas", "u_size"])?;
         let atlas = image_texture(&gl, ATLAS_UNIT, &labels)?;
         gl.use_program(Some(&finish.program));
         gl.uniform1i(finish.at("u_scene"), SCENE_UNIT);

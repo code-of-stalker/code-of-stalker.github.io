@@ -5,6 +5,7 @@ use crate::{
     STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader,
     WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
@@ -123,6 +124,33 @@ impl SourceImages {
     }
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    for (name, value) in [
+        ("alpha", false),
+        ("antialias", false),
+        ("preserveDrawingBuffer", false),
+    ] {
+        js_sys::Reflect::set(&options, &name.into(), &value.into())?;
+    }
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs = [(
+        include_str!("shaders/screen.vert"),
+        include_str!("shaders/scene.frag"),
+    )];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct Witnessing {
     gl: Gl,
@@ -155,18 +183,7 @@ impl Witnessing {
         light_hand: HtmlImageElement,
         light_world: HtmlImageElement,
     ) -> Result<Self, JsValue> {
-        let options = js_sys::Object::new();
-        for (name, value) in [
-            ("alpha", false),
-            ("antialias", false),
-            ("preserveDrawingBuffer", false),
-        ] {
-            js_sys::Reflect::set(&options, &name.into(), &value.into())?;
-        }
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let program = program(&gl)?;
         let texture = match image_texture(&gl, 0, &dark_hand) {
             Ok(value) => value,

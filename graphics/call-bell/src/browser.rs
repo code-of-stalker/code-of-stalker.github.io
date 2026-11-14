@@ -8,6 +8,7 @@ use crate::{
     SHAFT_TO, SHAFT_WIDTH, SIZE, STILL, WINDOW,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
     WebGlFramebuffer, WebGlProgram, WebGlRenderbuffer, WebGlShader, WebGlTexture,
@@ -244,6 +245,37 @@ fn upload(gl: &Gl, buffer: &WebGlBuffer, floats: &[f32], bytes: &mut Vec<u8>) {
     gl.buffer_data_with_u8_array(Gl::ARRAY_BUFFER, bytes, Gl::DYNAMIC_DRAW);
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs: [(&str, String); 4] = [
+        (SCREEN, scene_source()),
+        (
+            include_str!("shaders/overlay.vert"),
+            include_str!("shaders/overlay.frag").into(),
+        ),
+        (SCREEN, include_str!("shaders/finish.frag").into()),
+        (
+            include_str!("shaders/text.vert"),
+            include_str!("shaders/text.frag").into(),
+        ),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct CallBell {
     gl: Gl,
@@ -276,14 +308,7 @@ pub struct CallBell {
 impl CallBell {
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement, labels: HtmlImageElement) -> Result<CallBell, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let scene = Pass::new(
             &gl,
             SCREEN,

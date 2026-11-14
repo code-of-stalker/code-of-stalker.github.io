@@ -3,6 +3,7 @@
 use crate::geometry::{self, Mesh, Scene, SCATTER};
 use crate::{compose, frame_rect, look, Frame, Look, FIGURE, LOOP_SECONDS, SIZE, STILL};
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
     WebGlFramebuffer, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -159,6 +160,31 @@ struct FigureDraw {
     alpha: f32,
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let programs = [
+        (VERTEX, include_str!("shaders/soft.frag")),
+        (VERTEX, include_str!("shaders/figure.frag")),
+        (VERTEX, include_str!("shaders/bloom.frag")),
+        (VERTEX, include_str!("shaders/composite.frag")),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct SimplePractice {
     gl: Gl,
@@ -196,14 +222,7 @@ impl SimplePractice {
         canvas: HtmlCanvasElement,
         figure: HtmlImageElement,
     ) -> Result<SimplePractice, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let soft = Pass::new(&gl, include_str!("shaders/soft.frag"), &[])?;
         let figure_pass = Pass::new(
             &gl,

@@ -46,6 +46,14 @@ parallel headless runs time out and leave skeleton placeholders on screen.
   showing a prototype, time `linkProgram` with a real-GPU Chrome over CDP: it must be a few
   seconds at most. Remedies: start loops from `#define ZERO min(int(u_uniform), 0)` so they stay
   loops, and keep one call site of the SDF march (compute normals in the same loop).
+- Cold-load freeze: a sync `LINK_STATUS` query blocks the main thread for the whole D3D11
+  compile. Every WebGL scene crate warms its programs first: `fn context(canvas)` (the exact
+  getContext options), `#[wasm_bindgen] fn warm(canvas)` built on `scene_palette::Warm`
+  (KHR_parallel_shader_compile, polls COMPLETION_STATUS), and `runtime.mjs` awaits
+  `warm(canvas).done()` before it constructs the renderer; the real link then hits the cache.
+  A new scene copies that pattern. The product engine does the same for wgpu pipelines in
+  `pipeline_warm.rs` (createRenderPipelineAsync). Measure with a cold profile on Blade's real
+  GPU: the longest main-thread gap should stay under ~1 s.
 - Wheel input in tests: 120 px steps ~140 ms apart, and stop on state change, or «Всё открыто»
   lets the wheel run through all four Step 4 questions at once.
 

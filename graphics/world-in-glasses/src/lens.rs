@@ -60,7 +60,7 @@ pub fn sample_path(d: &str, per_curve: usize) -> Vec<[f32; 2]> {
     }
     let mut current = [values[0], values[1]];
     points.push(current);
-    for c in values[2..].chunks_exact(6) {
+    for c in values[2..].as_chunks::<6>().0 {
         let (p1, p2, p3) = ([c[0], c[1]], [c[2], c[3]], [c[4], c[5]]);
         for step in 1..=per_curve {
             let s = step as f32 / per_curve as f32;
@@ -136,7 +136,7 @@ impl Lenses {
                 let y = row as f32 + (sub as f32 + 0.5) / 4.0;
                 for shape in &shapes {
                     crossings(shape, y, &mut xs);
-                    for span in xs.chunks_exact(2) {
+                    for span in xs.as_chunks::<2>().0 {
                         add_span(line, span[0], span[1], 0.25);
                     }
                 }
@@ -246,7 +246,7 @@ fn fill_centers(shape: &[[f32; 2]], w: usize, h: usize, mut set: impl FnMut(usiz
     let mut xs = Vec::new();
     for row in 0..h {
         crossings(shape, row as f32 + 0.5, &mut xs);
-        for span in xs.chunks_exact(2) {
+        for span in xs.as_chunks::<2>().0 {
             let start = (span[0] - 0.5).ceil().max(0.0) as usize;
             let end = ((span[1] - 0.5).ceil().max(0.0) as usize).min(w);
             for x in start..end {

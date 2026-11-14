@@ -1,6 +1,6 @@
 // Platform bridge only: decode immutable artwork and construct the Rust renderer.
 // Light themes draw Art's light paintings (assets-light); dark themes the originals.
-import init, { WorldInGlasses } from './pkg/watcher_world_in_glasses.js';
+import init, { WorldInGlasses, warm } from './pkg/watcher_world_in_glasses.js';
 const resources = {};
 async function image(folder, name) {
   const node = new Image();
@@ -13,7 +13,13 @@ export async function mount(canvas, { light = false } = {}) {
   resources[folder] ??= Promise.all([init(), ...['original', 'background', 'figure', 'mouths', 'world'].map(name => image(folder, name))])
     .catch(error => { resources[folder] = undefined; throw error; });
   const [, original, background, figure, mouths, world] = await resources[folder];
+  // Rust links the shaders in the background first; the renderer's own links
+  // then come from the browser's program cache instead of freezing the page.
+  let programs = warm(canvas);
+  while (!programs.done()) await new Promise(resolve => setTimeout(resolve, 50));
   const renderer = new WorldInGlasses(canvas, original, background, figure, mouths, world);
+  const dispose = renderer.dispose.bind(renderer);
+  renderer.dispose = () => { programs?.free(); programs = undefined; dispose(); };
   renderer.soft_edges(true);
   renderer.light_paintings(light);
   return renderer;

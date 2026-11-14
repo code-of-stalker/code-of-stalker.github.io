@@ -1,6 +1,6 @@
 // Platform bridge only: start the WASM module, load the callouts' atlas and
 // construct the Rust renderer.
-import init, { InnerFrame } from './pkg/watcher_inner_frame.js';
+import init, { InnerFrame, warm } from './pkg/watcher_inner_frame.js';
 let resources;
 // Wait for load, not decode(): decode() never settles in a hidden tab.
 function image(name) {
@@ -14,7 +14,13 @@ function image(name) {
 export async function mount(canvas) {
   resources ??= Promise.all([init(), image('labels')]).catch(error => { resources = undefined; throw error; });
   const [, labels] = await resources;
+  // Rust links the shaders in the background first; the renderer's own links
+  // then come from the browser's program cache instead of freezing the page.
+  let programs = warm(canvas);
+  while (!programs.done()) await new Promise(resolve => setTimeout(resolve, 50));
   const renderer = new InnerFrame(canvas, labels);
+  const dispose = renderer.dispose.bind(renderer);
+  renderer.dispose = () => { programs?.free(); programs = undefined; dispose(); };
   renderer.soft_edges(true);
   return renderer;
 }

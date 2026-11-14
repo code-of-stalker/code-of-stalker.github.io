@@ -12,6 +12,7 @@ use crate::{
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Themed;
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, WebGl2RenderingContext as Gl, WebGlFramebuffer, WebGlProgram, WebGlShader,
     WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
@@ -286,6 +287,36 @@ impl Target {
     }
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    let defines = defines();
+    let source = |body| scene_source(&defines, body);
+    let programs = [
+        (source(LINE_VERT), source(LINE_FRAG)),
+        (source(SPRITE_VERT), source(SPRITE_FRAG)),
+        (SCREEN.into(), FINISH.into()),
+        (
+            watcher_scene_palette::VERTEX.into(),
+            watcher_scene_palette::FRAGMENT.into(),
+        ),
+    ];
+    Ok(Warm::start(&context(canvas)?, &programs))
+}
+
 #[wasm_bindgen]
 pub struct SphereOrbit {
     gl: Gl,
@@ -313,14 +344,7 @@ impl SphereOrbit {
     /// themes engrave the scene on the page.
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement) -> Result<SphereOrbit, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl: Gl = context(&canvas)?;
         let defines = defines();
         let line = Prog::new(
             &gl,

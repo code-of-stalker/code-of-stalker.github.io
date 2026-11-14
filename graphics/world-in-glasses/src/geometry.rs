@@ -788,12 +788,17 @@ mod tests {
             stones(&mut mesh, &scene, t, [768.0, 512.0], true, 1.5);
             dust(&mut motes, &scene, t, [768.0, 512.0]);
         }
-        for vertex in mesh.data.chunks_exact(STRIDE) {
+        for vertex in mesh.data.as_chunks::<STRIDE>().0 {
             let [r, g, b] = [vertex[4], vertex[5], vertex[6]];
             assert!(r + g + b > 0.6, "near-black {r} {g} {b}");
         }
         // Added light vanishes on the pale page; the motes cover it instead.
-        assert!(motes.data.chunks_exact(STRIDE).all(|v| v[8] > 0.0));
+        assert!(motes
+            .data
+            .as_chunks::<STRIDE>()
+            .0
+            .iter()
+            .all(|v| v[8] > 0.0));
     }
 
     #[test]

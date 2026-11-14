@@ -6,6 +6,7 @@ use crate::{
     STILL,
 };
 use wasm_bindgen::{prelude::*, JsCast};
+use watcher_scene_palette::Warm;
 use web_sys::{
     HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlBuffer,
     WebGlFramebuffer, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation,
@@ -23,6 +24,16 @@ const SCENE: &str = concat!(
     include_str!("shaders/sand.glsl"),
     include_str!("shaders/scene.frag")
 );
+const FINISH: &str = include_str!("shaders/finish.frag");
+const TEXT_VERTEX: &str = include_str!("shaders/text.vert");
+const TEXT: &str = include_str!("shaders/text.frag");
+/// Every program the scene links, in its order, for [`warm`].
+const PROGRAMS: [(&str, &str); 4] = [
+    (SCREEN, PRINTS),
+    (SCREEN, SCENE),
+    (SCREEN, FINISH),
+    (TEXT_VERTEX, TEXT),
+];
 const ATLAS_UNIT: i32 = 0;
 const PRINTS_UNIT: i32 = 1;
 const SCENE_UNIT: i32 = 2;
@@ -211,6 +222,25 @@ fn caption(t: f32, look: &Look, out: &mut Vec<f32>) {
     }
 }
 
+fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
+    let options = js_sys::Object::new();
+    js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
+    js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
+    Ok(canvas
+        .get_context_with_context_options("webgl2", &options)?
+        .ok_or("WebGL2 unavailable")?
+        .dyn_into()?)
+}
+
+/// Links the scene's programs in the background on the canvas's own context,
+/// so the constructor's links come from the browser's program cache instead of
+/// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+#[wasm_bindgen]
+pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
+    Ok(Warm::start(&context(canvas)?, &PROGRAMS))
+}
+
 #[wasm_bindgen]
 pub struct PersonaBelief {
     gl: Gl,
@@ -246,14 +276,7 @@ impl PersonaBelief {
         canvas: HtmlCanvasElement,
         labels: HtmlImageElement,
     ) -> Result<PersonaBelief, JsValue> {
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"alpha".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"antialias".into(), &false.into())?;
-        js_sys::Reflect::set(&options, &"preserveDrawingBuffer".into(), &false.into())?;
-        let gl: Gl = canvas
-            .get_context_with_context_options("webgl2", &options)?
-            .ok_or("WebGL2 unavailable")?
-            .dyn_into()?;
+        let gl = context(&canvas)?;
         let prints = Pass::new(&gl, SCREEN, PRINTS, &["u_print"])?;
         let scene = Pass::new(
             &gl,
@@ -267,7 +290,7 @@ impl PersonaBelief {
         let finish = Pass::new(
             &gl,
             SCREEN,
-            include_str!("shaders/finish.frag"),
+            FINISH,
             &[
                 "u_scene",
                 "u_res",
@@ -277,12 +300,7 @@ impl PersonaBelief {
                 "u_edges",
             ],
         )?;
-        let text = Pass::new(
-            &gl,
-            include_str!("shaders/text.vert"),
-            include_str!("shaders/text.frag"),
-            &["u_atlas", "u_size"],
-        )?;
+        let text = Pass::new(&gl, TEXT_VERTEX, TEXT, &["u_atlas", "u_size"])?;
         let atlas = image_texture(&gl, ATLAS_UNIT, &labels)?;
         let imprint = Target::new(&gl, PRINTS_UNIT, [PRINTS_SIZE, PRINTS_SIZE])?;
         gl.use_program(Some(&scene.program));

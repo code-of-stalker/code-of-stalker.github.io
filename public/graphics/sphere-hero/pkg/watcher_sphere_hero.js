@@ -127,6 +127,58 @@ export class SphereHero {
     }
 }
 if (Symbol.dispose) SphereHero.prototype[Symbol.dispose] = SphereHero.prototype.free;
+
+export class Warm {
+    static __wrap(ptr) {
+        const obj = Object.create(Warm.prototype);
+        obj.__wbg_ptr = ptr;
+        WarmFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        WarmFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_warm_free(ptr, 0);
+    }
+    /**
+     * True once every program has finished linking. Never waits.
+     * @returns {boolean}
+     */
+    done() {
+        const ret = wasm.warm_done(this.__wbg_ptr);
+        return ret !== 0;
+    }
+}
+if (Symbol.dispose) Warm.prototype[Symbol.dispose] = Warm.prototype.free;
+
+/**
+ * Links the scene's programs in the background on the canvas's own context,
+ * so the constructor's links come from the browser's program cache instead of
+ * freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Warm}
+ */
+export function warm(canvas) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.warm(retptr, addBorrowedObject(canvas));
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return Warm.__wrap(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        heap[stack_pointer++] = undefined;
+    }
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -243,6 +295,10 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).getError();
             return ret;
         },
+        __wbg_getExtension_abfda2c5db286b07: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = getObject(arg0).getExtension(getStringFromWasm0(arg1, arg2));
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        }, arguments); },
         __wbg_getParameter_974595a6624c6c10: function() { return handleError(function (arg0, arg1) {
             const ret = getObject(arg0).getParameter(arg1 >>> 0);
             return addHeapObject(ret);
@@ -364,6 +420,10 @@ function __wbg_get_imports() {
             const ret = getStringFromWasm0(arg0, arg1);
             return addHeapObject(ret);
         },
+        __wbindgen_object_clone_ref: function(arg0) {
+            const ret = getObject(arg0);
+            return addHeapObject(ret);
+        },
         __wbindgen_object_drop_ref: function(arg0) {
             takeObject(arg0);
         },
@@ -377,6 +437,9 @@ function __wbg_get_imports() {
 const SphereHeroFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_spherehero_free(ptr, 1));
+const WarmFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_warm_free(ptr, 1));
 
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);
@@ -385,6 +448,12 @@ function addHeapObject(obj) {
 
     heap[idx] = obj;
     return idx;
+}
+
+function addBorrowedObject(obj) {
+    if (stack_pointer == 1) throw new Error('out of js stack');
+    heap[--stack_pointer] = obj;
+    return stack_pointer;
 }
 
 function dropObject(idx) {
@@ -481,6 +550,8 @@ function passStringToWasm0(arg, malloc, realloc) {
     WASM_VECTOR_LEN = offset;
     return ptr;
 }
+
+let stack_pointer = 1024;
 
 function takeObject(idx) {
     const ret = getObject(idx);

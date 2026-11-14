@@ -11,6 +11,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 #[path = "observer_gpu.rs"]
 mod observer_gpu;
+#[path = "pipeline_warm.rs"]
+mod pipeline_warm;
 #[path = "raster_gpu.rs"]
 mod raster_gpu;
 #[path = "uniforms.rs"]
@@ -124,6 +126,37 @@ fn pipeline(
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+fn rain_pipeline(d: &wgpu::Device, l: &wgpu::PipelineLayout) -> wgpu::RenderPipeline {
+    let rain_shader = d.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("approved matrix rain"),
+        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shaders/rain.wgsl"))),
+    });
+    d.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("shared rain"),
+        layout: Some(l),
+        vertex: wgpu::VertexState {
+            module: &rain_shader,
+            entry_point: Some("rain_vs"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: Default::default(),
+        depth_stencil: None,
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &rain_shader,
+            entry_point: Some("rain_fs"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -715,55 +748,45 @@ impl ProductRenderer {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
+        // Every shared pipeline, built once in the background and once for real
+        // (pipeline_warm.rs): the page keeps painting while the shaders compile.
+        let pipelines = || {
+            (
+                pipeline(
+                    &device,
+                    &pl,
+                    include_str!("../shaders/glass.wgsl"),
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
+                pipeline(
+                    &device,
+                    &pl,
+                    include_str!("../shaders/blur.wgsl"),
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
+                pipeline(
+                    &device,
+                    &pl,
+                    include_str!("../shaders/source.wgsl"),
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
+                pipeline(&device, &pl, COPY, config.format),
+                rain_pipeline(&device, &pl),
+                vector_gpu::VectorLibrary::new(&device),
+                raster_gpu::RasterLibrary::new(&device),
+            )
+        };
+        pipeline_warm::precompile(&device, pipelines).await;
         let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-        let glass_pipeline = pipeline(
-            &device,
-            &pl,
-            include_str!("../shaders/glass.wgsl"),
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-        let blur_pipeline = pipeline(
-            &device,
-            &pl,
-            include_str!("../shaders/blur.wgsl"),
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-        let source_pipeline = pipeline(
-            &device,
-            &pl,
-            include_str!("../shaders/source.wgsl"),
-            wgpu::TextureFormat::Rgba8Unorm,
-        );
-        let copy_pipeline = pipeline(&device, &pl, COPY, config.format);
-        let rain_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("approved matrix rain"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../shaders/rain.wgsl"))),
-        });
-        let rain_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("shared rain"),
-            layout: Some(&pl),
-            vertex: wgpu::VertexState {
-                module: &rain_shader,
-                entry_point: Some("rain_vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &rain_shader,
-                entry_point: Some("rain_fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let (
+            glass_pipeline,
+            blur_pipeline,
+            source_pipeline,
+            copy_pipeline,
+            rain_pipeline,
+            vector_library,
+            raster_library,
+        ) = pipelines();
         let rain_atlas = texture(&device, 768, 144);
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
@@ -784,8 +807,6 @@ impl ProductRenderer {
                 depth_or_array_layers: 1,
             },
         );
-        let vector_library = vector_gpu::VectorLibrary::new(&device);
-        let raster_library = raster_gpu::RasterLibrary::new(&device);
         if let Some(e) = scope.pop().await {
             return Err(err(e));
         }

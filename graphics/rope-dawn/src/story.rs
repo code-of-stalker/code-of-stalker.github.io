@@ -7,16 +7,17 @@
 //!          opens wide round him at chest height: a gust, a beacon, a bird,
 //!          the city's hum each touch it and run round it as a pulse
 //!          («Три уровня…», the first);
-//! 12–18 s  close, his profile: the second ring (the world inside) round
-//!          his chest rises and falls with the breath and flashes with the
-//!          heart; sparks of thought by his head;
+//! 12–18 s  close, from a little above: the second ring (the world inside) scans
+//!          him, running from his soles to his crown and back every two
+//!          breaths, hugging him, lighting a line across him where it
+//!          runs; it flashes with the heart; sparks of thought by his head;
 //! 18–24 s  low from the side: the third ring (the action) is a wheel that
 //!          rolls along the rope with him and flashes at every step;
 //! 24–30 s  high behind him: all three at once, each at its own pace; two
 //!          steps strike one chord through all of them («синхронно,
 //!          одномоментно … каждый по отдельности»);
 //! 30–40 s  he stops; the world stops with him (the birds in mid-flap, the
-//!          scarf, the rope); only his breath and the second ring move;
+//!          rope, the fog); only his breath and the second ring move;
 //!          the camera goes round him («Осознанно помни:»);
 //! 40–45 s  a pale double of him rises out of his body, wavers and is drawn
 //!          back into it («Абсолют просыпается не вне тела,»);
@@ -25,13 +26,15 @@
 //!          crown («…а через тело.»);
 //! 52–68 s  he walks on; the fog opens on the living city under him and he
 //!          looks down into it («Не уходом от жизни,»);
-//! 68–88 s  his huge shadow on the fog, a glory round its head; a gust: he
-//!          balances evenly while the shadow flails, grabs, hunches, looks
-//!          back, takes out a phone; it lags, tears off and crumbles into
-//!          code as he steps onto the far roof («а Разотождествлением…»);
+//! 68–88 s  his huge shadow on the fog, a glory round its head: his own
+//!          shadow, doing just what he does; a gust, he balances evenly;
+//!          it pales out of the fog as he steps onto the far roof («а
+//!          Разотождествлением…»);
 //! 88–96 s  the camera dives off the roof back into the fog.
-use crate::body::{build, Body, Carry, Pose, Step, Walk, PRIMITIVES};
-use crate::math::{monotone, pulse, rotate, smooth, softmin, v3, window, window_integral, V3, Y};
+use crate::body::{build, Body, Pose, Step, Walk, PRIMITIVES};
+use crate::math::{
+    mix, monotone, pulse, rotate, smooth, softmin, v3, window, window_integral, V3, Y,
+};
 use crate::{
     Chapter, FOG_TOP, LOOP, POLE_DROOP, POLE_HALF, ROPE_DIP, ROPE_ROUND, ROPE_SAG, SHADOW_SCALE,
     SPAN, TOWER_Z,
@@ -74,8 +77,8 @@ pub fn frozen(t: f32) -> f32 {
 }
 
 /// The world's own clock: it stops while the world is still. The birds,
-/// the rope, the scarf, the fog and the city run on it; his breath and
-/// his heart do not.
+/// the rope, the fog and the city run on it; his breath, his heart and the
+/// second ring's scan do not.
 pub fn world_time(t: f32) -> f32 {
     t - window_integral(t, FREEZE[0], FREEZE[1], FREEZE[2], FREEZE[3])
 }
@@ -285,22 +288,24 @@ const SHOTS: [Key; 30] = [
     // The first ring: before him, on his left, the ring wide round him.
     key(7.2, [2.8, 1.6, 3.4], [0.0, 1.1, 0.0], HIM, 1.6, 0.003),
     key(11.5, [2.4, 1.65, 3.7], [0.0, 1.1, 0.0], HIM, 1.6, 0.003),
-    // The second: close, his profile against the dawn.
+    // The second: close and a little above him, all of him in the frame,
+    // so the ring's whole run from his soles to his crown shows and it
+    // opens into an ellipse round him.
     key(
         12.7,
-        [-1.4, 1.5, 1.25],
-        [0.0, 1.28, 0.05],
-        [0.0, 1.3, 0.0],
-        2.3,
-        0.006,
+        [-2.2, 2.3, 1.9],
+        [0.0, 0.95, 0.1],
+        [0.0, 1.0, 0.0],
+        2.7,
+        0.005,
     ),
     key(
         17.6,
-        [-1.3, 1.47, 1.1],
-        [0.0, 1.28, 0.05],
-        [0.0, 1.3, 0.0],
-        2.3,
-        0.006,
+        [-2.0, 2.15, 1.7],
+        [0.0, 0.95, 0.1],
+        [0.0, 1.0, 0.0],
+        2.7,
+        0.005,
     ),
     // The third: low from the side, the wheel on the rope.
     key(
@@ -413,10 +418,12 @@ pub struct Frame {
     pub sphere: [f32; 4],
     /// The first ring: its height, radius, how lit, how far turned.
     pub ring1: [f32; 4],
-    /// The second ring round his chest: centre, radius; how lit, the
-    /// heart's beat, the breath.
+    /// The second ring, scanning him: centre, radius; how lit, the heart's
+    /// beat, which way and how fast it runs (−1 down … 1 up); his heart,
+    /// where it glows.
     pub ring2: [f32; 4],
     pub ring2b: [f32; 4],
+    pub heart: V3,
     /// The third, the wheel: its centre's height, radius, how lit, how far
     /// it has rolled.
     pub ring3: [f32; 4],
@@ -452,8 +459,8 @@ pub struct Frame {
     /// its birds' size, its spread.
     pub birds: [f32; 4],
     pub birds2: [f32; 4],
-    /// His shadow on the fog, the persona: how much it is there, how far
-    /// it has crumbled, how much of its pole shows; its box on the
+    /// His shadow on the fog: how much it is there, (spare), how much of
+    /// its pole shows, metres of him to the view's radians; its box on the
     /// shadow's plane (metres of him); its pole's two ends there; its cones
     /// there, two slots each (end, radius).
     pub shadow: [f32; 4],
@@ -508,6 +515,50 @@ pub fn heartbeat(t: f32) -> f32 {
         }
     };
     (thump(s) + 0.6 * thump(s - 0.28)).min(1.0)
+}
+
+/// The second ring runs from his soles to his crown and back once every
+/// two breaths (in his own time: it goes on while the world stands).
+pub const SCAN_SWEEP: f32 = 2.0 * BREATH;
+
+/// The second ring scanning him at `t`: level, round his body's line at
+/// its height (from `soles` up through his pelvis, chest and head),
+/// hugging what of him crosses that level, his arms and the pole's grip
+/// too; its centre, radius, and which way and how fast it runs (−1 down
+/// … 1 up).
+pub fn scanner(body: &Body, soles: V3, t: f32) -> (V3, f32, f32) {
+    const SAMPLES: usize = 7;
+    const MARGIN: f32 = 0.05;
+    let phase = TAU * t / SCAN_SWEEP;
+    let high = 0.5 - 0.5 * phase.cos();
+    let y = mix(soles.y + 0.03, body.high.y - 0.02, high);
+    let line = [soles, body.pelvis, body.chest, body.head];
+    let mut axis = line[3];
+    for pair in line.windows(2) {
+        if y <= pair[1].y {
+            let u = ((y - pair[0].y) / (pair[1].y - pair[0].y)).clamp(0.0, 1.0);
+            axis = pair[0].lerp(pair[1], u);
+            break;
+        }
+    }
+    let mut reach = 0.1f32;
+    for c in 0..PRIMITIVES {
+        let [ax, ay, az, ra] = body.cones[3 * c];
+        let [bx, by, bz, rb] = body.cones[3 * c + 1];
+        if ra.max(rb) <= 0.002 {
+            continue;
+        }
+        for k in 0..SAMPLES {
+            let u = k as f32 / (SAMPLES - 1) as f32;
+            let r = mix(ra, rb, u);
+            let w = 1.0 - smooth(0.6 * r, r + 0.12, (mix(ay, by, u) - y).abs());
+            if w > 0.0 {
+                let d = (mix(ax, bx, u) - axis.x).hypot(mix(az, bz, u) - axis.z);
+                reach = reach.max(w * (d + r));
+            }
+        }
+    }
+    (v3(axis.x, y, axis.z), reach + MARGIN, phase.sin())
 }
 
 /// The flocks: the first crosses close by him and stops with the world in
@@ -596,11 +647,6 @@ impl Story {
             - 0.1 * window(t, 30.5, 32.0, 52.0, 53.0)
             + 0.3 * city;
         pose.turn = -0.12 * city;
-        // The scarf's tail on the wind: it streams back over his left
-        // shoulder, flutters, and stops with the world.
-        let w = world_time(t);
-        let strength = (0.32 + 0.1 * (TAU * w / 7.3).sin() + 0.6 * gust(t)).min(1.0);
-        pose.scarf = [WIND[0], WIND[1], 1.7 * w, strength];
         let (centre, half) = pole_of(pose.pelvis, tilt);
         let g = grips(centre, half);
         for (side, p) in g.iter().enumerate() {
@@ -616,55 +662,6 @@ impl Story {
         let place = self.placing(t);
         let (pose, ..) = self.pose(t, 2.2 * sway(t - 0.25));
         build(&pose).mapped(|p| place.point(p), |a| place.axis(a), 1.0)
-    }
-
-    /// The persona: his shadow's own figure, at first his very pose. In the
-    /// storm it lets go of the pole and its old habits take it: it flails,
-    /// grabs at the air, hunches, looks back, takes out a phone; then its
-    /// steps fall behind his.
-    fn persona(&self, t: f32) -> (Body, f32) {
-        let lag = 1.1 * smooth(77.0, 84.0, t);
-        let tilt = 2.2 * sway(t - lag - 0.25);
-        let (mut pose, ..) = self.pose(t - lag, tilt);
-        let free = smooth(70.4, 71.2, t);
-        let probe = build(&pose);
-        let c = probe.chest_axes;
-        for side in 0..2 {
-            pose.hands[side][3] *= 1.0 - free;
-        }
-        let flail = window(t, 70.6, 71.2, 73.4, 74.2);
-        if flail > 0.0 {
-            let k = TAU * 1.4 * t;
-            pose.arms[0] += flail * (1.1 + 0.8 * k.sin());
-            pose.arms[1] += flail * (0.9 + 0.8 * (k + 2.1).sin());
-            pose.bend[0] += 0.5 * flail * (0.5 + 0.5 * (k + 0.7).sin());
-            pose.bend[1] += 0.5 * flail * (0.5 + 0.5 * (k + 2.6).sin());
-        }
-        let grab = window(t, 73.6, 74.2, 75.2, 75.8);
-        if grab > 0.0 {
-            for (side, s) in [1.0f32, -1.0].iter().enumerate() {
-                let p = probe.chest + c.forward * 0.45 + Y * 0.1 + c.left * (0.12 * s);
-                pose.hands[side] = [p.x, p.y, p.z, grab];
-            }
-        }
-        let hunch = window(t, 73.8, 74.6, 77.6, 78.6);
-        pose.lean += 0.3 * hunch;
-        pose.nod += 0.35 * hunch;
-        pose.turn -= 1.1 * window(t, 75.8, 76.3, 76.9, 77.5);
-        let phone = window(t, 77.4, 78.2, 82.0, 83.0);
-        if phone > 0.0 {
-            let p = probe.chest + c.forward * 0.3 + Y * 0.12 - c.left * 0.04;
-            pose.hands[1] = [p.x, p.y, p.z, phone];
-            pose.wrists[1] = -0.3 * phone;
-            pose.carry = Carry::Screen(phone);
-            pose.nod += 0.4 * phone;
-        }
-        // A twitch of the shoulders now and then.
-        pose.roll +=
-            0.12 * window(t, 72.0, 72.2, 72.4, 72.7) - 0.1 * window(t, 79.5, 79.7, 79.9, 80.3);
-        let place = self.placing(t);
-        let body = build(&pose).mapped(|p| place.point(p), |a| place.axis(a), 1.0);
-        (body, 1.0 - free)
     }
 
     pub fn compose(&self, t: f32) -> Frame {
@@ -707,15 +704,11 @@ impl Story {
             lit[0],
             (TAU * w / 40.0).rem_euclid(TAU),
         ];
-        let breath = Self::breath(t);
-        let chest = body.chest;
-        let ring2 = [
-            chest.x,
-            chest.y - 0.13 + 0.17 * breath,
-            chest.z,
-            0.36 + 0.04 * breath,
-        ];
-        let ring2b = [lit[1], heartbeat(t), breath, 0.0];
+        let (scan_at, scan_r, scan_rate) = scanner(&body, v3(place.sway, under, track), t);
+        let ring2 = [scan_at.x, scan_at.y, scan_at.z, scan_r];
+        let ring2b = [lit[1], heartbeat(t), scan_rate, 0.0];
+        let ch = body.chest_axes;
+        let heart = body.chest + ch.left * 0.05 - ch.up * 0.04 + ch.forward * 0.07;
         let ring3 = [
             under + RING3_R,
             RING3_R,
@@ -811,24 +804,21 @@ impl Story {
             .max_by(|a, b| a.0[3].total_cmp(&b.0[3]))
             .expect("two flocks");
 
-        // The shadow on the fog, seen from the sun: every point of the
-        // persona on the plane across the sun's way, from his head; it
-        // drifts off down the fog as it comes apart.
+        // The shadow on the fog, seen from the sun: every point of him on
+        // the plane across the sun's way, from his head. It is his own
+        // shadow and does just what he does.
         let away_sun = -sun;
         let e1 = away_sun.cross(Y).normalize();
         let e2 = e1.cross(away_sun);
-        let (persona, holds) = self.persona(t);
-        let drift = smooth(78.0, 87.0, t);
-        let shift = [0.35 * drift, -0.55 * drift * drift];
         let flat = |p: V3| {
             let d = p - head_centre;
-            [d.dot(e1) + shift[0], d.dot(e2) + shift[1]]
+            [d.dot(e1), d.dot(e2)]
         };
         let mut shadow_cones = Vec::with_capacity(2 * PRIMITIVES);
         let (mut lo, mut hi) = ([1e9f32; 2], [-1e9f32; 2]);
         for cone in 0..PRIMITIVES {
             for end in 0..2 {
-                let [x, y, z, r] = persona.cones[3 * cone + end];
+                let [x, y, z, r] = body.cones[3 * cone + end];
                 let q = flat(v3(x, y, z));
                 shadow_cones.push([q[0], q[1], r, 0.0]);
                 if r > 0.002 {
@@ -840,21 +830,13 @@ impl Story {
             }
         }
         let tips = [pole[0] + pole[1], pole[0] - pole[1]].map(|p| flat(p - Y * POLE_DROOP));
-        let pole_shadow = holds * window(t, 46.0, 49.0, 84.0, 87.0);
-        if pole_shadow > 0.0 {
-            for q in tips {
-                for i in 0..2 {
-                    lo[i] = lo[i].min(q[i] - 0.05);
-                    hi[i] = hi[i].max(q[i] + 0.05);
-                }
+        for q in tips {
+            for i in 0..2 {
+                lo[i] = lo[i].min(q[i] - 0.05);
+                hi[i] = hi[i].max(q[i] + 0.05);
             }
         }
-        let shadow = [
-            window(t, 46.0, 50.0, 85.0, 88.0),
-            smooth(79.0, 87.0, t),
-            pole_shadow,
-            SHADOW_SCALE,
-        ];
+        let shadow = [window(t, 46.0, 50.0, 84.0, 88.0), 0.0, 1.0, SHADOW_SCALE];
         let pad = 0.6;
         let shadow_box = [lo[0] - pad, lo[1] - pad, hi[0] + pad, hi[1] + pad];
         let shadow_pole = [tips[0][0], tips[0][1], tips[1][0], tips[1][1]];
@@ -876,6 +858,7 @@ impl Story {
             ring1,
             ring2,
             ring2b,
+            heart,
             ring3,
             ring_events,
             beat,
@@ -1110,13 +1093,65 @@ mod tests {
     }
 
     #[test]
-    fn the_shadow_comes_and_crumbles() {
+    fn the_shadow_comes_and_goes() {
         let s = story();
         assert_eq!(s.compose(30.0).shadow[0], 0.0);
         assert!(s.compose(60.0).shadow[0] > 0.99);
         assert!(s.compose(90.0).shadow[0] < 1e-3);
-        let (early, late) = (s.compose(60.0), s.compose(86.0));
-        assert!(early.shadow[1] < 1e-3 && late.shadow[1] > 0.5);
-        assert!(early.shadow[2] > 0.99 && late.shadow[2] < 1e-3);
+    }
+
+    #[test]
+    fn the_shadow_does_just_what_he_does() {
+        let s = story();
+        for t in [50.0, 60.0, 70.0, 72.5, 75.0, 78.0, 82.0, 86.0] {
+            let f = s.compose(t);
+            let a = -f.sun;
+            let e1 = a.cross(Y).normalize();
+            let e2 = e1.cross(a);
+            let centre = f.body.head - f.body.face.up * 0.08;
+            assert!(f.shadow[1] == 0.0 && f.shadow[2] == 1.0, "{t}");
+            for c in 0..PRIMITIVES {
+                for end in 0..2 {
+                    let [x, y, z, r] = f.body.cones[3 * c + end];
+                    let d = v3(x, y, z) - centre;
+                    let q = f.shadow_cones[2 * c + end];
+                    assert!((q[0] - d.dot(e1)).abs() < 1e-4, "{t} {c}");
+                    assert!((q[1] - d.dot(e2)).abs() < 1e-4, "{t} {c}");
+                    assert_eq!(q[2], r);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_second_ring_scans_him_soles_to_crown_and_back() {
+        let s = story();
+        let at = |t: f32| s.compose(t);
+        // Two breaths a sweep: at his soles, at his crown, at his soles.
+        let (low, top, back) = (at(16.0), at(16.0 + 0.5 * SCAN_SWEEP), at(16.0 + SCAN_SWEEP));
+        let soles = low.glow[0];
+        assert!(
+            (low.ring2[1] - soles).abs() < 0.06,
+            "{} {soles}",
+            low.ring2[1]
+        );
+        assert!((top.ring2[1] - top.body.high.y).abs() < 0.04);
+        assert!((back.ring2[1] - back.glow[0]).abs() < 0.06);
+        // It goes up, then down, and keeps on while the world stands.
+        assert!(at(17.0).ring2b[2] > 0.5 && at(22.0).ring2b[2] < -0.5);
+        let (a, b) = (at(34.0), at(35.0));
+        assert!(frozen(34.0) > 0.99 && (a.ring2[1] - b.ring2[1]).abs() > 0.1);
+        // It hugs him: round his chest wider than his chest, never wider
+        // than his arms on the pole.
+        let mut t = 12.0;
+        while t < 20.0 {
+            let f = at(t);
+            let c = f.body.chest;
+            if (f.ring2[1] - c.y).abs() < 0.03 {
+                assert!(f.ring2[3] > 0.25, "{t}: {}", f.ring2[3]);
+            }
+            assert!(f.ring2[3] > 0.1 && f.ring2[3] < 0.8, "{t}: {}", f.ring2[3]);
+            t += 0.05;
+        }
     }
 }

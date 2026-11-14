@@ -47,6 +47,12 @@ const float BLEND[CONES] = float[CONES](BLENDS);
 #define TOWER_FOOT (FOG.x - 10.0)
 // The billows' reach over and under the fog's top.
 #define BILLOW 5.8
+// The second ring's scan on him: its line's half width (m), how bright;
+// how far behind it what it passed still glows (m); the rest of him, dimmed.
+#define SCAN_SLICE 0.022
+#define SCAN_LIGHT 0.42
+#define SCAN_GLOW 0.45
+#define SCAN_DIM 0.7
 // The field of towers round the rope: one may stand in each CELL square,
 // none higher than FIELD_TOP.
 #define CELL 40.0
@@ -422,13 +428,6 @@ void traceFog(vec3 ro, vec3 rd, inout Hit h) {
   float e = max(0.5, 0.004 * t);
   vec3 n = vec3(fogHeight(p.xz - vec2(e, 0.0)) - fogHeight(p.xz + vec2(e, 0.0)), 2.0 * e,
                 fogHeight(p.xz - vec2(0.0, e)) - fogHeight(p.xz + vec2(0.0, e)));
-  // Near, the tops curl into puffs: they bend the light, not the surface.
-  float curl = smoothstep(160.0, 30.0, t);
-  if (curl > 0.0) {
-    float ec = max(0.3, 0.004 * t);
-    n.x += 0.6 * curl * e / ec * (fogCurl(p.xz - vec2(ec, 0.0)) - fogCurl(p.xz + vec2(ec, 0.0)));
-    n.z += 0.6 * curl * e / ec * (fogCurl(p.xz - vec2(0.0, ec)) - fogCurl(p.xz + vec2(0.0, ec)));
-  }
   h.t = t;
   h.kind = K_FOG;
   h.n = t0 > 900.0 ? vec3(0.0, 1.0, 0.0) : normalize(n);
@@ -617,9 +616,9 @@ float unevenCapsule(vec2 p, vec2 a, vec2 b, float ra, float rb) {
   return m - ra;
 }
 
-// His shadow on the fog, the persona, at q (metres of him on the shadow's
-// plane, his head at 0): its distance (below 0 inside).
-float personaDistance(vec2 q) {
+// His shadow on the fog at q (metres of him on the shadow's plane, his
+// head at 0): its distance (below 0 inside).
+float shadowDistance(vec2 q) {
   if (any(lessThan(q, SHADOW_BOX.xy)) || any(greaterThan(q, SHADOW_BOX.zw))) return 1.0;
   float d = 1e3;
   for (int i = 0 + ZERO; i < CONES; i++) {
@@ -647,48 +646,9 @@ float personaDistance(vec2 q) {
   return d;
 }
 
-// A 5×7 glyph of dots, at f in 0..1 over the glyph.
-float glyph(vec2 f, int k, int g, uint salt) {
-  vec2 cell = f * vec2(5.0, 7.0);
-  vec2 b = floor(cell);
-  if (b.x < 0.0 || b.y < 0.0 || b.x > 4.0 || b.y > 6.0) return 0.0;
-  float on = step(0.5, hash3(k, g, int(b.x + 5.0 * b.y), salt));
-  vec2 q = abs(fract(cell) - 0.5);
-  return on * smoothstep(0.5, 0.25, max(q.x, q.y));
-}
-
-// The persona's shadow on the fog at q, and the code it comes apart into:
-// how dark (0 … 1) and how much code light. As it comes apart its dark
-// turns to glyphs, glyph by glyph from the top they go out, and the code
-// runs down out of it into the fog.
-vec2 persona(vec2 q, float pxm) {
-  float cr = SHADOW.y;
-  float d = personaDistance(q);
-  float sh = 1.0 - smoothstep(-0.03, 0.03 + 0.5 * pxm, d);
-  if (cr < 0.001) return vec2(sh, 0.0);
-  vec2 size = vec2(0.05, 0.07);
-  vec2 g = q / size;
-  ivec2 ci = ivec2(floor(g));
-  float hc = hash2(ci.x, ci.y, 171u);
-  float span = max(SHADOW_BOX.w - SHADOW_BOX.y, 0.5);
-  float height = clamp((q.y - SHADOW_BOX.y) / span, 0.0, 1.0);
-  float gone = smoothstep(0.0, 0.08, cr * 1.3 - (0.55 * hc + 0.45 * (1.0 - height)));
-  int sym = ci.y + 131 * int(floor(TIME * 7.0 + 8.0 * hc));
-  vec2 f = fract(g);
-  float gl = glyph(vec2(f.x * 1.3 - 0.15, f.y * 1.15 - 0.07), ci.x, sym, 177u);
-  // Far off a glyph is smaller than its dots: their mean.
-  gl = mix(0.35, gl, smoothstep(size.x * 0.4, size.x * 0.12, pxm));
-  float codeish = smoothstep(0.0, 0.2, cr);
-  float dark = sh * (1.0 - gone) * mix(1.0, 0.25 + 0.75 * gl, codeish);
-  // The falling code: columns of glyphs with bright heads, inside it and
-  // trailing under it.
-  float trail = 1.0 - smoothstep(-0.02, 0.02 + 0.9 * cr, personaDistance(q + vec2(0.0, 0.5 * cr)));
-  float mask = max(sh, trail) * (1.0 - smoothstep(0.75, 1.0, cr));
-  float laps = 3.0 + floor(hash1(ci.x, 181u) * 4.0);
-  float s = fract(g.y / 18.0 + TIME * laps / 6.0 + hash1(ci.x, 183u));
-  float rain = step(hash1(ci.x, 185u), 0.7) * (pow(1.0 - s, 3.0) + 2.0 * step(s, 1.0 / 18.0));
-  float code = mask * codeish * gl * (0.25 + rain) + sh * gone * gl * (1.0 - smoothstep(0.6, 1.0, cr));
-  return vec2(dark, code);
+// His shadow on the fog at q: how dark, 0 … 1.
+float shadowOf(vec2 q, float pxm) {
+  return 1.0 - smoothstep(-0.03, 0.03 + 0.5 * pxm, shadowDistance(q));
 }
 
 // How much of the low sun the field's towers and the rope's keep off the
@@ -748,9 +708,8 @@ vec2 fogLight(vec3 p, vec3 n, vec3 rd, float t, out float solid, out float shade
   solid = fogSolid(p.xz);
   float crest = clamp((p.y - FOG.x) / 9.0 + 0.5, 0.0, 1.0);
   float toward = max(dot(rd, s), 0.0);
-  // The fog lets the light through: it wraps round the puffs, softly.
-  float sunOn = clamp((dot(n, s) + 0.45) / 1.45, 0.0, 1.0);
-  sunOn *= sunOn;
+  // The fog lets the light through: it wraps round the swells, softly.
+  float sunOn = clamp((dot(n, s) + 0.7) / 1.7, 0.0, 1.0);
   float self_ = 0.0, towers = 0.0;
   if (SUN.w > 0.01) {
     vec2 sd = normalize(s.xz);
@@ -763,18 +722,18 @@ vec2 fogLight(vec3 p, vec3 n, vec3 rd, float t, out float solid, out float shade
     towers = towerShade(p);
   }
   float lit = SUN.w * (1.0 - 0.8 * self_) * (1.0 - 0.6 * towers);
-  // Wisps in its top, fading out far off where they are under a pixel.
-  float wisp = 1.0 + (fbm(fogPlace(p.xz) / 3.5, 3, 49u) - 0.5) * 0.7 * smoothstep(320.0, 60.0, t);
-  // The creases between the puffs hold a little dusk.
-  wisp *= mix(1.0, 0.72 + 0.3 * smoothstep(0.0, 1.4, fogCurl(p.xz)), smoothstep(160.0, 30.0, t));
+  // Streaks of mist drawn out along the wind in its top, fading out far
+  // off where they are under a pixel.
+  vec2 qw = fogWind(p.xz);
+  float wisp = 1.0 + (fbm(qw / vec2(26.0, 2.6), 3, 49u) - 0.5) * 0.6 * smoothstep(320.0, 50.0, t);
   float bright = (0.62 + 0.4 * DAWN) * wisp;
   vec2 L = vec2((0.08 + 0.13 * crest * (0.6 + 0.4 * n.y)) * bright + 0.1 * toward * toward,
                 0.006 + 0.04 * pow(toward, 3.0) * DAWN);
   L += lit * vec2(0.03 + 0.06 * crest, 0.03 + 0.6 * sunOn * crest);
   L += SUN.w * (1.0 - 0.6 * towers) * vec2(0.01, 0.6) * pow(toward, 6.0);
-  // The silver lining: billows' edges against the light.
+  // The silver lining: the swells' edges against the light.
   float edge = pow(1.0 - max(dot(n, -rd), 0.0), 3.0);
-  L += lit * edge * pow(toward, 3.0) * vec2(0.08, 0.8);
+  L += lit * edge * pow(toward, 3.0) * vec2(0.05, 0.5);
   // The gold the risen sun leaves on it, and the towers' long shadows
   // across it.
   L.y += FOG.w * (0.04 + 0.08 * crest) * (1.0 - 0.7 * towers);
@@ -791,13 +750,10 @@ vec2 fogLight(vec3 p, vec3 n, vec3 rd, float t, out float solid, out float shade
     vec2 uv = vec2(dot(rd, e1), dot(rd, e2)) / ra;
     vec2 q = uv / SHADOW.w;
     float pxm = 2.0 / (VIEW.y * u_res.y) / SHADOW.w;
-    vec2 pc = persona(q, pxm);
-    float sh = SHADOW.x * pc.x;
+    float sh = SHADOW.x * shadowOf(q, pxm);
     shade = sh * solid;
     L.y *= 1.0 - 0.92 * sh;
     L.x *= 1.0 - 0.78 * sh;
-    // The code it comes apart into, in the cold light.
-    L.x += 0.5 * SHADOW.x * pc.y;
     // The glory, in metres of him round his shadow's head: rings of
     // colour, warm and cold by turns.
     float rho = length(uv) / SHADOW.w;
@@ -1027,17 +983,12 @@ vec3 figureNormal(vec3 p, out float d) {
   }
   return normalize(n);
 }
-// What p is made of: 1 skin (the face and the hands), 2 the pale scarf,
-// 0 his dark clothes.
+// What p is made of: 1 skin (the face and the hands), 0 his dark clothes.
 int stuff(vec3 p, float d) {
   float near_ = d + 0.012;
   bool head = FIG_LO.w < 0.5;
   if ((head && (cone(CONE_HEAD, p) < near_ || cone(CONE_FACE, p) < near_))
       || cone(CONE_HAND_L, p) < near_ || cone(CONE_HAND_R, p) < near_) return 1;
-  if (head && cone(CONE_COLLAR, p) < near_) return 2;
-  for (int c = CONE_SCARF + ZERO; c < CONE_SCARF + SCARF_LINKS; c++) {
-    if (cone(c, p) < near_) return 2;
-  }
   return 0;
 }
 
@@ -1049,7 +1000,7 @@ vec2 figureLight(vec3 p, vec3 rd) {
   vec3 n = figureNormal(p, d);
   vec3 s = sunDir();
   int m = stuff(p, d);
-  float albedo = m == 1 ? 0.2 : (m == 2 ? 0.34 : 0.1);
+  float albedo = m == 1 ? 0.2 : 0.1;
   float nv = max(dot(n, -rd), 0.0);
   vec2 L = albedo * (vec2(0.42, 0.05) * (0.6 + 0.4 * n.y) * (0.75 + 0.35 * DAWN) + vec2(0.16, 0.04) * max(-n.y, 0.0)
                      + SUN.w * vec2(0.06, 2.6) * max(dot(n, s), 0.0)
@@ -1061,9 +1012,19 @@ vec2 figureLight(vec3 p, vec3 rd) {
   // The first ring at his eyes' height lights his head and shoulders.
   float r1 = RING1.z + BEAT.z;
   L.x += r1 * 0.12 * smoothstep(0.5, 0.0, abs(p.y - RING1.x)) * (0.4 + 0.6 * pow(1.0 - nv, 1.5));
-  // The second ring round his chest lights the cloth under it.
+  // The second ring scans him from his soles to his crown and back: where
+  // it runs it cuts a bright line across him, what it has just passed
+  // glows on behind it, and the rest of him waits a little dimmer.
   float lit2 = RING2B.x + BEAT.z;
-  L.x += lit2 * (0.06 + 0.2 * RING2B.y) * sline(p.y - RING2.y, 0.05) * max(dot(n, normalize(vec3(p.x - RING2.x, 0.0, p.z - RING2.z))), 0.0);
+  float scanning = min(lit2, 1.0);
+  float level = p.y - RING2.y;
+  float rate = RING2B.z;
+  float behind = -level * sign(rate);
+  float passed = behind > 0.0 ? sqrt(abs(rate)) * exp(-behind / SCAN_GLOW) : 0.0;
+  float slice = max(SCAN_SLICE, 0.7 * pixelAt(length(p - EYE.xyz)));
+  float cut = exp(-level * level / (slice * slice)) * SCAN_SLICE / slice;
+  L *= mix(1.0, mix(SCAN_DIM, 1.0, passed), scanning);
+  L.x += lit2 * (SCAN_LIGHT * (0.6 + 0.6 * RING2B.y) * cut * (0.55 + 0.45 * pow(1.0 - nv, 1.5)) + 0.1 * passed);
   float hy = p.y - GLOW.x;
   float inside = smoothstep(GLOW.y + 0.02, GLOW.y - 0.08, hy);
   L.y += GLOW.z * inside * (0.12 + 0.35 * pow(1.0 - nv, 2.0));
@@ -1351,10 +1312,10 @@ float ringOne(vec3 ro, vec3 rd, float T) {
   return L;
 }
 
-// The second ring, inside him: close round his chest, wider with each
-// breath, flaring with each beat of his heart, an echo going out from it
-// with the beat; the heart's own glow; and round his head the sparks of
-// his thoughts.
+// The second ring, inside him: it scans him from his soles to his crown
+// and back, hugging him, flaring with each beat of his heart, an echo going
+// out from it with the beat; the heart's own glow; and round his head the
+// sparks of his thoughts.
 float ringTwo(vec3 ro, vec3 rd, float T) {
   float lit = RING2B.x + BEAT.z;
   float L = 0.0;
@@ -1378,12 +1339,11 @@ float ringTwo(vec3 ro, vec3 rd, float T) {
       L += lit * 0.5 * exp(-s / 0.22) * lineK(d, 0.008, pixelAt(tp));
     }
     // The heart: its glow through him.
-    vec3 heart = c + vec3(0.05, 0.03, 0.07);
-    L += lit * (0.15 + 0.6 * hb) * glare(ro, rd, heart, 1e5) * 0.5;
+    L += lit * (0.15 + 0.6 * hb) * glare(ro, rd, HEART_AT.xyz, 1e5) * 0.5;
   }
   float a = BEAT.w;
   if (a > 0.01) {
-    vec3 hc = vec3(RING2.x, FIG_HI.y - 0.12, RING2.z);
+    vec3 hc = vec3(HEART_AT.x, FIG_HI.y - 0.12, HEART_AT.z);
     vec3 prev = hc;
     float prevOn = 0.0;
     for (int i = 0 + ZERO; i < 16; i++) {

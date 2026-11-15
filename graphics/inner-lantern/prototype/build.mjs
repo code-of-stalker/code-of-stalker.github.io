@@ -1,18 +1,18 @@
 // Builds the live prototype: one self-contained page that opens straight from
 // disk, with the built renderer and the fonts inlined.
-//   node graphics/inner-radar/prototype/build.mjs <out>/index.html
-// Run the scene's build script first so public/graphics/inner-radar is fresh.
+//   node graphics/inner-lantern/prototype/build.mjs <out>/index.html
+// Run the scene's build script first so public/graphics/inner-lantern is fresh.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../../..');
-const pub = path.join(root, 'public/graphics/inner-radar');
+const pub = path.join(root, 'public/graphics/inner-lantern');
 const out = process.argv[2];
 if (!out) throw new Error('usage: node build.mjs <out>/index.html');
 const b64 = file => readFileSync(file).toString('base64');
-const glue = readFileSync(path.join(pub, 'pkg/watcher_inner_radar.js'), 'utf8')
-  .replace('export class InnerRadar', 'class InnerRadar')
+const glue = readFileSync(path.join(pub, 'pkg/watcher_inner_lantern.js'), 'utf8')
+  .replace('export class InnerLantern', 'class InnerLantern')
   .replace('export class Warm', 'class Warm')
   .replace('export function warm', 'function warm')
   .replace(/^export \{ initSync, __wbg_init as default \};\s*$/m, '');
@@ -20,7 +20,7 @@ if (/^export /m.test(glue)) throw new Error('the wasm-bindgen glue changed: an e
 const fill = {
   __DISKET__: b64(path.join(root, 'assets/product/fonts/Disket-Mono-Regular.ttf')),
   __TEKTUR__: b64(path.join(root, 'assets/product/fonts/Tektur-Medium.ttf')),
-  __WASM__: b64(path.join(pub, 'pkg/watcher_inner_radar_bg.wasm')),
+  __WASM__: b64(path.join(pub, 'pkg/watcher_inner_lantern_bg.wasm')),
   __GLUE__: glue,
 };
 let page = readFileSync(path.join(here, 'template.html'), 'utf8');

@@ -1,5 +1,5 @@
 // Platform bridge only: start the WASM module and construct the Rust renderer.
-import init, { InnerRadar, warm } from './pkg/watcher_inner_radar.js';
+import init, { InnerLantern, warm } from './pkg/watcher_inner_lantern.js';
 let ready;
 export async function mount(canvas) {
   ready ??= init().catch(error => { ready = undefined; throw error; });
@@ -8,7 +8,7 @@ export async function mount(canvas) {
   // then come from the browser's program cache instead of freezing the page.
   let programs = warm(canvas);
   while (!programs.done()) await new Promise(resolve => setTimeout(resolve, 50));
-  const renderer = new InnerRadar(canvas);
+  const renderer = new InnerLantern(canvas);
   const dispose = renderer.dispose.bind(renderer);
   renderer.dispose = () => { programs?.free(); programs = undefined; dispose(); };
   renderer.soft_edges(true);

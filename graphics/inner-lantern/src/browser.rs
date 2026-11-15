@@ -1,12 +1,14 @@
 //! Browser adapter: one WebGL2 program and its uniforms, no textures. Every
 //! motion value comes from `compose`; one full-screen pass traces each
-//! pixel's ray to the floor, the chair, the dark person and the scope round
-//! their chest, and adds the light straight onto the page in the theme's own
+//! pixel's ray through the room (the floor, the chair, the dark person, the
+//! two rings, the light inside the body) and through the space inside (the
+//! lantern and its beam, the threads and sparks Rust has already placed in
+//! the frame), and adds the light straight onto the page in the theme's own
 //! cold, warm and pale (`look`). The scene is two-toned, so it does not go
 //! through the monochrome theme recolor.
 use crate::{
-    compose, look, Look, BLIPS, BOUNDS, FRAME_ASPECT, LINKS, LOOP_SECONDS, SCOPE_C, SCOPE_R,
-    SCOPE_Y, STILL,
+    compose, look, Camera, Look, BOUNDS, COLUMN, FRAME_ASPECT, GLINTS, LOOP_SECONDS, MOUTH_R,
+    OUTER, OUTER_IN, POINTS, STILL, THREADS,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Warm;
@@ -21,42 +23,53 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 18] = [
+const NAMES: [&str; 26] = [
     "u_eye",
     "u_right",
     "u_up",
     "u_fwd",
+    "u_ieye",
+    "u_iright",
+    "u_iup",
+    "u_ifwd",
     "u_view",
-    "u_scope",
-    "u_grid",
-    "u_blips",
-    "u_kinds",
-    "u_lock",
-    "u_measure",
-    "u_links",
+    "u_world",
+    "u_ring",
+    "u_beamO",
+    "u_beamD",
+    "u_tide",
+    "u_pull",
+    "u_stir",
+    "u_knot",
+    "u_thr",
+    "u_box",
+    "u_glint",
+    "u_tail",
     "u_cold",
     "u_warm",
     "u_pale",
     "u_backdrop",
     "u_edges",
-    "u_out",
 ];
 
 /// lib.rs's constants as the shader's `#define`s, so both read one source.
 fn defines() -> String {
     let f = |v: f32| format!("{v:?}");
-    let v2 = |v: [f32; 2]| format!("vec2({:?}, {:?})", v[0], v[1]);
     let v3 = |v: [f32; 3]| format!("vec3({:?}, {:?}, {:?})", v[0], v[1], v[2]);
+    let v4 = |v: [f32; 4]| format!("vec4({:?}, {:?}, {:?}, {:?})", v[0], v[1], v[2], v[3]);
     let lines = [
         ("LOOP_SECONDS", f(LOOP_SECONDS)),
         ("FRAME_ASPECT", f(FRAME_ASPECT)),
         ("BOUNDS_FROM", v3(BOUNDS[0])),
         ("BOUNDS_TO", v3(BOUNDS[1])),
-        ("SCOPE_Y", f(SCOPE_Y)),
-        ("SCOPE_R", f(SCOPE_R)),
-        ("SCOPE_C", v2(SCOPE_C)),
-        ("BLIPS", BLIPS.to_string()),
-        ("LINKS", LINKS.to_string()),
+        ("OUTER", v4(OUTER)),
+        ("OUTER_IN", v4(OUTER_IN)),
+        ("MOUTH_R", f(MOUTH_R)),
+        ("COLUMN_TOP", v3(COLUMN[0])),
+        ("COLUMN_LOW", v3(COLUMN[1])),
+        ("THREADS", THREADS.to_string()),
+        ("POINTS", POINTS.to_string()),
+        ("GLINTS", GLINTS.to_string()),
     ];
     lines
         .iter()
@@ -142,7 +155,7 @@ pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
 }
 
 #[wasm_bindgen]
-pub struct InnerRadar {
+pub struct InnerLantern {
     gl: Gl,
     canvas: HtmlCanvasElement,
     scene: Prog,
@@ -159,10 +172,10 @@ pub struct InnerRadar {
 }
 
 #[wasm_bindgen]
-impl InnerRadar {
+impl InnerLantern {
     /// Everything is traced in the shader: no images to load.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement) -> Result<InnerRadar, JsValue> {
+    pub fn new(canvas: HtmlCanvasElement) -> Result<InnerLantern, JsValue> {
         let gl: Gl = context(&canvas)?;
         let scene = Prog::new(
             &gl,
@@ -229,8 +242,7 @@ impl InnerRadar {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: the beam turning, marks lit and
-    /// fading behind it.
+    /// Reduced motion holds one moment: «Свидетельствуй», the beam wide open.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -278,7 +290,20 @@ impl InnerRadar {
     }
 }
 
-impl InnerRadar {
+impl InnerLantern {
+    fn camera(&self, names: [&str; 4], c: &Camera, w: f32) {
+        let gl = &self.gl;
+        let p = &self.scene;
+        let [ex, ey, ez] = c.eye;
+        let [rx, ry, rz] = c.right;
+        let [ux, uy, uz] = c.up;
+        let [fx, fy, fz] = c.forward;
+        gl.uniform4f(p.at(names[0]), ex, ey, ez, w);
+        gl.uniform4f(p.at(names[1]), rx, ry, rz, 0.0);
+        gl.uniform4f(p.at(names[2]), ux, uy, uz, 0.0);
+        gl.uniform4f(p.at(names[3]), fx, fy, fz, c.lens);
+    }
+
     fn draw(&mut self) {
         if self.disposed || self.gl.is_context_lost() {
             return;
@@ -291,42 +316,47 @@ impl InnerRadar {
         gl.disable(Gl::BLEND);
         gl.bind_vertex_array(Some(&self.empty));
 
-        // The whole 3:2 frame stays in view on a canvas of any shape.
+        // The whole 3:2 frame stays in view on a canvas of any shape: frame
+        // y runs -1..1 across its height, x -1.5..1.5 across its width.
         let (w, h) = (width as f32, height as f32);
         let aspect = w / h;
-        let focal = 1.0 / f.lens;
         let view = [
-            focal / aspect.max(FRAME_ASPECT),
-            focal * aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
+            1.0 / aspect.max(FRAME_ASPECT),
+            aspect.min(FRAME_ASPECT) / FRAME_ASPECT,
             w,
             h,
         ];
         let p = &self.scene;
-        let [ex, ey, ez] = f.eye;
-        let [rx, ry, rz] = f.right;
-        let [ux, uy, uz] = f.up;
-        let [fx, fy, fz] = f.forward;
         let flat = |rows: &[[f32; 4]]| rows.iter().flatten().copied().collect::<Vec<f32>>();
         gl.use_program(Some(&p.program));
-        gl.uniform4f(p.at("u_eye"), ex, ey, ez, f.time);
-        gl.uniform4f(p.at("u_right"), rx, ry, rz, 0.0);
-        gl.uniform4f(p.at("u_up"), ux, uy, uz, 0.0);
-        gl.uniform4f(p.at("u_fwd"), fx, fy, fz, 0.0);
+        self.camera(["u_eye", "u_right", "u_up", "u_fwd"], &f.room, f.time);
+        self.camera(["u_ieye", "u_iright", "u_iup", "u_ifwd"], &f.within, 0.0);
+        let gl = &self.gl;
+        let b = f.beam;
         gl.uniform4fv_with_f32_array(p.at("u_view"), &view);
-        gl.uniform4f(p.at("u_scope"), f.beam, f.beam_light, f.reach, f.trail);
-        let [from_x, from_z] = f.links_from;
-        gl.uniform4f(p.at("u_grid"), f.grid, f.rim_turn, from_x, from_z);
-        gl.uniform4fv_with_f32_array(p.at("u_blips"), &flat(&f.blips));
-        gl.uniform4fv_with_f32_array(p.at("u_kinds"), &flat(&f.kinds));
-        gl.uniform4fv_with_f32_array(p.at("u_lock"), &f.lock);
-        gl.uniform4fv_with_f32_array(p.at("u_measure"), &f.measure);
-        gl.uniform4fv_with_f32_array(p.at("u_links"), &flat(&f.links));
+        gl.uniform4f(p.at("u_world"), f.inside, f.column[0], f.column[1], f.ticks);
+        gl.uniform4fv_with_f32_array(p.at("u_ring"), &f.ring);
+        gl.uniform4f(
+            p.at("u_beamO"),
+            b.mouth[0],
+            b.mouth[1],
+            b.mouth[2],
+            b.spread,
+        );
+        gl.uniform4f(p.at("u_beamD"), b.aim[0], b.aim[1], b.aim[2], b.light);
+        gl.uniform4fv_with_f32_array(p.at("u_tide"), &f.tide);
+        gl.uniform4fv_with_f32_array(p.at("u_pull"), &f.pull);
+        gl.uniform4f(p.at("u_stir"), f.tug, f32::from(self.soft_edges), 0.0, 0.0);
+        gl.uniform4fv_with_f32_array(p.at("u_knot"), &f.knot);
+        gl.uniform4fv_with_f32_array(p.at("u_thr"), &flat(&f.threads));
+        gl.uniform4fv_with_f32_array(p.at("u_box"), &flat(&f.boxes));
+        gl.uniform4fv_with_f32_array(p.at("u_glint"), &flat(&f.glints));
+        gl.uniform4fv_with_f32_array(p.at("u_tail"), &flat(&f.tails));
         gl.uniform3fv_with_f32_array(p.at("u_cold"), &self.look.cold);
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);
         gl.uniform3fv_with_f32_array(p.at("u_backdrop"), &self.backdrop);
         gl.uniform4fv_with_f32_array(p.at("u_edges"), &EDGES);
-        gl.uniform4f(p.at("u_out"), f32::from(self.soft_edges), 0.0, 0.0, 0.0);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.bind_vertex_array(None);
         self.frames = self.frames.wrapping_add(1);

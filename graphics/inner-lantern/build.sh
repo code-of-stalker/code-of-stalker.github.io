@@ -10,6 +10,6 @@ cargo test --manifest-path "$manifest"
 cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
 cargo clippy --manifest-path "$manifest" --target wasm32-unknown-unknown -- -D warnings
 cargo build --manifest-path "$manifest" --target wasm32-unknown-unknown --release
-wasm-bindgen "$scene/target/wasm32-unknown-unknown/release/watcher_inner_radar.wasm" \
-  --target web --out-dir "$project/output/motion/inner-radar/pkg"
+wasm-bindgen "$scene/target/wasm32-unknown-unknown/release/watcher_inner_lantern.wasm" \
+  --target web --out-dir "$project/output/motion/inner-lantern/pkg"
 node "$scene/package.mjs"

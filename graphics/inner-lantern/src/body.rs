@@ -1,8 +1,8 @@
 //! The seated person and the chair as distance fields, the same ones the
 //! shader draws. The person sits upright on the chair, the back straight
 //! against the backrest, feet flat on the floor, hands on the thighs, facing
-//! +z. Round the chest lies the radar scope (lib.rs `SCOPE_Y`); this is the
-//! dark figure the beam lights from it.
+//! +z. The light of attention runs inside it, crown to pelvis (lib.rs
+//! `COLUMN`), and the camera goes in through the back (lib.rs `ROOM`).
 
 pub(crate) type V = [f32; 3];
 

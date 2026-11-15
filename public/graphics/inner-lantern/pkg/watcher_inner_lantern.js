@@ -1,15 +1,15 @@
-/* @ts-self-types="./watcher_inner_radar.d.ts" */
+/* @ts-self-types="./watcher_inner_lantern.d.ts" */
 
-export class InnerRadar {
+export class InnerLantern {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
-        InnerRadarFinalization.unregister(this);
+        InnerLanternFinalization.unregister(this);
         return ptr;
     }
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_innerradar_free(ptr, 0);
+        wasm.__wbg_innerlantern_free(ptr, 0);
     }
     /**
      * @param {number} red
@@ -17,36 +17,36 @@ export class InnerRadar {
      * @param {number} blue
      */
     backdrop(red, green, blue) {
-        wasm.innerradar_backdrop(this.__wbg_ptr, red, green, blue);
+        wasm.innerlantern_backdrop(this.__wbg_ptr, red, green, blue);
     }
     dispose() {
-        wasm.innerradar_dispose(this.__wbg_ptr);
+        wasm.innerlantern_dispose(this.__wbg_ptr);
     }
     /**
      * @returns {number}
      */
     elapsed() {
-        const ret = wasm.innerradar_elapsed(this.__wbg_ptr);
+        const ret = wasm.innerlantern_elapsed(this.__wbg_ptr);
         return ret;
     }
     /**
      * @param {number} milliseconds
      */
     frame(milliseconds) {
-        wasm.innerradar_frame(this.__wbg_ptr, milliseconds);
+        wasm.innerlantern_frame(this.__wbg_ptr, milliseconds);
     }
     /**
      * @returns {number}
      */
     frame_count() {
-        const ret = wasm.innerradar_frame_count(this.__wbg_ptr);
+        const ret = wasm.innerlantern_frame_count(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     gpu_error() {
-        const ret = wasm.innerradar_gpu_error(this.__wbg_ptr);
+        const ret = wasm.innerlantern_gpu_error(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
@@ -56,7 +56,7 @@ export class InnerRadar {
     constructor(canvas) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.innerradar_new(retptr, addHeapObject(canvas));
+            wasm.innerlantern_new(retptr, addHeapObject(canvas));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -64,7 +64,7 @@ export class InnerRadar {
                 throw takeObject(r1);
             }
             this.__wbg_ptr = r0;
-            InnerRadarFinalization.register(this, this.__wbg_ptr, this);
+            InnerLanternFinalization.register(this, this.__wbg_ptr, this);
             return this;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
@@ -75,47 +75,46 @@ export class InnerRadar {
      * @param {number} code
      */
     palette(code) {
-        wasm.innerradar_palette(this.__wbg_ptr, code);
+        wasm.innerlantern_palette(this.__wbg_ptr, code);
     }
     /**
      * @param {boolean} value
      */
     pause(value) {
-        wasm.innerradar_pause(this.__wbg_ptr, value);
+        wasm.innerlantern_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: the beam turning, marks lit and
-     * fading behind it.
+     * Reduced motion holds one moment: «Свидетельствуй», the beam wide open.
      * @param {boolean} value
      */
     reduced(value) {
-        wasm.innerradar_reduced(this.__wbg_ptr, value);
+        wasm.innerlantern_reduced(this.__wbg_ptr, value);
     }
     /**
      * @param {number} width
      * @param {number} height
      */
     resize(width, height) {
-        wasm.innerradar_resize(this.__wbg_ptr, width, height);
+        wasm.innerlantern_resize(this.__wbg_ptr, width, height);
     }
     /**
      * @param {number} seconds
      */
     seek(seconds) {
-        wasm.innerradar_seek(this.__wbg_ptr, seconds);
+        wasm.innerlantern_seek(this.__wbg_ptr, seconds);
     }
     /**
      * Melt the scene into the surrounding page instead of a hard frame.
      * @param {boolean} enabled
      */
     soft_edges(enabled) {
-        wasm.innerradar_soft_edges(this.__wbg_ptr, enabled);
+        wasm.innerlantern_soft_edges(this.__wbg_ptr, enabled);
     }
     suspend() {
-        wasm.innerradar_suspend(this.__wbg_ptr);
+        wasm.innerlantern_suspend(this.__wbg_ptr);
     }
 }
-if (Symbol.dispose) InnerRadar.prototype[Symbol.dispose] = InnerRadar.prototype.free;
+if (Symbol.dispose) InnerLantern.prototype[Symbol.dispose] = InnerLantern.prototype.free;
 
 export class Warm {
     static __wrap(ptr) {
@@ -328,13 +327,13 @@ function __wbg_get_imports() {
     };
     return {
         __proto__: null,
-        "./watcher_inner_radar_bg.js": import0,
+        "./watcher_inner_lantern_bg.js": import0,
     };
 }
 
-const InnerRadarFinalization = (typeof FinalizationRegistry === 'undefined')
+const InnerLanternFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_innerradar_free(ptr, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_innerlantern_free(ptr, 1));
 const WarmFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_warm_free(ptr, 1));
@@ -569,7 +568,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        module_or_path = new URL('watcher_inner_radar_bg.wasm', import.meta.url);
+        module_or_path = new URL('watcher_inner_lantern_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

@@ -2,6 +2,7 @@ import { ArtLoading } from '../skeleton/ArtLoading';
 import { DynamicRings } from './DynamicRings.web';
 import { InnerEcho } from './InnerEcho.web';
 import { InnerFrame } from './InnerFrame.web';
+import { InnerLantern } from './InnerLantern.web';
 import { InnerVessel } from './InnerVessel.web';
 import { isNightScene, NightCity } from './NightCity.web';
 import type { ReadingPage } from './readingPages';
@@ -34,6 +35,7 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'inner-echo' ? InnerEcho
     : page.webScene === 'inner-frame' ? InnerFrame
     : page.webScene === 'inner-vessel' ? InnerVessel
+    : page.webScene === 'inner-lantern' ? InnerLantern
     : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' || page.webScene === 'dynamic-inner' || page.webScene === 'dynamic-action' ? DynamicRings
     : isNightScene(page.webScene) ? NightCity
     : page.webScene === 'rope-dawn' ? RopeDawn

@@ -103,6 +103,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   parts; on «Без проваливания» the body vanishes and the head stays, never a second person;
   «образы себя» are different images of himself, not a mirrored copy; the «Без…» beats get
   the most time. Passed and shipped 2026-11-07.
+- Page 04 «Радар» rejected at the first showing (2026-11-15): «связи с текстом 0». A scanner
+  disc round the chest with marks on it is an outer device and «отбрасывает опять назад к
+  внешнему кольцу 5 шага». Step 6 is about what is inside: emotions, sensations, thoughts,
+  urges. Show the inside itself, from inside, never an instrument around the body.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

@@ -107,6 +107,12 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   disc round the chest with marks on it is an outer device and «отбрасывает опять назад к
   внешнему кольцу 5 шага». Step 6 is about what is inside: emotions, sensations, thoughts,
   urges. Show the inside itself, from inside, never an instrument around the body.
+- Page 04 «Фонарь», first round (2026-11-15): abstract strands for thoughts read as odd
+  («странновато внутри с этими полосками… чуть очевиднее для человека передать»). Use signs
+  people read at once: thought bubbles with lines of words, waves for emotions, lightning for
+  impulses, a whirlpool for an urge, a tangled ball for «понять». And the outer ring must turn
+  visibly in every scene, inside views too («почему внешнее кольцо стоит на месте»). Round 2
+  with those signs passed in Тишина («Да, делай темы»).
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

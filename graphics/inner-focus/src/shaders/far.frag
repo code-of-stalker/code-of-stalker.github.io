@@ -235,7 +235,6 @@ void main() {
   float hR = (WATER + slope * max(FAR_BANK - dist, 0.0)) / FAR_BANK;
   vec2 paR = max(fwidth(vec2(ch.x, hR)), pa);
   vec3 up = vec3(rd.x, slope * length(rd.xz), rd.z);
-  float pxR = max(fwidth(firstRing(pw, normalize(up)).x), 1e-4);
 
   // The river shivers: the way back up from it is bent by the ripples.
   bool water = ch.y < 0.0;
@@ -271,13 +270,15 @@ void main() {
       st += 0.8 * exp(-dot(d, d));
     }
     col += lampC * 0.55 * st * fres;
-    // The first ring in the river, and its runners' tails.
-    vec3 rg = firstRing(pw, normalize(up + vec3(0.004 * n2, 0.03 * n1, 0.0)));
+    // The first ring in the river, and its runners' tails: the way back up
+    // from the river leaves from his image under the water.
+    vec3 under = vec3(ro.x, 2.0 * WATER - ro.y, ro.z);
+    vec3 rg = firstRing(under, normalize(up + vec3(0.004 * n2, 0.03 * n1, 0.0)));
     if (rg.z > 0.0) {
-      float dpx = rg.x / pxR;
+      float dpx = rg.x / pxA;
       float tail = exp(-behindRunner(rg.y) / 0.115);
       col += (u_cold * line(dpx, 1.1 * px800()) + mix(u_cold, u_pale, 0.45) * tail * line(dpx, 1.6 * px800()))
-           * 0.4 * u_ring2.w * fres;
+           * 0.4 * u_ring2.w * fres * smoothstep(-0.05, 0.2, n1); // broken into glints
     }
   }
   // The gulls over the water, and the bell's ringing.

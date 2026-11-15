@@ -220,7 +220,9 @@ mod tests {
         let over = [0.17, 1.165, -0.055];
         assert!(figure(over, 0.0) > 0.0);
         assert!(figure(over, SHRUG) < 0.0);
-        assert!((figure([0.0, 1.43, -0.02], SHRUG) - figure([0.0, 1.43, -0.02], 0.0)).abs() < 0.004);
+        assert!(
+            (figure([0.0, 1.43, -0.02], SHRUG) - figure([0.0, 1.43, -0.02], 0.0)).abs() < 0.004
+        );
         // It is a slow change of the same body: a small shrug moves the skin a
         // little.
         let mut last = figure(over, 0.0);

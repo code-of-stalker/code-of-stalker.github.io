@@ -59,10 +59,9 @@ void main() {
   vec2 f = frameAt(frag);
   vec3 rd = rayAt(f);
   float k800 = px800();
-  // The first ring's plane, and a pixel's size on it across the ring and
-  // along it (the angle has two cuts so one of them is always smooth).
+  // The first ring, and a pixel's size along it (the angle has two cuts so
+  // one of them is always smooth).
   vec3 rg = firstRing(u_eye.xyz, rd);
-  float pxR = max(fwidth(rg.x), 1e-5);
   float a2 = rg.y < 0.0 ? rg.y + TAU : rg.y;
   float pxT = max(min(fwidth(rg.y), fwidth(a2)), 1e-7);
 
@@ -77,10 +76,11 @@ void main() {
   vec3 lamp = mix(u_pale, u_cold, 0.2);
   vec3 light = lamp * cityLights(rd, Rf, per);
   if (rg.z > 0.0) {
-    float d = rg.x / pxR / k800;
+    // px@800 off the ring, + below it, where the ticks hang.
+    float d = -rg.x * (u_ring1.y < 0.0 ? -1.0 : 1.0) / pxA / k800;
     float w = 1.15;
     float wb = sqrt(w * w + sq(0.55 * Rf));
-    float core = exp(-sq(d / wb)) * w / wb * (1.0 + max(Rf - 1.5, 0.0) / 3.0);
+    float core = exp(-sq(d / wb)) * w / wb * (1.0 + max(Rf - 1.5, 0.0) / 7.0);
     float glow = 0.12 * exp(-sq(d / (7.0 + Rf)));
     float tail = exp(-behindRunner(rg.y) / 0.115);
     // Ticks hang outward every 4 degrees, long and short by turns.

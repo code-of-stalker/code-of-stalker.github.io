@@ -367,7 +367,10 @@ pub fn focus(t: f32) -> (f32, f32) {
 /// The circles of confusion (near, far) in px of an 800 px high frame.
 pub fn blur(t: f32) -> [f32; 2] {
     let (f, both) = focus(t);
-    [BLUR[0] * (1.0 - f) * (1.0 - both), BLUR[1] * f * (1.0 - both)]
+    [
+        BLUR[0] * (1.0 - f) * (1.0 - both),
+        BLUR[1] * f * (1.0 - both),
+    ]
 }
 
 // ---------- the rings
@@ -436,7 +439,10 @@ fn outer_ring(t: f32, light: f32) -> Ring {
     let normal = [-TILT.sin() * p.cos(), TILT.cos(), -TILT.sin() * p.sin()];
     let lat = latitude(t);
     let r = SPHERE[3];
-    let centre = add([SPHERE[0], SPHERE[1], SPHERE[2]], scale(normal, r * lat.sin()));
+    let centre = add(
+        [SPHERE[0], SPHERE[1], SPHERE[2]],
+        scale(normal, r * lat.sin()),
+    );
     Ring::new(centre, r * lat.cos(), normal, turn(t), light)
 }
 
@@ -629,7 +635,12 @@ fn signs(t: f32, cam: &Camera, ring_y: f32) -> [[f32; 4]; SIGN_SLOTS] {
     out[2] = [a[0], a[1], b[0], b[1]];
     out[3] = [window(t, WORDS[0]), window(t, WORDS[1]), calm, 0.0];
     let (chest, m) = at(CHEST);
-    out[4] = [chest[0], chest[1], 0.065 * m, sign_light(ring_y, CHEST[1], gate)];
+    out[4] = [
+        chest[0],
+        chest[1],
+        0.065 * m,
+        sign_light(ring_y, CHEST[1], gate),
+    ];
     let (belly, m) = at(BELLY);
     out[5] = [
         belly[0],
@@ -663,16 +674,22 @@ pub fn compose(t: f32) -> Frame {
     let outer = outer_ring(t, 1.0 + 0.8 * flash + 0.6 * together);
     let runners = std::array::from_fn(|k| {
         let p = outer.at(outer.turn + TAU * k as f32 / RUNNERS as f32);
-        camera.project(p).map_or([9.0, 9.0, 0.0], |s| [s[0], s[1], 1.0])
+        camera
+            .project(p)
+            .map_or([9.0, 9.0, 0.0], |s| [s[0], s[1], 1.0])
     });
     let inner = inner_ring(t, 0.9 + 0.8 * flash + 0.6 * together);
     let run = inner.at(inner.turn);
-    let inner_runner = camera
-        .project(run)
-        .map_or([9.0, 9.0, 0.0, 0.0], |s| [s[0], s[1], camera.depth(run), 1.0]);
+    let inner_runner = camera.project(run).map_or([9.0, 9.0, 0.0, 0.0], |s| {
+        [s[0], s[1], camera.depth(run), 1.0]
+    });
     let (light, age) = bell(t);
     let belfry = camera
-        .project_way(city_way(camera.eye, TOWER_AZ, 0.5 * (BELFRY[0] + BELFRY[1])))
+        .project_way(city_way(
+            camera.eye,
+            TOWER_AZ,
+            0.5 * (BELFRY[0] + BELFRY[1]),
+        ))
         .unwrap_or([9.0, 9.0]);
     let up = lift(t);
     let gulls = std::array::from_fn(|i| {
@@ -815,7 +832,10 @@ mod tests {
         every(0.02, |t| {
             let c = camera(t);
             let [x, y, z] = c.eye;
-            assert!(x < RAIL_X - 0.5 && y > 0.8 && y < 2.0 && z.abs() < PIER_HALF - 1.0, "{t}");
+            assert!(
+                x < RAIL_X - 0.5 && y > 0.8 && y < 2.0 && z.abs() < PIER_HALF - 1.0,
+                "{t}"
+            );
             assert!(solid(to_local(c.eye), 0.0) > 0.8, "{t}");
             let head = c.project(to_world(HEAD)).expect("ahead");
             assert!(head[0].abs() < 1.3 && head[1].abs() < 0.85, "{t}: {head:?}");
@@ -842,7 +862,10 @@ mod tests {
             assert!(seen >= 40, "{t}: {seen}");
             // In front of the far bank, and high over the water.
             let [x, _, z] = f.outer.centre;
-            assert!(f.outer.radius + length([x, 0.0, z]) < FAR_BANK - 20.0, "{t}");
+            assert!(
+                f.outer.radius + length([x, 0.0, z]) < FAR_BANK - 20.0,
+                "{t}"
+            );
             assert!(f.outer.centre[1] - f.camera.eye[1] > 5.0, "{t}");
         });
         // Its runners go round 12 degrees a second; one is always near.
@@ -850,7 +873,11 @@ mod tests {
         assert!(w > 0.2, "{w}");
         every(0.5, |t| {
             let f = compose(t);
-            let near = f.runners.iter().filter(|r| r[2] > 0.0 && r[0].abs() < 3.0).count();
+            let near = f
+                .runners
+                .iter()
+                .filter(|r| r[2] > 0.0 && r[0].abs() < 3.0)
+                .count();
             assert!(near >= 1, "{t}");
         });
     }
@@ -860,10 +887,16 @@ mod tests {
         // The first ring rides the sphere up and down, the second scans him
         // crown to feet.
         let lats: Vec<f32> = (0..600).map(|i| latitude(i as f32 * 0.1)).collect();
-        let (lo, hi) = lats.iter().fold((9f32, -9f32), |(a, b), &v| (a.min(v), b.max(v)));
+        let (lo, hi) = lats
+            .iter()
+            .fold((9f32, -9f32), |(a, b), &v| (a.min(v), b.max(v)));
         assert!(close(lo, LATITUDE[0], 1e-3) && close(hi, LATITUDE[1], 1e-3));
         assert!(close(hug(scan(SCAN_CROWN))[0], HUG[5][0], 1e-4));
-        assert!(close(hug(scan(SCAN_CROWN + 0.5 * SCAN_SECONDS))[0], HUG[0][0], 1e-4));
+        assert!(close(
+            hug(scan(SCAN_CROWN + 0.5 * SCAN_SECONDS))[0],
+            HUG[0][0],
+            1e-4
+        ));
         every(0.25, |t| {
             let a = compose(t);
             let (mut outer, mut inner) = (0f32, 0f32);
@@ -967,7 +1000,10 @@ mod tests {
                 let [head, way] = train(t);
                 let tail = head - way * TRAIN_LENGTH;
                 let (lo, hi) = (head.min(tail), head.max(tail));
-                assert!(hi <= BRIDGE[0] + 1e-4 || lo >= BRIDGE[1] - 1e-4, "{t}: {head} {tail}");
+                assert!(
+                    hi <= BRIDGE[0] + 1e-4 || lo >= BRIDGE[1] - 1e-4,
+                    "{t}: {head} {tail}"
+                );
             }
             let [head, _] = train(0.5 * (a + b));
             assert!(head > BRIDGE[0] && head < BRIDGE[1] + TRAIN_LENGTH);
@@ -1006,14 +1042,19 @@ mod tests {
         every(0.1, |t| {
             let f = compose(t);
             let [bx, by, size, _] = f.signs[1];
-            assert!(bx.abs() + 1.25 * size < FRAME_ASPECT && by.abs() + 0.84 * size < 1.0, "{t}");
+            assert!(
+                bx.abs() + 1.25 * size < FRAME_ASPECT && by.abs() + 0.84 * size < 1.0,
+                "{t}"
+            );
             for i in [4, 5, 6, 7] {
                 let [x, y, _, _] = f.signs[i];
                 assert!(in_frame([x, y]), "{t}: {i}");
             }
         });
         // His shoulders go up while he forces it.
-        assert!(compose(36.0).shrug > 0.03 && compose(20.0).shrug == 0.0 && compose(50.0).shrug == 0.0);
+        assert!(
+            compose(36.0).shrug > 0.03 && compose(20.0).shrug == 0.0 && compose(50.0).shrug == 0.0
+        );
     }
 
     #[test]

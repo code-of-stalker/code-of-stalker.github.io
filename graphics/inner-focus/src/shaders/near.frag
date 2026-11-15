@@ -274,6 +274,47 @@ float sparks(vec2 f, vec4 s, float seed) {
   return c * s.w;
 }
 
+// ---------- the second ring
+// How far the way (ro, rd) passes from the ring's nearest point (radians):
+// that point from the ring's centre, and how far along the way it lies.
+// Asked of the circle itself, since its plane often passes his eyes and is
+// then seen edge on: 24 points round it, then the best one refined.
+float ringOff(vec3 rd, vec3 v) {
+  return atan(length(cross(v, rd)), dot(v, rd));
+}
+float secondRing(vec3 ro, vec3 rd, out vec3 q, out float depth) {
+  vec3 ax = u_inner2.xyz;
+  vec3 bx = cross(u_inner1.xyz, ax);
+  vec3 c = u_inner0.xyz - ro;
+  float r = u_inner0.w;
+  float best = 1e9;
+  float phi = 0.0;
+  float h = TAU / 24.0;
+  for (int i = 0; i < 24; i++) {
+    float p = float(i) * h;
+    float a = ringOff(rd, c + r * (cos(p) * ax + sin(p) * bx));
+    if (a < best) {
+      best = a;
+      phi = p;
+    }
+  }
+  for (int i = 0; i < 6; i++) {
+    h *= 0.5;
+    float lo = ringOff(rd, c + r * (cos(phi - h) * ax + sin(phi - h) * bx));
+    float hi = ringOff(rd, c + r * (cos(phi + h) * ax + sin(phi + h) * bx));
+    if (lo < best && lo <= hi) {
+      best = lo;
+      phi -= h;
+    } else if (hi < best) {
+      best = hi;
+      phi += h;
+    }
+  }
+  q = r * (cos(phi) * ax + sin(phi) * bx);
+  depth = dot(c + q, rd);
+  return best;
+}
+
 void main() {
   vec2 frag = gl_FragCoord.xy;
   setup(frag);
@@ -282,7 +323,7 @@ void main() {
   vec3 ro = u_eye.xyz;
   vec3 rd = rayAt(f);
   // Every plane at every pixel, so a pixel's size on each comes from its
-  // neighbours: the deck, the rail, the second ring's plane.
+  // neighbours: the deck, the rail.
   float tD = rd.y < -1e-5 ? -ro.y / rd.y : 1e9;
   vec3 pD = ro + rd * min(tD, 200.0);
   vec2 fwD = max(fwidth(pD.xz), vec2(1e-5));
@@ -290,11 +331,6 @@ void main() {
   vec3 pR = ro + rd * min(tR, 200.0);
   vec2 fwR = max(fwidth(pR.yz), vec2(1e-5));
   vec3 n2 = u_inner1.xyz;
-  float dn = dot(rd, n2);
-  float tI = dot(u_inner0.xyz - ro, n2) / (abs(dn) > 1e-6 ? dn : 1e-6);
-  vec3 qI = ro + rd * tI - u_inner0.xyz;
-  float dI = length(qI) - u_inner0.w;
-  float pxI = max(fwidth(dI), 1e-6);
 
   // The person and the chair.
   vec3 roL = toLocal(ro);
@@ -349,7 +385,7 @@ void main() {
     vec3 n = surface(hp, id, ao);
     float fr = pow(1.0 - abs(dot(n, rdL)), 3.0);
     float lit = dot(n, cityL);
-    vec3 c = bg * 0.42 * (0.6 + 0.4 * ao) + rim * 0.34 * fr * smoothstep(-0.3, 0.5, lit) + u_pale * 0.05 * max(lit, 0.0) * ao;
+    vec3 c = bg * 0.42 * (0.6 + 0.4 * ao) + rim * 0.55 * fr * smoothstep(-0.3, 0.5, lit) + u_pale * 0.05 * max(lit, 0.0) * ao;
     if (id == 1) {
       c *= 0.8;
     } else {
@@ -372,8 +408,10 @@ void main() {
   // The second ring, faint where something near is in front of it, a
   // little less on its far side; its runner and the tail behind it.
   vec3 glow = vec3(0.0);
+  vec3 qI;
+  float tI;
+  float dpx = secondRing(ro, rd, qI, tI) / pxA;
   if (tI > 0.0) {
-    float dpx = dI / pxI;
     vec3 ax = u_inner2.xyz;
     float ang = atan(dot(qI, cross(n2, ax)), dot(qI, ax));
     float behind = fract((u_inner1.w - ang) / TAU);

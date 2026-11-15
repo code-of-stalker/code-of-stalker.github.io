@@ -3,10 +3,7 @@
 /// The labels' atlas: its width and height (px), rows of 128 px.
 pub const ATLAS: [f32; 2] = [1024.0, 256.0];
 /// Ink of every row (x0, x1, px), in the order of `tools/prepare-assets.py`.
-pub const LABEL_INK: [[f32; 2]; 2] = [
-    [29.0, 318.0],
-    [29.0, 368.0],
-];
+pub const LABEL_INK: [[f32; 2]; 2] = [[29.0, 318.0], [29.0, 368.0]];
 /// The rows' common ink band (top, bottom, px inside a row), the baseline
 /// inside a row, and a capital's height (px).
 pub const LABEL_BAND: [f32; 2] = [42.0, 86.0];

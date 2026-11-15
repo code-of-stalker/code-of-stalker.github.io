@@ -140,16 +140,30 @@ uniform vec4 u_ring0; // centre, radius
 uniform vec4 u_ring1; // the normal of its plane, its turn
 uniform vec4 u_ring2; // its first axis, its light
 
-// Where the way (ro, rd) meets the first ring's plane: how far off the
-// ring it is there (m, + outside), at which angle round it, and how far
-// along the way (< 0: behind).
+// The first ring as seen from ro, which stands well inside it (the ring is
+// a circle of the sphere round him): the ring's point straight above or
+// below the way (ro, rd), how far the way passes from it (radians, + on
+// the side its plane's normal points to), at which angle round the ring it
+// is, and 1 (-1 when the way runs along the ring's axis). The ring's own
+// plane is seen almost edge on from here, so its crossing with the way
+// says nothing; this asks the circle itself.
 vec3 firstRing(vec3 ro, vec3 rd) {
   vec3 n = u_ring1.xyz;
-  float dn = dot(rd, n);
-  float t = dot(u_ring0.xyz - ro, n) / (abs(dn) > 1e-6 ? dn : 1e-6);
-  vec3 q = ro + rd * t - u_ring0.xyz;
   vec3 ax = u_ring2.xyz;
-  return vec3(length(q) - u_ring0.w, atan(dot(q, cross(n, ax)), dot(q, ax)), t);
+  vec3 bx = cross(n, ax);
+  vec3 e = ro - u_ring0.xyz;
+  vec2 e2 = vec2(dot(e, ax), dot(e, bx));
+  vec2 d2 = vec2(dot(rd, ax), dot(rd, bx));
+  float dd = dot(d2, d2);
+  if (dd < 1e-8) return vec3(1.0, 0.0, -1.0);
+  // Along the way's shadow on the plane to the circle, ahead.
+  float b = dot(e2, d2);
+  float c = dot(e2, e2) - u_ring0.w * u_ring0.w;
+  float s = (-b + sqrt(max(b * b - dd * c, 0.0))) / dd;
+  vec2 p2 = e2 + s * d2;
+  vec3 to = normalize(u_ring0.xyz + p2.x * ax + p2.y * bx - ro);
+  float off = asin(clamp(dot(rd, n), -1.0, 1.0)) - asin(clamp(dot(to, n), -1.0, 1.0));
+  return vec3(off, atan(p2.y, p2.x), 1.0);
 }
 // How far behind the nearest runner the angle a is, 0..1 of the way to the
 // next one.

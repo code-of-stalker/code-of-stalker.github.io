@@ -12,6 +12,7 @@ uniform vec4 u_up;
 uniform vec4 u_fwd;    // forward, tangent of half the frame's height
 uniform vec4 u_view;   // frame scale x and y, canvas width and height in px
 uniform vec4 u_misc;   // the first ring's turn, the second ring's light, the comb, soft edges
+uniform vec4 u_scan;   // the second ring's sweep: radius, how far out (0 home), +1 out / -1 back
 uniform vec3 u_cold;
 uniform vec3 u_warm;
 uniform vec3 u_pale;

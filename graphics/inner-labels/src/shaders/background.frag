@@ -137,7 +137,8 @@ vec3 outerRing(vec2 q, float r, float px) {
   return u_cold * (line(d, 0.004 * s, px) * 0.95 + ticks * 0.5 + exp(-sq(d / (0.03 * s))) * 0.07)
        + mix(u_cold, u_pale, 0.45) * run;
 }
-// The second ring: warm, a fine line and a softer glow.
+// The second ring: warm, a fine line and a softer glow. It lies round the
+// person and sweeps out over the meadow and back (u_scan).
 vec3 innerRing(float d, float px) {
   return u_warm * (line(d, 0.006, px) + 0.16 * exp(-sq(d / 0.05)));
 }
@@ -154,7 +155,7 @@ vec3 dark(vec3 p, vec3 n, vec3 rd, float depth, float rimLight) {
   float ao = occlusion(p, n);
   vec3 c = -u_backdrop * depth * (1.0 - 0.25 * ao);
   c += u_cold * (rimLight * fres + 0.03 * max(n.y, 0.0) * ao);
-  c += u_warm * 0.05 * u_misc.y * max(-n.y, 0.0) * exp(-max(p.y - 0.3, 0.0) / 0.3);
+  c += u_warm * 0.05 * u_misc.y * (1.0 - 0.8 * u_scan.y) * max(-n.y, 0.0) * exp(-max(p.y - 0.3, 0.0) / 0.3);
   return c;
 }
 // Low over the horizon a cold haze, darker above, a few faint stars.
@@ -175,9 +176,9 @@ vec3 ground(vec2 xz, float dist) {
   float r = length(xz - FIELD.xy);
   float field = smoothstep(FIELD.z + 0.4, FIELD.z - 0.6, r);
   vec3 c = -u_backdrop * (0.12 + 0.3 * field * smoothstep(CLEARING * 0.8, CLEARING * 1.3, r));
-  // the clearing, warm under the second ring
+  // the clearing, warm under the second ring, and the ground under its sweep
   float ri = length(xz - INNER.xz);
-  c += u_warm * u_misc.y * (0.05 * exp(-sq((ri - INNER.w) / 0.18)) + 0.022 * smoothstep(INNER.w + 0.1, 0.0, ri));
+  c += u_warm * u_misc.y * (0.05 * exp(-sq((ri - u_scan.x) / 0.18)) + 0.022 * (1.0 - 0.7 * u_scan.y) * smoothstep(INNER.w + 0.1, 0.0, ri));
   // darker under the person and the chair
   if (abs(xz.x) < 0.45 && xz.y > -0.4 && xz.y < 0.9) {
     float near = solid(vec3(xz.x, 0.015, xz.y));
@@ -201,7 +202,7 @@ void main() {
   vec2 qO = ro.xz + rd.xz * tsO - OUTER.xz;
   float pxO = clamp(length(fwidth(qO)), 1e-5, 2.0);
   float tsR = planeY(ro, rd, INNER.y);
-  float dR = length(ro.xz + rd.xz * tsR - INNER.xz) - INNER.w;
+  float dR = length(ro.xz + rd.xz * tsR - INNER.xz) - u_scan.x;
   float pxR = clamp(fwidth(dR), 1e-5, 1.0);
 
   float tGround = rd.y < 0.0 ? -ro.y / rd.y : 1e9;

@@ -7,7 +7,7 @@
 //! The light is the theme's own cold, warm and pale (`look`); the scene is
 //! two-toned, so it does not go through the monochrome theme recolor.
 use crate::{
-    compose, look, person_on_canvas, plate, to_canvas, Camera, Look, ADVANCE, ATLAS, BLADE, BOUNDS,
+    compose, look, person_on_canvas, plate, to_canvas, Frame, Look, ADVANCE, ATLAS, BLADE, BOUNDS,
     CAPS, CLEARING, FAR, FIELD, FRAME_ASPECT, INNER, LABEL_BAND, LOOP_SECONDS, NEAR, OUTER, ROW,
     SPACING, STILL, SWIRL_POINTS, TEXT_X, WORD,
 };
@@ -31,13 +31,14 @@ const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
 /// Blades: one per this many canvas pixels, within these bounds.
 const PIXELS_PER_BLADE: u32 = 11;
 const BLADES: [u32; 2] = [56_000, 150_000];
-const NAMES: [&str; 29] = [
+const NAMES: [&str; 30] = [
     "u_eye",
     "u_right",
     "u_up",
     "u_fwd",
     "u_view",
     "u_misc",
+    "u_scan",
     "u_cold",
     "u_warm",
     "u_pale",
@@ -377,7 +378,8 @@ impl InnerLabels {
     }
 
     /// The camera, the frame and the theme: what every program reads.
-    fn shared(&self, p: &Prog, c: &Camera, time: f32, view: &[f32; 4], misc: [f32; 4]) {
+    fn shared(&self, p: &Prog, f: &Frame, view: &[f32; 4], misc: [f32; 4]) {
+        let (c, time) = (&f.camera, f.time);
         let gl = &self.gl;
         let [ex, ey, ez] = c.eye;
         let [rx, ry, rz] = c.right;
@@ -389,6 +391,7 @@ impl InnerLabels {
         gl.uniform4f(p.at("u_fwd"), fx, fy, fz, c.lens);
         gl.uniform4fv_with_f32_array(p.at("u_view"), view);
         gl.uniform4fv_with_f32_array(p.at("u_misc"), &misc);
+        gl.uniform4fv_with_f32_array(p.at("u_scan"), &f.scan);
         gl.uniform3fv_with_f32_array(p.at("u_cold"), &self.look.cold);
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);
@@ -426,7 +429,7 @@ impl InnerLabels {
         // depth of the person and the chair.
         let p = &self.background;
         gl.use_program(Some(&p.program));
-        self.shared(p, &f.camera, f.time, &view, misc);
+        self.shared(p, &f, &view, misc);
         let gl = &self.gl;
         gl.disable(Gl::BLEND);
         gl.disable(Gl::SCISSOR_TEST);
@@ -438,7 +441,7 @@ impl InnerLabels {
         // The meadow, its light added on, behind the person hidden.
         let p = &self.grass;
         gl.use_program(Some(&p.program));
-        self.shared(p, &f.camera, f.time, &view, misc);
+        self.shared(p, &f, &view, misc);
         let gl = &self.gl;
         let swirl: Vec<f32> = f.swirl.iter().flatten().copied().collect();
         gl.uniform1i(p.at("u_atlas"), 0);
@@ -488,7 +491,7 @@ impl InnerLabels {
                 if right > left && top > bottom {
                     let p = &self.label;
                     gl.use_program(Some(&p.program));
-                    self.shared(p, &f.camera, f.time, &view, misc);
+                    self.shared(p, &f, &view, misc);
                     let gl = &self.gl;
                     gl.uniform1i(p.at("u_atlas"), 0);
                     gl.uniform4fv_with_f32_array(p.at("u_plate"), &pl.rect);

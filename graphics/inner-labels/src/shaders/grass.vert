@@ -225,6 +225,20 @@ void main() {
     }
   }
 
+  // The second ring sweeping the meadow: the grass it passes lights warm and
+  // lifts a little, a fading trail behind it.
+  if (u_scan.y > 0.0) {
+    float ri = length(xz - INNER.xz);
+    float x = (ri - u_scan.x) / 0.22;
+    float lit = exp(-x * x);
+    float behind = (u_scan.x - ri) * u_scan.z;
+    float trail = behind > 0.0 ? exp(-behind / 0.8) : 0.0;
+    float k = u_scan.y * min(u_misc.y, 1.6);
+    sheen += k * (0.8 * lit + 0.12 * trail);
+    warmW += u_scan.y * (1.1 * lit + 0.35 * trail);
+    H *= 1.0 + 0.1 * k * lit;
+  }
+
   // ---------- the blade
   float L = length(b);
   float fold = min(L, 1.25);

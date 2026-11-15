@@ -1,8 +1,9 @@
 //! «Наблюдай фон и движение, а не содержание», page 05 of Step 6
 //! «Внутреннее кольцо», direction «Ветер». The inner field is a night
 //! meadow; the person sits upright on a chair in a clearing at its middle,
-//! the warm second ring lying round them, the cold first ring turning round
-//! the whole meadow. Nothing that happens inside is shown, only how the grass
+//! the warm second ring lying round them and sweeping out over the meadow
+//! and back (each plate comes on as the sweep reaches what it names), the
+//! cold first ring turning round the whole meadow. Nothing that happens inside is shown, only how the grass
 //! moves, and a plain plate names the fact: «ЕСТЬ МЫСЛЬ» over the track of
 //! something that ran through the grass; «ЕСТЬ ЭМОЦИЯ» over a broad warm wave;
 //! «ЕСТЬ ИМПУЛЬС» over a sharp parting line; «ЕСТЬ НАПРЯЖЕНИЕ» over grass
@@ -129,6 +130,14 @@ pub const LABELS: [(f32, f32, usize); 7] = [
 /// «Без комментариев»: the comment types on, waits and is taken back to
 /// «ЕСТЬ МЫСЛЬ» (start, end of typing; start, end of erasing).
 pub const COMMENT: [f32; 4] = [43.3, 44.45, 44.9, 45.5];
+/// The second ring scans the meadow: it sweeps out from the person to
+/// `SCAN_EDGE`, lighting the grass it passes, and comes back. Each plate's
+/// sweep is timed so the ring crosses the point the plate names as the plate
+/// comes on; the idle sweeps (start times) keep it going where nothing is
+/// named. Seconds out and back.
+pub const SCAN_EDGE: f32 = 5.0;
+pub const SCAN_TIMES: [f32; 2] = [1.7, 2.2];
+pub const IDLE_SCANS: [f32; 5] = [0.8, 46.0, 50.9, 55.3, 59.6];
 
 // ---------- small math
 
@@ -420,6 +429,54 @@ fn anchor(row: usize, t: f32) -> V {
     }
 }
 
+/// How far a point on the ground is from the second ring's centre.
+fn from_ring([x, z]: P) -> f32 {
+    ((x - INNER[0]).powi(2) + (z - INNER[2]).powi(2)).sqrt()
+}
+
+/// When the sweeps set out: one per plate, so the ring crosses the named
+/// point as the plate comes on, then the idle ones; in time order.
+pub fn scan_starts() -> [f32; LABELS.len() + IDLE_SCANS.len()] {
+    let span = SCAN_EDGE - INNER[3];
+    let mut starts = [0.0; LABELS.len() + IDLE_SCANS.len()];
+    for (start, &(on, _, row)) in starts.iter_mut().zip(LABELS.iter()) {
+        let a = anchor(row, on);
+        let part = ((from_ring([a[0], a[2]]) - INNER[3]) / span).clamp(0.0, 1.0);
+        // The way out eases in and out (smoothstep); its inverse.
+        let u = 0.5 - ((1.0 - 2.0 * part).asin() / 3.0).sin();
+        *start = on - SCAN_TIMES[0] * u;
+    }
+    starts[LABELS.len()..].copy_from_slice(&IDLE_SCANS);
+    starts.sort_by(f32::total_cmp);
+    starts
+}
+
+/// The second ring at `t`: its radius, how far out it is (0 at home, 1 once
+/// it is in the grass), and +1 on the way out, -1 on the way back.
+pub fn scan(t: f32) -> [f32; 4] {
+    let span = SCAN_EDGE - INNER[3];
+    let [out, back] = SCAN_TIMES;
+    let mut reach = 0.0;
+    let mut way = 0.0;
+    for start in scan_starts() {
+        for p in [
+            t - start,
+            t - start + LOOP_SECONDS,
+            t - start - LOOP_SECONDS,
+        ] {
+            if (0.0..out).contains(&p) {
+                reach = smooth(0.0, 1.0, p / out);
+                way = 1.0;
+            } else if (out..out + back).contains(&p) {
+                reach = 1.0 - smooth(0.0, 1.0, (p - out) / back);
+                way = -1.0;
+            }
+        }
+    }
+    let radius = INNER[3] + span * reach;
+    [radius, smooth(0.0, 0.5, radius - INNER[3]), way, 0.0]
+}
+
 pub fn label(t: f32) -> Option<Label> {
     LABELS.iter().find_map(|&(on, off, row)| {
         let alpha = smooth(on, on + 0.25, t) * (1.0 - smooth(off - 0.5, off, t));
@@ -561,8 +618,10 @@ pub struct Frame {
     pub calm: f32,
     pub comb: f32,
     pub turn: f32,
-    /// The second ring's light.
+    /// The second ring's light; where its sweep is (radius, how far out,
+    /// which way).
     pub ring: f32,
+    pub scan: [f32; 4],
     pub swirl: [P; SWIRL_POINTS],
     /// Head (0..1), strength, half width, length.
     pub swirl_s: [f32; 4],
@@ -623,6 +682,7 @@ pub fn compose(t: f32) -> Frame {
         comb: 0.4 + 0.6 * window(t, [55.5, 57.5, 62.0, 63.8]),
         turn: TAU * TURNS * t / LOOP_SECONDS,
         ring: 0.55 + 0.9 * window(t, PRESENCE) + pulses,
+        scan: scan(t),
         swirl,
         swirl_s,
         wave: [way[0], way[1], front, window(t, WAVE)],
@@ -880,6 +940,38 @@ mod tests {
         assert!(label(50.0).is_none(), "the word stands alone");
         assert_eq!(at(8.0).row, 0);
         assert!(label(11.5).is_none());
+    }
+
+    #[test]
+    fn the_second_ring_finds_what_each_plate_names() {
+        for &(on, _, row) in &LABELS {
+            let a = anchor(row, on);
+            let s = scan(on);
+            assert!(
+                (s[0] - from_ring([a[0], a[2]])).abs() < 0.02 && s[2] > 0.0,
+                "the ring misses plate {row}: {s:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_sweeps_follow_one_another_and_end_at_home() {
+        let starts = scan_starts();
+        let whole = SCAN_TIMES[0] + SCAN_TIMES[1];
+        for (i, &s) in starts.iter().enumerate() {
+            let next = starts
+                .get(i + 1)
+                .copied()
+                .unwrap_or(starts[0] + LOOP_SECONDS);
+            assert!(s + whole + 0.3 <= next, "sweep at {s} runs into {next}");
+        }
+        assert!(scan(0.0)[1] < 1e-3 && scan(LOOP_SECONDS - 1e-3)[1] < 1e-3);
+        let mut last = scan(0.0)[0];
+        every(0.02, |t| {
+            let r = scan(t)[0];
+            assert!((r - last).abs() < 0.12, "the ring jumps at {t}");
+            last = r;
+        });
     }
 
     #[test]

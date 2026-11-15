@@ -287,8 +287,11 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   is a grass motion (gust, warm wash, streak, swirl, release, breath rings) with a plain Disket
   plate that avoids the man; «почему» is written in the grass and blown away; a comment plate
   «Есть мысль, потому что…» is taken back. 64 s loop, still 8 s; beats in the crate README.
-  Export checked at 390×844 and 1440×900 (Тишина): ready, plate width. Prototype
-  `output/prototypes/inner-labels/index.html` shown to Art in Тишина; waits for his notes.
+  Export checked at 390×844 and 1440×900 (Тишина): ready, plate width. Round 2 after Art's
+  note «внутреннее кольцо должно сканировать поле… а то он просто стоит на месте»: the warm
+  ring sweeps out over the meadow and back every few seconds, lighting the grass, and each
+  plate comes on as the sweep reaches its event. Prototype
+  `output/prototypes/inner-labels/index.html` shown again in Тишина; waits for his notes.
   Other dark themes only after his OK.
 - 06, 09, 10 need his pictures (briefs in the doc). Next: Art's notes on 05, then pages 07–08
   on `claude/step-6-scenes`, 2–3 directions each.

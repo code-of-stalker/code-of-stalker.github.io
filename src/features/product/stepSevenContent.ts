@@ -81,8 +81,8 @@ export const stepSevenPages: readonly ReadingPage[] = [
     ], bold: ['Сохраняй осознанно синхронность трех колец!'] },
 ];
 
-/** The hero above the panel: the Rust scene «Динамическая сфера» in the browser. */
-export const stepSevenHero = { name: 'Динамическая сфера', manner: 'полностью 3D, фигура идёт в сфере из трёх колец' } as const;
+/** The hero above the panel: the Rust scene «Маяк» in the browser, Art's still on native. */
+export const stepSevenHero = { name: 'Маяк', manner: 'картина Арта, оживлённая картой глубины' } as const;
 
 /** Menu names come from the page text; the long first title is shortened to its core. */
 const sectionTitles = ['Третий уровень', 'Наблюдение посредством тела', 'Первое кольцо', 'Второе кольцо', 'Третье кольцо — действие', 'Сам факт динамики', 'Главная проверка', 'Используй свой голос', 'Итог третьего уровня', 'В быту'] as const;

@@ -20,7 +20,7 @@ import { Reveal } from '../motion/Reveal';
 import { EconomyReadingPages, type ReadingPagePosition } from '../motion/EconomyReadingPages';
 
 /** The finale of the first stage: one reading block of ten pages and no questions, laid out like
- * step six. The hero and the first page play the Rust scene «Динамическая сфера»; the other
+ * step six. The hero plays the Rust scene «Маяк», the first page «Динамическая сфера»; the other
  * pages hold placeholders until their states of it are built. The author's signature closes the
  * last page; scrolling back from the first page returns to step six. */
 export function StepSevenScreen({ onSelectStep, onPreviousStep, onClose, availableAt, testUnlockAll, reducedMotion = false }: PracticeIntroScreenProps) {

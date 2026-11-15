@@ -113,6 +113,14 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   impulses, a whirlpool for an urge, a tangled ball for «понять». And the outer ring must turn
   visibly in every scene, inside views too («почему внешнее кольцо стоит на месте»). Round 2
   with those signs passed in Тишина («Да, делай темы»).
+- Page 06 «Окно», first round (2026-11-15): a man watching his sky through a window reads as
+  a man watching a view («как будто просто сидит и смотрит за окном»). The viewer must see at
+  once that what is outside is his inside. Round 2 passed in Тишина («Да, делай темы»): his
+  big silhouette on the glass, the sky clear only in it, every event inside it, his body made
+  of the same sky, a pulse from his chest before each thing.
+- The second ring stood still again on 06 («и кольцо опять стоит на месте»), after the same
+  note on 04 and 05: both rings move all the time in every scene, the first riding the sphere
+  round him, the second scanning his body up and down.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

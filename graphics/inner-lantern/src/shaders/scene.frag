@@ -3,13 +3,16 @@
 // The room: each pixel's ray meets the floor (an exact plane) or, inside
 // their box, the chair and the seated person (distance fields, the same as
 // body.rs). They are dark and matte with a cold rim. Round them the cold
-// outer ring, always on, its ticks slowly turning; hugging the body the warm
-// inner ring, which lights a band on the body where it passes; inside the
-// body, a warm column of light down the spine, seen through the back.
-// Inside: a deep dark, a few far cold motes, the cold outer ring as a far
-// level arc; the lantern, its rim the warm inner ring, and its beam, a cone
-// of lit dust marched along the ray where it crosses the cone; the threads,
-// sparks and the knot, which Rust has already placed in the frame.
+// outer ring, always on, turning: its ticks and three bright runners go
+// round; hugging the body the warm inner ring, which lights a band on the
+// body where it passes; inside the body, a warm column of light down the
+// spine, seen through the back.
+// Inside: a deep dark, a few far cold motes, the cold outer ring turning as
+// a wide low arc; the lantern, its rim the warm inner ring, and its beam, a
+// cone of lit dust marched along the ray where it crosses the cone; and what
+// Rust has already placed in the frame: warm waves rolling out over it all,
+// little lightnings and threads, the whirl of the urge, thought bubbles with
+// lines of words, sparks, and the knot, a tangled ball.
 // Light is added onto the page in the theme's cold, warm and pale. Rust puts
 // the version line and the constants of lib.rs (#define) in front of it.
 precision highp float;
@@ -37,6 +40,10 @@ uniform vec4 u_tide;   // the warm tide: where along the beam, how wide, how str
 uniform vec4 u_pull;   // the pull's way, how far it has carried the dust
 uniform vec4 u_stir;   // the pull's strength, soft edges
 uniform vec4 u_knot;   // the knot in the frame: x, y, size, light
+uniform vec4 u_magnet; // the whirl of the urge in the frame: x, y, size, strength
+uniform vec4 u_wave[2];         // waves of an emotion: centre x, y, how far rolled, strength
+uniform vec4 u_bub[BUBBLES];    // bubbles, brightest first: x, y, radius, light
+uniform vec4 u_bubx[BUBBLES];   // has words, seed, how far popped, how much written
 uniform vec4 u_thr[THREADS * POINTS]; // thread points in the frame: x, y, half width, light
 uniform vec4 u_box[THREADS];          // the box round each thread
 uniform vec4 u_glint[GLINTS];         // sparks, brightest first: x, y, size, light
@@ -193,8 +200,9 @@ float planeY(vec3 ro, vec3 rd, float y) {
 }
 
 // ---------- the rings
-// The outer ring: cold, a fine line and a soft glow, ticks slowly turning
-// on its outside. q is the point on its plane from its centre.
+// The outer ring: cold, a fine line and a soft glow, ticks turning on its
+// outside and three bright runners with tails going round with them, so the
+// turning always shows. q is the point on its plane from its centre.
 vec3 outerRing(vec2 q, float r, float px) {
   float rr = length(q);
   float d = rr - r;
@@ -205,7 +213,14 @@ vec3 outerRing(vec2 q, float r, float px) {
   float s = r / 1.35;
   float ticks = line(minor, 0.0022 * s, px) * between(d, 0.0, 0.035 * s, px)
               + line(major, 0.003 * s, px) * between(d, 0.0, 0.07 * s, px);
-  return u_cold * (line(d, 0.0042 * s, px) * 0.95 + ticks * 0.5 + exp(-sq(d / (0.035 * s))) * 0.07);
+  // The runners: a head, and a tail behind it the way it has come.
+  float ph = fract(a * 3.0);
+  float head = min(ph, 1.0 - ph) / 3.0 * TAU * rr;
+  float hw = max(0.011 * s, px);
+  float run = exp(-(sq(head) + sq(d)) / sq(hw)) * 1.3
+            + exp(-ph / 0.07) * line(d, 0.0055 * s, px) * 0.85;
+  return u_cold * (line(d, 0.0042 * s, px) * 0.95 + ticks * 0.5 + exp(-sq(d / (0.035 * s))) * 0.07)
+       + mix(u_cold, u_pale, 0.45) * run;
 }
 // The inner ring: warm, a fine line and a softer glow.
 vec3 innerRing(float d, float w, float px) {
@@ -368,8 +383,9 @@ vec3 beam(vec3 ro, vec3 rd, float jit) {
   return c * u_beamD.w;
 }
 // Dust everywhere inside, on ten fixed depths: faint and cold in the dark,
-// warm where the beam crosses it; the urge carries it, a jolt shakes it.
-vec3 motes(vec3 ro, vec3 rd, float pixel) {
+// warm where the beam crosses it or a wave's front passes (`front`); the
+// urge carries it, a jolt shakes it.
+vec3 motes(vec3 ro, vec3 rd, float pixel, float front) {
   vec3 c = vec3(0.0);
   if (rd.z > -0.05) return c;
   float wob = TAU * time / LOOP_SECONDS;
@@ -396,7 +412,8 @@ vec3 motes(vec3 ro, vec3 rd, float pixel) {
     float cone = coneAt(p, al, pr, r) * u_beamD.w;
     float att = exp(-max(al, 0.0) / 6.0);
     float tide = u_tide.z * exp(-sq((al - u_tide.x) / u_tide.y));
-    c += spot * (u_pale * (0.05 + 0.08 * h) + mix(u_warm, u_pale, 0.3) * cone * att * (1.6 + 1.2 * tide + 0.8 * u_tide.w));
+    c += spot * (u_pale * (0.05 + 0.08 * h) + mix(u_warm, u_pale, 0.3) * cone * att * (1.6 + 1.2 * tide + 0.8 * u_tide.w)
+                 + u_warm * 0.9 * front);
   }
   return c;
 }
@@ -447,23 +464,104 @@ vec3 glints(vec2 f, float px) {
   }
   return c;
 }
-// The dark knot: a hole darker than the dark, faint warm loops turning in it.
+// The knot: a tangled ball of thread, darker than the dark inside, loops of
+// warm thread wound round it every way, slowly turning.
 vec3 knot(vec2 f, float px) {
   if (u_knot.w <= 0.0) return vec3(0.0);
   vec2 d = f - u_knot.xy;
   float r = length(d);
   float s = u_knot.z;
   if (r > s * 2.0) return vec3(0.0);
-  vec3 c = -u_backdrop * 0.5 * u_knot.w * smoothstep(s, s * 0.4, r);
-  c += u_warm * 0.1 * u_knot.w * exp(-sq((r - s) / (s * 0.18)));
-  for (int k = 0; k < 5; k++) {
+  vec3 c = -u_backdrop * 0.5 * u_knot.w * smoothstep(s, s * 0.5, r);
+  c += u_warm * 0.08 * u_knot.w * exp(-sq((r - s) / (s * 0.25)));
+  vec3 ink = mix(u_warm, u_pale, 0.3);
+  float w = max(0.012 * s, px * 0.6);
+  for (int k = 0; k < 9; k++) {
     float fk = float(k);
-    float a = fk * 1.2566 + time * (0.15 + 0.05 * fk);
+    float a = fk * 0.698 + time * (0.12 + 0.04 * mod(fk, 3.0)) * (mod(fk, 2.0) * 2.0 - 1.0);
     vec2 ax = vec2(cos(a), sin(a));
     vec2 q = vec2(dot(d, ax), dot(d, vec2(-ax.y, ax.x)));
-    vec2 e = vec2(s * (0.5 + 0.08 * fk), s * (0.2 + 0.05 * fk));
-    float off = (length(q / e) - 1.0) * e.y;
-    c += u_warm * 0.26 * u_knot.w * line(off, 0.003, px);
+    // a great circle of the ball seen at a slant: a full-width ellipse
+    vec2 e = vec2(s * (0.86 + 0.1 * fract(fk * 0.37)), s * (0.12 + 0.85 * fract(fk * 0.618 + 0.1)));
+    float off = (length(q / e) - 1.0) * min(e.x, e.y);
+    c += ink * 0.42 * u_knot.w * line(off, w, px);
+  }
+  return c;
+}
+// The waves of an emotion, rolling out over the whole frame from the beam:
+// a warm front, two smaller ripples behind it, a fading warmth in its wake.
+// `front` says how much of a front is at f, for the dust it lights.
+vec3 waves(vec2 f, out float front) {
+  vec3 c = vec3(0.0);
+  front = 0.0;
+  for (int k = 0; k < 2; k++) {
+    vec4 w = u_wave[k];
+    if (w.w <= 0.0) continue;
+    vec2 d = f - w.xy;
+    float a = atan(d.y, d.x);
+    float fk = float(k);
+    float reach = w.z * (1.0 + 0.04 * sin(5.0 * a + 1.3 * fk + time * 1.1) + 0.02 * sin(9.0 * a - time * 0.7));
+    float x = length(d) - reach;
+    float width = 0.045 + 0.04 * w.z;
+    float ring = exp(-sq(x / width)) + 0.5 * exp(-sq((x + 2.8 * width) / width)) + 0.22 * exp(-sq((x + 5.6 * width) / width));
+    front += w.w * exp(-sq(x / (2.0 * width)));
+    // the warmth it leaves fades a little way behind the front, never a wash
+    float wake = smoothstep(width, -width, x) * exp(x / 0.35);
+    c += u_warm * w.w * (0.17 * ring + 0.03 * wake);
+  }
+  return c;
+}
+// The urge: a warm whirl, three arms winding in toward its bright eye and
+// turning, everything drawn into it.
+vec3 whirl(vec2 f, float px) {
+  if (u_magnet.w <= 0.0) return vec3(0.0);
+  vec2 d = f - u_magnet.xy;
+  float r = length(d);
+  float s = u_magnet.z;
+  if (r > s * 1.8) return vec3(0.0);
+  float a = atan(d.y, d.x);
+  float arm = 0.5 + 0.5 * cos(3.0 * (a + 2.4 * log(max(r, 1e-4) / s)) + time * 4.5);
+  float body = exp(-r / (0.5 * s)) * smoothstep(1.7 * s, 0.7 * s, r) * smoothstep(0.04 * s, 0.25 * s, r);
+  float eye = exp(-sq(r / (0.13 * s)));
+  return u_warm * u_magnet.w * (pow(arm, 4.0) * body * 0.7 + 0.12 * body + 0.75 * eye);
+}
+// Thought bubbles: a thin bright rim, a soft glow just inside it, a gleam at
+// its upper left; in the big ones three lines of words writing themselves
+// in. Popping, a bubble widens, its rim breaks up and fades.
+vec3 bubbles(vec2 f, float px) {
+  vec3 c = vec3(0.0);
+  vec3 ink = mix(u_warm, u_pale, 0.45);
+  for (int i = 0; i < BUBBLES; i++) {
+    vec4 b = u_bub[i];
+    // Brightest first: the rest are dark.
+    if (b.w < 0.002) break;
+    vec2 d = f - b.xy;
+    float R = b.z;
+    float r = length(d);
+    if (r > R * 1.5 + 6.0 * px) continue;
+    vec4 x = u_bubx[i];
+    float pop = x.z;
+    float a = atan(d.y, d.x);
+    float broken = mix(1.0, smoothstep(0.25, 0.55, abs(fract(a / TAU * 7.0 + x.y) - 0.5) * 2.0), smoothstep(0.0, 0.3, pop));
+    float rim = line(r - R, max(0.035 * R, px * 0.5), px) * broken;
+    float inner = exp(-sq((R - r) / (0.22 * R))) * step(r, R) * 0.16;
+    float gleam = exp(-sq((r - 0.74 * R) / (0.07 * R))) * exp(-sq((a - 2.36) / 0.32)) * 0.5;
+    float fill = 0.035 * step(r, R);
+    float words = 0.0;
+    if (x.x > 0.5) {
+      float lw = max(0.05 * R, px * 0.6);
+      for (int k = 0; k < 3; k++) {
+        float fk = float(k);
+        float len = R * (1.0 - 0.25 * fk) * (0.85 + 0.15 * fract(x.y * 7.0 + fk * 0.31));
+        float shown = clamp(x.w * 3.0 - fk, 0.0, 1.0) * len;
+        if (shown <= 0.0) continue;
+        vec2 start = vec2(-0.5 * R, (0.3 - 0.3 * fk) * R);
+        float h;
+        float dd = segd(d, start, start + vec2(shown, 0.0), h);
+        words += line(dd, lw, px);
+      }
+    }
+    c += ink * b.w * ((rim + inner + gleam + fill) * (1.0 - 0.6 * pop) + 0.6 * words);
   }
   return c;
 }
@@ -480,12 +578,16 @@ vec3 withinLight(vec3 ro, vec3 rd, vec2 f, float pixel, float tsI, vec2 qI, floa
     float dpx = length(fract(m) - 0.5 - off * 0.6) * cellPx;
     c += u_cold * (0.12 + 0.2 * hash2(cell, 10u)) * exp(-sq(dpx / 0.9)) * (0.7 + 0.3 * sin(time * 0.7 + h * 300.0));
   }
-  // the outer ring, far and low
+  // the outer ring, low, turning round it all
   if (tsI > 0.0) c += outerRing(qI, OUTER_IN.w, pxI) * grazing(rd, vec3(0.0, 1.0, 0.0));
-  c += motes(ro, rd, pixel);
+  float front;
+  c += waves(f, front);
+  c += motes(ro, rd, pixel, front);
   c += beam(ro, rd, jit);
   if (tsM > 0.0) c += mouth(qM, pxM) * u_beamD.w * grazing(rd, u_beamD.xyz);
   c += threads(f, pixel);
+  c += whirl(f, pixel);
+  c += bubbles(f, pixel);
   c += glints(f, pixel);
   c += knot(f, pixel);
   return c;

@@ -7,8 +7,8 @@
 //! cold, warm and pale (`look`). The scene is two-toned, so it does not go
 //! through the monochrome theme recolor.
 use crate::{
-    compose, look, Camera, Look, BOUNDS, COLUMN, FRAME_ASPECT, GLINTS, LOOP_SECONDS, MOUTH_R,
-    OUTER, OUTER_IN, POINTS, STILL, THREADS,
+    compose, look, Camera, Look, BOUNDS, BUBBLES, COLUMN, FRAME_ASPECT, GLINTS, LOOP_SECONDS,
+    MOUTH_R, OUTER, OUTER_IN, POINTS, STILL, THREADS,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Warm;
@@ -23,7 +23,7 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 26] = [
+const NAMES: [&str; 30] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -41,6 +41,10 @@ const NAMES: [&str; 26] = [
     "u_pull",
     "u_stir",
     "u_knot",
+    "u_magnet",
+    "u_wave",
+    "u_bub",
+    "u_bubx",
     "u_thr",
     "u_box",
     "u_glint",
@@ -70,6 +74,7 @@ fn defines() -> String {
         ("THREADS", THREADS.to_string()),
         ("POINTS", POINTS.to_string()),
         ("GLINTS", GLINTS.to_string()),
+        ("BUBBLES", BUBBLES.to_string()),
     ];
     lines
         .iter()
@@ -348,6 +353,10 @@ impl InnerLantern {
         gl.uniform4fv_with_f32_array(p.at("u_pull"), &f.pull);
         gl.uniform4f(p.at("u_stir"), f.tug, f32::from(self.soft_edges), 0.0, 0.0);
         gl.uniform4fv_with_f32_array(p.at("u_knot"), &f.knot);
+        gl.uniform4fv_with_f32_array(p.at("u_magnet"), &f.magnet);
+        gl.uniform4fv_with_f32_array(p.at("u_wave"), &flat(&f.waves));
+        gl.uniform4fv_with_f32_array(p.at("u_bub"), &flat(&f.bubbles));
+        gl.uniform4fv_with_f32_array(p.at("u_bubx"), &flat(&f.marks));
         gl.uniform4fv_with_f32_array(p.at("u_thr"), &flat(&f.threads));
         gl.uniform4fv_with_f32_array(p.at("u_box"), &flat(&f.boxes));
         gl.uniform4fv_with_f32_array(p.at("u_glint"), &flat(&f.glints));

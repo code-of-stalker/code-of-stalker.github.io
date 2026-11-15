@@ -5,17 +5,19 @@
 //! напрягай себя»: it scans down to the feet; «направь луч внимания внутрь»:
 //! it rises to the crown and turns its light inward, a warm column runs down
 //! the spine; «сканируй»: the camera follows the light in through the back.
-//! Inside is a dark space; the cold outer ring still shows, a far low arc;
-//! the warm inner ring is the rim of a lantern and its beam is attention.
-//! Each question brings its own thing into the beam: thoughts drift up as
-//! threads, an emotion rolls through as a warm cloud, micro-feelings slip
-//! across as sparks, impulses jolt threads, an urge pulls everything one way.
-//! «Не пытайся понять», «Не объясняй», «Не ищи причину»: the beam narrows to a
-//! needle and chases one thread to a dark knot, then lets go and the knot
-//! sinks into the dark. «Свидетельствуй»: the beam opens wide and just
-//! shines. «ты сканируешь и считываешь»: the camera comes back out to the
-//! calmly sitting person. Every value here is a pure function of loop time;
-//! `browser.rs` only uploads it and one ray-traced pass draws it. Unit: the
+//! Inside is a dark space; the cold outer ring still shows, turning round it
+//! all; the warm inner ring is the rim of a lantern and its beam is
+//! attention. Each question brings its own plain thing into the beam:
+//! thoughts rise as bubbles with lines of words in them, an emotion rolls
+//! over everything as a warm wave, micro-feelings slip across as sparks,
+//! impulses flash as little lightnings, an urge drains everything into a
+//! warm whirl. «Не пытайся понять», «Не объясняй», «Не ищи причину»: the beam
+//! narrows to a needle and chases one thread to a tangled ball, then lets go
+//! and the ball sinks into the dark. «Свидетельствуй»: the beam opens wide
+//! and just shines on what passes. «ты сканируешь и считываешь»: the camera
+//! comes back out to the calmly sitting person.
+//! Every value here is a pure function of loop time; `browser.rs` only
+//! uploads it and one ray-traced pass draws it. Unit: the
 //! person sits about 1.43 high; the floor is y = 0, the person faces +z.
 use crate::body::{dot, length, scale, sub, V};
 use std::f32::consts::{PI, TAU};
@@ -44,7 +46,7 @@ pub const LEGS: [[f32; 2]; 4] = [
     [-0.195, -0.12],
 ];
 /// One meaningful still frame for reduced motion: «Свидетельствуй», the
-/// beam wide open and steady, threads and sparks drifting through it.
+/// beam wide open and steady, a thought and sparks passing through it.
 pub const STILL: f32 = 53.5;
 
 // ---------- the room
@@ -104,8 +106,11 @@ pub const ROOM: [(f32, [f32; 7]); 11] = [
 pub const MOUTH: V = [-1.5, 0.5, -2.3];
 pub const AIM: V = [0.58, -0.21, -0.79];
 pub const MOUTH_R: f32 = 0.2;
-/// The outer ring inside: a far level arc low in the frame.
-pub const OUTER_IN: [f32; 4] = [0.0, -1.9, -4.0, 9.0];
+/// The outer ring inside: level, low, round the whole inside; its back half
+/// is a wide arc low in the frame, turning like the one in the room.
+pub const OUTER_IN: [f32; 4] = [0.0, -2.0, -2.6, 3.0];
+/// The outer ring's ticks turn once in this many seconds (two turns a loop).
+pub const TURN: f32 = 32.0;
 /// The beam's half angle (tangent): scanning, the needle, wide open.
 pub const SPREAD: [f32; 3] = [0.12, 0.022, 0.21];
 pub const BEAM_ON: [f32; 4] = [14.2, 15.8, 59.8, 61.2];
@@ -122,10 +127,29 @@ pub const SINK: [f32; 2] = [49.8, 51.6];
 /// one.
 pub const TIDE: [f32; 4] = [21.2, 22.4, 24.4, 25.6];
 pub const TIDE_CALM: [f32; 4] = [51.3, 52.6, 55.0, 56.5];
-/// Impulses: two jolts.
-pub const JOLTS: [f32; 2] = [30.9, 33.0];
-/// The urge: everything is pulled one way, then let go.
-pub const PULL: V = [-0.35, -0.75, 0.3];
+/// And waves of it roll out from the beam over the whole frame: when each
+/// starts, how long it rolls, how far (frame heights from its centre).
+pub const WAVES: [f32; 3] = [21.4, 23.1, 52.2];
+pub const WAVE_ALONG: [f32; 3] = [2.2, 3.4, 2.8];
+pub const WAVE_STRENGTH: [f32; 3] = [1.0, 0.85, 0.45];
+pub const WAVE_LIFE: f32 = 2.6;
+pub const WAVE_REACH: f32 = 2.4;
+/// Impulses: three jolts, each flashes two little lightnings across the
+/// beam, this far along it.
+pub const JOLTS: [f32; 3] = [30.8, 31.9, 33.0];
+pub const BOLTS: [[f32; 2]; 3] = [[1.7, 3.6], [2.6, 4.4], [1.4, 3.1]];
+/// Thoughts: when each rises (its two small bubbles come a little before),
+/// how far along the beam, how long it lives, how fast it rises.
+pub const THOUGHTS: [f32; 4] = [16.5, 17.1, 17.7, 18.3];
+pub const THOUGHT_ALONG: [f32; 4] = [1.5, 2.7, 3.8, 4.8];
+pub const THOUGHT_LIFE: f32 = 3.3;
+pub const RISE: f32 = 0.34;
+/// A bubble pops in its last this many seconds.
+pub const POP: f32 = 0.4;
+/// The urge: everything is drawn into a warm whirl low on the left, then let
+/// go; the pull's way is from the middle of the beam to the whirl.
+pub const MAGNET: V = [-1.25, -0.6, -4.1];
+pub const PULL: V = [-0.896, -0.284, 0.341];
 pub const PULL_ON: [f32; 4] = [35.0, 36.8, 38.0, 39.3];
 
 /// The inside camera, keyed (hidden while in the room): close to the
@@ -146,10 +170,11 @@ pub const WITHIN: [(f32, [f32; 7]); 11] = [
     (59.8, [-0.25, 0.2, 1.1, 0.0, -0.05, -4.0, 58.0]),
 ];
 
-/// Shader slots: threads of points, sparks.
-pub const THREADS: usize = 6;
+/// Shader slots: threads of points, sparks, bubbles.
+pub const THREADS: usize = 5;
 pub const POINTS: usize = 20;
 pub const GLINTS: usize = 16;
+pub const BUBBLES: usize = 12;
 
 // ---------- small math
 
@@ -446,6 +471,20 @@ pub fn tide(t: f32) -> [f32; 4] {
     ]
 }
 
+/// The `i`th wave of an emotion: how far it has rolled out from its centre
+/// (frame heights) and how strong it is. It sets off fast and slows, fading.
+pub fn wave(i: usize, t: f32) -> [f32; 2] {
+    let a = (t - WAVES[i]) / WAVE_LIFE;
+    if !(0.0..1.0).contains(&a) {
+        return [0.0, 0.0];
+    }
+    let gone = 1.0 - a;
+    [
+        WAVE_REACH * (1.0 - gone * gone),
+        WAVE_STRENGTH[i] * smooth(0.0, 0.7 / WAVE_LIFE, a) * gone.powf(1.3),
+    ]
+}
+
 /// The knot the needle chases to, sinking away when it lets go.
 pub fn knot(t: f32) -> V {
     let b = base();
@@ -457,28 +496,26 @@ pub fn knot(t: f32) -> V {
     add(at, scale(b, 1.6 * smooth(SINK[0], SINK[1], t)))
 }
 
-// ---------- inside: threads and sparks
+// ---------- inside: bubbles, threads and sparks
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
-    /// «какие мысли»: threads drifting up into the beam.
+    /// «какие мысли»: bubbles with lines of words rising into the beam.
     Thought,
-    /// «какие импульсы»: threads across the beam that jolt.
+    /// «какие импульсы»: little lightnings across the beam.
     Impulse,
-    /// «есть ли позыв»: threads pulled one way.
-    Urge,
     /// The one thread the needle chases.
     Chase,
-    /// Threads that lead into the knot.
+    /// Threads that lead into the knot, a tangled ball.
     Knot,
-    /// «Свидетельствуй», «ты сканируешь»: threads and sparks that come and
+    /// «Свидетельствуй», «ты сканируешь»: bubbles and sparks that come and
     /// go by themselves.
     Calm,
     /// «какие микро-чувства»: sparks slipping across the beam.
     Micro,
     /// The sparks a jolt throws off.
     Burst,
-    /// Sparks streaming the way the urge pulls.
+    /// «есть ли позыв»: sparks drawn into the warm whirl.
     Stream,
 }
 
@@ -517,14 +554,17 @@ impl Strand {
         p = add(p, scale(self.drift, t - self.on[0]));
         p = add(p, add(scale(n1, w1), scale(n2, w2)));
         if self.kind == Kind::Impulse {
-            for &j in &JOLTS {
-                let a = t - j;
-                if a > -0.1 {
-                    let kick = smooth(j - 0.1, j + 0.1, t) * (-a.max(0.0) / 0.45).exp();
-                    let w = (TAU * 2.0 * s - 14.0 * a + ph).sin();
-                    p = add(p, scale(n2, 0.07 * kick * w));
-                }
-            }
+            // A lightning: every point knocked aside at random, the ends held.
+            let i = (s * (POINTS - 1) as f32).round() as u32;
+            let k = (self.seed * 65_536.0) as u32 * 31 + i;
+            let amp = 0.055 * (PI * s).sin();
+            p = add(
+                p,
+                add(
+                    scale(n1, amp * (2.0 * noise(k) - 1.0)),
+                    scale(n2, 0.4 * amp * (2.0 * noise(k + 977) - 1.0)),
+                ),
+            );
         }
         add(p, scale(norm(PULL), pull(t) * (0.3 + 0.5 * s) * 0.8))
     }
@@ -534,13 +574,11 @@ impl Strand {
         let mut l = self.light * (0.22 + 1.6 * lit);
         match self.kind {
             Kind::Impulse => {
-                for &j in &JOLTS {
-                    let a = t - j;
-                    if (0.0..0.9).contains(&a) {
-                        let run = a / 0.6;
-                        l += (-((s - run) / 0.07).powi(2)).exp() * (1.0 - smooth(0.5, 0.9, a));
-                    }
-                }
+                // A flash, then a flicker as it dies.
+                let a = (t - self.on[1]).max(0.0);
+                let flash = 1.3 * (-a / 0.18).exp();
+                let flicker = 0.85 + 0.15 * (a * 63.0 + self.seed * TAU).sin();
+                l = self.light * (0.4 + 1.1 * lit + flash) * flicker;
             }
             Kind::Chase => {
                 let u = chase(t);
@@ -621,62 +659,31 @@ pub fn strands() -> &'static [Strand] {
     ALL.get_or_init(|| {
         let b = base();
         let (side, lift) = across(b);
-        let up = [0.0, 1.0, 0.0];
         let mut all = Vec::new();
-        // Thoughts: born below the beam, they drift up into it and out.
-        for (i, (&born, &along)) in [16.8, 17.5, 18.3, 19.0]
-            .iter()
-            .zip(&[1.7, 3.3, 2.5, 4.3])
-            .enumerate()
-        {
-            let k = i as u32 * 7 + 11;
-            let tilt = 0.6 * (noise(k + 4) - 0.5);
-            let dir = add(scale(side, tilt.cos()), scale(b, tilt.sin()));
-            let c = by_beam(along, 0.3 * (noise(k + 5) - 0.5), -1.1 * reach(along));
-            let mut s = laid(
-                Kind::Thought,
-                [born, born + 0.9, born + 2.5, born + 3.5],
-                c,
-                dir,
-                1.1 + 0.6 * noise(k + 6),
-                k,
-            );
-            s.drift = add(scale(up, 0.6 * reach(along)), scale(side, 0.02));
-            all.push(s);
-        }
-        // Impulses: three threads across the beam, jolted twice.
-        for (i, &along) in [1.5, 3.0, 4.5].iter().enumerate() {
-            let k = i as u32 * 5 + 61;
-            let dir = add(scale(side, 0.9), scale(lift, 0.4 * (noise(k) - 0.3)));
-            let c = by_beam(
-                along,
-                0.1 * (noise(k + 1) - 0.5),
-                0.1 * (noise(k + 2) - 0.5),
-            );
-            let o = 0.2 * i as f32;
-            all.push(laid(
-                Kind::Impulse,
-                [30.0 + o, 30.7 + o, 34.0, 34.8],
-                c,
-                dir,
-                2.6 * reach(along),
-                k,
-            ));
-        }
-        // The urge: threads that the pull drags one way.
-        for (i, &along) in [2.0, 3.0, 4.0].iter().enumerate() {
-            let k = i as u32 * 5 + 91;
-            let born = 34.8 + 0.4 * i as f32;
-            let dir = add(add(scale(side, 0.7), scale(up, -0.3)), scale(b, 0.2));
-            let c = by_beam(along, 0.2 * (noise(k) - 0.5), 0.1);
-            all.push(laid(
-                Kind::Urge,
-                [born, born + 0.8, 38.6, 39.6],
-                c,
-                dir,
-                1.0,
-                k,
-            ));
+        // Impulses: each jolt flashes two little lightnings across the beam,
+        // standing nearly upright.
+        for (j, (&tj, alongs)) in JOLTS.iter().zip(&BOLTS).enumerate() {
+            for (i, &along) in alongs.iter().enumerate() {
+                let k = (j * 2 + i) as u32 * 5 + 61;
+                let dir = add(scale(lift, 0.9), scale(side, 0.5 * (noise(k) - 0.5)));
+                let c = by_beam(
+                    along,
+                    0.5 * reach(along) * (noise(k + 1) - 0.5),
+                    0.1 * (noise(k + 2) - 0.5),
+                );
+                let o = 0.07 * i as f32;
+                let mut s = laid(
+                    Kind::Impulse,
+                    [tj - 0.02 + o, tj + 0.06 + o, tj + 0.25 + o, tj + 0.9],
+                    c,
+                    dir,
+                    2.4 * reach(along) + 0.25,
+                    k,
+                );
+                s.wave = [0.0, 1.0, 0.0];
+                s.width = 0.007;
+                all.push(s);
+            }
         }
         // The chased thread: from near the lantern, wandering across, into
         // the knot.
@@ -690,7 +697,7 @@ pub fn strands() -> &'static [Strand] {
         );
         chased.from = by_beam(1.8, 0.9, 0.15);
         chased.to = knot(0.0);
-        chased.wave = [0.22, 1.4, 0.35];
+        chased.wave = [0.12, 1.1, 0.3];
         chased.width = 0.012;
         all.push(chased);
         // Threads that lead into the knot.
@@ -719,37 +726,135 @@ pub fn strands() -> &'static [Strand] {
             s.light = 0.7;
             all.push(s);
         }
-        // «Свидетельствуй» and «ты сканируешь»: threads come and go by
-        // themselves.
-        for (i, (&born, &along)) in [51.6, 52.4, 53.3, 55.8, 56.6]
-            .iter()
-            .zip(&[2.2, 3.6, 1.6, 3.0, 4.2])
-            .enumerate()
-        {
-            let k = i as u32 * 7 + 181;
-            let end = if i < 3 {
-                [born + 3.6, born + 5.0]
-            } else {
-                [59.0, 59.8]
-            };
-            let tilt = 0.8 * (noise(k) - 0.5);
-            let dir = add(scale(side, tilt.cos()), scale(lift, tilt.sin()));
-            let c = by_beam(
-                along,
-                0.5 * (noise(k + 1) - 0.5) * reach(along),
-                0.3 * (noise(k + 2) - 0.5),
-            );
-            let mut s = laid(
-                Kind::Calm,
-                [born, born + 1.2, end[0], end[1]],
-                c,
-                dir,
-                0.9 + 0.6 * noise(k + 3),
-                k,
-            );
-            s.drift = scale(add(side, scale(up, 0.4)), 0.05 * (noise(k + 4) - 0.5));
-            all.push(s);
+        all
+    })
+}
+
+/// A bubble: a thought with lines of words in it, or one of the two small
+/// ones trailing below it. When it comes, how long it lives, where it is
+/// when it comes, how it rises, its radius, the seed of its thought.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bubble {
+    pub kind: Kind,
+    pub at: f32,
+    pub life: f32,
+    pub from: V,
+    pub vel: V,
+    pub radius: f32,
+    pub words: bool,
+    pub seed: f32,
+}
+
+impl Bubble {
+    /// How far it has popped, 0..1, over its last `POP` seconds.
+    pub fn pop(&self, t: f32) -> f32 {
+        let end = self.at + self.life;
+        smooth(end - POP, end, t)
+    }
+    pub fn env(&self, t: f32) -> f32 {
+        let a = t - self.at;
+        if a > 0.0 && a < self.life {
+            smooth(0.0, 0.5, a) * (1.0 - self.pop(t))
+        } else {
+            0.0
         }
+    }
+    /// How much of its words have been written, line by line, 0..1.
+    pub fn written(&self, t: f32) -> f32 {
+        smooth(self.at + 0.3, self.at + 1.8, t)
+    }
+    /// Where it is: rising, all of its thought swaying together.
+    pub fn place(&self, t: f32) -> V {
+        let (side, _) = across(base());
+        let sway = 0.035 * (TAU * (0.4 * t + self.seed)).sin();
+        add(
+            add(self.from, scale(self.vel, t - self.at)),
+            scale(side, sway),
+        )
+    }
+}
+
+/// A thought: a big bubble with words and two small ones trailing below,
+/// which come a little before it and pop a little after. It rises at `rise`
+/// from the dark and crosses the beam `along` it, `s` to its side, halfway
+/// through its `life`.
+fn thought(
+    kind: Kind,
+    born: f32,
+    life: f32,
+    along: f32,
+    s: f32,
+    rise: f32,
+    seed: u32,
+) -> [Bubble; 3] {
+    let (side, _) = across(base());
+    let up = [0.0, 1.0, 0.0];
+    let radius = 0.24 + 0.05 * noise(seed);
+    let vel = scale(up, rise);
+    // Where the swaying beam really is when it crosses it.
+    let crossing = add(
+        add(MOUTH, scale(beam(born + 0.5 * life).aim, along)),
+        scale(side, s),
+    );
+    let centre = sub(crossing, scale(vel, 0.5 * life));
+    let group = noise(seed + 1);
+    // (radius, how far below, how far aside), in the big one's radii.
+    let trail = [(1.0, 0.0, 0.0), (0.3, 1.32, -0.3), (0.16, 1.85, -0.62)];
+    std::array::from_fn(|i| {
+        let (size, down, aside) = trail[i];
+        let at = born - 0.15 * i as f32;
+        let offset = add(scale(up, -down * radius), scale(side, aside * radius));
+        Bubble {
+            kind,
+            at,
+            life: life + 0.27 * i as f32,
+            from: add(add(centre, offset), scale(vel, at - born)),
+            vel,
+            radius: size * radius,
+            words: i == 0,
+            seed: group,
+        }
+    })
+}
+
+pub fn bubbles() -> &'static [Bubble] {
+    static ALL: OnceLock<Vec<Bubble>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let mut all = Vec::new();
+        // Thoughts rise out of the dark into the beam, one side and the
+        // other, and pop.
+        for (i, (&born, &along)) in THOUGHTS.iter().zip(&THOUGHT_ALONG).enumerate() {
+            let s = if i % 2 == 0 { -0.3 } else { 0.3 } * reach(along);
+            let k = 701 + i as u32 * 7;
+            all.extend(thought(
+                Kind::Thought,
+                born,
+                THOUGHT_LIFE,
+                along,
+                s,
+                RISE,
+                k,
+            ));
+        }
+        // «Свидетельствуй», «ты сканируешь»: two pass slowly by themselves.
+        all.extend(thought(
+            Kind::Calm,
+            51.9,
+            4.4,
+            2.4,
+            0.2 * reach(2.4),
+            0.2,
+            761,
+        ));
+        all.extend(thought(
+            Kind::Calm,
+            55.2,
+            4.0,
+            3.6,
+            -0.25 * reach(3.6),
+            0.22,
+            771,
+        ));
         all
     })
 }
@@ -797,16 +902,16 @@ pub fn sparks() -> &'static [Spark] {
                 2.2 * reach(along) / life,
             ));
         }
-        // What each jolt throws off.
+        // What each jolt throws off, from its two lightnings.
         for (j, &tj) in JOLTS.iter().enumerate() {
             for i in 0..5u32 {
                 let k = 421 + j as u32 * 31 + i * 5;
                 let line = strands()
                     .iter()
                     .filter(|s| s.kind == Kind::Impulse)
-                    .nth(i as usize % 3)
+                    .nth(2 * j + i as usize % 2)
                     .copied()
-                    .expect("three impulse threads");
+                    .expect("two lightnings a jolt");
                 let from = mix(line.from, line.to, 0.2 + 0.6 * noise(k));
                 let a = TAU * noise(k + 1);
                 let z = 2.0 * noise(k + 2) - 1.0;
@@ -821,19 +926,23 @@ pub fn sparks() -> &'static [Spark] {
                 });
             }
         }
-        // The urge: sparks stream the way it pulls.
-        let pull = norm(PULL);
-        for i in 0..8u32 {
+        // The urge: sparks from all over the beam are drawn into the whirl.
+        for i in 0..12u32 {
             let k = 521 + i * 5;
-            let along = 1.0 + 3.5 * noise(k);
+            let along = 1.0 + 4.0 * noise(k);
             let r = reach(along);
-            let wobble = [noise(k + 1) - 0.5, noise(k + 2) - 0.5, noise(k + 3) - 0.5];
+            let from = by_beam(
+                along,
+                1.4 * r * (noise(k + 1) - 0.5),
+                1.4 * r * (noise(k + 2) - 0.5),
+            );
+            let life = 1.3 + 0.4 * noise(k + 3);
             all.push(Spark {
                 kind: Kind::Stream,
-                at: 35.3 + 3.0 * i as f32 / 7.0,
-                life: 1.1 + 0.4 * noise(k + 4),
-                from: by_beam(along, 0.6 * r * wobble[0], 0.6 * r * wobble[1] + 0.3 * r),
-                vel: add(scale(pull, 0.9), scale(wobble, 0.3)),
+                at: 35.2 + 2.6 * i as f32 / 11.0,
+                life,
+                from,
+                vel: scale(sub(MAGNET, from), 0.85 / life),
                 light: 1.0,
             });
         }
@@ -898,6 +1007,15 @@ pub struct Frame {
     pub tug: f32,
     /// The knot in the frame: x, y, size, light.
     pub knot: [f32; 4],
+    /// The whirl of the urge in the frame: x, y, size, strength.
+    pub magnet: [f32; 4],
+    /// The waves of an emotion: their centre in the frame, how far they have
+    /// rolled, how strong.
+    pub waves: [[f32; 4]; 2],
+    /// The bubbles, brightest first: (x, y, radius, light); and for each
+    /// (has words, seed, how far popped, how much of the words is written).
+    pub bubbles: [[f32; 4]; BUBBLES],
+    pub marks: [[f32; 4]; BUBBLES],
     /// Each thread's points in the frame (x, y, half width, light), and the
     /// box round each (min x, min y, max x, max y).
     pub threads: [[f32; 4]; THREADS * POINTS],
@@ -951,7 +1069,8 @@ pub fn compose(t: f32) -> Frame {
         .filter_map(|s| {
             let p = s.place(time);
             let [x, y] = cam.project(p)?;
-            let [bx, by] = cam.project(sub(p, scale(s.vel, 0.12)))?;
+            let tail = if s.kind == Kind::Stream { 0.3 } else { 0.12 };
+            let [bx, by] = cam.project(sub(p, scale(s.vel, tail)))?;
             let size = 0.02 / (cam.depth(p) * cam.lens);
             let light = s.env(time) * s.light * (0.3 + 1.4 * beam.cone(p) * beam.light);
             Some(([x, y, size, light], [bx - x, by - y, 0.0, 0.0]))
@@ -969,6 +1088,41 @@ pub fn compose(t: f32) -> Frame {
         Some([x, y]) => [x, y, 0.4 / (cam.depth(k) * cam.lens), window(time, KNOT_ON)],
         None => [9.0, 9.0, 0.0, 0.0],
     };
+    let magnet = match cam.project(MAGNET) {
+        Some([x, y]) => [x, y, 0.55 / (cam.depth(MAGNET) * cam.lens), pull(time)],
+        None => [9.0, 9.0, 0.0, 0.0],
+    };
+    let mut waves = [[9.0, 9.0, 0.0, 0.0]; 2];
+    let rolling = WAVE_ALONG.iter().enumerate().filter_map(|(i, &along)| {
+        let [r, strength] = wave(i, time);
+        let [x, y] = cam.project(by_beam(along, 0.0, 0.0))?;
+        (strength > 0.0).then_some([x, y, r, strength])
+    });
+    for (slot, w) in waves.iter_mut().zip(rolling) {
+        *slot = w;
+    }
+    let mut floating: Vec<([f32; 4], [f32; 4])> = bubbles()
+        .iter()
+        .filter(|b| b.env(time) > 0.0)
+        .filter_map(|b| {
+            let p = b.place(time);
+            let [x, y] = cam.project(p)?;
+            let pop = b.pop(time);
+            let r = (b.radius * (1.0 + 0.3 * pop) / (cam.depth(p) * cam.lens)).min(0.6);
+            let light = b.env(time) * (0.45 + 1.1 * beam.cone(p) * beam.light);
+            Some((
+                [x, y, r, light],
+                [f32::from(u8::from(b.words)), b.seed, pop, b.written(time)],
+            ))
+        })
+        .collect();
+    floating.sort_by(|a, b| b.0[3].total_cmp(&a.0[3]));
+    let mut bubbles_in = [[0.0; 4]; BUBBLES];
+    let mut marks = [[0.0; 4]; BUBBLES];
+    for (i, (b, m)) in floating.into_iter().take(BUBBLES).enumerate() {
+        bubbles_in[i] = b;
+        marks[i] = m;
+    }
     let [px, py, pz] = norm(PULL);
     Frame {
         time,
@@ -977,12 +1131,16 @@ pub fn compose(t: f32) -> Frame {
         within: cam,
         ring: ring(time),
         column: column(time),
-        ticks: TAU / 8.0 * time / LOOP_SECONDS,
+        ticks: TAU * time / TURN,
         beam,
         tide: tide(time),
         pull: [px, py, pz, pulled(time)],
         tug: pull(time),
         knot,
+        magnet,
+        waves,
+        bubbles: bubbles_in,
+        marks,
         threads,
         boxes,
         glints,
@@ -1065,6 +1223,13 @@ mod tests {
         strands()
             .iter()
             .filter(|s| s.kind == kind && s.env(t) > 0.0)
+            .collect()
+    }
+
+    fn floating(t: f32, kind: Kind) -> Vec<&'static Bubble> {
+        bubbles()
+            .iter()
+            .filter(|b| b.kind == kind && b.env(t) > 0.0)
             .collect()
     }
 
@@ -1185,8 +1350,8 @@ mod tests {
     #[test]
     fn each_question_brings_its_own_thing_into_the_beam() {
         every(0.02, |t| {
-            if !alive(t, Kind::Thought).is_empty() {
-                assert!((16.5..23.0).contains(&t), "thought {t}");
+            if !floating(t, Kind::Thought).is_empty() {
+                assert!((16.0..22.5).contains(&t), "thought {t}");
             }
             if !sparkling(t, Kind::Micro).is_empty() {
                 assert!((25.3..30.7).contains(&t), "micro {t}");
@@ -1194,32 +1359,101 @@ mod tests {
             if !alive(t, Kind::Impulse).is_empty() || jolt(t) > 0.01 {
                 assert!((29.9..35.0).contains(&t), "impulse {t}");
             }
-            if pull(t) > 0.0 || !alive(t, Kind::Urge).is_empty() {
+            if pull(t) > 0.0 || !sparkling(t, Kind::Stream).is_empty() {
                 assert!((34.7..39.7).contains(&t), "urge {t}");
             }
             let [_, _, strength, _] = tide(t);
-            if strength > 0.36 {
-                assert!((21.2..25.6).contains(&t), "emotion {t}");
+            if strength > 0.36 || wave(0, t)[1] > 0.0 || wave(1, t)[1] > 0.0 {
+                assert!((21.2..25.8).contains(&t), "emotion {t}");
             }
         });
-        // In the middle of each question its own thing is lit by the beam.
-        let lit = |t: f32, kind| {
-            alive(t, kind)
-                .iter()
-                .filter(|s| brightest(s, t) > 0.5)
-                .count()
-        };
-        assert!(lit(18.8, Kind::Thought) >= 2);
+        // Thoughts: big bubbles with words rise into the beam.
+        let b = beam(18.9);
+        let words: Vec<_> = floating(18.9, Kind::Thought)
+            .into_iter()
+            .filter(|x| x.words)
+            .collect();
+        assert!(words.len() >= 3, "{}", words.len());
+        assert!(words.iter().any(|x| b.cone(x.place(18.9)) > 0.5));
+        assert!(words.iter().all(|x| x.place(19.0)[1] > x.place(18.9)[1]));
+        // Emotions: the tide in the beam, and a wave over the whole frame.
         assert!(tide(23.4)[2] == 1.0);
+        let w = compose(22.6).waves[0];
+        assert!(w[3] > 0.3 && w[2] > 1.5 && in_frame([w[0], w[1]]), "{w:?}");
+        // Micro-feelings: sparks in the beam.
         let b = beam(27.8);
         let sparked = sparkling(27.8, Kind::Micro)
             .iter()
             .filter(|s| s.env(27.8) * b.cone(s.place(27.8)) > 0.3)
             .count();
         assert!(sparked >= 1, "{sparked}");
-        assert!(jolt(31.0) > 0.5 && lit(31.0, Kind::Impulse) >= 2);
-        assert!(pull(37.4) == 1.0 && alive(37.4, Kind::Urge).len() == 3);
-        assert!(sparkling(37.0, Kind::Stream).len() >= 2);
+        // Impulses: two bright lightnings at each jolt.
+        let lit = |t: f32, kind| {
+            alive(t, kind)
+                .iter()
+                .filter(|s| brightest(s, t) > 0.5)
+                .count()
+        };
+        assert!(jolt(31.0) > 0.5 && lit(31.0, Kind::Impulse) == 2);
+        for &j in &JOLTS {
+            assert_eq!(alive(j + 0.1, Kind::Impulse).len(), 2, "{j}");
+        }
+        // The urge: the whirl is on and draws the sparks in.
+        let f = compose(37.4);
+        assert!(pull(37.4) == 1.0 && f.magnet[3] == 1.0);
+        assert!(in_frame([f.magnet[0], f.magnet[1]]), "{:?}", f.magnet);
+        // The dust is pulled the same way, from the beam to the whirl.
+        assert!(dot(norm(PULL), norm(sub(MAGNET, by_beam(3.0, 0.0, 0.0)))) > 0.995);
+        let drawn = sparkling(37.0, Kind::Stream);
+        assert!(drawn.len() >= 3, "{}", drawn.len());
+        for s in drawn {
+            assert!(distance(s.place(37.1), MAGNET) < distance(s.place(37.0), MAGNET));
+        }
+    }
+
+    #[test]
+    fn thoughts_rise_as_bubbles_with_words_and_pop() {
+        let big: Vec<_> = bubbles().iter().filter(|b| b.words).collect();
+        assert_eq!(big.len(), THOUGHTS.len() + 2);
+        for b in big {
+            let end = b.at + b.life;
+            assert!(b.written(b.at + 2.0) == 1.0 && b.written(b.at) == 0.0);
+            assert!(b.pop(end - POP) == 0.0 && b.pop(end) == 1.0);
+            assert!(b.place(end)[1] > b.place(b.at)[1] + 0.5);
+            // Two small ones trail below it, rising with it.
+            let trail: Vec<_> = bubbles()
+                .iter()
+                .filter(|s| !s.words && s.seed == b.seed)
+                .collect();
+            assert_eq!(trail.len(), 2);
+            for s in trail {
+                assert!(s.at < b.at && s.at + s.life > end);
+                for t in [b.at + 0.5, b.at + 1.5, end - 0.1] {
+                    assert!(s.place(t)[1] < b.place(t)[1] - b.radius);
+                    assert!(s.radius < 0.4 * b.radius);
+                }
+            }
+        }
+        // As it pops it widens and fades.
+        let b = bubbles().iter().find(|b| b.words).unwrap();
+        let end = b.at + b.life;
+        assert!(b.env(end - 0.1) < 0.3 && b.env(end - POP - 0.1) == 1.0);
+    }
+
+    #[test]
+    fn the_outer_ring_turns_visibly_and_joins_up() {
+        let turns = LOOP_SECONDS / TURN;
+        assert!(turns >= 1.0 && turns.fract() == 0.0);
+        // Its edge runs at least 0.2 a second in the room.
+        let w = compose(10.0).ticks - compose(9.0).ticks;
+        assert!(w * OUTER[3] > 0.2, "{w}");
+        // Inside, its far arc is curved, not a flat line: it sags toward
+        // the frame's sides.
+        let cam = within(STILL);
+        let [x, y, z, r] = OUTER_IN;
+        let far = cam.project([x, y, z - r]).unwrap();
+        let side = cam.project([x + r * 0.8, y, z - r * 0.6]).unwrap();
+        assert!(in_frame(far) && far[1] - side[1] > 0.1, "{far:?} {side:?}");
     }
 
     #[test]
@@ -1261,6 +1495,8 @@ mod tests {
             assert!(n <= THREADS, "{t}: {n}");
             let g = sparks().iter().filter(|s| s.env(t) > 0.0).count();
             assert!(g <= GLINTS, "{t}: {g}");
+            let b = bubbles().iter().filter(|b| b.env(t) > 0.0).count();
+            assert!(b <= BUBBLES, "{t}: {b}");
         });
         every(0.25, |t| {
             let f = compose(t);
@@ -1302,6 +1538,17 @@ mod tests {
             assert!((a.knot[3] - b.knot[3]).abs() < 0.02, "{t}");
             assert!((a.tide[2] - b.tide[2]).abs() < 0.03, "{t}");
             assert!((a.tug - b.tug).abs() < 0.03, "{t}");
+            assert!((a.magnet[3] - b.magnet[3]).abs() < 0.03, "{t}");
+            for i in 0..WAVES.len() {
+                // Its reach matters only while it is there.
+                let (wa, wb) = (wave(i, t), wave(i, t + step));
+                assert!((wa[1] - wb[1]).abs() < 0.05, "{t}");
+                assert!(wb[1] == 0.0 || (wa[0] - wb[0]).abs() < 0.04, "{t}");
+            }
+            for x in bubbles() {
+                assert!((x.env(t) - x.env(t + step)).abs() < 0.08, "{t}");
+                assert!(distance(x.place(t), x.place(t + step)) < 0.02, "{t}");
+            }
         });
     }
 
@@ -1310,7 +1557,13 @@ mod tests {
         let f = compose(STILL);
         assert!(f.inside == 1.0 && needle(STILL) == 0.0);
         assert!(close(f.beam.spread, SPREAD[2], 1e-5) && close(f.beam.light, 0.85, 1e-4));
-        assert!(alive(STILL, Kind::Calm).len() >= 2 && !sparkling(STILL, Kind::Calm).is_empty());
+        assert!(!sparkling(STILL, Kind::Calm).is_empty());
+        // A thought passes by itself, its words written, in the frame.
+        assert!(floating(STILL, Kind::Calm).iter().any(|x| x.words
+            && x.env(STILL) == 1.0
+            && x.written(STILL) > 0.9
+            && f.within.project(x.place(STILL)).is_some_and(in_frame)));
+        assert!(f.bubbles[0][3] > 0.5, "{:?}", f.bubbles[0]);
         let s = f.within.project(by_beam(3.0, 0.0, 0.0)).unwrap();
         assert!(in_frame(s));
         assert!(f.within.project(MOUTH).is_some_and(in_frame));

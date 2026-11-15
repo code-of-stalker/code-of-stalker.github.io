@@ -1,15 +1,15 @@
 //! Browser adapter: one WebGL2 program and its uniforms, no textures. Every
 //! motion value comes from `compose`; one full-screen pass traces each
 //! pixel's ray through the room (the floor, the walls, the window, the chair
-//! and the seated person, the two rings, the moonlight) and, through the
-//! glass, his sky (the clouds, the warm cloud, the lightning and falling
-//! stars Rust has already placed there), in the theme's own cold, warm and
+//! and the seated person, the sphere and its two rings, the moonlight, his
+//! image on the glass) and, through the glass and in him, his sky (the clouds, the warm cloud, the lightning and falling stars
+//! Rust has already placed there), in the theme's own cold, warm and
 //! pale (`look`) over the page colour. The scene is two-toned, so it does
 //! not go through the monochrome theme recolor.
 use crate::body::{norm, HAND, REST, SHOULDER};
 use crate::{
-    compose, look, Look, BAR, BOLT_POINTS, BOUNDS, FRAME_ASPECT, GLASS, INNER, LOOP_SECONDS, MOON,
-    MULLION, OUTER, SCUD_PERIOD, SLOW_PERIOD, STARS, STILL, TRANSOM, WALLS, WINDOW_Z,
+    compose, look, Look, BAR, BOLT_POINTS, BOUNDS, CHEST, FRAME_ASPECT, GLASS, LAMP, LOOP_SECONDS,
+    MOON, MULLION, SCUD_PERIOD, SLOW_PERIOD, SPHERE, STARS, STILL, TRANSOM, WALLS, WINDOW_Z,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Warm;
@@ -24,7 +24,7 @@ const SCREEN: &str = include_str!("shaders/screen.vert");
 const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
 /// The Тишина page, until the app says which page it is.
 const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-const NAMES: [&str; 18] = [
+const NAMES: [&str; 21] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -34,6 +34,9 @@ const NAMES: [&str; 18] = [
     "u_sky",
     "u_glow",
     "u_flash",
+    "u_ring",
+    "u_outer",
+    "u_beam",
     "u_arm",
     "u_bolt",
     "u_star",
@@ -55,8 +58,9 @@ fn defines() -> String {
         ("FRAME_ASPECT", f(FRAME_ASPECT)),
         ("BOUNDS_FROM", v3(BOUNDS[0])),
         ("BOUNDS_TO", v3(BOUNDS[1])),
-        ("OUTER", v4(OUTER)),
-        ("INNER", v4(INNER)),
+        ("SPHERE", v4(SPHERE)),
+        ("CHEST", v3(CHEST)),
+        ("LAMP", v3(LAMP)),
         ("WINDOW_Z", f(WINDOW_Z)),
         ("GLASS", v4(GLASS)),
         ("MULLION", f(MULLION)),
@@ -346,8 +350,11 @@ impl InnerClouds {
             f32::from(self.soft_edges),
         );
         gl.uniform4f(p.at("u_sky"), f.slow, f.scud, f.scud_amount, f.glow);
-        gl.uniform4f(p.at("u_glow"), gx, gy, gz, f.ring);
+        gl.uniform4f(p.at("u_glow"), gx, gy, gz, 0.0);
         gl.uniform4f(p.at("u_flash"), lx, ly, lz, 0.0);
+        gl.uniform4fv_with_f32_array(p.at("u_ring"), &f.ring);
+        gl.uniform4f(p.at("u_outer"), f.outer[0], f.outer[1], 0.0, 0.0);
+        gl.uniform4fv_with_f32_array(p.at("u_beam"), &f.beam);
         gl.uniform4fv_with_f32_array(p.at("u_arm"), &flat(&arm));
         gl.uniform4fv_with_f32_array(p.at("u_bolt"), &flat(&f.bolt));
         gl.uniform4fv_with_f32_array(p.at("u_star"), &flat(&f.stars));

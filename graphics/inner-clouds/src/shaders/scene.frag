@@ -6,8 +6,14 @@
 // chair's shadow in it, lights his front and stands in the air as faint
 // beams. Through the panes his sky: far hills, stars, slow clouds silvered
 // by the moon, low scud, and what Rust has placed in it (a warm cloud,
-// lightning, falling stars); over it, faintly, his own reflection. Round
-// him the cold outer ring, always turning, and the warm inner ring.
+// lightning, falling stars). The sky is his inside: his image stands on
+// the glass, cast from behind him (LAMP) about twice his size; in it the
+// sky is clear, round it the glass is misted. His body holds the same sky,
+// each point of him the sky at its place in the image, with the warm light
+// in his chest; before each thing shows a pulse leaves his chest and
+// spreads through the image.
+// Round him a faint sphere; the cold first ring rides it up and down, always
+// turning, and the warm second ring scans his body the other way.
 // Colours are absolute, built from the page colour and the theme's cold,
 // warm and pale. Rust puts the version line and the constants of lib.rs
 // (#define) in front of it.
@@ -30,10 +36,13 @@ uniform vec4 u_right;
 uniform vec4 u_up;
 uniform vec4 u_fwd;   // forward, tangent of half the frame's height
 uniform vec4 u_view;  // frame scale x and y, canvas width and height in px
-uniform vec4 u_world; // the outer ring's turn, the moonlight, the flash, soft edges
+uniform vec4 u_world; // the first ring's turn, the moonlight, the flash, soft edges
 uniform vec4 u_sky;   // how far the slow clouds and the scud have gone, how much scud, the warm cloud's light
-uniform vec4 u_glow;  // the warm cloud's way, the inner ring's light
+uniform vec4 u_glow;  // the warm cloud's way
 uniform vec4 u_flash; // the lightning's way
+uniform vec4 u_ring;  // the second ring: height, centre z, radius, light
+uniform vec4 u_outer; // the first ring: height, radius
+uniform vec4 u_beam;  // his image: its light, the pulse's front (0 chest, 1 spread), its light, warmth
 uniform vec4 u_arm[3];            // the lifting arm: elbow, wrist, hand
 uniform vec4 u_bolt[BOLT_POINTS]; // lightning in the sky: x, y, width (< 0 starts a strand), light
 uniform vec4 u_star[STARS];       // falling stars in the sky: tail xy, head xy
@@ -327,9 +336,10 @@ float through(vec3 p, vec3 l) {
 }
 
 // ---------- the rings
-// The outer ring: cold, a fine line and a soft glow, ticks turning on its
+// The first ring: cold, a fine line and a soft glow, ticks turning on its
 // outside and three bright runners with tails going round with them, so the
-// turning always shows. q is the point on its plane from its centre.
+// turning always shows. q is the point on its plane from its centre; its
+// marks keep one size whatever its radius.
 vec3 outerRing(vec2 q, float r, float px) {
   float rr = length(q);
   float d = rr - r;
@@ -337,23 +347,23 @@ vec3 outerRing(vec2 q, float r, float px) {
   float a = (atan(q.y, q.x) + u_world.x) / TAU;
   float minor = abs(fract(a * 72.0 + 0.5) - 0.5) / 72.0 * TAU * rr;
   float major = abs(fract(a * 8.0 + 0.5) - 0.5) / 8.0 * TAU * rr;
-  float s = r / 1.35;
+  const float s = 0.7;
   float ticks = line(minor, 0.0022 * s, px) * between(d, 0.0, 0.035 * s, px)
               + line(major, 0.003 * s, px) * between(d, 0.0, 0.07 * s, px);
   float ph = fract(a * 3.0);
   float head = min(ph, 1.0 - ph) / 3.0 * TAU * rr;
-  float hw = max(0.011 * s, px);
-  float run = exp(-(sq(head) + sq(d)) / sq(hw)) * 1.3
-            + exp(-ph / 0.07) * line(d, 0.0055 * s, px) * 0.85;
+  float hw = max(0.016 * s, px);
+  float run = exp(-(sq(head) + sq(d)) / sq(hw)) * 1.5 * (0.016 * s / hw)
+            + exp(-ph / 0.12) * line(d, 0.0065 * s, px) * 1.0;
   return u_cold * (line(d, 0.0042 * s, px) * 0.95 + ticks * 0.5 + exp(-sq(d / (0.035 * s))) * 0.07)
        + mix(u_cold, u_pale, 0.45) * run;
 }
-// The inner ring: warm, a fine line and a softer glow.
+// The second ring: warm, a fine line and a softer glow.
 vec3 innerRing(float d, float w, float px) {
   return u_warm * (line(d, w, px) + 0.14 * exp(-sq(d / (w * 8.0))));
 }
 float grazing(vec3 rd, vec3 n) {
-  return mix(1.0, min(1.0 / max(abs(dot(rd, n)), 1e-3), 3.5), 0.5);
+  return mix(1.0, min(1.0 / max(abs(dot(rd, n)), 1e-3), 2.0), 0.5);
 }
 
 // ---------- the sky
@@ -399,7 +409,7 @@ vec3 falling(vec2 s, float px) {
   }
   return c;
 }
-vec3 sky(vec3 rd, vec2 s, float pxS, float pxA) {
+vec3 sky(vec3 rd, vec2 s, float pxS, float pxA, vec3 gw) {
   float moon = u_world.y;
   float flash = u_world.z;
   float y = rd.y + 0.1;
@@ -417,7 +427,7 @@ vec3 sky(vec3 rd, vec2 s, float pxS, float pxA) {
   // lasts one gathers round the warm light.
   vec2 qb = q * 0.42 + vec2(u_sky.x, 0.0);
   float dB = pfbm(qb, SLOW_PERIOD);
-  float near = max(dot(rd, u_glow.xyz), 0.0);
+  float near = max(dot(rd, gw), 0.0);
   dB += 0.3 * min(u_sky.w, 1.0) * pow(near, 24.0);
   float cb = smoothstep(0.44, 0.66, dB) * smoothstep(0.0, 0.05, y);
   float lit = clamp((dB - pfbm(qb + vec2(0.05, -0.16), SLOW_PERIOD)) * 7.0 + 0.3, 0.0, 1.0);
@@ -442,17 +452,27 @@ vec3 sky(vec3 rd, vec2 s, float pxS, float pxA) {
 }
 
 // ---------- the room
-vec3 figureColor(vec3 p, vec3 n, vec3 rd, float ao) {
-  float fr = pow(1.0 - abs(dot(n, -rd)), 3.0);
-  vec3 c = (bg * 0.47 * (0.6 + 0.4 * ao) + u_cold * 0.3 * fr + bg * 0.45 * max(n.y, 0.0) * ao) * 0.75;
+// He is made of his sky (`inner`, the sky at his place in his image),
+// nearly flat, with a cold rim and a little moon.
+vec3 figureColor(vec3 p, vec3 n, vec3 rd, float ao, vec3 inner) {
+  float facing = abs(dot(n, -rd));
+  float fr = pow(1.0 - facing, 3.0);
+  vec3 c = inner * (0.95 + 0.15 * facing) * (0.85 + 0.15 * ao);
+  // The quiet emotion: the warm light in his chest, as in the cloud.
+  vec3 pk = p - CHEST;
+  c += u_warm * u_sky.w * 0.22 * exp(-dot(pk, pk) / 0.03);
+  // A pulse leaving him lights his chest a moment.
+  c += mix(mix(u_pale, u_cold, 0.3), u_warm, u_beam.w) * u_beam.z * 0.25
+     * exp(-u_beam.y / 0.15) * exp(-dot(pk, pk) / 0.02);
   float lv = through(p + n * 0.01, MOON);
-  c += u_pale * 0.34 * u_world.y * max(dot(n, MOON), 0.0) * lv;
+  c += u_pale * 0.06 * u_world.y * max(dot(n, MOON), 0.0) * lv;
   c += mix(u_cold, u_pale, 0.5) * 0.3 * fr * (0.3 + 0.7 * lv);
   if (u_world.z > 0.0) {
-    c += u_pale * 0.9 * u_world.z * max(dot(n, u_flash.xyz), 0.0) * through(p + n * 0.01, u_flash.xyz);
+    c += u_pale * 0.5 * u_world.z * max(dot(n, u_flash.xyz), 0.0) * through(p + n * 0.01, u_flash.xyz);
   }
-  // Where the inner ring passes, an even band of its light on him.
-  c += u_warm * 0.12 * u_glow.w * exp(-sq((p.y - INNER.y) / 0.03));
+  // Where the second ring passes, a band of its warmth, and his sky
+  // brighter under it.
+  c += (u_warm * 0.12 + inner * 0.8) * u_ring.w * exp(-sq((p.y - u_ring.x) / 0.04));
   return c;
 }
 vec3 chairColor(vec3 p, vec3 n, vec3 rd, float ao) {
@@ -486,9 +506,9 @@ vec3 floorColor(vec3 p, float px) {
   }
   vec3 c = bg * 0.42 * board + u_pale * 0.3 * lv * u_world.y * board;
   c += u_pale * 0.5 * u_world.z * lf;
-  // The outer ring's cold on the boards below it.
-  float r = length(p.xz - OUTER.xz);
-  c += u_cold * 0.014 * exp(-sq((r - OUTER.w) / 0.3));
+  // The first ring's cold on the boards below it, while it is low.
+  float r = length(p.xz - SPHERE.xz);
+  c += u_cold * 0.02 * exp(-sq((r - u_outer.y) / 0.3)) * exp(-u_outer.x / 0.5);
   // Darker under him and the chair.
   vec2 u = p.xz - vec2(0.0, 0.2);
   c *= 1.0 - 0.35 * exp(-dot(u, u) / 0.3);
@@ -527,13 +547,12 @@ void main() {
   float tF = rd.y < 0.0 ? -ro.y / rd.y : 1e9;
   vec2 xzF = ro.xz + rd.xz * min(tF, 40.0);
   float pxF = clamp(length(fwidth(xzF)), 1e-5, 1.0);
-  float tsO = planeY(ro, rd, OUTER.y);
-  vec2 qO = ro.xz + rd.xz * tsO - OUTER.xz;
+  float tsO = planeY(ro, rd, u_outer.x);
+  vec2 qO = ro.xz + rd.xz * tsO - SPHERE.xz;
   float pxO = clamp(length(fwidth(qO)), 1e-5, 1.0);
-  float tsR = planeY(ro, rd, INNER.y);
-  float dR = length(ro.xz + rd.xz * tsR - INNER.xz) - INNER.w;
+  float tsR = planeY(ro, rd, u_ring.x);
+  float dR = length(ro.xz + rd.xz * tsR - vec2(0.0, u_ring.y)) - u_ring.z;
   float pxR = clamp(fwidth(dR), 1e-5, 1.0);
-
   // The room's planes: the window wall, the back wall, a side wall, the
   // ceiling, the floor.
   float tWin = rd.z > 0.0 ? (WINDOW_Z - ro.z) / rd.z : 1e9;
@@ -546,21 +565,22 @@ void main() {
   // The window's panes, when the way reaches the window wall first.
   vec3 pw = ro + rd * tWin;
   float g = tF >= tWall && tWin <= tWall ? glass(xyW, pxW) : 0.0;
-  vec3 rr = vec3(rd.x, rd.y, -rd.z);
+  vec3 rl = normalize(LAMP - pw);
   // The person and the chair straight on and, where the way meets a pane
-  // instead, mirrored in it.
+  // instead, whether that point of the glass is in his image: the way from
+  // it back to LAMP meets him.
   int id = -1;
   float closest = 1e9;
   float tClosest = 1.0;
   float tB = -1.0;
   int rid = -1;
-  float tr = -1.0;
+  float rClosest = 1e9;
   for (int pass = zero(); pass < 2; pass++) {
     bool first = pass == 0;
     int k;
     float c;
     float tc;
-    float t = march(first ? ro : pw, first ? rd : rr, first ? tS : 9.0, first ? 110 : 80, k, c, tc);
+    float t = march(first ? ro : pw, first ? rd : rl, first ? tS : length(LAMP - pw), first ? 110 : 80, k, c, tc);
     if (first) {
       tB = t;
       id = k;
@@ -568,20 +588,36 @@ void main() {
       tClosest = tc;
       if (tB > 0.0 || g <= 0.001) break;
     } else {
-      tr = t;
       rid = k;
+      rClosest = c;
     }
   }
   float tHit = tB > 0.0 ? tB : tS;
-  // At most one of the two hits: its point, normal and openness.
-  vec3 hp = tB > 0.0 ? ro + rd * tB : pw + rr * tr;
+  // The hit straight on: its point, normal and openness.
+  vec3 hp = ro + rd * max(tB, 0.0);
   float ao = 1.0;
   vec3 hn = vec3(0.0, 1.0, 0.0);
-  if (tB > 0.0 || tr > 0.0) hn = surface(hp, tB > 0.0 ? id : rid, tB > 0.0, ao);
+  if (tB > 0.0) hn = surface(hp, id, true, ao);
+  // His sky on him: each point of him holds the sky at its place in his
+  // image, seen from here, lifted clear of the streaks over the hills.
+  vec3 wIn = LAMP + (hp - LAMP) * ((WINDOW_Z - LAMP.z) / max(hp.z - LAMP.z, 0.05));
+  vec3 rdIn = normalize(wIn - ro);
+  rdIn = normalize(vec3(rdIn.x, 0.14 + max(rdIn.y, -0.04), max(rdIn.z, 0.05)));
+  vec2 sIn = rdIn.xy / rdIn.z;
+  float pxIn = clamp(length(fwidth(sIn)), 1e-6, 0.1);
+
+  // The sky, once: through the panes, or laid on him with the warm cloud
+  // in his chest.
+  bool him = tB > 0.0 && id == 2;
+  vec3 skyC = vec3(0.0);
+  if (him || (tB <= 0.0 && g > 0.001)) {
+    skyC = sky(him ? rdIn : rd, him ? sIn : s, him ? pxIn : pxS, him ? pxIn : pxA,
+               him ? vec3(0.0, -1.0, 0.0) : u_glow.xyz);
+  }
 
   vec3 col;
   if (tB > 0.0) {
-    col = id == 2 ? figureColor(hp, hn, rd, ao) : chairColor(hp, hn, rd, ao);
+    col = him ? figureColor(hp, hn, rd, ao, skyC) : chairColor(hp, hn, rd, ao);
   } else if (tF < tWall) {
     col = floorColor(ro + rd * tF, pxF);
   } else if (tWin <= tWall) {
@@ -590,16 +626,21 @@ void main() {
     vec3 frame = bg * 0.3 + u_cold * 0.02;
     col = mix(wall, frame, op);
     if (g > 0.001) {
-      // His sky, and over it, faintly, his own front lit by the moon.
-      vec3 refl = vec3(0.0);
-      float rh = 0.0;
-      if (tr > 0.0) {
-        float lv = through(hp + hn * 0.01, MOON);
-        refl = bg * 0.4 + u_pale * 0.5 * max(dot(hn, MOON), 0.0) * lv * moon
-             + u_cold * 0.15 * pow(1.0 - abs(dot(hn, -rr)), 3.0);
-        rh = 1.0;
-      }
-      vec3 gc = sky(rd, s, pxS, pxA) * (1.0 - 0.15 * rh) + refl * 0.22 * rh + bg * 0.03;
+      // His sky: clear in his image (its narrow gaps filled), misted round
+      // it, a cold edge between.
+      // pxB: a pixel of the glass, cast back onto him.
+      float pxB = pxW * (-LAMP.z) / (WINDOW_Z - LAMP.z);
+      float dImg = rid == 2 ? -1.0 : rClosest - 0.03;
+      float img = 1.0 - smoothstep(0.0, 1.5 * pxB, dImg);
+      float e = dImg / pxB;
+      float edge = dImg <= 0.0 ? 0.0 : 0.16 * exp(-e * e / 1.2) + 0.05 * exp(-dImg / 0.03);
+      vec3 mist = bg * 1.2 + u_cold * 0.02 + u_pale * 0.01 * moon;
+      vec3 gc = mix(mix(skyC, mist, 0.75), skyC * (0.95 + 0.25 * u_beam.x), img) + u_cold * edge;
+      // The pulse, spreading through the image from his chest.
+      vec3 wc = LAMP + (CHEST - LAMP) * ((WINDOW_Z - LAMP.z) / (CHEST.z - LAMP.z));
+      float rp = length(xyW - wc.xy);
+      vec3 lc = mix(mix(u_pale, u_cold, 0.3), u_warm, u_beam.w);
+      gc += lc * u_beam.z * img * (0.35 * exp(-sq((rp - 1.1 * u_beam.y) / 0.07)) + 0.08 * exp(-rp / 0.3));
       col = mix(col, gc, g);
     }
   } else {
@@ -621,13 +662,20 @@ void main() {
     if (flash > 0.0) bf += through(sp, u_flash.xyz);
   }
   col += mix(u_pale, u_cold, 0.4) * 0.03 * bm * tEnd / 12.0 * moon + u_pale * 0.06 * flash * bf * tEnd / 12.0;
+  // The sphere round him, only its edge.
+  vec3 oc = SPHERE.xyz - ro;
+  float tcS = dot(oc, rd);
+  if (tcS > 0.0 && tcS < tHit) {
+    float dp = length(oc - rd * tcS);
+    col += u_cold * 0.1 * exp(-sq((dp - SPHERE.w) / max(pxA * tcS * 1.2, 0.002)));
+  }
   // The rings, faint where the person or the chair is in front.
   vec3 up = vec3(0.0, 1.0, 0.0);
   if (tsO > 0.0) {
-    col += outerRing(qO, OUTER.w, pxO) * grazing(rd, up) * (tsO < tHit ? 1.0 : 0.15);
+    col += outerRing(qO, u_outer.y, pxO) * grazing(rd, up) * (tsO < tHit ? 1.0 : 0.15);
   }
   if (tsR > 0.0) {
-    col += innerRing(dR, 0.005, pxR) * u_glow.w * grazing(rd, up) * (tsR < tHit ? 1.0 : 0.15);
+    col += innerRing(dR, 0.005, pxR) * u_ring.w * grazing(rd, up) * (tsR < tHit ? 1.0 : 0.15);
   }
   // A soft shoulder where light piles up, then the edges melt into the page.
   vec3 over = 0.7 + 0.3 * (1.0 - exp(-(col - 0.7) / 0.3));

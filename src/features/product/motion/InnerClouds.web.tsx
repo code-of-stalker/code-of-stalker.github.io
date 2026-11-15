@@ -26,8 +26,9 @@ export type InnerCloudsProps = ArtProps & {
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
  * frames; Rust owns the night room, the seated person facing the window, the
- * moonlight, his sky and what passes in it, his reflection in the glass, the
- * turning outer ring and the inner ring, and the colors of the four dark
+ * moonlight, his sky and what passes in it, his image on the glass (the sky
+ * clear only in it) and the pulses from his chest, the sphere with the riding
+ * first ring and the scanning second ring, and the colors of the four dark
  * themes. */
 export function InnerClouds(props: InnerCloudsProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
@@ -141,7 +142,7 @@ export function InnerClouds(props: InnerCloudsProps) {
     };
   }, [controller]);
   return <View testID="inner-clouds" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Ночь. Человек ровно сидит на стуле лицом к высокому окну, луна кладёт окно на пол. За стеклом его небо: медленные облака, быстрые низкие тучи, одно облако тихо теплеет изнутри, бьёт молния, падает звезда, потом рой звёзд. Облако закрывает луну, его рука тянется к окну и возвращается на колено, луна выходит сама. В стекле его слабое отражение, облака проходят сквозь него."
+    {failed ? props.fallback : <div role="img" aria-label="Ночь. Человек ровно сидит на стуле лицом к высокому окну, луна кладёт окно на пол. За стеклом его небо: медленные облака, быстрые низкие тучи, одно облако тихо теплеет изнутри, бьёт молния, падает звезда, потом рой звёзд. Облако закрывает луну, его рука тянется к окну и возвращается на колено, луна выходит сама. На стекле стоит его большой силуэт: небо ясное только внутри него, и всё это происходит в нём; тело сделано из того же неба, из груди по силуэту расходятся волны."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
       <canvas ref={outputRef} data-graphics="rust-inner-clouds" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

@@ -2,12 +2,16 @@
 //! кольцо», direction «Окно». Night. A person sits upright on a straight
 //! backed chair facing a tall window; the room is dark, the moon comes in
 //! through the glass, lays the window on the floor and throws his shadow
-//! back toward us. Outside is his sky, and it does whatever it does by
-//! itself; in the glass his own faint reflection, and the clouds pass
-//! through it. The cold outer ring turns round him low over the floor, the
-//! warm inner ring rests round his chest.
+//! back toward us. Outside is his sky, and the sky is his inside: his
+//! image stands on the glass, cast from behind him about twice his size,
+//! and only in it is the sky clear, the glass round it misted; the same sky
+//! is in his body, and before each thing shows a pulse leaves his chest and
+//! spreads through the image. A faint sphere
+//! stands round him; the cold first ring rides it from over his head down
+//! to his shins and back, always turning, while the warm second ring scans
+//! his body the other way, feet to crown.
 //! «Мысли могут быть быстрыми»: low scud races across the sky. «эмоции —
-//! тихими»: one cloud glows warm from inside, the inner ring warms with it;
+//! тихими»: one cloud glows warm from inside, and so does his chest;
 //! «или резкими»: lightning, twice, the room flashes. «импульсы — редкими»:
 //! one falling star; «или хаотичными»: a swarm of short ones every which
 //! way. «не управлять и не менять»: a cloud takes the moon, the room dims,
@@ -63,12 +67,45 @@ pub const WALLS: [f32; 3] = [2.3, 2.8, -3.6];
 /// comes in through the glass.
 pub const MOON: V = [-0.22, 0.62, 1.0];
 
-/// The outer ring, level, low round the chair: centre (x, y, z), radius.
-pub const OUTER: [f32; 4] = [0.0, 0.5, 0.05, 0.95];
-/// The inner ring, level round the chest.
-pub const INNER: [f32; 4] = [0.0, 0.86, -0.03, 0.3];
-/// The outer ring's ticks turn this many times a loop.
-pub const TURNS: f32 = 3.0;
+/// The sphere round him (centre x, y, z, radius), seen only at its edge.
+/// The first ring rides it from over his head down to the floor and back.
+pub const SPHERE: [f32; 4] = [0.0, 0.62, 0.05, 0.98];
+/// The first ring's latitude on the sphere at the top and at the bottom.
+pub const RIDE: [f32; 2] = [1.2, -0.4];
+/// One ride down and back up; the second ring goes the other way.
+pub const RIDE_SECONDS: f32 = 8.0;
+/// The first ring's ticks and runners turn this many times a loop.
+pub const TURNS: f32 = 4.0;
+/// The second ring hugs his body (below the seat his legs and the chair
+/// legs together); by height, feet to head: (y, centre z,
+/// radius).
+pub const HUG: [[f32; 3]; 6] = [
+    [0.05, 0.25, 0.47],
+    [0.3, 0.22, 0.46],
+    [0.55, 0.17, 0.42],
+    [0.8, 0.0, 0.31],
+    [1.1, -0.05, 0.3],
+    [1.3, -0.02, 0.18],
+];
+
+// ---------- his inside
+// The window shows what is inside him. On the glass stands his image, cast
+// from behind him (`LAMP`): in it the sky is clear and everything happens
+// there, round it the glass is misted. His body holds the same sky (the
+// shader gives each point of him the sky at its place in the image), and
+// before each thing appears a pulse leaves his chest and spreads through
+// the image.
+
+/// Where his inside is centred: the pulses leave from here.
+pub const CHEST: V = [0.0, 0.92, 0.02];
+/// Where his image on the glass is cast from: behind him at his chest's
+/// height, so the panes hold his head and shoulders about twice his size.
+pub const LAMP: V = [0.0, 0.87, -1.0];
+/// A pulse takes this long to spread from his chest through his image.
+pub const PULSE: f32 = 0.8;
+/// When a pulse has spread: the scud, the warm cloud, the two
+/// strikes, the falling star, the swarm.
+pub const PULSES: [f32; 6] = [5.4, 15.6, 22.0, 23.6, 27.0, 30.3];
 
 // ---------- the beats
 
@@ -520,14 +557,72 @@ pub fn reach(t: f32) -> f32 {
     up * (1.0 - smooth(LOWER[0], LOWER[1], t))
 }
 
+// ---------- the rings
+
+/// How far down the first ring has ridden (0 over his head, 1 at the
+/// floor); the second ring is as far up his body. Eased at both ends.
+pub fn ride(t: f32) -> f32 {
+    0.5 - 0.5 * (TAU * t / RIDE_SECONDS).cos()
+}
+
+/// The first ring on the sphere: its height and radius.
+pub fn outer(t: f32) -> [f32; 2] {
+    let lat = RIDE[0] + (RIDE[1] - RIDE[0]) * ride(t);
+    [SPHERE[1] + SPHERE[3] * lat.sin(), SPHERE[3] * lat.cos()]
+}
+
+/// The second ring round his body `h` of the way from his feet (0) to his
+/// crown (1): its height, centre z and radius.
+pub fn hug(h: f32) -> [f32; 3] {
+    let last = HUG.len() - 1;
+    let y = HUG[0][0] + (HUG[last][0] - HUG[0][0]) * h.clamp(0.0, 1.0);
+    let i = (0..last).rfind(|&i| HUG[i][0] <= y).unwrap_or(0);
+    let (a, b) = (HUG[i], HUG[i + 1]);
+    let s = ((y - a[0]) / (b[0] - a[0])).clamp(0.0, 1.0);
+    [y, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s]
+}
+
+// ---------- his inside
+
+/// Where a point of him falls in his image on the glass (x, y), cast from
+/// `LAMP`.
+pub fn on_glass(p: V) -> [f32; 2] {
+    let k = (WINDOW_Z - LAMP[2]) / (p[2] - LAMP[2]);
+    [
+        LAMP[0] + (p[0] - LAMP[0]) * k,
+        LAMP[1] + (p[1] - LAMP[1]) * k,
+    ]
+}
+
+/// The pulse now: how far it has spread (0 at his chest, 1 through his
+/// image; below 0 when there is none), its light, how warm it is.
+pub fn pulse(t: f32) -> [f32; 3] {
+    for at in PULSES {
+        let u = (t - (at - PULSE)) / PULSE;
+        if (0.0..1.0).contains(&u) {
+            let light = smooth(0.0, 0.3, u) * (1.0 - smooth(0.65, 1.0, u));
+            let warm = if at == PULSES[1] { 1.0 } else { 0.0 };
+            return [u, light, warm];
+        }
+    }
+    [-1.0, 0.0, 0.0]
+}
+
 // ---------- one frame
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Frame {
     pub time: f32,
     pub camera: Camera,
-    /// The outer ring's turn (radians).
+    /// The first ring on the sphere: its height and radius; its turn
+    /// (radians).
+    pub outer: [f32; 2],
     pub ticks: f32,
+    /// The second ring on his body: height, centre z, radius, light.
+    pub ring: [f32; 4],
+    /// His image on the glass: its light, the pulse's front, the pulse's
+    /// light, how warm it is.
+    pub beam: [f32; 4],
     /// The moonlight, the flash of the lightning.
     pub moon: f32,
     pub flash: f32,
@@ -535,10 +630,9 @@ pub struct Frame {
     pub slow: f32,
     pub scud: f32,
     pub scud_amount: f32,
-    /// The warm cloud's light and way; the inner ring's light.
+    /// The warm cloud's light and way.
     pub glow: f32,
     pub glow_way: V,
-    pub ring: f32,
     /// The way of the lightning (for the flash), and its points now.
     pub flash_way: V,
     pub bolt: [[f32; 4]; BOLT_POINTS],
@@ -581,10 +675,16 @@ pub fn compose(t: f32) -> Frame {
             }
         }
     }
+    let camera = camera(t);
+    let [y, z, r] = hug(ride(t));
+    let [front, light, warm] = pulse(t);
     Frame {
         time: t,
-        camera: camera(t),
+        camera,
+        outer: outer(t),
         ticks: TAU * TURNS * t / LOOP_SECONDS,
+        ring: [y, z, r, 0.8 + 0.5 * glow + 0.6 * window(t, NOTICE)],
+        beam: [1.0 + 0.5 * glow, front, light, warm.max(0.7 * glow)],
         moon: 1.0 - 0.65 * window(t, DIM),
         flash,
         slow: slow_drift(t),
@@ -592,7 +692,6 @@ pub fn compose(t: f32) -> Frame {
         scud_amount: (0.3 + 0.7 * window(t, FAST) + 0.3 * window(t, STORM)).min(1.0),
         glow: GLOW_LIGHT * glow,
         glow_way: glow_way(),
-        ring: 0.7 + 0.5 * glow + 0.6 * window(t, NOTICE),
         flash_way,
         bolt,
         stars: star_slots,
@@ -675,7 +774,12 @@ mod tests {
         let (a, b) = (compose(0.0), compose(LOOP_SECONDS - 1e-3));
         assert!(distance(a.camera.eye, b.camera.eye) < 1e-3);
         assert!(distance(a.camera.forward, b.camera.forward) < 1e-3);
-        assert!(close(a.ring, b.ring, 1e-3) && close(a.moon, b.moon, 1e-3));
+        assert!(close(a.moon, b.moon, 1e-3));
+        for i in 0..4 {
+            assert!(close(a.ring[i], b.ring[i], 1e-3) && close(a.beam[i], b.beam[i], 1e-3));
+        }
+        assert!(close(a.outer[0], b.outer[0], 1e-3) && close(a.outer[1], b.outer[1], 1e-3));
+        assert!((LOOP_SECONDS / RIDE_SECONDS).fract() == 0.0);
         assert!(a.flash == 0.0 && b.flash == 0.0 && a.glow == 0.0 && b.glow == 0.0);
         assert_eq!(a.arm, b.arm);
         // The clouds have gone whole repeats of their noise.
@@ -711,39 +815,118 @@ mod tests {
         assert!(solid(camera(0.0).eye) > 1.0);
     }
 
+    fn circle(centre: V, r: f32, i: usize, n: usize) -> V {
+        let a = TAU * i as f32 / n as f32;
+        [centre[0] + r * a.sin(), centre[1], centre[2] + r * a.cos()]
+    }
+
     #[test]
-    fn the_outer_ring_is_always_in_view_and_turns_visibly() {
+    fn the_first_ring_is_always_in_view_and_turns_visibly() {
         every(0.05, |t| {
-            let c = camera(t);
-            let [x, y, z, r] = OUTER;
+            let f = compose(t);
+            let [y, r] = f.outer;
             let seen = (0..360)
-                .filter(|i| {
-                    let a = TAU * *i as f32 / 360.0;
-                    c.project([x + r * a.sin(), y, z + r * a.cos()])
-                        .is_some_and(in_frame)
+                .filter(|&i| {
+                    let p = circle([SPHERE[0], y, SPHERE[2]], r, i, 360);
+                    f.camera.project(p).is_some_and(in_frame)
                 })
                 .count();
             assert!(seen >= 40, "{t}: {seen}");
         });
-        // Its edge runs at least 0.25 a second.
+        // Its runners go round at least 0.3 a second at its widest.
         let w = compose(10.0).ticks - compose(9.0).ticks;
-        assert!(w * OUTER[3] > 0.25, "{w}");
+        assert!(w * SPHERE[3] > 0.3, "{w}");
     }
 
     #[test]
-    fn the_rings_clear_the_body() {
-        // The inner ring round the chest misses the body and the resting
-        // arms; the outer ring misses the chair.
-        let [x, y, z, r] = INNER;
-        let [ox, oy, oz, or] = OUTER;
-        for i in 0..360 {
-            let a = TAU * i as f32 / 360.0;
-            assert!(solid([x + r * a.sin(), y, z + r * a.cos()]) > 0.02, "{i}");
+    fn the_rings_ride_and_scan_and_never_rest() {
+        // The first ring goes from over his head down to his shins, the
+        // second from his feet up to his crown, the other way at once.
+        let top = outer(0.0);
+        let low = outer(0.5 * RIDE_SECONDS);
+        assert!(
+            top[0] > 1.48 && low[0] < 0.3 && low[0] > 0.15,
+            "{top:?} {low:?}"
+        );
+        assert!(close(compose(0.0).ring[0], HUG[0][0], 1e-4));
+        assert!(close(compose(0.5 * RIDE_SECONDS).ring[0], HUG[5][0], 1e-4));
+        // Neither stands still: within any 2 s each moves well, even where
+        // it turns back.
+        let span = |t: f32, get: &dyn Fn(&Frame) -> [f32; 2]| {
+            let all: Vec<[f32; 2]> = (0..=20)
+                .map(|i| get(&compose(t + 0.1 * i as f32)))
+                .collect();
+            let range = |k: usize| {
+                all.iter().map(|v| v[k]).fold(f32::MIN, f32::max)
+                    - all.iter().map(|v| v[k]).fold(f32::MAX, f32::min)
+            };
+            range(0).max(range(1))
+        };
+        every(0.25, |t| {
+            assert!(span(t, &|f| f.outer) > 0.1, "{t}");
+            assert!(span(t, &|f| [f.ring[0], f.ring[2]]) > 0.1, "{t}");
+        });
+    }
+
+    #[test]
+    fn the_rings_clear_him_and_the_chair() {
+        // The first ring rides the sphere clear of him, his lifted hand and
+        // the chair; the second hugs him clear of the body and the resting
+        // arms at every height.
+        every(0.05, |t| {
+            let f = compose(t);
+            let a = body::arm(reach(t));
+            let [y, r] = f.outer;
+            for i in 0..120 {
+                let p = circle([SPHERE[0], y, SPHERE[2]], r, i, 120);
+                assert!(solid_with(p, &a) > 0.12, "{t}: {p:?}");
+                assert!(p[2] < WINDOW_Z - 0.05);
+            }
+        });
+        for k in 0..=100 {
+            let [y, z, r] = hug(k as f32 / 100.0);
+            for i in 0..180 {
+                let p = circle([0.0, y, z], r, i, 180);
+                assert!(solid(p) > 0.015, "{k}: {p:?} {}", solid(p));
+            }
+        }
+        // He sits inside the sphere.
+        for p in [HEAD, [0.126, 0.03, 0.62], [0.0, 1.43, -0.02]] {
+            assert!(distance(p, [SPHERE[0], SPHERE[1], SPHERE[2]]) < SPHERE[3] - 0.1);
+        }
+    }
+
+    #[test]
+    fn his_image_and_the_pulses_follow_what_happens() {
+        // His image on the glass: his head and shoulders inside the panes,
+        // about twice his size, his chest in the middle pane.
+        let crown = on_glass([0.0, 1.43, -0.02]);
+        let chest = on_glass(CHEST);
+        assert!(
+            crown[1] < GLASS[3] - 0.08 && crown[1] > TRANSOM,
+            "{crown:?}"
+        );
+        assert!(
+            chest[1] > GLASS[2] + 0.2 && chest[0].abs() < MULLION - 0.1,
+            "{chest:?}"
+        );
+        for x in [-0.22, 0.22] {
+            let s = on_glass([x, 1.2, 0.0]);
             assert!(
-                solid([ox + or * a.sin(), oy, oz + or * a.cos()]) > 0.3,
-                "{i}"
+                s[0].abs() > 0.35 && s[0].abs() < GLASS[1] - 0.2 && s[1] > GLASS[2],
+                "{s:?}"
             );
         }
+        assert!(LAMP[2] > WALLS[2] && LAMP[2] < BOUNDS[0][2]);
+        // A pulse runs out before each thing shows in the window, warm for
+        // the warm cloud; none in the quiet.
+        for at in PULSES {
+            let [front, light, _] = pulse(at - 0.4);
+            assert!(front > 0.4 && front < 0.6 && light > 0.9, "{at}");
+        }
+        assert!(pulse(PULSES[1] - 0.3)[2] == 1.0 && pulse(PULSES[2] - 0.3)[2] == 0.0);
+        assert!(pulse(50.0)[1] == 0.0 && pulse(10.0)[1] == 0.0);
+        assert!(compose(STILL).beam[3] > 0.6 && compose(50.0).beam[3] == 0.0);
     }
 
     #[test]
@@ -804,7 +987,7 @@ mod tests {
         );
         assert!(at(10.0).scud_amount > 0.9 && at(50.0).scud_amount < 0.4);
         // Quiet emotion: one warm cloud, the inner ring warm with it.
-        assert!(at(17.6).glow > 1.5 && at(17.6).ring > 1.1 && at(10.0).glow == 0.0);
+        assert!(at(17.6).glow > 1.5 && at(17.6).ring[3] > 1.2 && at(10.0).glow == 0.0);
         // Sharp ones: two strikes that flash the room.
         for s in STRIKES {
             assert!(at(s + 0.08).flash == 1.0);
@@ -870,7 +1053,12 @@ mod tests {
             assert!(distance(a.camera.forward, b.camera.forward) < 0.012, "{t}");
             assert!((a.moon - b.moon).abs() < 0.02, "{t}");
             assert!((a.glow - b.glow).abs() < 0.04, "{t}");
-            assert!((a.ring - b.ring).abs() < 0.04, "{t}");
+            for i in 0..4 {
+                assert!((a.ring[i] - b.ring[i]).abs() < 0.04, "{t}");
+            }
+            assert!((a.outer[0] - b.outer[0]).abs() < 0.02, "{t}");
+            assert!((a.outer[1] - b.outer[1]).abs() < 0.02, "{t}");
+            assert!((a.beam[2] - b.beam[2]).abs() < 0.2, "{t}");
             assert!((a.scud_amount - b.scud_amount).abs() < 0.02, "{t}");
             assert!((a.scud - b.scud).abs() < 0.05, "{t}");
             assert!((a.slow - b.slow).abs() < 0.01, "{t}");

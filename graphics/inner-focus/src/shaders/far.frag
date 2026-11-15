@@ -135,11 +135,58 @@ float trainOn(float az, float h, vec2 pa, out float lit) {
   return body;
 }
 
+// ---------- Матрица: the code runs down the houses (u_dusk.w, 0 elsewhere)
+// CODE_COLS columns to a radian; a glyph is 3×5 dots in a cell 1.35 times
+// as tall as wide. A glyph at f in 0..1 over it; `dotPx` is a dot in px.
+#define CODE_COLS 150.0
+float glyph(vec2 f, float sym, float cx, uint salt, float dotPx) {
+  if (f.x < 0.0 || f.y < 0.0 || f.x >= 1.0 || f.y >= 1.0) return 0.0;
+  vec2 d = f * vec2(3.0, 5.0);
+  vec2 b = floor(d);
+  float on = step(0.48, hash2(vec2(b.x + 3.0 * b.y + 16.0 * cx, sym), salt + 9u));
+  vec2 q = abs(d - b - 0.5);
+  float aa = 0.5 / max(dotPx, 0.5);
+  return on * (1.0 - smoothstep(0.42 - aa, 0.42 + aa, max(q.x, q.y)));
+}
+// The falling code at (az, h): its trail and its head. In a share of the
+// columns a head falls a glyph at a time and leaves a fading trail; it comes
+// round a whole number of times a loop. A share of the glyphs keeps
+// changing. Far off, where a dot is under a pixel, a glyph is its dots'
+// mean.
+vec2 codeRain(float az, float h, vec2 pa, uint salt) {
+  vec2 g = vec2(az * CODE_COLS, h * CODE_COLS / 1.35);
+  float cx = floor(g.x);
+  if (hash1(cx, salt) > 0.62) return vec2(0.0);
+  float span = 10.0 + floor(hash1(cx, salt + 1u) * 9.0);
+  float laps = 7.0 + floor(hash1(cx, salt + 2u) * 9.0);
+  float row = floor(g.y);
+  float s = fract(row / span + time * laps / LOOP_SECONDS + hash1(cx, salt + 3u));
+  float trail = pow(1.0 - s, 1.3);
+  float head = step(s, 1.0 / span);
+  float sym = row;
+  if (hash2(vec2(cx, row), salt + 4u) < 0.3) {
+    sym += 131.0 * mod(floor(time * 5.0 + hash1(cx, salt + 5u)), LOOP_SECONDS * 5.0);
+  }
+  vec2 f = fract(g);
+  float dotPx = 0.25 / CODE_COLS / max(pa.x, 1e-7);
+  float gl = glyph(vec2((f.x - 0.12) / 0.76, (f.y - 0.06) / 0.88), sym, cx, salt, dotPx);
+  gl = mix(0.3, gl, smoothstep(0.6, 1.2, dotPx));
+  return vec2(trail, head) * gl;
+}
+// Its light, on a face from `lo` up to `hi`.
+vec3 codeOn(float az, float h, vec2 pa, float lo, float hi, uint salt) {
+  if (u_dusk.w <= 0.0) return vec3(0.0);
+  float face = cover(h, lo, hi, pa.y);
+  if (face <= 0.0) return vec3(0.0);
+  vec2 r = codeRain(az, h, pa, salt);
+  return u_dusk.w * face * (u_cold * 0.85 * r.x + mix(u_cold, u_pale, 0.6) * 1.3 * r.y);
+}
+
 // The city's way (az, h): the sky, the houses, the tower, the bridge, the
 // embankment.
 vec3 above(float az, float h, vec2 pa) {
   // The blue hour: the sky light low down, the city's glow over it.
-  vec3 c = mix(bg * 1.9 + u_cold * 0.1, bg * 0.92 + u_cold * 0.02, smoothstep(0.0, 0.5, h));
+  vec3 c = mix(bg * 1.9 + u_sky * 0.1, bg * 0.92 + u_sky * 0.02, smoothstep(0.0, 0.5, h));
   c += u_pale * 0.035 * exp(-max(h, 0.0) / 0.07);
   vec3 lamp = mix(u_pale, u_cold, 0.2);
   // The row behind, in the haze, a few dim windows.
@@ -147,6 +194,7 @@ vec3 above(float az, float h, vec2 pa) {
   if (k2 > 0.0) {
     float roof = backOf(floor(az * BACK_ROW + 0.37));
     vec3 houses = bg * 1.22 + u_cold * 0.035 + lamp * 0.16 * windows(az, h, pa, roof, 40u, 0.12);
+    houses += 0.22 * codeOn(az + 0.0031, h, pa, 0.0, roof - 0.003, 90u);
     c = mix(c, houses, k2);
   }
   // The front row with its windows.
@@ -154,6 +202,7 @@ vec3 above(float az, float h, vec2 pa) {
   if (k1 > 0.0) {
     float roof = roofs(az);
     vec3 houses = bg * 0.62 + u_cold * 0.01 + lamp * 0.42 * windows(az, h, pa, roof, 50u, 0.27);
+    houses += 0.5 * codeOn(az, h, pa, 0.0052, roof - 0.002, 80u);
     c = mix(c, houses, k1);
   }
   // The bell tower, its chamber lit when the bell rings.
@@ -164,6 +213,7 @@ vec3 above(float az, float h, vec2 pa) {
     vec3 t = bg * 0.55 + u_cold * 0.012;
     t = mix(t, bg * 0.4 + u_pale * (0.12 + 0.6 * u_bell.z), chamber);
     t += u_pale * 0.13 * clock;
+    t += 0.38 * (1.0 - chamber) * codeOn(az, h, pa, 0.0052, BELFRY.y + 0.006, 100u);
     c = mix(c, t, kt);
   }
   // A glow round the chamber while the bell sounds.

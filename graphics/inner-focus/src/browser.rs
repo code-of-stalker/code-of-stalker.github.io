@@ -42,7 +42,7 @@ const NEAR_UNIT: u32 = 2;
 const FAR_BLUR_UNIT: u32 = 3;
 const NEAR_BLUR_UNIT: u32 = 4;
 const SPARE_UNIT: u32 = 5;
-const NAMES: [&str; 31] = [
+const NAMES: [&str; 33] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -53,6 +53,8 @@ const NAMES: [&str; 31] = [
     "u_warm",
     "u_pale",
     "u_backdrop",
+    "u_dusk",
+    "u_sky",
     "u_ring0",
     "u_ring1",
     "u_ring2",
@@ -550,6 +552,9 @@ impl InnerFocus {
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);
         gl.uniform3fv_with_f32_array(p.at("u_backdrop"), &self.backdrop);
+        let [dr, dg, db] = self.look.dusk;
+        gl.uniform4f(p.at("u_dusk"), dr, dg, db, self.look.code);
+        gl.uniform3fv_with_f32_array(p.at("u_sky"), &self.look.sky);
         ring_uniforms(gl, p, ["u_ring0", "u_ring1", "u_ring2"], &f.outer);
     }
 

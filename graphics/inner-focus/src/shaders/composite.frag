@@ -110,7 +110,7 @@ void main() {
   if (u_blur.z > 0.5) {
     float e = smoothstep(0.0, u_edges.x, v_uv.x) * smoothstep(0.0, u_edges.y, 1.0 - v_uv.x)
             * smoothstep(0.0, u_edges.z, 1.0 - v_uv.y) * smoothstep(0.0, u_edges.w, v_uv.y);
-    col = mix(bg, col, e);
+    col = mix(u_backdrop, col, e);
   }
   col += (hash2(frag * 1.37 + 0.5, 0u) - 0.5) / 255.0;
   o = vec4(clamp(col, 0.0, 1.0), 1.0);

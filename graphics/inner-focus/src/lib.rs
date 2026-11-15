@@ -724,12 +724,19 @@ pub fn compose(t: f32) -> Frame {
 
 /// The scene's own colours per theme: the cold of the outer ring and the
 /// rims, the warm of the inner ring and his signs, the pale of the lamps
-/// and the windows.
+/// and the windows. On a black page (Искра, Матрица) the dusk brings its own
+/// dark (`dusk`, added to the page under everything but the soft edges) so
+/// the pier, the chair and the houses still read; `sky` tints the glow low
+/// over the city; `code` is how brightly the code runs down the houses
+/// (Матрица only).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
     pub cold: [f32; 3],
     pub warm: [f32; 3],
     pub pale: [f32; 3],
+    pub dusk: [f32; 3],
+    pub sky: [f32; 3],
+    pub code: f32,
 }
 
 const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
@@ -738,29 +745,42 @@ const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
 
 pub fn look(code: u32) -> Look {
     match Palette::from_code(code) {
-        // Искра: the yellow of the theme, an ember warmth.
+        // Искра: the yellow of the theme, an ember warmth; an ember dusk,
+        // its afterglow orange, not the yellow (on black that reads olive).
         Palette::Dark => Look {
             cold: rgb(245, 221, 7),
             warm: rgb(255, 122, 40),
             pale: rgb(255, 244, 170),
+            dusk: rgb(21, 14, 8),
+            sky: rgb(255, 120, 36),
+            code: 0.0,
         },
         // Астрал: the blue of the theme, a rose-peach warmth.
         Palette::Violet => Look {
             cold: rgb(98, 150, 245),
             warm: rgb(240, 158, 128),
             pale: rgb(200, 212, 248),
+            dusk: [0.0; 3],
+            sky: rgb(98, 150, 245),
+            code: 0.0,
         },
-        // Матрица: code green, amber.
+        // Матрица: code green, amber; a green-black dusk, code on the houses.
         Palette::Matrix => Look {
             cold: rgb(0, 255, 65),
             warm: rgb(255, 184, 64),
             pale: rgb(190, 255, 205),
+            dusk: rgb(4, 17, 9),
+            sky: rgb(0, 255, 65),
+            code: 1.0,
         },
         // Тишина: sea glass, warm sand.
         _ => Look {
             cold: rgb(134, 201, 199),
             warm: rgb(242, 179, 117),
             pale: rgb(214, 218, 210),
+            dusk: [0.0; 3],
+            sky: rgb(134, 201, 199),
+            code: 0.0,
         },
     }
 }
@@ -1106,6 +1126,29 @@ mod tests {
         for retired in [1, 5, 6] {
             assert_eq!(look(retired), look(2));
         }
+    }
+
+    #[test]
+    fn only_black_pages_get_a_dusk_and_only_matrix_runs_code() {
+        // Тишина and Астрал keep their page and sky as approved.
+        for code in [2, 3] {
+            let l = look(code);
+            assert_eq!(l.dusk, [0.0; 3]);
+            assert_eq!(l.sky, l.cold);
+            assert_eq!(l.code, 0.0);
+        }
+        // Искра and Матрица (black pages) get a dark of their own hue, about
+        // as light as Тишина's page.
+        for code in [0, 4] {
+            let d = look(code).dusk;
+            let lum = 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
+            assert!(lum > 0.04 && lum < 0.09, "{code}: {lum}");
+        }
+        // Искра's sky glows orange, not its yellow.
+        let ember = look(0).sky;
+        assert!(ember[1] < 0.6 * ember[0]);
+        assert_eq!(look(4).code, 1.0);
+        assert_eq!(look(0).code, 0.0);
     }
 
     #[test]

@@ -21,7 +21,11 @@ uniform vec3 u_cold;
 uniform vec3 u_warm;
 uniform vec3 u_pale;
 uniform vec3 u_backdrop; // the page
+uniform vec4 u_dusk;     // a black page's own dusk (rgb), the code's light (Матрица)
+uniform vec3 u_sky;      // the glow low over the city
 
+// The dusk's dark: the page, lifted on a black one. The soft edges melt
+// into the page itself.
 vec3 bg;
 float time;
 // A pixel in frame units, and in radians at the frame's middle.
@@ -74,7 +78,7 @@ float cover(float x, float lo, float hi, float w) {
 // Where this fragment lies in the 3:2 frame (y -1..1 over its height), and
 // the ray through it.
 void setup(vec2 frag) {
-  bg = u_backdrop;
+  bg = u_backdrop + u_dusk.rgb;
   time = u_eye.w;
   pixel = 2.0 / (u_view.y * u_view.w);
   pxA = pixel * u_fwd.w;

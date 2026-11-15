@@ -266,7 +266,18 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   Астрал, Матрица needed no change (sheets `output/prototypes/inner-vessel/kadry.jpg`,
   `temy.jpg`). Export checked at 1440×900 (all 4 dark themes) and 390×844: ready, no graphics
   error. Known: on «дыхание» (≈14–18 s) the camera is closer and the feet leave the frame.
-- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 04–08 on `claude/step-6-scenes`,
+- Page 04 «Внимание внутрь» (inner-attention), on branch `claude/step-6-scenes` (4c4c2a0),
+  not on `main`: direction А «Фонарь», crate `graphics/inner-lantern`, bridge
+  `InnerLantern.web.tsx`, `webScene: 'inner-lantern'`. The second ring scans the seated man,
+  turns its light inward as a warm column, the camera follows it in through the back; inside,
+  the beam reads threads (thoughts), a warm tide (emotions), sparks (micro-feelings), jolts
+  (impulses), a pull (urge); a needle chases a thread to a dark knot, lets go, the beam opens
+  («Свидетельствуй»); the camera comes back out. 64 s loop, still at 53.5 s; beats in the crate
+  README. «Радар» (`inner-radar`) was rejected and removed. Тишина prototype shown 2026-11-15
+  (`output/prototypes/inner-lantern/index.html`, sheet `kadry.jpg`); waits for Art's notes.
+  Export checked at 1440×900, 820×1180, 390×844 in Тишина: ready, plate width. Other themes
+  not checked yet.
+- 06, 09, 10 need his pictures (briefs in the doc). Next: pages 05–08 on `claude/step-6-scenes`,
   2–3 directions each.
 
 ## Step 7 edits (branch `claude/step-7-edits`; 07, 08, 09 and the home card on `main` 2026-11-14)

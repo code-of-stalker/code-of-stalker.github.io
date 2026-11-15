@@ -266,8 +266,8 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   Астрал, Матрица needed no change (sheets `output/prototypes/inner-vessel/kadry.jpg`,
   `temy.jpg`). Export checked at 1440×900 (all 4 dark themes) and 390×844: ready, no graphics
   error. Known: on «дыхание» (≈14–18 s) the camera is closer and the feet leave the frame.
-- Page 04 «Внимание внутрь» (inner-attention), on branch `claude/step-6-scenes`, not on
-  `main`: direction А «Фонарь», crate `graphics/inner-lantern`, bridge
+- Page 04 «Внимание внутрь» (inner-attention), shipped to `main` 2026-11-15 (Art: «Пушим»),
+  direction А «Фонарь», crate `graphics/inner-lantern`, bridge
   `InnerLantern.web.tsx`, `webScene: 'inner-lantern'`. The second ring scans the seated man,
   turns its light inward as a warm column, the camera follows it in through the back; inside,
   the beam meets thought bubbles with words (thoughts), warm waves over the frame (emotions),
@@ -279,9 +279,9 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   2026-11-15 («Да, делай темы»); Искра, Астрал, Матрица needed no change (sheet
   `output/prototypes/inner-lantern/temy.jpg`). Export checked at 1440×900 (Матрица) and
   390×844 (Искра): ready, plate width. Cold start in headless Chrome ≈ 8.5 s to the first
-  frame (was ≈ 7 s), main thread never blocked > 0.6 s. Waits for Art's OK to ship.
+  frame (was ≈ 7 s), main thread never blocked > 0.6 s.
 - 06, 09, 10 need his pictures (briefs in the doc). Next: pages 05–08 on `claude/step-6-scenes`,
-  2–3 directions each.
+  2–3 directions each (05 «Есть мысль» first).
 
 ## Step 7 edits (branch `claude/step-7-edits`; 07, 08, 09 and the home card on `main` 2026-11-14)
 Art's notes on screens 7–9 and «красивую иллюстрацию на главную».

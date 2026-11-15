@@ -37,6 +37,7 @@ SOURCES = {
     "inner-echo": ["labels"],
     "inner-frame": ["labels"],
     "inner-labels": ["labels"],
+    "inner-focus": ["labels"],
     "voice-fork": ["figure"],
     "night-city": ["phone"],
 }

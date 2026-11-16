@@ -121,6 +121,12 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - The second ring stood still again on 06 («и кольцо опять стоит на месте»), after the same
   note on 04 and 05: both rings move all the time in every scene, the first riding the sphere
   round him, the second scanning his body up and down.
+- Page 08 «Спуск» (2026-11-16): an orbit view alone «мало передает суть текста»; the descent
+  pulled down phrase by phrase on the thread of his voice passed as a storyboard. First
+  showing: the first ring stood still («почему внешнее кольцо неподвижно?»), the helmet
+  vanished near the ground («куда делся шлем ближе к концу?»), and the «тепло» sign on «Я
+  ощущаю» had to go. Keep a costume to the end once it is set. Round 2 passed («Ок, делай
+  темы»). He asked for fewer tests: show the result, he checks it himself.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

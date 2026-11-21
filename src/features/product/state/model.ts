@@ -36,6 +36,9 @@ export type ProductProgress = {
   sixthStepUnlocked?: boolean;
   stepSevenReading?: StepSevenReading;
   seventhStepUnlocked?: boolean;
+  /** The furthest step ever entered (1–7). Going back to reread a step never lowers it.
+   *  Saves made before it existed derive it with `recordedStep`. */
+  reachedStep?: number;
   secondStepCompletedAt?: number;
   completedAt: number | null;
   availableAt: number | null;
@@ -83,7 +86,34 @@ export function resumePracticeStage(progress: ProductProgress): PracticeStage {
 export function patchProgress(current: ProductProgress, patch: Partial<ProductProgress>): ProductProgress {
   const changedExercise = patch.step !== undefined && patch.step !== current.step ||
     patch.selectedLevel !== undefined && patch.selectedLevel !== current.selectedLevel;
-  return { ...current, ...(changedExercise ? { practiceStage: 0 as const, questionIndex: 0 } : {}), ...patch };
+  const next = { ...current, ...(changedExercise ? { practiceStage: 0 as const, questionIndex: 0 } : {}), ...patch };
+  return patch.step === undefined ? next : { ...next, reachedStep: Math.max(recordedStep(current), next.step) };
+}
+/** How far the person got. Older saves have no `reachedStep`; their unlock flags are set when a
+ *  step is entered (and completing step two moves into step three), so they still show it. */
+export function recordedStep(progress: ProductProgress) {
+  const flagged = progress.seventhStepUnlocked ? 7 : progress.sixthStepUnlocked ? 6 : progress.fifthStepUnlocked ? 5
+    : progress.fourthStepUnlocked ? 4 : progress.secondStepCompletedAt ? 3 : 1;
+  return Math.max(progress.reachedStep ?? 1, flagged, progress.step);
+}
+export function canOpenStep(progress: ProductProgress, step: number, testUnlockAll = false) {
+  return step === 1 || step === 2 && (progress.availableAt !== null || testUnlockAll) ||
+    step === 3 && (!!progress.secondStepCompletedAt || testUnlockAll) || step === 4 && canOpenFourthStep(progress, testUnlockAll) ||
+    step === 5 && canOpenFifthStep(progress, testUnlockAll) || step === 6 && canOpenSixthStep(progress, testUnlockAll) ||
+    step === 7 && canOpenSeventhStep(progress, testUnlockAll);
+}
+/** The step the home card shows and continues: the furthest one reached, even while the person
+ *  rereads an earlier step. A step seen only in the all-open preview counts while it is on. */
+export function furthestStep(progress: ProductProgress, testUnlockAll = false) {
+  let step = recordedStep(progress);
+  while (step > progress.step && !canOpenStep(progress, step, testUnlockAll)) step--;
+  return step;
+}
+/** The progress patch that enters `step` from outside the course, unlocking it like the course does. */
+export function enterStep(step: number, testUnlockAll = false): Partial<ProductProgress> {
+  if (testUnlockAll) return { step };
+  return { step, ...(step === 4 ? { fourthStepUnlocked: true } : step === 5 ? { fifthStepUnlocked: true }
+    : step === 6 ? { sixthStepUnlocked: true } : step === 7 ? { seventhStepUnlocked: true } : {}) };
 }
 /** Preview access never creates completion; turning it off restores an earned step. */
 export function accessibleProgress(progress: ProductProgress, testUnlockAll = false): ProductProgress {
@@ -175,6 +205,7 @@ export function validateSnapshot(value: ProductSnapshot): ProductSnapshot {
         !whole(progress.stepThreeReading.offset, 0, 1000000) ||
         progress.stepThreeReading.paged !== undefined && typeof progress.stepThreeReading.paged !== 'boolean')) ||
       (progress.secondStepCompletedAt !== undefined && !whole(progress.secondStepCompletedAt, 1)) ||
+      (progress.reachedStep !== undefined && !whole(progress.reachedStep, 1, 7)) ||
       (progress.fourthStepUnlocked !== undefined && typeof progress.fourthStepUnlocked !== 'boolean') ||
       (progress.stepFourReading !== undefined && (!progress.stepFourReading ||
         !whole(progress.stepFourReading.page, 0, 14) || !whole(progress.stepFourReading.offset, 0, 1000000))) ||

@@ -1,142 +1,90 @@
-//! Browser adapter: WebGL2 programs and their uniforms. Every motion value
-//! comes from `compose`. The world is rasterised with a depth buffer at a
-//! size the GPU can carry: the sky, the land as a mesh of line rows, him on
-//! his card, the sphere, the curves (both rings, the tone, the strands) and
-//! the signs. The bright pass keeps what is brighter than contrast(3) at half
-//! that size, with mips, for the bloom; the composite lays the world on the
-//! canvas with its bloom. The scene is drawn in its own theme colours
-//! (`look`) over the page colour, so it does not go through the monochrome
-//! theme recolor.
+//! Browser adapter: WebGL2 objects and the draw. Every motion value comes
+//! from `compose` and every color from `look`; the shader recolors Art's
+//! layers and adds the cold and warm light on top. The constants of lib.rs
+//! reach the shader as `#define`s, so both read one source.
 use crate::{
-    compose, look, Frame, Look, BLOOM, CALM, CARD, COLUMNS, CURVES, CURVE_SEGMENTS, GRID,
-    INNER_ROW, LAND_POW, LAND_X, LAND_Z, LOOP_SECONDS, NOISE_FLOW, NOISE_HEIGHT, RIDGE_WAVE, ROW,
-    SIGN_COUNT, SPHERE_LAT, SPHERE_LON, STILL, STRIPS, SWELL_HEIGHT,
+    compose, geometry, look, spike_uniforms, window, Look, AXIS, BUBBLES, CLOSE_METRES, CROWN,
+    DEPTH_MAX, DISTANCE, EYE, FEET, FOCAL, HEAD_X, HORIZON, LOOP_SECONDS, MOTES, PATCH_DEPTH,
+    PATCH_REACH, PIVOT, SIZE, STILL, WORDS_DISC,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use watcher_scene_palette::Warm;
 use web_sys::{
-    HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlFramebuffer,
-    WebGlProgram, WebGlRenderbuffer, WebGlShader, WebGlTexture, WebGlUniformLocation,
-    WebGlVertexArrayObject,
+    HtmlCanvasElement, HtmlImageElement, WebGl2RenderingContext as Gl, WebGlProgram, WebGlShader,
+    WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
 };
 
-const COMMON: &str = include_str!("shaders/common.glsl");
 const SCREEN: &str = include_str!("shaders/screen.vert");
-const SKY: &str = include_str!("shaders/sky.frag");
-const LAND_VERT: &str = include_str!("shaders/land.vert");
-const LAND_FRAG: &str = include_str!("shaders/land.frag");
-const FIGURE_VERT: &str = include_str!("shaders/figure.vert");
-const FIGURE_FRAG: &str = include_str!("shaders/figure.frag");
-const SPHERE_VERT: &str = include_str!("shaders/sphere.vert");
-const SPHERE_FRAG: &str = include_str!("shaders/sphere.frag");
-const CURVE_VERT: &str = include_str!("shaders/curve.vert");
-const CURVE_FRAG: &str = include_str!("shaders/curve.frag");
-const SIGN_VERT: &str = include_str!("shaders/sign.vert");
-const SIGN_FRAG: &str = include_str!("shaders/sign.frag");
-const BRIGHT: &str = include_str!("shaders/bright.frag");
-const COMPOSITE: &str = include_str!("shaders/composite.frag");
+const SCENE: &str = include_str!("shaders/scene.frag");
 /// Left, right, top, bottom: how far the scene melts into the page.
-const EDGES: [f32; 4] = [0.07, 0.07, 0.1, 0.12];
-/// The Тишина page, until the app says which page it is.
-const PAGE: [f32; 3] = [13.0 / 255.0, 21.0 / 255.0, 32.0 / 255.0];
-/// The most pixels the world is drawn at; a bigger canvas gets it scaled.
-const WORLD_PIXELS: f32 = 1.6e6;
-/// Texture units: his picture, the world, its bright part; and the one new
-/// textures are made on.
-const FIGURE_UNIT: u32 = 0;
-const WORLD_UNIT: u32 = 1;
-const BRIGHT_UNIT: u32 = 2;
-const SPARE_UNIT: u32 = 3;
-const NAMES: [&str; 25] = [
-    "u_eye",
-    "u_right",
-    "u_up",
-    "u_fwd",
-    "u_view",
+const EDGES: [f32; 4] = [0.09, 0.09, 0.12, 0.15];
+/// The layers' texture units, in the constructor's order.
+const SAMPLERS: [&str; 5] = ["u_noise", "u_quiet", "u_figure", "u_depth", "u_terrain"];
+const NAMES: [&str; 24] = [
+    "u_res",
+    "u_window",
+    "u_px",
+    "u_out",
+    "u_backdrop",
+    "u_edges",
+    "u_mode",
+    "u_paper",
+    "u_accent",
+    "u_highlight",
     "u_cold",
     "u_warm",
     "u_pale",
-    "u_backdrop",
-    "u_dusk",
-    "u_sky",
-    "u_scene",
+    "u_cam",
     "u_land",
-    "u_swell",
-    "u_spike",
-    "u_inner",
-    "u_sphere",
-    "u_curve",
-    "u_sign",
+    "u_ring[0]",
+    "u_fx[0]",
+    "u_spike[0]",
+    "u_geo[0]",
+    "u_noise",
+    "u_quiet",
     "u_figure",
-    "u_src",
-    "u_world",
-    "u_bright",
-    "u_edges",
-    "u_bloom",
+    "u_depth",
+    "u_terrain",
 ];
 
-/// lib.rs's constants as the shaders' `#define`s, so both read one source.
+fn float(x: f32) -> String {
+    // Debug always writes a decimal point or an exponent: a GLSL float.
+    format!("{x:?}")
+}
+fn vec(values: &[f32]) -> String {
+    let parts: Vec<String> = values.iter().map(|v| float(*v)).collect();
+    format!("vec{}({})", values.len(), parts.join(", "))
+}
+/// lib.rs constants as the shader's `#define`s.
 fn defines() -> String {
-    let f = |v: f32| format!("{v:?}");
-    let v2 = |v: [f32; 2]| format!("vec2({:?}, {:?})", v[0], v[1]);
-    let lines = [
-        ("LOOP_SECONDS", f(LOOP_SECONDS)),
-        ("SIGNS", SIGN_COUNT.to_string()),
-        ("CURVES", CURVES.to_string()),
-        ("CURVE_SEGMENTS", CURVE_SEGMENTS.to_string()),
-        ("SPHERE_LON", SPHERE_LON.to_string()),
-        ("SPHERE_LAT", SPHERE_LAT.to_string()),
-        ("COLUMNS", COLUMNS.to_string()),
-        ("STRIPS", STRIPS.to_string()),
-        ("LAND_X", f(LAND_X)),
-        ("LAND_Z", v2(LAND_Z)),
-        ("LAND_POW", f(LAND_POW)),
-        ("ROW", f(ROW)),
-        ("GRID", f(GRID)),
-        ("CALM", v2(CALM)),
-        ("NOISE_HEIGHT", f(NOISE_HEIGHT)),
-        ("NOISE_FLOW", f(NOISE_FLOW)),
-        (
-            "RIDGE_WAVE",
-            format!(
-                "vec3({:?}, {:?}, {:?})",
-                RIDGE_WAVE[0], RIDGE_WAVE[1], RIDGE_WAVE[2]
-            ),
-        ),
-        ("INNER_ROW", f(INNER_ROW)),
-        ("SWELL_HEIGHT", f(SWELL_HEIGHT)),
-        (
-            "CARD",
-            format!(
-                "vec4({:?}, {:?}, {:?}, {:?})",
-                CARD[0], CARD[1], CARD[2], CARD[3]
-            ),
-        ),
+    let mut lines = vec![
+        ("SIZE", vec(&SIZE)),
+        ("PIVOT", vec(&PIVOT)),
+        ("HORIZON", float(HORIZON)),
+        ("AXIS", float(AXIS)),
+        ("FOCAL", float(FOCAL)),
+        ("EYE", float(EYE)),
+        ("DISTANCE", float(DISTANCE)),
+        ("FEET", float(FEET)),
+        ("CROWN", float(CROWN)),
+        ("HEAD_X", float(HEAD_X)),
+        ("DEPTH_MAX", float(DEPTH_MAX)),
+        ("CLOSE_METRES", float(CLOSE_METRES)),
+        ("PATCH_REACH", float(PATCH_REACH)),
+        ("PATCH_DEPTH", float(PATCH_DEPTH)),
+        ("MOTES", MOTES.to_string()),
+        ("WORDS_DISC", vec(&WORDS_DISC)),
     ];
+    for (i, b) in BUBBLES.iter().enumerate() {
+        lines.push((["BUBBLE0", "BUBBLE1", "BUBBLE2"][i], vec(b)));
+    }
     lines
         .iter()
         .map(|(name, value)| format!("#define {name} {value}\n"))
         .collect()
 }
-
-fn source(pass: &str) -> String {
-    format!("#version 300 es\n{}{COMMON}{pass}", defines())
-}
-
-/// Every program's vertex and fragment source: the sky, the land, him, the
-/// sphere, the curves, the signs, the bright part, the composite.
-fn sources() -> [(String, String); 8] {
-    let screen = || SCREEN.to_string();
-    [
-        (screen(), source(SKY)),
-        (source(LAND_VERT), source(LAND_FRAG)),
-        (source(FIGURE_VERT), source(FIGURE_FRAG)),
-        (source(SPHERE_VERT), source(SPHERE_FRAG)),
-        (source(CURVE_VERT), source(CURVE_FRAG)),
-        (source(SIGN_VERT), source(SIGN_FRAG)),
-        (screen(), source(BRIGHT)),
-        (screen(), source(COMPOSITE)),
-    ]
+fn source() -> String {
+    format!("#version 300 es\n{}{SCENE}", defines())
 }
 
 fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
@@ -154,178 +102,56 @@ fn shader(gl: &Gl, kind: u32, source: &str) -> Result<WebGlShader, JsValue> {
     }
     Ok(s)
 }
-
-struct Prog {
-    program: WebGlProgram,
-    uniforms: Vec<(&'static str, Option<WebGlUniformLocation>)>,
+fn program(gl: &Gl, vertex: &str, frag: &str) -> Result<WebGlProgram, JsValue> {
+    let v = shader(gl, Gl::VERTEX_SHADER, vertex)?;
+    let f = shader(gl, Gl::FRAGMENT_SHADER, frag)?;
+    let p = gl.create_program().ok_or("Cannot allocate program")?;
+    gl.attach_shader(&p, &v);
+    gl.attach_shader(&p, &f);
+    gl.link_program(&p);
+    gl.delete_shader(Some(&v));
+    gl.delete_shader(Some(&f));
+    if !gl
+        .get_program_parameter(&p, Gl::LINK_STATUS)
+        .as_bool()
+        .unwrap_or(false)
+    {
+        let log = gl.get_program_info_log(&p).unwrap_or_default();
+        gl.delete_program(Some(&p));
+        return Err(log.into());
+    }
+    Ok(p)
 }
 
-impl Prog {
-    fn new(gl: &Gl, vertex: &str, frag: &str) -> Result<Self, JsValue> {
-        let v = shader(gl, Gl::VERTEX_SHADER, vertex)?;
-        let f = shader(gl, Gl::FRAGMENT_SHADER, frag)?;
-        let p = gl.create_program().ok_or("Cannot allocate program")?;
-        gl.attach_shader(&p, &v);
-        gl.attach_shader(&p, &f);
-        gl.link_program(&p);
-        gl.delete_shader(Some(&v));
-        gl.delete_shader(Some(&f));
-        if !gl
-            .get_program_parameter(&p, Gl::LINK_STATUS)
-            .as_bool()
-            .unwrap_or(false)
-        {
-            let log = gl.get_program_info_log(&p).unwrap_or_default();
-            gl.delete_program(Some(&p));
-            return Err(log.into());
-        }
-        let uniforms = NAMES
-            .iter()
-            .map(|name| (*name, gl.get_uniform_location(&p, name)))
-            .collect();
-        Ok(Self {
-            program: p,
-            uniforms,
-        })
+/// One layer on its own texture unit. The painted layers get mipmaps: their
+/// fine strings shimmer under the drift unless filtered, and the shader reads
+/// a coarse level as the local average.
+fn texture(
+    gl: &Gl,
+    slot: u32,
+    image: &HtmlImageElement,
+    size: [u32; 2],
+    mipmaps: bool,
+) -> Result<WebGlTexture, JsValue> {
+    if image.natural_width() != size[0] || image.natural_height() != size[1] {
+        return Err("The layers must be 1536 × 1024 and the depth map 768 × 512".into());
     }
-    fn at(&self, name: &str) -> Option<&WebGlUniformLocation> {
-        self.uniforms
-            .iter()
-            .find(|(n, _)| *n == name)
-            .and_then(|(_, location)| location.as_ref())
-    }
-}
-
-/// A frame to draw into and read back: RGBA8, smooth reads; with mips for
-/// the bright part the bloom gathers from, or with a depth buffer for the
-/// world.
-struct Target {
-    framebuffer: WebGlFramebuffer,
-    texture: Option<WebGlTexture>,
-    depth: Option<WebGlRenderbuffer>,
-    size: (i32, i32),
-    mips: bool,
-    with_depth: bool,
-}
-
-impl Target {
-    fn new(gl: &Gl, mips: bool, with_depth: bool) -> Result<Self, JsValue> {
-        Ok(Self {
-            framebuffer: gl
-                .create_framebuffer()
-                .ok_or("Cannot allocate framebuffer")?,
-            texture: None,
-            depth: None,
-            size: (0, 0),
-            mips,
-            with_depth,
-        })
-    }
-    /// Returns whether the frame can be drawn into.
-    fn allocate(&mut self, gl: &Gl, width: i32, height: i32) -> Result<bool, JsValue> {
-        let t = gl.create_texture().ok_or("Cannot allocate texture")?;
-        gl.active_texture(Gl::TEXTURE0 + SPARE_UNIT);
-        gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
-        let min = if self.mips {
-            Gl::LINEAR_MIPMAP_LINEAR
-        } else {
-            Gl::LINEAR
-        };
-        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, min as i32);
-        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
-        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
-        gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
-        gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
-            Gl::TEXTURE_2D,
-            0,
-            Gl::RGBA8 as i32,
-            width,
-            height,
-            0,
-            Gl::RGBA,
-            Gl::UNSIGNED_BYTE,
-            None,
-        )?;
-        if self.mips {
-            gl.generate_mipmap(Gl::TEXTURE_2D);
-        }
-        gl.bind_framebuffer(Gl::FRAMEBUFFER, Some(&self.framebuffer));
-        gl.framebuffer_texture_2d(
-            Gl::FRAMEBUFFER,
-            Gl::COLOR_ATTACHMENT0,
-            Gl::TEXTURE_2D,
-            Some(&t),
-            0,
-        );
-        if self.with_depth {
-            let d = gl
-                .create_renderbuffer()
-                .ok_or("Cannot allocate renderbuffer")?;
-            gl.bind_renderbuffer(Gl::RENDERBUFFER, Some(&d));
-            gl.renderbuffer_storage(Gl::RENDERBUFFER, Gl::DEPTH_COMPONENT24, width, height);
-            gl.framebuffer_renderbuffer(
-                Gl::FRAMEBUFFER,
-                Gl::DEPTH_ATTACHMENT,
-                Gl::RENDERBUFFER,
-                Some(&d),
-            );
-            gl.bind_renderbuffer(Gl::RENDERBUFFER, None);
-            if let Some(old) = self.depth.replace(d) {
-                gl.delete_renderbuffer(Some(&old));
-            }
-        }
-        let complete = gl.check_framebuffer_status(Gl::FRAMEBUFFER) == Gl::FRAMEBUFFER_COMPLETE;
-        gl.bind_framebuffer(Gl::FRAMEBUFFER, None);
-        gl.bind_texture(Gl::TEXTURE_2D, None);
-        gl.active_texture(Gl::TEXTURE0);
-        if let Some(old) = self.texture.replace(t) {
-            gl.delete_texture(Some(&old));
-        }
-        self.size = (width, height);
-        Ok(complete)
-    }
-    fn ready(&self, width: i32, height: i32) -> bool {
-        self.texture.is_some() && self.size == (width, height)
-    }
-    fn bind(&self, gl: &Gl) {
-        gl.bind_framebuffer(Gl::FRAMEBUFFER, Some(&self.framebuffer));
-        gl.viewport(0, 0, self.size.0, self.size.1);
-    }
-    fn read(&self, gl: &Gl, unit: u32) {
-        gl.active_texture(Gl::TEXTURE0 + unit);
-        gl.bind_texture(Gl::TEXTURE_2D, self.texture.as_ref());
-    }
-    /// Its mips, after it was drawn.
-    fn mipmap(&self, gl: &Gl) {
-        self.read(gl, SPARE_UNIT);
-        gl.generate_mipmap(Gl::TEXTURE_2D);
-        gl.bind_texture(Gl::TEXTURE_2D, None);
-    }
-    fn dispose(&mut self, gl: &Gl) {
-        if let Some(t) = self.texture.take() {
-            gl.delete_texture(Some(&t));
-        }
-        if let Some(d) = self.depth.take() {
-            gl.delete_renderbuffer(Some(&d));
-        }
-        gl.delete_framebuffer(Some(&self.framebuffer));
-    }
-}
-
-fn image_texture(gl: &Gl, slot: u32, image: &HtmlImageElement) -> Result<WebGlTexture, JsValue> {
     let t = gl.create_texture().ok_or("Cannot allocate texture")?;
     gl.active_texture(Gl::TEXTURE0 + slot);
     gl.bind_texture(Gl::TEXTURE_2D, Some(&t));
-    gl.tex_parameteri(
-        Gl::TEXTURE_2D,
-        Gl::TEXTURE_MIN_FILTER,
-        Gl::LINEAR_MIPMAP_LINEAR as i32,
-    );
+    let min = if mipmaps {
+        Gl::LINEAR_MIPMAP_LINEAR
+    } else {
+        Gl::LINEAR
+    };
+    gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, min as i32);
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_S, Gl::CLAMP_TO_EDGE as i32);
     gl.tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_WRAP_T, Gl::CLAMP_TO_EDGE as i32);
+    // His cut-out keeps straight alpha; the shader mixes him over the land.
     gl.pixel_storei(Gl::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-    gl.pixel_storei(Gl::UNPACK_ALIGNMENT, 4);
+    // The depth map's channels are data, not color: no conversion on upload.
+    gl.pixel_storei(Gl::UNPACK_COLORSPACE_CONVERSION_WEBGL, Gl::NONE as i32);
     gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
         Gl::TEXTURE_2D,
         0,
@@ -334,7 +160,9 @@ fn image_texture(gl: &Gl, slot: u32, image: &HtmlImageElement) -> Result<WebGlTe
         Gl::UNSIGNED_BYTE,
         image,
     )?;
-    gl.generate_mipmap(Gl::TEXTURE_2D);
+    if mipmaps {
+        gl.generate_mipmap(Gl::TEXTURE_2D);
+    }
     Ok(t)
 }
 
@@ -349,34 +177,24 @@ fn context(canvas: &HtmlCanvasElement) -> Result<Gl, JsValue> {
         .dyn_into()?)
 }
 
-/// Links the scene's programs in the background on the canvas's own context,
-/// so the constructor's links come from the browser's program cache instead of
+/// Links the scene's program in the background on the canvas's own context,
+/// so the constructor's link comes from the browser's program cache instead of
 /// freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
 #[wasm_bindgen]
 pub fn warm(canvas: &HtmlCanvasElement) -> Result<Warm, JsValue> {
-    Ok(Warm::start(&context(canvas)?, &sources()))
-}
-
-fn flat<const N: usize>(rows: &[[f32; N]]) -> Vec<f32> {
-    rows.iter().flatten().copied().collect()
+    let programs = [(SCREEN.to_string(), source())];
+    Ok(Warm::start(&context(canvas)?, &programs))
 }
 
 #[wasm_bindgen]
 pub struct InnerQuiet {
     gl: Gl,
     canvas: HtmlCanvasElement,
-    sky: Prog,
-    land: Prog,
-    figure: Prog,
-    sphere: Prog,
-    curve: Prog,
-    sign: Prog,
-    bright: Prog,
-    composite: Prog,
-    world: Target,
-    glow: Target,
-    picture: WebGlTexture,
-    empty: WebGlVertexArrayObject,
+    program: WebGlProgram,
+    uniforms: Vec<Option<WebGlUniformLocation>>,
+    textures: Vec<WebGlTexture>,
+    screen: WebGlVertexArrayObject,
+    geometry: [f32; 60],
     look: Look,
     soft_edges: bool,
     backdrop: [f32; 3],
@@ -390,41 +208,57 @@ pub struct InnerQuiet {
 
 #[wasm_bindgen]
 impl InnerQuiet {
-    /// One image: him, Art's figure 1. The shaders draw the rest.
+    /// Art's «Струны» in layers: the land of noise, the quiet land, him, the
+    /// depth map and the land behind the spikes.
     #[wasm_bindgen(constructor)]
-    pub fn new(canvas: HtmlCanvasElement, figure: HtmlImageElement) -> Result<InnerQuiet, JsValue> {
+    pub fn new(
+        canvas: HtmlCanvasElement,
+        noise: HtmlImageElement,
+        quiet: HtmlImageElement,
+        figure: HtmlImageElement,
+        depth: HtmlImageElement,
+        terrain: HtmlImageElement,
+    ) -> Result<InnerQuiet, JsValue> {
         let gl: Gl = context(&canvas)?;
-        let [sky, land, fig, sphere, curve, sign, bright, composite] =
-            sources().map(|(v, f)| Prog::new(&gl, &v, &f));
-        let picture = image_texture(&gl, FIGURE_UNIT, &figure)?;
-        let empty = gl
+        let program = program(&gl, SCREEN, &source())?;
+        let uniforms = NAMES
+            .iter()
+            .map(|name| gl.get_uniform_location(&program, name))
+            .collect();
+        let full = [SIZE[0] as u32, SIZE[1] as u32];
+        let textures = vec![
+            texture(&gl, 0, &noise, full, true)?,
+            texture(&gl, 1, &quiet, full, true)?,
+            texture(&gl, 2, &figure, full, true)?,
+            texture(&gl, 3, &depth, [full[0] / 2, full[1] / 2], false)?,
+            texture(&gl, 4, &terrain, full, true)?,
+        ];
+        let screen = gl
             .create_vertex_array()
             .ok_or("Cannot allocate vertex array")?;
-        Ok(Self {
-            world: Target::new(&gl, false, true)?,
-            glow: Target::new(&gl, true, false)?,
-            sky: sky?,
-            land: land?,
-            figure: fig?,
-            sphere: sphere?,
-            curve: curve?,
-            sign: sign?,
-            bright: bright?,
-            composite: composite?,
+        let scene = Self {
             gl,
             canvas,
-            picture,
-            empty,
+            program,
+            uniforms,
+            textures,
+            screen,
+            geometry: geometry(),
             look: look(2),
             soft_edges: false,
-            backdrop: PAGE,
+            backdrop: look(2).paper,
             elapsed: 0.0,
             last_time: None,
             paused: false,
             reduced: false,
             disposed: false,
             frames: 0,
-        })
+        };
+        scene.gl.use_program(Some(&scene.program));
+        for (slot, name) in SAMPLERS.iter().enumerate() {
+            scene.gl.uniform1i(scene.at(name), slot as i32);
+        }
+        Ok(scene)
     }
     pub fn resize(&mut self, width: u32, height: u32) {
         let width = width.clamp(2, 3072);
@@ -467,8 +301,8 @@ impl InnerQuiet {
         self.paused = value;
         self.last_time = None;
     }
-    /// Reduced motion holds one moment: the land quiet, the ridge through
-    /// his soles, the tone up through him, both rings round him.
+    /// Reduced motion holds one moment: the noise up, the five spikes with
+    /// their signs, words writing themselves into the cloud.
     pub fn reduced(&mut self, value: bool) {
         self.reduced = value;
         self.last_time = None;
@@ -491,7 +325,8 @@ impl InnerQuiet {
             self.draw();
         }
     }
-    /// The app theme by its `graphicsPalette` code (0 Искра … 4 Матрица).
+    /// The app theme by its `graphicsPalette` code (0 Искра, 2 Тишина,
+    /// 3 Астрал, 4 Матрица; any other shows Тишина).
     pub fn palette(&mut self, code: u32) {
         let next = look(code);
         if self.look != next {
@@ -510,188 +345,59 @@ impl InnerQuiet {
             return;
         }
         let gl = &self.gl;
-        self.world.dispose(gl);
-        self.glow.dispose(gl);
-        gl.delete_texture(Some(&self.picture));
-        gl.delete_vertex_array(Some(&self.empty));
-        for p in [
-            &self.sky,
-            &self.land,
-            &self.figure,
-            &self.sphere,
-            &self.curve,
-            &self.sign,
-            &self.bright,
-            &self.composite,
-        ] {
-            gl.delete_program(Some(&p.program));
+        for t in &self.textures {
+            gl.delete_texture(Some(t));
         }
+        gl.delete_vertex_array(Some(&self.screen));
+        gl.delete_program(Some(&self.program));
         self.disposed = true;
     }
 }
 
 impl InnerQuiet {
-    /// The world's frame and its bright half; false while one cannot be
-    /// drawn into.
-    fn targets(&mut self, width: i32, height: i32) -> bool {
-        let gl = &self.gl;
-        let mut ok = true;
-        for (target, w, h) in [
-            (&mut self.world, width, height),
-            (&mut self.glow, (width + 1) / 2, (height + 1) / 2),
-        ] {
-            if !target.ready(w, h) {
-                ok &= target.allocate(gl, w, h).unwrap_or(false);
-            }
-        }
-        ok
+    fn at(&self, name: &str) -> Option<&WebGlUniformLocation> {
+        NAMES
+            .iter()
+            .position(|n| *n == name)
+            .and_then(|i| self.uniforms[i].as_ref())
     }
-
-    /// What every pass reads: the camera, the frame, the colours, the land.
-    fn shared(&self, p: &Prog, f: &Frame, view: &[f32; 4]) {
-        let gl = &self.gl;
-        let c = f.camera;
-        let [ex, ey, ez] = c.eye;
-        let [rx, ry, rz] = c.right;
-        let [ux, uy, uz] = c.up;
-        let [fx, fy, fz] = c.forward;
-        gl.use_program(Some(&p.program));
-        gl.uniform4f(p.at("u_eye"), ex, ey, ez, f.time);
-        gl.uniform4f(p.at("u_right"), rx, ry, rz, 0.0);
-        gl.uniform4f(p.at("u_up"), ux, uy, uz, 0.0);
-        gl.uniform4f(p.at("u_fwd"), fx, fy, fz, c.lens);
-        gl.uniform4fv_with_f32_array(p.at("u_view"), view);
-        gl.uniform3fv_with_f32_array(p.at("u_cold"), &self.look.cold);
-        gl.uniform3fv_with_f32_array(p.at("u_warm"), &self.look.warm);
-        gl.uniform3fv_with_f32_array(p.at("u_pale"), &self.look.pale);
-        gl.uniform3fv_with_f32_array(p.at("u_backdrop"), &self.backdrop);
-        let [dr, dg, db] = self.look.dusk;
-        gl.uniform4f(p.at("u_dusk"), dr, dg, db, 0.0);
-        gl.uniform3fv_with_f32_array(p.at("u_sky"), &self.look.sky);
-        gl.uniform4f(
-            p.at("u_scene"),
-            f.lift,
-            f32::from(u8::from(self.soft_edges)),
-            0.0,
-            0.0,
-        );
-        gl.uniform4fv_with_f32_array(p.at("u_land"), &f.land);
-        gl.uniform4fv_with_f32_array(p.at("u_swell"), &f.swell);
-        gl.uniform4fv_with_f32_array(p.at("u_spike"), &flat(&f.spikes));
-    }
-
     fn draw(&mut self) {
         if self.disposed || self.gl.is_context_lost() {
             return;
         }
         let (width, height) = (self.canvas.width() as i32, self.canvas.height() as i32);
-        let (w, h) = (width as f32, height as f32);
-        let scale = (WORLD_PIXELS / (w * h)).sqrt().min(1.0);
-        let world_w = ((w * scale).round() as i32).max(2);
-        let world_h = ((h * scale).round() as i32).max(2);
-        if !self.targets(world_w, world_h) {
-            return;
-        }
         let f = compose(if self.reduced { STILL } else { self.elapsed });
+        let view = window(width as f32, height as f32);
+        let l = self.look;
         let gl = &self.gl;
-        gl.disable(Gl::BLEND);
-        gl.disable(Gl::DEPTH_TEST);
-        gl.bind_vertex_array(Some(&self.empty));
-
-        // The whole 3:2 frame stays in view on a canvas of any shape: frame
-        // y runs -1..1 across its height, x -1.5..1.5 across its width.
-        let aspect = w / h;
-        let vx = 1.0 / aspect.max(crate::FRAME_ASPECT);
-        let vy = aspect.min(crate::FRAME_ASPECT) / crate::FRAME_ASPECT;
-        let view = [vx, vy, world_w as f32, world_h as f32];
-
-        // The world: the sky, then the land, him, and what is added to the
-        // light, each hidden by what stands in front of it.
-        self.world.bind(gl);
-        gl.depth_mask(true);
-        gl.clear_depth(1.0);
-        gl.clear(Gl::DEPTH_BUFFER_BIT);
-        self.shared(&self.sky, &f, &view);
-        gl.draw_arrays(Gl::TRIANGLES, 0, 3);
-
-        gl.enable(Gl::DEPTH_TEST);
-        gl.depth_func(Gl::LEQUAL);
-        self.shared(&self.land, &f, &view);
-        gl.draw_arrays_instanced(
-            Gl::TRIANGLE_STRIP,
-            0,
-            2 * (COLUMNS as i32 + 1),
-            STRIPS as i32,
-        );
-
-        gl.enable(Gl::BLEND);
-        gl.blend_func_separate(
-            Gl::SRC_ALPHA,
-            Gl::ONE_MINUS_SRC_ALPHA,
-            Gl::ONE,
-            Gl::ONE_MINUS_SRC_ALPHA,
-        );
-        gl.active_texture(Gl::TEXTURE0 + FIGURE_UNIT);
-        gl.bind_texture(Gl::TEXTURE_2D, Some(&self.picture));
-        let p = &self.figure;
-        self.shared(p, &f, &view);
-        gl.uniform1i(p.at("u_figure"), FIGURE_UNIT as i32);
-        gl.uniform4fv_with_f32_array(p.at("u_inner"), &f.inner);
-        gl.draw_arrays(Gl::TRIANGLE_STRIP, 0, 4);
-
-        gl.depth_mask(false);
-        gl.blend_func(Gl::ONE, Gl::ONE);
-        let p = &self.sphere;
-        self.shared(p, &f, &view);
-        gl.uniform4fv_with_f32_array(p.at("u_sphere"), &f.sphere);
-        gl.draw_arrays_instanced(
-            Gl::TRIANGLE_STRIP,
-            0,
-            2 * (SPHERE_LON as i32 + 1),
-            SPHERE_LAT as i32,
-        );
-
-        let p = &self.curve;
-        self.shared(p, &f, &view);
-        gl.uniform4fv_with_f32_array(p.at("u_curve"), &flat(&f.curves));
-        gl.draw_arrays_instanced(
-            Gl::TRIANGLE_STRIP,
-            0,
-            2 * (CURVE_SEGMENTS as i32 + 1),
-            CURVES as i32,
-        );
-
-        let p = &self.sign;
-        self.shared(p, &f, &view);
-        gl.uniform4fv_with_f32_array(p.at("u_sign"), &flat(&f.signs));
-        gl.draw_arrays_instanced(Gl::TRIANGLE_STRIP, 0, 4, SIGN_COUNT as i32);
-
-        gl.depth_mask(true);
-        gl.disable(Gl::DEPTH_TEST);
-        gl.disable(Gl::BLEND);
-
-        // Its bright part, with mips for the bloom.
-        self.glow.bind(gl);
-        self.world.read(gl, WORLD_UNIT);
-        let p = &self.bright;
-        gl.use_program(Some(&p.program));
-        gl.uniform4f(p.at("u_eye"), 0.0, 0.0, 0.0, f.time);
-        gl.uniform1i(p.at("u_src"), WORLD_UNIT as i32);
-        gl.draw_arrays(Gl::TRIANGLES, 0, 3);
-        self.glow.mipmap(gl);
-
-        // Onto the canvas.
-        gl.bind_framebuffer(Gl::FRAMEBUFFER, None);
         gl.viewport(0, 0, width, height);
-        self.world.read(gl, WORLD_UNIT);
-        self.glow.read(gl, BRIGHT_UNIT);
-        let p = &self.composite;
-        self.shared(p, &f, &[vx, vy, w, h]);
-        gl.uniform1i(p.at("u_world"), WORLD_UNIT as i32);
-        gl.uniform1i(p.at("u_bright"), BRIGHT_UNIT as i32);
-        gl.uniform4fv_with_f32_array(p.at("u_edges"), &EDGES);
-        let [amount, blur] = BLOOM;
-        gl.uniform4f(p.at("u_bloom"), amount, blur, world_w as f32 / w, 0.0);
+        gl.disable(Gl::BLEND);
+        gl.use_program(Some(&self.program));
+        gl.bind_vertex_array(Some(&self.screen));
+        for (slot, t) in self.textures.iter().enumerate() {
+            gl.active_texture(Gl::TEXTURE0 + slot as u32);
+            gl.bind_texture(Gl::TEXTURE_2D, Some(t));
+        }
+        gl.uniform2f(self.at("u_res"), width as f32, height as f32);
+        gl.uniform4fv_with_f32_array(self.at("u_window"), &view);
+        // Painting px per canvas px: thin lines never get thinner than a pixel.
+        gl.uniform1f(self.at("u_px"), view[2] / width.max(1) as f32);
+        gl.uniform4f(self.at("u_out"), f32::from(self.soft_edges), 0.0, 0.0, 0.0);
+        gl.uniform3fv_with_f32_array(self.at("u_backdrop"), &self.backdrop);
+        gl.uniform4fv_with_f32_array(self.at("u_edges"), &EDGES);
+        gl.uniform1f(self.at("u_mode"), l.mode);
+        gl.uniform3fv_with_f32_array(self.at("u_paper"), &l.paper);
+        gl.uniform3fv_with_f32_array(self.at("u_accent"), &l.accent);
+        gl.uniform3fv_with_f32_array(self.at("u_highlight"), &l.highlight);
+        gl.uniform3fv_with_f32_array(self.at("u_cold"), &l.cold);
+        gl.uniform3fv_with_f32_array(self.at("u_warm"), &l.warm);
+        gl.uniform3fv_with_f32_array(self.at("u_pale"), &l.pale);
+        gl.uniform4fv_with_f32_array(self.at("u_cam"), &f.cam);
+        gl.uniform4fv_with_f32_array(self.at("u_land"), &f.land);
+        gl.uniform4fv_with_f32_array(self.at("u_ring[0]"), f.rings.as_flattened());
+        gl.uniform4fv_with_f32_array(self.at("u_fx[0]"), f.fx.as_flattened());
+        gl.uniform4fv_with_f32_array(self.at("u_spike[0]"), &spike_uniforms(&f));
+        gl.uniform4fv_with_f32_array(self.at("u_geo[0]"), &self.geometry);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
         gl.bind_vertex_array(None);
         self.frames = self.frames.wrapping_add(1);

@@ -21,7 +21,11 @@ const fill = {
   __DISKET__: b64(path.join(root, 'assets/product/fonts/Disket-Mono-Regular.ttf')),
   __TEKTUR__: b64(path.join(root, 'assets/product/fonts/Tektur-Medium.ttf')),
   __WASM__: b64(path.join(pub, 'pkg/watcher_inner_quiet_bg.wasm')),
+  __BACKGROUND__: b64(path.join(pub, 'assets/background.webp')),
+  __QUIET__: b64(path.join(pub, 'assets/quiet.webp')),
   __FIGURE__: b64(path.join(pub, 'assets/figure.webp')),
+  __DEPTH__: b64(path.join(pub, 'assets/depth.webp')),
+  __TERRAIN__: b64(path.join(pub, 'assets/terrain.webp')),
   __GLUE__: glue,
 };
 let page = readFileSync(path.join(here, 'template.html'), 'utf8');

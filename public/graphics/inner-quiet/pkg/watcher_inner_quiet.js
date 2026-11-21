@@ -50,14 +50,19 @@ export class InnerQuiet {
         return ret >>> 0;
     }
     /**
-     * One image: him, Art's figure 1. The shaders draw the rest.
+     * Art's «Струны» in layers: the land of noise, the quiet land, him, the
+     * depth map and the land behind the spikes.
      * @param {HTMLCanvasElement} canvas
+     * @param {HTMLImageElement} noise
+     * @param {HTMLImageElement} quiet
      * @param {HTMLImageElement} figure
+     * @param {HTMLImageElement} depth
+     * @param {HTMLImageElement} terrain
      */
-    constructor(canvas, figure) {
+    constructor(canvas, noise, quiet, figure, depth, terrain) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.innerquiet_new(retptr, addHeapObject(canvas), addHeapObject(figure));
+            wasm.innerquiet_new(retptr, addHeapObject(canvas), addHeapObject(noise), addHeapObject(quiet), addHeapObject(figure), addHeapObject(depth), addHeapObject(terrain));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -72,7 +77,8 @@ export class InnerQuiet {
         }
     }
     /**
-     * The app theme by its `graphicsPalette` code (0 Искра … 4 Матрица).
+     * The app theme by its `graphicsPalette` code (0 Искра, 2 Тишина,
+     * 3 Астрал, 4 Матрица; any other shows Тишина).
      * @param {number} code
      */
     palette(code) {
@@ -85,8 +91,8 @@ export class InnerQuiet {
         wasm.innerquiet_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: the land quiet, the ridge through
-     * his soles, the tone up through him, both rings round him.
+     * Reduced motion holds one moment: the noise up, the five spikes with
+     * their signs, words writing themselves into the cloud.
      * @param {boolean} value
      */
     reduced(value) {
@@ -147,8 +153,8 @@ export class Warm {
 if (Symbol.dispose) Warm.prototype[Symbol.dispose] = Warm.prototype.free;
 
 /**
- * Links the scene's programs in the background on the canvas's own context,
- * so the constructor's links come from the browser's program cache instead of
+ * Links the scene's program in the background on the canvas's own context,
+ * so the constructor's link comes from the browser's program cache instead of
  * freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
  * @param {HTMLCanvasElement} canvas
  * @returns {Warm}
@@ -186,47 +192,17 @@ function __wbg_get_imports() {
         __wbg_attachShader_9567ae57af6746d5: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
-        __wbg_bindFramebuffer_378eb18ef219d37a: function(arg0, arg1, arg2) {
-            getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
-        },
-        __wbg_bindRenderbuffer_e0c5aeef245a913a: function(arg0, arg1, arg2) {
-            getObject(arg0).bindRenderbuffer(arg1 >>> 0, getObject(arg2));
-        },
         __wbg_bindTexture_3cf008f256f3ed99: function(arg0, arg1, arg2) {
             getObject(arg0).bindTexture(arg1 >>> 0, getObject(arg2));
         },
         __wbg_bindVertexArray_f58af0a346185ec5: function(arg0, arg1) {
             getObject(arg0).bindVertexArray(getObject(arg1));
         },
-        __wbg_blendFuncSeparate_2af9d47f7efc0452: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).blendFuncSeparate(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, arg4 >>> 0);
-        },
-        __wbg_blendFunc_589e4252bb396484: function(arg0, arg1, arg2) {
-            getObject(arg0).blendFunc(arg1 >>> 0, arg2 >>> 0);
-        },
-        __wbg_checkFramebufferStatus_301a7db105ca966b: function(arg0, arg1) {
-            const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
-            return ret;
-        },
-        __wbg_clearDepth_4840a5497ae51286: function(arg0, arg1) {
-            getObject(arg0).clearDepth(arg1);
-        },
-        __wbg_clear_cb96796cc568b7c8: function(arg0, arg1) {
-            getObject(arg0).clear(arg1 >>> 0);
-        },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
         },
-        __wbg_createFramebuffer_2c6b5b0f49c88e5d: function(arg0) {
-            const ret = getObject(arg0).createFramebuffer();
-            return isLikeNone(ret) ? 0 : addHeapObject(ret);
-        },
         __wbg_createProgram_cbf448e6f18a9402: function(arg0) {
             const ret = getObject(arg0).createProgram();
-            return isLikeNone(ret) ? 0 : addHeapObject(ret);
-        },
-        __wbg_createRenderbuffer_c864095d6ebd60d0: function(arg0) {
-            const ret = getObject(arg0).createRenderbuffer();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_createShader_6c1a2295587878a5: function(arg0, arg1) {
@@ -241,14 +217,8 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).createVertexArray();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
-        __wbg_deleteFramebuffer_3f8ab330098bf8e6: function(arg0, arg1) {
-            getObject(arg0).deleteFramebuffer(getObject(arg1));
-        },
         __wbg_deleteProgram_b524b30ad176cdb4: function(arg0, arg1) {
             getObject(arg0).deleteProgram(getObject(arg1));
-        },
-        __wbg_deleteRenderbuffer_826c9b43b7ea68f5: function(arg0, arg1) {
-            getObject(arg0).deleteRenderbuffer(getObject(arg1));
         },
         __wbg_deleteShader_a70f6cc1918d67eb: function(arg0, arg1) {
             getObject(arg0).deleteShader(getObject(arg1));
@@ -259,29 +229,11 @@ function __wbg_get_imports() {
         __wbg_deleteVertexArray_ca9768805d051d49: function(arg0, arg1) {
             getObject(arg0).deleteVertexArray(getObject(arg1));
         },
-        __wbg_depthFunc_a41fb5adacb22e09: function(arg0, arg1) {
-            getObject(arg0).depthFunc(arg1 >>> 0);
-        },
-        __wbg_depthMask_06ecff4d4514c38f: function(arg0, arg1) {
-            getObject(arg0).depthMask(arg1 !== 0);
-        },
         __wbg_disable_19fe787eccdf0272: function(arg0, arg1) {
             getObject(arg0).disable(arg1 >>> 0);
         },
-        __wbg_drawArraysInstanced_9b44aa78a087154d: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).drawArraysInstanced(arg1 >>> 0, arg2, arg3, arg4);
-        },
         __wbg_drawArrays_08872e02fb57b847: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
-        },
-        __wbg_enable_cb4fc19b51148c37: function(arg0, arg1) {
-            getObject(arg0).enable(arg1 >>> 0);
-        },
-        __wbg_framebufferRenderbuffer_f019e9231b142c0d: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).framebufferRenderbuffer(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4));
-        },
-        __wbg_framebufferTexture2D_73c52f23ec33aa22: function(arg0, arg1, arg2, arg3, arg4, arg5) {
-            getObject(arg0).framebufferTexture2D(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4), arg5);
         },
         __wbg_generateMipmap_cd49f6eec9558721: function(arg0, arg1) {
             getObject(arg0).generateMipmap(arg1 >>> 0);
@@ -345,15 +297,20 @@ function __wbg_get_imports() {
         __wbg_linkProgram_acdc299c43d734a0: function(arg0, arg1) {
             getObject(arg0).linkProgram(getObject(arg1));
         },
+        __wbg_naturalHeight_df41ba6a4a6b0d33: function(arg0) {
+            const ret = getObject(arg0).naturalHeight;
+            return ret;
+        },
+        __wbg_naturalWidth_c4c567dc88a9ee9a: function(arg0) {
+            const ret = getObject(arg0).naturalWidth;
+            return ret;
+        },
         __wbg_new_617a8cdb8bb1130e: function() {
             const ret = new Object();
             return addHeapObject(ret);
         },
         __wbg_pixelStorei_cb4e43466f5b8703: function(arg0, arg1, arg2) {
             getObject(arg0).pixelStorei(arg1 >>> 0, arg2);
-        },
-        __wbg_renderbufferStorage_52b131bbf3112b3a: function(arg0, arg1, arg2, arg3, arg4) {
-            getObject(arg0).renderbufferStorage(arg1 >>> 0, arg2 >>> 0, arg3, arg4);
         },
         __wbg_set_145a351398b48c65: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
@@ -368,17 +325,20 @@ function __wbg_get_imports() {
         __wbg_shaderSource_c8812639b47d87b9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).shaderSource(getObject(arg1), getStringFromWasm0(arg2, arg3));
         },
-        __wbg_texImage2D_151a358c7288e555: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
-            getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9 === 0 ? undefined : getArrayU8FromWasm0(arg9, arg10));
-        }, arguments); },
         __wbg_texImage2D_1dfb26facf36a854: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
             getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4 >>> 0, arg5 >>> 0, getObject(arg6));
         }, arguments); },
         __wbg_texParameteri_7864076abcdb03e0: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).texParameteri(arg1 >>> 0, arg2 >>> 0, arg3);
         },
+        __wbg_uniform1f_b5856e35a43b65a1: function(arg0, arg1, arg2) {
+            getObject(arg0).uniform1f(getObject(arg1), arg2);
+        },
         __wbg_uniform1i_531b98c4a7177366: function(arg0, arg1, arg2) {
             getObject(arg0).uniform1i(getObject(arg1), arg2);
+        },
+        __wbg_uniform2f_a92b5bb95dc5b4d9: function(arg0, arg1, arg2, arg3) {
+            getObject(arg0).uniform2f(getObject(arg1), arg2, arg3);
         },
         __wbg_uniform3fv_055ea5ac38af4fce: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).uniform3fv(getObject(arg1), getArrayF32FromWasm0(arg2, arg3));
@@ -449,11 +409,6 @@ function dropObject(idx) {
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
-}
-
-function getArrayU8FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedDataViewMemory0 = null;

@@ -25,10 +25,10 @@ export type InnerQuietProps = ArtProps & {
 };
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
- * frames; Rust owns the man and his card, the land drawn in lines of sound,
- * the spikes of noise with their signs, the strand and the chain of an old
- * thought, the sphere, the cold first ring and the warm second ring, the ridge
- * and the tone through him, and the colors of the four dark themes. */
+ * frames; Rust owns Art's painting «Струны» in layers (the land of strings,
+ * the spikes of noise with their signs, the figure woven of still strings),
+ * the camera through the depth map, the cold first ring and the warm second
+ * ring, the light through him and the colors of the four dark themes. */
 export function InnerQuiet(props: InnerQuietProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
@@ -141,7 +141,7 @@ export function InnerQuiet(props: InnerQuietProps) {
     };
   }, [controller]);
   return <View testID="inner-quiet" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Человек стоит на земле из светящихся линий звука. Из неё поднимаются пики шума со знаками мыслей, чувств и импульсов, тёплое кольцо замечает каждый, и он опускается. В конце шум стихает, земля ровная, через стопы человека идёт одна спокойная волна, а сквозь его фигуру поднимается тон. Вокруг него холодное и тёплое кольца."
+    {failed ? props.fallback : <div role="img" aria-label="Фигура, сплетённая из неподвижных струн, стоит на ночной земле из натянутых струн. Шум поднимает из неё пять острых пиков со знаками мыслей, чувств и импульсов; тёплое кольцо замечает каждый, и пик уходит в землю. В конце струны стихают от его стоп до горизонта, а сквозь него поднимается тон. Вокруг него холодное и тёплое кольца."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
       <canvas ref={outputRef} data-graphics="rust-inner-quiet" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />

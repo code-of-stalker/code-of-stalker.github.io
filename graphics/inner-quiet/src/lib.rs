@@ -1,43 +1,45 @@
-//! «Тише шума», page 09 of Step 6 «Внутреннее кольцо», direction Б
-//! «Ландшафт звука». A man in his own clothes stands in a landscape drawn
-//! as lines of sound, a spectrogram seen from inside: row after row of
-//! glowing lines over a dark land. The noise of his inside rises out of it as
-//! jagged spikes, and every phrase is one spike with its sign on top: a
-//! thought bubble with lines of words, a chain of older bubbles back to the
-//! horizon, a heart with its pulse riding a swell, a bolt of impulse, a
-//! whirlpool of urge. He does not follow any of them; the warm second ring
-//! notices each one (warm brackets close on it) and it sinks back into the
-//! land. Then the camera comes close and his inside shows the same lines as
-//! the land, sharp; both rings light up and the space gets its levels; the
-//! old noise goes quiet, the land lies flat, and one calm sine ridge runs
-//! through his soles while a tone rises up through his form.
+//! «Тише шума», page 09 of Step 6 «Внутреннее кольцо». Art's painting
+//! «Струны» cut into layers: a figure woven of still strings (Art's pick of
+//! three abstract heroes, 2026-11-21) stands in a night land made of taut
+//! gold strings. Near him they vibrate into a land of noise, and
+//! five sharp spikes rise out of it, each with its sign over the tip: a
+//! thought cloud full of scribbled words, a chain of bubbles, a heart with a
+//! pulse line, a lightning bolt, a whirlpool. Far away the strings lie calm.
 //!
-//! «Не вовлекайся во внутреннее содержание»: a thought spike rises beside
-//! him, its bubble fills with words and sends a dotted strand toward his
-//! head; it never reaches him, the warm brackets notice it, it sinks.
-//! «Не анализируй историю мысли»: a bubble, and behind it older bubbles
-//! light up one by one back to the horizon; noticed, the chain unravels from
-//! its far end.
-//! «Не отталкивай эмоцию и не проваливайся в нее»: a swell rolls through the
-//! land with a heart over its crest; it lifts him and passes on; he neither
-//! cuts it nor sinks.
-//! «Замечай — но не обуславливайся»: a bolt, a whirlpool, a bubble; each is
-//! noticed and sinks; he stays as he is.
-//! «Второй уровень…»: close on him: the lines inside him go from a blur to
-//! as sharp as the land's.
-//! «Когда оба кольца активны…»: the camera cranes up; both rings brighten,
-//! the sphere shows its levels, the land a precise grid.
-//! «…тише становится старый ментальный шум…»: the land flattens.
-//! «…яснее звучит потенциальность Присутствия через твою форму»: one sine
-//! ridge through his soles, a tone up through his body into the sky.
+//! The layers (assets/): `background` the land of noise with the spikes and
+//! signs as Art chose it; `terrain` the same land without them, only behind
+//! them; `quiet` the land with every string calm; `figure` him, woven of strings, cut out;
+//! `depth` how near every pixel of the noise land (R) and of the quiet land
+//! (G) is. The camera drifts and comes close through the depth map, so the
+//! land slides under him and the sky stays far.
+//!
+//! The beats, phrase by phrase:
+//! «Тише шума.» The noise rolls in over the quiet strings from the horizon
+//! to his feet and the five spikes shoot up as it reaches them.
+//! «Не вовлекайся во внутреннее содержание»: words write themselves into the
+//! thought cloud; the warm second ring notices it (four warm brackets close
+//! on the sign and flash), the sign fades and the spike sinks; where it
+//! stood the strings go calm.
+//! «Не анализируй историю мысли»: the chain lights bubble by bubble; noticed,
+//! it goes out from its small end and sinks.
+//! «Не отталкивай эмоцию и не проваливайся в нее»: the heart beats, a warm
+//! swell leaves its spike over the land, passes through him and goes on.
+//! «Замечай — но не обуславливайся»: the bolt flickers, the whirlpool turns;
+//! each is noticed and sinks; he stays as he is.
+//! «Второй уровень…»: the camera comes close; the warm ring climbs him and
+//! fills him with its light from the shins to the crown.
+//! «Когда оба кольца активны…»: the camera cranes; both rings brighten and
+//! cold pulses run out over the land.
+//! «…тише становится старый ментальный шум…»: from his feet outward every
+//! string goes calm.
+//! «…яснее звучит потенциальность Присутствия через твою форму»: calm light
+//! runs out along the strings, a light rises through him from the soles to
+//! the crown and goes on up as a thin tone into the sky.
 //!
 //! Every value here is a pure function of loop time; `browser.rs` uploads it
-//! and the shaders draw the sky, the land, him, the sphere, the curves (both
-//! rings, the strands, the tone) and the signs, then bloom and the page.
-//! Unit: metres. He stands at the origin facing the camera (-z); his soles
-//! are at y = `lift` (the swell lifts him), the land's rows run along x.
-
-use std::f32::consts::TAU;
+//! and `scene.frag` paints it. Positions are the painting's own pixels
+//! (1536 × 1024, y down); the ground in metres, him at the origin.
+use std::f32::consts::{PI, TAU};
 use watcher_scene_palette::Palette;
 
 #[cfg(target_arch = "wasm32")]
@@ -45,792 +47,595 @@ mod browser;
 #[cfg(target_arch = "wasm32")]
 pub use browser::InnerQuiet;
 
-pub type V = [f32; 3];
-
+/// The painting's canvas, in its own pixels (y down).
+pub const SIZE: [f32; 2] = [1536.0, 1024.0];
 pub const LOOP_SECONDS: f32 = 70.0;
-/// The frame: 3:2.
-pub const FRAME_ASPECT: f32 = 1.5;
-/// Reduced motion's moment: the land quiet, the ridge through his soles, the
-/// tone up his body, both rings round him.
-pub const STILL: f32 = 68.0;
-/// Where each phrase's beat starts (s): the noise rising, then the page's
-/// phrases in order.
-pub const BEATS: [f32; 10] = [0.0, 4.0, 12.0, 20.0, 29.0, 37.0, 46.0, 54.0, 57.0, 63.0];
+/// Reduced motion: the noise is up, all five spikes stand with their signs and
+/// words are writing themselves into the thought cloud.
+pub const STILL: f32 = 6.0;
 
-// ---------- the land
+/// The painting's camera: the horizon row, the column straight ahead, the
+/// focal length in px, the eye's height and his distance, metres.
+pub const HORIZON: f32 = 405.0;
+pub const AXIS: f32 = 770.0;
+pub const FOCAL: f32 = 1647.0;
+pub const EYE: f32 = 1.425;
+pub const DISTANCE: f32 = 5.87;
+/// His soles and the top of his head (px), the middle of his head (x).
+pub const FEET: f32 = 805.0;
+pub const CROWN: f32 = 300.0;
+pub const HEAD_X: f32 = 769.5;
+/// The depth map stores closeness / this (closeness 1: his distance).
+pub const DEPTH_MAX: f32 = 1.75;
+/// Closeness of a ground point to him: 1 / (1 + metres / this).
+pub const CLOSE_METRES: f32 = 3.0;
 
-/// Half its width (m) and its near and far edges.
-pub const LAND_X: f32 = 40.0;
-pub const LAND_Z: [f32; 2] = [-7.0, 60.0];
-/// Its strips crowd near the camera: z = near + (far - near) s^POW; its
-/// columns crowd round him: x = LAND_X (0.25 u + 0.75 u^3), u -1..1.
-pub const LAND_POW: f32 = 1.6;
-pub const COLUMNS: u32 = 560;
-pub const STRIPS: u32 = 420;
-/// One line of sound every ROW metres along z; the grid's lines along x.
-pub const ROW: f32 = 0.2;
-pub const GRID: f32 = 0.6;
-/// The calm round him (m): no noise inside the first radius, all of it past
-/// the second.
-pub const CALM: [f32; 2] = [1.1, 3.2];
-/// The old noise at its loudest (m), and how fast it flows toward him (m/s).
-pub const NOISE_HEIGHT: f32 = 0.5;
-pub const NOISE_FLOW: f32 = 0.45;
-/// The calm sine ridge through his soles: its height (m), its wavenumber
-/// (rad/m), the time a crest takes to pass (s, a whole number a loop).
-pub const RIDGE_WAVE: [f32; 3] = [0.13, 2.2, 2.0];
-/// The lines inside him (m apart).
-pub const INNER_ROW: f32 = 0.05;
-/// The bloom: how much, its blur (px of an 800 px high frame).
-pub const BLOOM: [f32; 2] = [0.45, 8.0];
-/// How loud the old noise is.
-pub const NOISE: [(f32, [f32; 1]); 8] = [
-    (0.0, [0.0]),
-    (4.0, [1.0]),
-    (37.0, [1.0]),
-    (44.0, [0.75]),
-    (54.0, [0.55]),
-    (57.5, [0.5]),
-    (62.5, [0.0]),
-    (70.0, [0.0]),
-];
-/// The ridge through his soles: off by `RIDGE[1]`, back from `RIDGE[2]` to
-/// `RIDGE[3]`.
-pub const RIDGE: [f32; 4] = [0.0, 3.5, 63.5, 67.0];
-/// The precise grid and the sphere's levels: «оба кольца активны».
-pub const GRID_ON: [f32; 4] = [47.0, 49.5, 53.5, 56.5];
-pub const LEVELS_ON: [f32; 4] = [46.8, 49.0, 53.5, 56.5];
-pub const RINGS_BRIGHT: [f32; 4] = [46.5, 48.5, 53.0, 55.5];
+/// The share of the painting the page shows: the rest is the camera's margin.
+pub const ZOOM: f32 = 0.95;
+/// The camera scales about this point (his knees) when it comes close.
+pub const PIVOT: [f32; 2] = [770.0, 560.0];
+/// How close it comes, and how much nearer things grow more than far ones.
+pub const NEAR_ZOOM: f32 = 1.15;
+pub const PARALLAX: f32 = 0.04;
+/// The sideways drift and the crane, px at his closeness.
+pub const DRIFT: f32 = 8.0;
+pub const CRANE: f32 = 12.0;
 
-// ---------- the swell of emotion
+/// The noise rolls in from the horizon to his feet over these seconds (its
+/// front in closeness goes from below the sky's 0 to past his 1), and at the
+/// end the calm goes out from his feet to the horizon.
+pub const OPEN: [f32; 2] = [0.2, 3.6];
+pub const END: [f32; 2] = [57.0, 63.0];
+/// A spike shoots up this long after the noise reaches its foot, and takes
+/// this long; it sinks in this long.
+pub const RISE_DELAY: f32 = 0.2;
+pub const RISE_SECONDS: f32 = 1.2;
+pub const SINK_SECONDS: f32 = 1.6;
+/// The warm brackets close on a sign over this long before it is noticed.
+pub const BRACKET_SECONDS: f32 = 0.9;
+/// Where a spike sank the strings go calm: an oval round its foot, this many
+/// times its half width across and this share of the land from the horizon
+/// to its foot high, growing over this long, starting this long after the sink.
+pub const PATCH_REACH: f32 = 1.5;
+pub const PATCH_DEPTH: f32 = 0.9;
+pub const PATCH_SECONDS: f32 = 2.5;
+pub const PATCH_DELAY: f32 = 0.6;
 
-/// Its window (s): it rolls from `SWELL_PATH[0]` to `SWELL_PATH[1]` (z)
-/// between the window's ends.
-pub const SWELL: [f32; 4] = [20.5, 22.5, 26.5, 28.5];
-pub const SWELL_PATH: [f32; 2] = [15.0, -10.0];
-pub const SWELL_HEIGHT: f32 = 0.75;
-/// Its crest's half width along z, and across x.
-pub const SWELL_WIDTH: f32 = 2.4;
-pub const SWELL_SPAN: f32 = 10.0;
+/// The beats of the signs. Words write into the cloud.
+pub const WORDS: [f32; 2] = [4.5, 9.3];
+/// The chain lights bubble by bubble, then goes out from its small end.
+pub const CHAIN_LIGHT: [f32; 2] = [12.5, 15.5];
+pub const CHAIN_OUT: [f32; 2] = [17.6, 18.6];
+/// The heart beats (lub-dub every `HEARTBEAT_SECONDS`).
+pub const HEARTBEAT: [f32; 2] = [20.5, 26.0];
+pub const HEARTBEAT_SECONDS: f32 = 1.1;
+/// The warm swell leaves the heart's foot, metres per second, and fades.
+pub const SWELL: [f32; 2] = [21.0, 26.8];
+pub const SWELL_SPEED: f32 = 4.2;
+/// The bolt flickers; the whirlpool turns.
+pub const FLICKER: [f32; 2] = [29.3, 31.8];
+pub const SWIRL: [f32; 2] = [31.0, 34.6];
+/// «Второй уровень»: close; the warm ring fills him (fades over FILL_OUT).
+pub const CLOSE: [f32; 4] = [37.5, 42.0, 46.0, 51.0];
+pub const FILL: [f32; 2] = [40.0, 45.0];
+pub const FILL_OUT: [f32; 2] = [46.0, 49.0];
+/// «Когда оба кольца активны»: rings bright, cold pulses out over the land.
+pub const BRIGHT: [f32; 4] = [46.5, 48.0, 52.0, 53.5];
+pub const PULSES: [f32; 4] = [46.0, 47.0, 52.5, 54.0];
+/// The crane, its up and down.
+pub const CRANE_SPAN: [f32; 2] = [46.0, 55.0];
+/// The close: calm light along the strings, a light up through him, the tone.
+pub const CALM: [f32; 4] = [63.0, 64.5, 68.5, 69.8];
+pub const RISE_THROUGH: [f32; 2] = [63.5, 66.0];
+pub const TONE: [f32; 4] = [65.0, 66.0, 68.5, 69.5];
 
-// ---------- him
+/// The first ring (cold) slides over a sphere round him: its centre height
+/// and radius, metres, and one sweep down and up in `COLD_SECONDS`.
+pub const SPHERE: [f32; 2] = [0.95, 1.2];
+pub const COLD_SECONDS: f32 = 14.0;
+/// The second ring (warm) climbs his body and back: lowest and highest
+/// height, its radius, metres, `WARM_SECONDS` a climb and a return.
+pub const WARM_SPAN: [f32; 2] = [0.35, 1.8];
+pub const WARM_RADIUS: f32 = 0.32;
+pub const WARM_SECONDS: f32 = 10.0;
+/// The runners' turns a loop: the cold one way, the warm the other.
+pub const COLD_TURNS: f32 = 7.0;
+pub const WARM_TURNS: f32 = -10.0;
+/// The rings' light at rest and at «оба кольца активны».
+pub const RING_LIGHT: [f32; 2] = [0.55, 1.1];
 
-/// The figure card (m): width, height, how far it reaches below his soles,
-/// its shift along x so his middle stands at x = 0 (figure.png: 1024 x 1536
-/// px, him 1366 px from crown to soles, centred at 502 px).
-pub const CARD: [f32; 4] = [1.3494, 2.024, 0.1291, 0.0132];
-pub const CROWN: f32 = 1.8;
-pub const HEAD: f32 = 1.68;
-pub const WAIST: f32 = 1.0;
+/// Whole cycles a loop: the falling code in the sky, the motes' climbs, the
+/// shimmer flowing toward the camera over the noise.
+pub const RAIN_CYCLES: f32 = 35.0;
+pub const MOTE_LAPS: f32 = 5.0;
+pub const MOTES: usize = 18;
+pub const SHIMMER_CYCLES: f32 = 14.0;
 
-// ---------- the sphere and the rings
-
-/// The sphere round him: its centre over his soles, its radius.
-pub const SPHERE: [f32; 2] = [1.0, 2.3];
-/// The first ring, cold, level: sweeps the sphere from near its crown
-/// (latitude, rad) down to just over the land and back every
-/// `SWEEP_SECONDS`, as on page 08.
-pub const SWEEP: [f32; 2] = [1.2, -0.4];
-pub const SWEEP_SECONDS: f32 = 10.0;
-/// The second ring, warm: scans his body (m over his soles) up and down
-/// every `SCAN_SECONDS`.
-pub const SCAN: [f32; 2] = [0.35, 1.75];
-pub const SCAN_SECONDS: f32 = 10.0;
-/// Turns of each ring's runner a loop.
-pub const RUNS: [f32; 2] = [5.0, -7.0];
-/// Line widths (px of an 800 px high frame).
-pub const WIDTHS: [f32; 4] = [1.6, 2.1, 1.5, 1.3];
-/// The tone up his body: how high it reaches over his soles, when it rises,
-/// how long each pulse takes to run up.
-pub const TONE_TOP: f32 = 3.9;
-pub const TONE: [f32; 4] = [0.0, 2.5, 64.5, 67.5];
-pub const TONE_PULSE: f32 = 2.5;
-
-// ---------- the signs
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Kind {
-    /// A thought: a cloud with lines of words, small bubbles under it.
-    Bubble = 0,
-    /// An emotion: a heart with its pulse.
-    Heart = 1,
-    /// An impulse: a bolt.
-    Bolt = 2,
-    /// An urge: a whirlpool.
-    Whirl = 3,
-}
-
-/// A sign on its spike: where the spike stands (x, z), its height and
-/// radius, the sign's size, when it rises (from, to) and sinks (from, to),
-/// when the warm ring notices it.
+/// One spike as Art painted it, px: its apex, the row of its foot, its half
+/// width at the foot; its sign's centre and radius; how near the tip is
+/// (closeness, from the depth map); when it is noticed and starts to sink.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Sign {
-    pub kind: Kind,
-    pub at: [f32; 2],
-    pub spike: [f32; 2],
-    pub size: f32,
-    pub life: [f32; 4],
-    pub notice: Option<f32>,
+pub struct Spike {
+    pub apex: [f32; 2],
+    pub foot: f32,
+    pub half: f32,
+    pub sign: [f32; 3],
+    pub tip: f32,
+    pub notice: f32,
+    pub sink: f32,
 }
 
-const fn sign(
-    kind: Kind,
-    at: [f32; 2],
-    spike: [f32; 2],
-    size: f32,
-    life: [f32; 4],
-    notice: Option<f32>,
-) -> Sign {
-    Sign {
-        kind,
-        at,
-        spike,
-        size,
-        life,
-        notice,
-    }
-}
-
-pub const SIGN_COUNT: usize = 10;
-/// The heart rides the swell: its z follows the crest.
-pub const HEART: usize = 6;
-pub const SIGNS: [Sign; SIGN_COUNT] = [
-    // «Не вовлекайся во внутреннее содержание».
-    sign(
-        Kind::Bubble,
-        [-2.1, 1.3],
-        [1.55, 0.95],
-        0.62,
-        [4.5, 6.6, 10.4, 12.0],
-        Some(9.2),
-    ),
-    // «Не анализируй историю мысли»: the bubble, and its story back to the
-    // horizon, sinking from the far end.
-    sign(
-        Kind::Bubble,
-        [2.0, 1.8],
-        [1.45, 1.0],
-        0.6,
-        [12.4, 14.0, 18.6, 20.0],
-        Some(17.0),
-    ),
-    sign(
-        Kind::Bubble,
-        [3.4, 5.2],
-        [1.1, 0.9],
-        0.5,
-        [14.2, 15.0, 18.1, 19.1],
-        None,
-    ),
-    sign(
-        Kind::Bubble,
-        [4.9, 9.4],
-        [1.0, 0.9],
-        0.46,
-        [15.0, 15.8, 17.8, 18.8],
-        None,
-    ),
-    sign(
-        Kind::Bubble,
-        [6.7, 14.6],
-        [0.95, 0.9],
-        0.44,
-        [15.8, 16.6, 17.5, 18.4],
-        None,
-    ),
-    sign(
-        Kind::Bubble,
-        [8.8, 21.0],
-        [0.9, 0.9],
-        0.42,
-        [16.6, 17.2, 17.3, 18.1],
-        None,
-    ),
-    // «Не отталкивай эмоцию и не проваливайся в нее».
-    sign(
-        Kind::Heart,
-        [1.25, 0.0],
-        [0.0, 0.0],
-        0.55,
-        [21.5, 22.5, 25.0, 26.0],
-        Some(23.8),
-    ),
-    // «Замечай — но не обуславливайся».
-    sign(
-        Kind::Bolt,
-        [-2.4, 0.9],
-        [1.35, 0.95],
-        0.5,
-        [29.6, 30.1, 31.6, 32.6],
-        Some(30.6),
-    ),
-    sign(
-        Kind::Whirl,
-        [2.5, 1.2],
-        [1.4, 1.1],
-        0.55,
-        [31.4, 33.0, 34.6, 36.0],
-        Some(33.5),
-    ),
-    sign(
-        Kind::Bubble,
-        [-1.1, 4.4],
-        [1.2, 1.0],
-        0.5,
-        [33.2, 34.2, 35.6, 36.6],
-        Some(34.8),
-    ),
-];
-/// How high over its spike's tip a sign stands (m), and the heart over the
-/// swell's crest.
-pub const SIGN_GAP: f32 = 0.1;
-pub const HEART_OVER: f32 = 1.25;
-/// The dotted strand from the first thought toward his head: when it
-/// reaches out, how far it gets (never all the way), when it fades.
-pub const STRAND: [f32; 4] = [6.9, 9.0, 9.5, 10.5];
-pub const STRAND_REACH: f32 = 0.8;
-
-/// Curves: the first ring, the second, the tone, the strand, the four links
-/// of the thought's story.
-pub const CURVES: usize = 8;
-pub const CURVE_SEGMENTS: u32 = 128;
-/// The sphere's mesh.
-pub const SPHERE_LON: u32 = 72;
-pub const SPHERE_LAT: u32 = 36;
-
-// ---------- the camera: eye xyz, target xyz, vertical field (deg), a
-// cyclic curve through the loop
-
-pub const CAMERA: [(f32, [f32; 7]); 16] = [
-    (0.0, [0.0, 1.0, -7.0, 0.0, 1.15, 0.0, 38.0]),
-    (4.0, [0.4, 1.1, -6.6, -0.3, 1.25, 0.2, 38.0]),
-    (7.5, [1.4, 1.45, -6.0, -0.8, 1.6, 0.7, 38.0]),
-    (11.0, [1.6, 1.5, -5.6, -0.7, 1.55, 0.7, 38.0]),
-    (14.5, [3.3, 1.7, -5.6, 1.3, 1.5, 4.0, 40.0]),
-    (18.5, [3.6, 1.8, -5.4, 1.6, 1.5, 4.5, 40.0]),
-    (22.0, [1.0, 1.5, -4.6, 0.5, 1.4, 0.5, 38.0]),
-    (27.0, [0.8, 1.55, -4.3, 0.4, 1.4, 0.0, 38.0]),
-    (30.5, [0.0, 1.65, -6.9, 0.0, 1.5, 0.9, 40.0]),
-    (35.5, [-0.4, 1.6, -6.7, 0.0, 1.5, 0.9, 40.0]),
-    (39.5, [0.3, 1.4, -3.4, 0.0, 1.25, 0.0, 36.0]),
-    (45.0, [0.2, 1.38, -3.1, 0.0, 1.25, 0.0, 36.0]),
-    (50.0, [-2.0, 4.0, -8.8, 0.0, 1.0, 0.5, 40.0]),
-    (54.5, [-1.6, 4.4, -9.6, 0.0, 0.9, 0.5, 40.0]),
-    (58.0, [-0.8, 3.8, -10.2, 0.0, 0.95, 0.5, 40.0]),
-    (63.5, [0.0, 2.2, -9.6, 0.0, 1.1, 0.0, 38.0]),
+pub const SPIKES: [Spike; 5] = [
+    // The thought cloud with its scribbled words.
+    Spike {
+        apex: [262.0, 245.0],
+        foot: 600.0,
+        half: 200.0,
+        sign: [277.0, 160.0, 62.0],
+        tip: 0.62,
+        notice: 9.6,
+        sink: 10.2,
+    },
+    // The chain of bubbles.
+    Spike {
+        apex: [487.0, 305.0],
+        foot: 470.0,
+        half: 62.0,
+        sign: [497.0, 275.0, 46.0],
+        tip: 0.27,
+        notice: 17.4,
+        sink: 18.6,
+    },
+    // The heart with its pulse line.
+    Spike {
+        apex: [928.0, 208.0],
+        foot: 520.0,
+        half: 110.0,
+        sign: [925.0, 150.0, 54.0],
+        tip: 0.34,
+        notice: 26.6,
+        sink: 27.2,
+    },
+    // The bolt.
+    Spike {
+        apex: [1112.0, 300.0],
+        foot: 520.0,
+        half: 75.0,
+        sign: [1112.0, 250.0, 34.0],
+        tip: 0.36,
+        notice: 31.9,
+        sink: 32.3,
+    },
+    // The whirlpool.
+    Spike {
+        apex: [1330.0, 255.0],
+        foot: 600.0,
+        half: 150.0,
+        sign: [1327.0, 206.0, 42.0],
+        tip: 0.46,
+        notice: 34.9,
+        sink: 35.3,
+    },
 ];
 
-// ---------- the inside of him
-
-/// How sharp the lines inside him are, and how bright.
-pub const SHARP: [(f32, [f32; 1]); 5] = [
-    (0.0, [1.0]),
-    (3.5, [0.15]),
-    (38.0, [0.15]),
-    (42.5, [1.0]),
-    (70.0, [1.0]),
-];
-pub const INNER_LIGHT: [(f32, [f32; 1]); 6] = [
-    (0.0, [0.6]),
-    (3.5, [0.3]),
-    (38.0, [0.3]),
-    (42.5, [1.0]),
-    (63.0, [1.0]),
-    (70.0, [0.6]),
+/// The scribbles inside the thought cloud: centre and radius, px.
+pub const WORDS_DISC: [f32; 3] = [278.0, 160.0, 36.0];
+/// The chain's bubbles, big to small: centre and half axes, px.
+pub const BUBBLES: [[f32; 4]; 3] = [
+    [479.0, 261.0, 27.0, 17.0],
+    [512.0, 285.0, 14.0, 9.0],
+    [530.0, 299.0, 9.0, 6.0],
 ];
 
-// ---------- small math
-
-pub fn add(a: V, b: V) -> V {
-    [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
-}
-pub fn sub(a: V, b: V) -> V {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-pub fn scale(a: V, s: f32) -> V {
-    [a[0] * s, a[1] * s, a[2] * s]
-}
-pub fn dot(a: V, b: V) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-pub fn cross(a: V, b: V) -> V {
-    [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ]
-}
-pub fn length(a: V) -> f32 {
-    dot(a, a).sqrt()
-}
-pub fn norm(a: V) -> V {
-    scale(a, 1.0 / length(a).max(1e-6))
-}
-
-fn smooth(a: f32, b: f32, x: f32) -> f32 {
-    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
-/// On from `a` to `b`, off from `c` to `d`.
-fn window(t: f32, [a, b, c, d]: [f32; 4]) -> f32 {
-    smooth(a, b, t) * (1.0 - smooth(c, d, t))
-}
-
-fn wrap(t: f32) -> f32 {
-    if t.is_finite() {
-        t.rem_euclid(LOOP_SECONDS)
-    } else {
-        0.0
+/// A ground point in metres (x across, z away from the eye) for a painting
+/// row below the horizon.
+pub fn ground(p: [f32; 2]) -> Option<[f32; 2]> {
+    let below = p[1] - HORIZON;
+    if below.partial_cmp(&0.5) != Some(std::cmp::Ordering::Greater) {
+        return None;
     }
+    let z = FOCAL * EYE / below;
+    Some([(p[0] - AXIS) * z / FOCAL, z])
 }
 
-/// Keys joined by smoothsteps: never past a key, still at every key.
-fn eased<const N: usize>(keys: &[(f32, [f32; N])], t: f32) -> [f32; N] {
-    let n = keys.len();
-    let t = t.clamp(keys[0].0, keys[n - 1].0);
-    let i = (0..n - 1).rev().find(|&j| keys[j].0 <= t).unwrap_or(0);
-    let s = smooth(keys[i].0, keys[i + 1].0, t);
-    std::array::from_fn(|c| keys[i].1[c] + (keys[i + 1].1[c] - keys[i].1[c]) * s)
+/// How close a ground point is to him: 1 at his feet, toward 0 far away.
+pub fn closeness(ground: [f32; 2]) -> f32 {
+    1.0 / (1.0 + ground[0].hypot(ground[1] - DISTANCE) / CLOSE_METRES)
 }
 
-/// A smooth closed curve through keys over the loop (the first key at 0,
-/// the last joined back to it): cubic Hermite pieces whose tangents never
-/// overshoot a key (a slope is 0 where the curve turns, and at most three
-/// times either neighbouring chord).
-fn cyclic<const N: usize>(keys: &[(f32, [f32; N])], t: f32) -> [f32; N] {
-    let n = keys.len() as isize;
-    let t = wrap(t);
-    let time = |j: isize| keys[j.rem_euclid(n) as usize].0 + LOOP_SECONDS * j.div_euclid(n) as f32;
-    let value = |j: isize, c: usize| keys[j.rem_euclid(n) as usize].1[c];
-    let i = (0..n).rev().find(|&j| time(j) <= t).unwrap_or(0);
-    let slope = |j: isize, c: usize| {
-        let before = (value(j, c) - value(j - 1, c)) / (time(j) - time(j - 1));
-        let after = (value(j + 1, c) - value(j, c)) / (time(j + 1) - time(j));
-        if before * after <= 0.0 {
-            return 0.0;
-        }
-        let m = (value(j + 1, c) - value(j - 1, c)) / (time(j + 1) - time(j - 1));
-        let limit = 3.0 * before.abs().min(after.abs());
-        m.clamp(-limit, limit)
-    };
-    let (t1, t2) = (time(i), time(i + 1));
-    let h = t2 - t1;
-    let s = (t - t1) / h;
-    let (s2, s3) = (s * s, s * s * s);
-    std::array::from_fn(|c| {
-        (2.0 * s3 - 3.0 * s2 + 1.0) * value(i, c)
-            + (s3 - 2.0 * s2 + s) * h * slope(i, c)
-            + (3.0 * s2 - 2.0 * s3) * value(i + 1, c)
-            + (s3 - s2) * h * slope(i + 1, c)
-    })
-}
-
-// ---------- the land under him
-
-/// The swell's height, its crest's z.
-pub fn swell(t: f32) -> (f32, f32) {
-    let t = wrap(t);
-    let s = ((t - SWELL[0]) / (SWELL[3] - SWELL[0])).clamp(0.0, 1.0);
-    let z = SWELL_PATH[0] + (SWELL_PATH[1] - SWELL_PATH[0]) * s;
-    (SWELL_HEIGHT * window(t, SWELL), z)
-}
-
-/// The swell at a point of the land (the same sum as `land.vert`).
-pub fn swell_at(t: f32, x: f32, z: f32) -> f32 {
-    let (height, crest) = swell(t);
-    height * (-((z - crest) / SWELL_WIDTH).powi(2)).exp() * (-(x / SWELL_SPAN).powi(2)).exp()
-}
-
-/// How high his soles stand: the land is calm under him, so only the swell
-/// lifts him.
-pub fn lift(t: f32) -> f32 {
-    swell_at(t, 0.0, 0.0)
-}
-
-pub fn noise(t: f32) -> f32 {
-    eased(&NOISE, wrap(t))[0]
-}
-
-pub fn ridge(t: f32) -> f32 {
-    let t = wrap(t);
-    (1.0 - smooth(RIDGE[0], RIDGE[1], t)) + smooth(RIDGE[2], RIDGE[3], t)
-}
-
-// ---------- the camera
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Camera {
-    pub eye: V,
-    pub right: V,
-    pub up: V,
-    pub forward: V,
-    /// The tangent of half the frame's height.
-    pub lens: f32,
-}
-
-impl Camera {
-    fn toward(eye: V, target: V, fov: f32) -> Camera {
-        let forward = norm(sub(target, eye));
-        let right = norm(cross([0.0, 1.0, 0.0], forward));
-        let up = cross(forward, right);
-        Camera {
-            eye,
-            right,
-            up,
-            forward,
-            lens: (fov.to_radians() * 0.5).tan(),
-        }
-    }
-    /// Where a point lands in the frame: y -1..1 across its height, x
-    /// -1.5..1.5 across its width; None behind the camera.
-    pub fn project(&self, p: V) -> Option<[f32; 2]> {
-        let v = sub(p, self.eye);
-        let z = dot(v, self.forward);
-        (z > 0.05).then(|| {
-            [
-                dot(v, self.right) / (z * self.lens),
-                dot(v, self.up) / (z * self.lens),
-            ]
-        })
-    }
-}
-
-pub fn camera(t: f32) -> Camera {
-    let [ex, ey, ez, tx, ty, tz, fov] = cyclic(&CAMERA, t);
-    let lift = lift(t);
-    Camera::toward([ex, ey + 0.6 * lift, ez], [tx, ty + lift, tz], fov)
-}
-
-// ---------- the rings
-
-/// The first ring: its height (m) and radius, on the sphere.
-pub fn outer(t: f32) -> (f32, f32) {
-    let t = wrap(t);
-    let [top, bottom] = SWEEP;
-    let latitude = top + (bottom - top) * (0.5 - 0.5 * (TAU * t / SWEEP_SECONDS).cos());
-    let [centre, radius] = SPHERE;
+/// A world point (metres: x across, y up, z away) in the painting: its px
+/// and its closeness (1 at his distance).
+pub fn project(world: [f32; 3]) -> ([f32; 2], f32) {
+    let z = world[2].max(0.1);
     (
-        lift(t) + centre + radius * latitude.sin(),
-        radius * latitude.cos(),
+        [
+            AXIS + FOCAL * world[0] / z,
+            HORIZON + FOCAL * (EYE - world[1]) / z,
+        ],
+        DISTANCE / z,
     )
 }
 
-/// Where the second ring scans him (m over his soles).
-pub fn scan(t: f32) -> f32 {
-    let m = 0.5 * (SCAN[0] + SCAN[1]);
-    let a = 0.5 * (SCAN[1] - SCAN[0]);
-    m - a * (TAU * wrap(t) / SCAN_SECONDS).cos()
+/// Where the camera shows a painting point of closeness `s` (the shader's
+/// `view`): it scales about `PIVOT`, nearer things more, and shifts nearer
+/// things more.
+pub fn view(cam: [f32; 4], p: [f32; 2], s: f32) -> [f32; 2] {
+    let k = cam[2] * (1.0 + cam[3] * (s - 1.0));
+    [0, 1].map(|i| PIVOT[i] + (p[i] - PIVOT[i]) * k + cam[i] * s)
 }
 
-/// The second ring's radius at a height over his soles: round his legs,
-/// wider round his chest and arms, closer round his head.
-pub fn girth(h: f32) -> f32 {
-    0.27 + 0.07 * smooth(0.9, 1.35, h) - 0.08 * smooth(1.5, 1.65, h)
+/// The painting point the camera shows at `q` for closeness `s`.
+pub fn unview(cam: [f32; 4], q: [f32; 2], s: f32) -> [f32; 2] {
+    let k = cam[2] * (1.0 + cam[3] * (s - 1.0));
+    [0, 1].map(|i| PIVOT[i] + (q[i] - cam[i] * s - PIVOT[i]) / k)
 }
 
-// ---------- the signs
-
-/// A sign this moment: where its spike's tip is, its spike's height, how
-/// much of it shows, how warm the notice has made it, the warm brackets'
-/// light and size, its own motion (the words written, the pulse, the turn).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Shown {
-    pub tip: V,
-    pub height: f32,
-    pub light: f32,
-    pub warmth: f32,
-    pub brackets: [f32; 2],
-    pub motion: f32,
-}
-
-pub fn shown(i: usize, t: f32) -> Shown {
-    let t = wrap(t);
-    let s = &SIGNS[i];
-    let [r0, r1, f0, f1] = s.life;
-    let grown = smooth(r0, r1, t) * (1.0 - smooth(f0, f1, t));
-    let light = smooth(r0 + 0.55 * (r1 - r0), r1, t) * (1.0 - smooth(f0, f0 + 0.5 * (f1 - f0), t));
-    let (x, z) = if i == HEART {
-        (s.at[0], swell(t).1)
-    } else {
-        (s.at[0], s.at[1])
-    };
-    let base = swell_at(t, x, z);
-    let height = s.spike[0] * grown;
-    let y = if i == HEART {
-        base + HEART_OVER
-    } else {
-        base + height + SIGN_GAP
-    };
-    let (warmth, brackets) = match s.notice {
-        Some(n) => (
-            0.85 * window(t, [n + 0.1, n + 0.5, f0, f1]),
-            [
-                window(t, [n, n + 0.25, n + 1.3, n + 1.9]),
-                1.75 - 0.55 * smooth(n, n + 0.55, t),
-            ],
-        ),
-        None => (0.0, [0.0, 1.0]),
-    };
-    let motion = match s.kind {
-        Kind::Bubble => smooth(r1 - 0.2, r1 + 0.9, t),
-        Kind::Heart => t * 0.9,
-        Kind::Bolt => t,
-        Kind::Whirl => -2.2 * t,
-    };
-    Shown {
-        tip: [x, y, z],
-        height,
-        light,
-        warmth,
-        brackets,
-        motion,
+/// The painting window a canvas shows, in painting px: centre x, y, width,
+/// height. Any canvas is covered with a crop of the window, never stretched,
+/// kept on him.
+pub fn window(width: f32, height: f32) -> [f32; 4] {
+    let full = [SIZE[0] * ZOOM, SIZE[1] * ZOOM];
+    let mid = [AXIS, SIZE[1] * 0.5];
+    if !(width > 0.0 && height > 0.0) {
+        return [mid[0], mid[1], full[0], full[1]];
     }
+    let scale = (width / full[0]).max(height / full[1]);
+    let shown = [width / scale, height / scale];
+    let rise = ((full[1] - shown[1]) * 0.5).max(0.0);
+    // A wide crop keeps him whole: from just over his crown to his soles.
+    let body = (CROWN + FEET) * 0.5;
+    // max/min, not clamp: clamp's runtime bound check links the panic formatter.
+    [
+        mid[0],
+        body.max(mid[1] - rise).min(mid[1] + rise),
+        shown[0],
+        shown[1],
+    ]
 }
 
-/// The middle of a sign's picture (its cloud, heart, bolt or whirl).
-pub fn sign_middle(i: usize, t: f32) -> V {
-    let s = shown(i, t);
-    add(s.tip, [0.0, 0.95 * SIGNS[i].size, 0.0])
+/// The spikes' and signs' geometry as the shader's `u_geo`: per spike
+/// (apex x, apex y, foot row, half width), (sign x, y, radius, tip
+/// closeness), (foot x, z metres, half width metres, foot closeness).
+pub fn geometry() -> [f32; 60] {
+    let mut g = [0.0; 60];
+    for (i, s) in SPIKES.iter().enumerate() {
+        let foot = ground([s.apex[0], s.foot]).unwrap_or([0.0, DISTANCE]);
+        let rows = [
+            [s.apex[0], s.apex[1], s.foot, s.half],
+            [s.sign[0], s.sign[1], s.sign[2], s.tip],
+            [foot[0], foot[1], s.half * foot[1] / FOCAL, closeness(foot)],
+        ];
+        for (r, row) in rows.iter().enumerate() {
+            g[i * 12 + r * 4..i * 12 + r * 4 + 4].copy_from_slice(row);
+        }
+    }
+    g
 }
 
-// ---------- the frame
+/// When the noise front reaches a ground point of closeness `c`.
+pub fn open_arrival(c: f32) -> f32 {
+    OPEN[0] + (OPEN[1] - OPEN[0]) * (c + 0.05) / 1.15
+}
 
-/// Everything one moment needs.
+/// When a spike starts to rise: just after the noise reaches its foot.
+pub fn rise_start(spike: &Spike) -> f32 {
+    let foot = ground([spike.apex[0], spike.foot]).unwrap_or([0.0, DISTANCE]);
+    open_arrival(closeness(foot)) + RISE_DELAY
+}
+
+/// One spike's state in a frame.
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct SpikeFrame {
+    /// Its height as a share of the painted one (overshoots as it shoots up).
+    pub height: f32,
+    /// Its sign's opacity, and the sign's own light (its beat).
+    pub sign: f32,
+    pub gain: f32,
+    /// The calm oval where it sank: 0 none, 1 grown.
+    pub patch: f32,
+    /// The warm brackets: 0..1 closing, 1 the notice, past 1 fading.
+    pub bracket: f32,
+    pub bracket_light: f32,
+    /// How far its tip sways, px.
+    pub sway: f32,
+    /// The sign's own beat: the words' progress, the bubbles lit, the
+    /// whirlpool's turn.
+    pub special: f32,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
     pub time: f32,
-    pub camera: Camera,
-    pub lift: f32,
-    /// The noise, the ridge, the grid, the sphere's levels.
+    /// Shift x, y (px at closeness 1), zoom, parallax.
+    pub cam: [f32; 4],
+    /// The noise front, the calm front (closeness), their glows.
     pub land: [f32; 4],
-    /// The swell's height, its crest's z, its width, its span.
-    pub swell: [f32; 4],
-    /// Per spike: x, z, height, radius; then its warmth.
-    pub spikes: [[f32; 4]; SIGN_COUNT * 2],
-    /// Inside him: the noise, sharpness, light, the second ring's height.
-    pub inner: [f32; 4],
-    /// The sphere: its centre's height, radius, light.
-    pub sphere: [f32; 4],
-    /// Per curve: (a, b, style, span) — see `ring_curve` and `segment`.
-    pub curves: [[f32; 4]; CURVES * 4],
-    /// Per sign: (tip, size), (kind, light, warmth, motion), (brackets'
-    /// light, their size, 0, 0).
-    pub signs: [[f32; 4]; SIGN_COUNT * 3],
+    /// Per ring (cold, warm): centre, A | B, runner angle, light. The ring is
+    /// centre + A sin θ + B cos θ in the camera's view, its front at θ = 0.
+    pub rings: [[f32; 4]; 4],
+    /// (fill row, fill), (rise row, rise), (tone, tone phase, pulses, pulse
+    /// phase), (calm, calm phase, swell metres, swell), (rain, motes,
+    /// shimmer, loop phase).
+    pub fx: [[f32; 4]; 4],
+    pub spikes: [SpikeFrame; 5],
 }
 
-/// A level ring: its centre and radius; style: width (px800), light,
-/// warmth (0 cold, 1 warm), dashes per metre; its runner's place (0..1)
-/// and which way it runs (±1).
-fn ring_curve(centre: V, radius: f32, style: [f32; 4], run: f32, t: f32) -> [[f32; 4]; 4] {
-    let [x, y, z] = centre;
+fn ramp(t: f32, a: f32, b: f32) -> f32 {
+    let x = ((t - a) / (b - a)).clamp(0.0, 1.0);
+    x * x * (3.0 - 2.0 * x)
+}
+fn span(t: f32, k: [f32; 4]) -> f32 {
+    ramp(t, k[0], k[1]) * (1.0 - ramp(t, k[2], k[3]))
+}
+fn linear(t: f32, a: f32, b: f32) -> f32 {
+    ((t - a) / (b - a)).clamp(0.0, 1.0)
+}
+/// Shoots up past its height and settles.
+fn overshoot(x: f32) -> f32 {
+    let (c1, c3) = (1.70158, 2.70158);
+    let y = x - 1.0;
+    1.0 + c3 * y * y * y + c1 * y * y
+}
+fn hash(n: f32) -> f32 {
+    ((n * 12.9898).sin() * 43_758.547).fract().abs()
+}
+
+/// The cold ring's height (metres) at `t`: it slides over the sphere.
+pub fn cold_height(t: f32) -> f32 {
+    SPHERE[0] + SPHERE[1] * (0.17 + 0.75 * (TAU * t / COLD_SECONDS).cos())
+}
+/// The warm ring's height: up his body and back.
+pub fn warm_height(t: f32) -> f32 {
+    WARM_SPAN[0] + (WARM_SPAN[1] - WARM_SPAN[0]) * (0.5 - 0.5 * (TAU * t / WARM_SECONDS).cos())
+}
+
+/// A level ring round him (height, radius, metres) as the camera shows it.
+pub fn ring(cam: [f32; 4], height: f32, radius: f32) -> [[f32; 2]; 3] {
+    let at = |x: f32, z: f32| {
+        let (p, s) = project([x, height, z]);
+        view(cam, p, s)
+    };
+    let front = at(0.0, DISTANCE - radius);
+    let back = at(0.0, DISTANCE + radius);
+    let right = at(radius, DISTANCE);
+    let left = at(-radius, DISTANCE);
+    let centre = [0, 1].map(|i| (front[i] + back[i] + right[i] + left[i]) * 0.25);
     [
-        [x, y, z, radius],
-        [0.0, 0.0, 0.0, 0.0],
-        style,
-        [
-            0.0,
-            1.0,
-            (run * t / LOOP_SECONDS).rem_euclid(1.0),
-            run.signum(),
-        ],
+        centre,
+        [0, 1].map(|i| (right[i] - left[i]) * 0.5),
+        [0, 1].map(|i| (front[i] - back[i]) * 0.5),
     ]
 }
 
-/// A bowed segment from `a` to `b`, its middle raised by `sag`; drawn over
-/// `span` of its length, with a pulse running at `pulse` (<0: none).
-fn segment(a: V, b: V, sag: f32, style: [f32; 4], span: [f32; 2], pulse: f32) -> [[f32; 4]; 4] {
-    [
-        [a[0], a[1], a[2], sag],
-        [b[0], b[1], b[2], 1.0],
-        style,
-        [span[0], span[1], pulse, 0.0],
-    ]
+fn spike_frame(i: usize, s: &Spike, t: f32) -> SpikeFrame {
+    let rise = rise_start(s);
+    let height = if t < rise {
+        0.0
+    } else if t < rise + RISE_SECONDS {
+        overshoot((t - rise) / RISE_SECONDS)
+    } else if t < s.sink {
+        1.0
+    } else {
+        1.0 - ramp(t, s.sink, s.sink + SINK_SECONDS)
+    };
+    let up = rise + RISE_SECONDS;
+    let sign = ramp(t, up, up + 0.6) * (1.0 - ramp(t, s.notice + 0.15, s.sink));
+    let fade = 1.0 - ramp(t, s.notice, s.sink);
+    let (gain, special) = match i {
+        0 => (
+            ramp(t, WORDS[0], WORDS[0] + 0.5) * fade,
+            linear(t, WORDS[0], WORDS[1]),
+        ),
+        1 => (
+            ramp(t, CHAIN_LIGHT[0], CHAIN_LIGHT[0] + 0.3)
+                * (1.0 - ramp(t, CHAIN_OUT[0], CHAIN_OUT[1])),
+            3.0 * linear(t, CHAIN_LIGHT[0], CHAIN_LIGHT[1])
+                + 3.0 * linear(t, CHAIN_OUT[0], CHAIN_OUT[1]),
+        ),
+        2 => {
+            let at = (t - HEARTBEAT[0]).max(0.0) % HEARTBEAT_SECONDS;
+            let pulse = |c: f32| (-((at - c) / 0.07).powi(2)).exp();
+            let beat = pulse(0.0) + 0.6 * pulse(0.28) + pulse(HEARTBEAT_SECONDS);
+            let on =
+                ramp(t, HEARTBEAT[0] - 0.2, HEARTBEAT[0]) * (1.0 - ramp(t, HEARTBEAT[1], s.sink));
+            (on * beat, 0.0)
+        }
+        3 => {
+            let flick = if hash((t * 12.0).floor()) > 0.45 {
+                1.0
+            } else {
+                0.15
+            };
+            (
+                span(
+                    t,
+                    [FLICKER[0], FLICKER[0] + 0.2, FLICKER[1] - 0.2, FLICKER[1]],
+                ) * flick,
+                0.0,
+            )
+        }
+        _ => (
+            ramp(t, SWIRL[0], SWIRL[0] + 0.6) * (1.0 - ramp(t, SWIRL[1] - 0.2, s.sink)),
+            0.55 * (t - SWIRL[0]).max(0.0).powi(2),
+        ),
+    };
+    let grow = ramp(
+        t,
+        s.sink + PATCH_DELAY,
+        s.sink + PATCH_DELAY + PATCH_SECONDS,
+    );
+    let bracket = ((t - (s.notice - BRACKET_SECONDS)) / BRACKET_SECONDS).clamp(0.0, 2.0);
+    let bracket_light = if t < s.notice - BRACKET_SECONDS {
+        0.0
+    } else {
+        ramp(bracket, 0.0, 0.25) * (1.0 - ramp(bracket, 1.15, 1.8))
+    };
+    let sway = 3.0 * (TAU * t / (3.1 + 0.7 * i as f32) + 1.3 * i as f32).sin();
+    SpikeFrame {
+        height,
+        sign,
+        gain,
+        patch: grow,
+        bracket,
+        bracket_light,
+        sway,
+        special,
+    }
 }
-
-/// A curve that draws nothing.
-const NONE: [[f32; 4]; 4] = [[0.0; 4]; 4];
 
 pub fn compose(t: f32) -> Frame {
-    let t = wrap(t);
-    let camera = camera(t);
-    let lift = lift(t);
-    let (height, crest) = swell(t);
-    let bright = window(t, RINGS_BRIGHT);
-
-    let mut spikes = [[0.0; 4]; SIGN_COUNT * 2];
-    let mut signs = [[0.0; 4]; SIGN_COUNT * 3];
-    let shows: [Shown; SIGN_COUNT] = std::array::from_fn(|i| shown(i, t));
-    for (i, (s, sh)) in SIGNS.iter().zip(shows.iter()).enumerate() {
-        spikes[2 * i] = [sh.tip[0], sh.tip[2], sh.height, s.spike[1]];
-        spikes[2 * i + 1] = [sh.warmth, 0.0, 0.0, 0.0];
-        let [x, y, z] = sh.tip;
-        signs[3 * i] = [x, y, z, s.size];
-        signs[3 * i + 1] = [s.kind as u8 as f32, sh.light, sh.warmth, sh.motion];
-        signs[3 * i + 2] = [sh.brackets[0], sh.brackets[1], 0.0, 0.0];
-    }
-
-    let mut curves = [[0.0; 4]; CURVES * 4];
-    let mut put = |k: usize, c: [[f32; 4]; 4]| curves[4 * k..4 * k + 4].copy_from_slice(&c);
-
-    // The first ring, cold, sweeping the sphere; the second, warm, scanning him.
-    let (y, r) = outer(t);
-    let light = 0.85 + 0.5 * bright;
-    put(
-        0,
-        ring_curve([0.0, y, 0.0], r, [WIDTHS[0], light, 0.0, 0.0], RUNS[0], t),
-    );
-    let h = scan(t);
-    put(
-        1,
-        ring_curve(
-            [0.0, lift + h, 0.0],
-            girth(h),
-            [WIDTHS[1], light, 1.0, 0.0],
-            RUNS[1],
-            t,
-        ),
-    );
-
-    // The tone up through his form, a little nearer the camera than him.
-    let toward = norm([-camera.forward[0], 0.0, -camera.forward[2]]);
-    let foot = add([0.0, lift, 0.0], scale(toward, 0.12));
-    let tone_light = (1.0 - smooth(TONE[0], TONE[1], t)) + smooth(TONE[2], TONE[2] + 0.5, t);
-    let tone_reach = if t > 30.0 {
-        smooth(TONE[2], TONE[3], t)
+    let time = if t.is_finite() {
+        t.rem_euclid(LOOP_SECONDS)
     } else {
-        1.0
+        0.0
     };
-    if tone_light > 0.0 {
-        put(
-            2,
-            segment(
-                foot,
-                add(foot, [0.0, TONE_TOP, 0.0]),
-                0.0,
-                [WIDTHS[2], 0.9 * tone_light, 0.35, 0.0],
-                [0.0, tone_reach],
-                (t / TONE_PULSE).rem_euclid(1.0),
-            ),
-        );
+    let phase = time / LOOP_SECONDS;
+    let zoom =
+        1.0 + (NEAR_ZOOM - 1.0) * (ramp(time, CLOSE[0], CLOSE[1]) - ramp(time, CLOSE[2], CLOSE[3]));
+    let crane = if (CRANE_SPAN[0]..CRANE_SPAN[1]).contains(&time) {
+        (PI * (time - CRANE_SPAN[0]) / (CRANE_SPAN[1] - CRANE_SPAN[0]))
+            .sin()
+            .powi(2)
     } else {
-        put(2, NONE);
-    }
-
-    // The strand of the first thought, reaching toward his head.
-    let strand = window(t, [STRAND[0], STRAND[0] + 0.4, STRAND[2], STRAND[3]]);
-    if strand > 0.0 {
-        let from = add(sign_middle(0, t), [0.25 * SIGNS[0].size, 0.0, 0.0]);
-        put(
-            3,
-            segment(
-                from,
-                [0.0, lift + HEAD, 0.0],
-                0.25,
-                [WIDTHS[3], 0.9 * strand, 0.0, 14.0],
-                [0.0, STRAND_REACH * smooth(STRAND[0], STRAND[1], t)],
-                -1.0,
-            ),
-        );
-    } else {
-        put(3, NONE);
-    }
-
-    // The thought's story: a dotted link to each older bubble.
-    for j in 0..4 {
-        let (a, b) = (1 + j, 2 + j);
-        let light = shows[a].light.min(shows[b].light);
-        let [r0, r1, _, _] = SIGNS[b].life;
-        if light > 0.0 {
-            put(
-                4 + j,
-                segment(
-                    sign_middle(a, t),
-                    sign_middle(b, t),
-                    0.3,
-                    [WIDTHS[3], 0.8 * light, 0.0, 6.0],
-                    [0.0, smooth(r0, r1, t)],
-                    -1.0,
-                ),
-            );
-        } else {
-            put(4 + j, NONE);
-        }
-    }
-
-    let sharp = eased(&SHARP, t)[0];
-    let noise = noise(t);
-    Frame {
-        time: t,
-        camera,
-        lift,
-        land: [
-            noise,
-            ridge(t),
-            0.55 * window(t, GRID_ON),
-            window(t, LEVELS_ON),
+        0.0
+    };
+    let cam = [
+        DRIFT * (TAU * phase).sin(),
+        CRANE * crane,
+        zoom,
+        PARALLAX * (zoom - 1.0) / (NEAR_ZOOM - 1.0),
+    ];
+    let open = linear(time, OPEN[0], OPEN[1]);
+    let end = linear(time, END[0], END[1]);
+    let land = [
+        -0.05 + 1.15 * open,
+        1.1 - 1.15 * end,
+        (PI * open).sin(),
+        (PI * end).sin(),
+    ];
+    let light = RING_LIGHT[0] + (RING_LIGHT[1] - RING_LIGHT[0]) * span(time, BRIGHT);
+    let cold = cold_height(time);
+    let cold_radius = (SPHERE[1].powi(2) - (cold - SPHERE[0]).powi(2))
+        .max(0.0)
+        .sqrt();
+    let warm = warm_height(time);
+    let [c0, a0, b0] = ring(cam, cold, cold_radius);
+    let [c1, a1, b1] = ring(cam, warm, WARM_RADIUS);
+    let rings = [
+        [c0[0], c0[1], a0[0], a0[1]],
+        [
+            b0[0],
+            b0[1],
+            (TAU * COLD_TURNS * phase).rem_euclid(TAU),
+            light,
         ],
-        swell: [height, crest, SWELL_WIDTH, SWELL_SPAN],
+        [c1[0], c1[1], a1[0], a1[1]],
+        [
+            b1[0],
+            b1[1],
+            (TAU * WARM_TURNS * phase).rem_euclid(TAU),
+            light,
+        ],
+    ];
+    // The fill follows the warm ring up him, then holds at his crown.
+    let fill_row = if time < FILL[1] {
+        project([0.0, warm, DISTANCE]).0[1]
+    } else {
+        CROWN - 30.0
+    };
+    let fill = ramp(time, FILL[0], FILL[0] + 1.0) * (1.0 - ramp(time, FILL_OUT[0], FILL_OUT[1]));
+    let through = linear(time, RISE_THROUGH[0], RISE_THROUGH[1]);
+    let rise = ramp(time, RISE_THROUGH[0], RISE_THROUGH[0] + 0.5)
+        * (1.0 - ramp(time, RISE_THROUGH[1], RISE_THROUGH[1] + 1.5));
+    let fx = [
+        [fill_row, fill, FEET + (CROWN - 30.0 - FEET) * through, rise],
+        [
+            span(time, TONE),
+            (time * 0.8).fract(),
+            span(time, PULSES),
+            (time * 0.5).fract(),
+        ],
+        [
+            span(time, CALM),
+            (time * 0.25).fract(),
+            (time - SWELL[0]).max(0.0) * SWELL_SPEED,
+            ramp(time, SWELL[0], SWELL[0] + 0.5) * (1.0 - ramp(time, SWELL[1] - 1.3, SWELL[1])),
+        ],
+        [
+            (phase * RAIN_CYCLES).fract(),
+            (phase * MOTE_LAPS).fract(),
+            (phase * SHIMMER_CYCLES).fract(),
+            phase,
+        ],
+    ];
+    let spikes = std::array::from_fn(|i| spike_frame(i, &SPIKES[i], time));
+    Frame {
+        time,
+        cam,
+        land,
+        rings,
+        fx,
         spikes,
-        inner: [0.85 * noise, sharp, eased(&INNER_LIGHT, t)[0], h],
-        sphere: [lift + SPHERE[0], SPHERE[1], 0.9 + 0.4 * bright, 0.0],
-        curves,
-        signs,
     }
 }
 
-// ---------- the theme's colours
+/// The spikes' frame values as the shader's `u_spike`.
+pub fn spike_uniforms(f: &Frame) -> [f32; 40] {
+    let mut u = [0.0; 40];
+    for (i, s) in f.spikes.iter().enumerate() {
+        u[i * 8..i * 8 + 8].copy_from_slice(&[
+            s.height,
+            s.sign,
+            s.gain,
+            s.patch,
+            s.bracket,
+            s.bracket_light,
+            s.sway,
+            s.special,
+        ]);
+    }
+    u
+}
 
-/// The theme's colours: the cold line (the land, him, the first ring), the
-/// warm (the second ring, the notice), a pale one, a black page's own dusk,
-/// the air's glow.
+/// How one theme maps the painting and lights it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
+    /// The recolor of the painting (scene-palette `recolor.frag`): 0 the
+    /// accent by luminance (Искра, Матрица), 2 an ink on the paper (Тишина, Астрал).
+    pub mode: f32,
+    pub paper: [f32; 3],
+    pub accent: [f32; 3],
+    pub highlight: [f32; 3],
+    /// The first ring, the noise's front, the pulses.
     pub cold: [f32; 3],
+    /// The second ring, its brackets, the swell, the light through him.
     pub warm: [f32; 3],
+    /// White-hot cores.
     pub pale: [f32; 3],
-    pub dusk: [f32; 3],
-    pub sky: [f32; 3],
 }
 
 const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
     [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0]
 }
 
+/// The app theme by its `graphicsPalette` code: 0 Искра, 2 Тишина, 3 Астрал,
+/// 4 Матрица. The site has only these dark themes; any other code shows Тишина.
 pub fn look(code: u32) -> Look {
-    match Palette::from_code(code) {
-        // Искра: the yellow of the theme, an ember warmth, an ember dark.
-        Palette::Dark => Look {
-            cold: rgb(245, 221, 7),
-            warm: rgb(255, 122, 40),
-            pale: rgb(255, 244, 170),
-            dusk: rgb(21, 14, 8),
-            sky: rgb(255, 120, 36),
-        },
-        // Астрал: the blue of the theme, a rose-peach warmth.
-        Palette::Violet => Look {
-            cold: rgb(98, 150, 245),
-            warm: rgb(240, 158, 128),
-            pale: rgb(200, 212, 248),
-            dusk: [0.0; 3],
-            sky: rgb(98, 150, 245),
-        },
-        // Матрица: code green, amber; a green-black dark.
-        Palette::Matrix => Look {
-            cold: rgb(0, 255, 65),
-            warm: rgb(255, 184, 64),
-            pale: rgb(190, 255, 205),
-            dusk: rgb(4, 17, 9),
-            sky: rgb(0, 255, 65),
-        },
-        // Тишина: sea glass, warm sand.
-        _ => Look {
-            cold: rgb(134, 201, 199),
-            warm: rgb(242, 179, 117),
-            pale: rgb(214, 218, 210),
-            dusk: [0.0; 3],
-            sky: rgb(134, 201, 199),
-        },
+    let (palette, warm, pale) = match Palette::from_code(code) {
+        Palette::Dark => (Palette::Dark, rgb(255, 122, 40), rgb(255, 244, 170)),
+        Palette::Violet => (Palette::Violet, rgb(240, 158, 128), rgb(200, 212, 248)),
+        Palette::Matrix => (Palette::Matrix, rgb(255, 184, 64), rgb(190, 255, 205)),
+        _ => (Palette::Neutral, rgb(242, 179, 117), rgb(214, 218, 210)),
+    };
+    let colors = palette.colors().expect("a dark theme has its colors");
+    Look {
+        mode: palette.mode(),
+        paper: colors.paper,
+        accent: colors.accent,
+        highlight: colors.highlight,
+        cold: colors.accent,
+        warm,
+        pale,
     }
 }
 
@@ -838,195 +643,217 @@ pub fn look(code: u32) -> Look {
 mod tests {
     use super::*;
 
-    fn every(step: f32, mut check: impl FnMut(f32)) {
-        let mut t = 0.0;
-        while t < LOOP_SECONDS {
-            check(t);
-            t += step;
-        }
-    }
-
     fn close(a: f32, b: f32, tolerance: f32) -> bool {
         (a - b).abs() <= tolerance
     }
 
+    /// The land's noise share at a ground closeness, as the shader mixes it.
+    fn noise_share(f: &Frame, c: f32) -> f32 {
+        let s = |x: f32| ramp(x, -0.04, 0.04);
+        s(f.land[0] - c) * (1.0 - s(c - f.land[1]))
+    }
+
     #[test]
-    fn the_loop_has_no_seam() {
-        let (a, b) = (compose(0.0), compose(LOOP_SECONDS - 1e-3));
-        for k in 0..3 {
-            assert!(close(a.camera.eye[k], b.camera.eye[k], 1e-2));
-            assert!(close(a.camera.forward[k], b.camera.forward[k], 1e-2));
+    fn the_loop_closes_on_the_quiet_land() {
+        let (a, b) = (compose(LOOP_SECONDS - 0.001), compose(0.001));
+        for c in [0.0, 0.1, 0.5, 1.0] {
+            assert_eq!(noise_share(&a, c), 0.0);
+            assert_eq!(noise_share(&b, c), 0.0);
         }
-        for k in 0..4 {
-            assert!(close(a.land[k], b.land[k], 1e-2), "land {k}");
-            assert!(close(a.inner[k], b.inner[k], 1e-2), "inner {k}");
-            assert!(close(a.sphere[k], b.sphere[k], 1e-2), "sphere {k}");
+        for i in 0..4 {
+            assert!(close(a.cam[i], b.cam[i], 0.01), "{i}");
         }
-        for (x, y) in a.curves.iter().zip(b.curves.iter()) {
+        for (r, (ra, rb)) in a.rings.iter().zip(b.rings.iter()).enumerate() {
             for k in 0..4 {
-                // A runner's place may wrap from 1 to 0.
-                let d = (x[k] - y[k]).abs();
-                assert!(d < 2e-2 || (d - 1.0).abs() < 2e-2, "{x:?} {y:?}");
-            }
-        }
-        // The camera glides through the seam: no jump in its speed.
-        let v0 = sub(camera(0.05).eye, camera(0.0).eye);
-        let v1 = sub(camera(0.0).eye, camera(LOOP_SECONDS - 0.05).eye);
-        assert!(length(sub(v0, v1)) < 2e-3);
-    }
-
-    #[test]
-    fn the_rings_turn_a_whole_number_of_times_a_loop() {
-        for period in [SWEEP_SECONDS, SCAN_SECONDS, TONE_PULSE, RIDGE_WAVE[2]] {
-            let n = LOOP_SECONDS / period;
-            assert!(close(n, n.round(), 1e-4), "{period}");
-        }
-        for run in RUNS {
-            assert!(close(run, run.round(), 1e-6));
-        }
-    }
-
-    #[test]
-    fn the_first_ring_rides_the_sphere_and_the_second_his_body() {
-        every(0.1, |t| {
-            let (y, r) = outer(t);
-            let dy = y - (lift(t) + SPHERE[0]);
-            assert!(close(dy * dy + r * r, SPHERE[1] * SPHERE[1], 1e-3));
-            assert!(
-                y > lift(t) + 0.05,
-                "the first ring stays over the land at {t}"
-            );
-            let h = scan(t);
-            assert!((SCAN[0] - 1e-4..=SCAN[1] + 1e-4).contains(&h));
-            assert!((0.18..0.36).contains(&girth(h)));
-        });
-        // Both always move.
-        every(0.5, |t| {
-            assert!(outer(t) != outer(t + 0.25), "{t}");
-            assert!(!close(scan(t), scan(t + 0.25), 1e-4), "{t}");
-        });
-    }
-
-    #[test]
-    fn he_stays_in_the_frame() {
-        every(0.05, |t| {
-            let c = camera(t);
-            let l = lift(t);
-            for (h, margin) in [(CROWN + 0.05, 0.97), (WAIST, 0.9)] {
-                let [x, y] = c.project([0.0, l + h, 0.0]).expect("in front");
-                assert!(
-                    x.abs() < FRAME_ASPECT * margin && y.abs() < margin,
-                    "{t} {h}: {x} {y}"
-                );
-            }
-            let close_up = (38.5..47.0).contains(&t);
-            if !close_up {
-                let [x, y] = c.project([0.0, l, 0.0]).expect("in front");
-                assert!(
-                    x.abs() < FRAME_ASPECT && y.abs() < 0.97,
-                    "{t} soles: {x} {y}"
-                );
-            }
-        });
-    }
-
-    #[test]
-    fn every_sign_is_seen_while_it_shows() {
-        every(0.05, |t| {
-            let c = camera(t);
-            for i in 0..SIGN_COUNT {
-                let s = shown(i, t);
-                if s.light < 0.4 {
-                    continue;
+                if r % 2 == 1 && k == 2 {
+                    // The runner's angle wraps.
+                    assert!(
+                        close(ra[k].sin(), rb[k].sin(), 0.01)
+                            && close(ra[k].cos(), rb[k].cos(), 0.01)
+                    );
+                } else {
+                    assert!(close(ra[k], rb[k], 0.05), "{ra:?} {rb:?}");
                 }
-                let [x, y] = c.project(sign_middle(i, t)).expect("in front");
-                assert!(
-                    x.abs() < 0.95 * FRAME_ASPECT && y.abs() < 0.95,
-                    "sign {i} at {t}: {x} {y}"
+            }
+        }
+        for f in [a, b] {
+            // Fill, rise; tone, pulses; calm, swell: all out.
+            for (row, k) in [(0, 1), (0, 3), (1, 0), (1, 2), (2, 0), (2, 3)] {
+                assert!(f.fx[row][k] < 1e-3, "{row} {k} {}", f.time);
+            }
+            for s in f.spikes {
+                assert_eq!(
+                    (s.height, s.sign, s.gain, s.bracket_light),
+                    (0.0, 0.0, 0.0, 0.0)
                 );
             }
-        });
-    }
-
-    #[test]
-    fn no_spike_rises_in_the_calm_round_him() {
-        for (i, s) in SIGNS.iter().enumerate() {
-            if i == HEART {
-                continue;
+            // The calm ovals' warm rims are gone.
+            for s in f.spikes {
+                assert!(s.patch < 1e-3 || s.patch > 1.0 - 1e-3);
             }
-            let d = (s.at[0] * s.at[0] + s.at[1] * s.at[1]).sqrt();
-            assert!(d - s.spike[1] >= 1.5, "sign {i}");
-            assert!(s.life[0] < s.life[1] && s.life[1] <= s.life[2] && s.life[2] < s.life[3]);
+        }
+        for cycles in [
+            RAIN_CYCLES,
+            MOTE_LAPS,
+            SHIMMER_CYCLES,
+            COLD_TURNS,
+            WARM_TURNS,
+            LOOP_SECONDS / COLD_SECONDS,
+            LOOP_SECONDS / WARM_SECONDS,
+        ] {
+            assert_eq!(cycles.fract(), 0.0);
         }
     }
 
     #[test]
-    fn each_sign_lives_in_its_phrase() {
-        let beat_of = |t: f32| BEATS.iter().rposition(|&b| b <= t).unwrap();
-        for s in SIGNS {
-            assert_eq!(beat_of(s.life[0]), beat_of(s.life[3] - 0.01), "{s:?}");
-            if let Some(n) = s.notice {
-                assert!(s.life[1] <= n && n < s.life[2] + 0.5, "{s:?}");
+    fn each_spike_rises_after_the_noise_reaches_it_and_sinks_once_noticed() {
+        let g = geometry();
+        let mut last = 0.0;
+        for (i, s) in SPIKES.iter().enumerate() {
+            let rise = rise_start(s);
+            // Its foot is noise before it starts to rise.
+            assert!(noise_share(&compose(rise), g[i * 12 + 11]) > 0.99, "{i}");
+            assert!(rise + RISE_SECONDS + 0.6 < STILL);
+            assert!(s.notice > last && s.sink > s.notice, "{i}");
+            last = s.sink;
+            let f = compose(STILL);
+            assert_eq!(f.spikes[i].height, 1.0);
+            assert_eq!(f.spikes[i].sign, 1.0);
+            // The sign is gone when it starts to sink; the spike is down after.
+            assert_eq!(compose(s.sink).spikes[i].sign, 0.0);
+            assert_eq!(compose(s.sink + SINK_SECONDS + 0.01).spikes[i].height, 0.0);
+            // The brackets close before the notice and are gone soon after.
+            let before = compose(s.notice - 0.3).spikes[i];
+            assert!(before.bracket > 0.5 && before.bracket < 1.0 && before.bracket_light > 0.9);
+            assert_eq!(compose(s.notice + 1.0).spikes[i].bracket_light, 0.0);
+        }
+        // All of them are down well before the calm spreads.
+        assert!(last + SINK_SECONDS + PATCH_DELAY + PATCH_SECONDS < END[0]);
+    }
+
+    #[test]
+    fn the_swell_passes_through_him_while_the_heart_beats() {
+        let g = geometry();
+        let far = g[2 * 12 + 8].hypot(g[2 * 12 + 9] - DISTANCE);
+        let at = SWELL[0] + far / SWELL_SPEED;
+        assert!(at > HEARTBEAT[0] && at < HEARTBEAT[1], "{at}");
+        assert!(compose(at).fx[2][3] > 0.99);
+    }
+
+    #[test]
+    fn the_warm_ring_fills_him_from_the_shins_to_the_crown() {
+        let start = compose(FILL[0] + 0.01).fx[0][0];
+        let top = compose(FILL[1] - 0.01).fx[0][0];
+        assert!(start > 650.0 && start < FEET, "{start}");
+        assert!(top < CROWN + 10.0, "{top}");
+        assert!(compose(FILL_OUT[1]).fx[0][1] < 1e-3);
+    }
+
+    #[test]
+    fn the_rings_stay_round_him() {
+        for i in 0..=700 {
+            let f = compose(i as f32 * 0.1);
+            for r in [0, 2] {
+                let (c, a, b) = (f.rings[r], f.rings[r], f.rings[r + 1]);
+                assert!((c[0] - AXIS).abs() < 40.0, "{c:?}");
+                assert!(c[1] > CROWN - 160.0 && c[1] < FEET + 60.0, "{c:?}");
+                assert!(a[2] > 20.0 && a[3].abs() < 1.0, "{a:?}");
+                assert!(b[0].abs() < 5.0 && b[3] >= RING_LIGHT[0] - 1e-6);
             }
+        }
+        // Seen from above the front is lower in the frame than the back.
+        let [_, _, b] = ring([0.0, 0.0, 1.0, 0.0], 0.5, 0.5);
+        assert!(b[1] > 0.0);
+    }
+
+    #[test]
+    fn values_stay_finite() {
+        for i in 0..=7000 {
+            let f = compose(i as f32 * 0.01);
+            let spikes = spike_uniforms(&f);
+            let all = f
+                .cam
+                .iter()
+                .chain(f.land.iter())
+                .chain(f.rings.iter().flatten())
+                .chain(f.fx.iter().flatten())
+                .chain(spikes.iter());
+            for v in all {
+                assert!(v.is_finite());
+            }
+            assert!(f.cam[2] >= 1.0 && f.cam[2] <= NEAR_ZOOM + 1e-6);
+            for s in f.spikes {
+                assert!(s.height >= 0.0 && s.height < 1.15);
+                assert!((0.0..=1.0).contains(&s.sign));
+            }
+        }
+        assert_eq!(compose(f32::NAN), compose(0.0));
+        assert_eq!(compose(-LOOP_SECONDS), compose(0.0));
+    }
+
+    #[test]
+    fn the_camera_never_shows_an_edge() {
+        let w = window(1536.0, 1024.0);
+        for i in 0..=1400 {
+            let f = compose(i as f32 * 0.05);
+            for corner in [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]] {
+                let q = [w[0] + corner[0] * w[2], w[1] + corner[1] * w[3]];
+                for s in [0.0, 0.069, 0.5, 1.0, DEPTH_MAX] {
+                    let p = unview(f.cam, q, s);
+                    assert!(p[0] >= 0.0 && p[0] <= SIZE[0], "{} {p:?}", f.time);
+                    assert!(p[1] >= 0.0 && p[1] <= SIZE[1], "{} {p:?}", f.time);
+                }
+            }
+        }
+        // view and unview undo each other.
+        let cam = compose(44.0).cam;
+        let p = unview(cam, view(cam, [300.0, 700.0], 1.3), 1.3);
+        assert!(close(p[0], 300.0, 1e-3) && close(p[1], 700.0, 1e-3));
+    }
+
+    #[test]
+    fn a_canvas_of_any_shape_is_covered_without_stretching() {
+        let full = window(1536.0, 1024.0);
+        assert!(close(full[2], SIZE[0] * ZOOM, 1e-3) && close(full[3], SIZE[1] * ZOOM, 1e-3));
+        for (width, height) in [
+            (300.0, 400.0),
+            (640.0, 330.0),
+            (1200.0, 800.0),
+            (900.0, 300.0),
+        ] {
+            let [x, y, w, h] = window(width, height);
+            assert!(close(w / h, width / height, 1e-4), "{width}×{height}");
+            assert!(w <= full[2] + 1e-3 && h <= full[3] + 1e-3);
+            assert!(y - h * 0.5 >= full[1] - full[3] * 0.5 - 1e-3);
+            assert!(y + h * 0.5 <= full[1] + full[3] * 0.5 + 1e-3);
+            assert!((x - AXIS).abs() < 1e-3);
         }
     }
 
     #[test]
-    fn the_swell_lifts_him_only_while_it_passes() {
-        every(0.05, |t| {
-            let l = lift(t);
-            assert!((0.0..=SWELL_HEIGHT).contains(&l));
-            if !(SWELL[0]..SWELL[3]).contains(&t) {
-                assert_eq!(l, 0.0, "{t}");
-            }
-        });
-        assert!(lift(25.5) > 0.5);
+    fn the_ground_model_matches_the_painting() {
+        let feet = ground([AXIS, FEET]).unwrap();
+        assert!(close(feet[1], DISTANCE, 0.01) && close(closeness(feet), 1.0, 0.01));
+        assert!(ground([AXIS, HORIZON - 10.0]).is_none());
+        let (p, s) = project([0.0, 1.8, DISTANCE]);
+        assert!(close(p[1], CROWN, 2.0) && close(s, 1.0, 1e-6));
+        let g = geometry();
+        // The heart's foot, metres.
+        assert!(close(g[2 * 12 + 8], 1.96, 0.02) && close(g[2 * 12 + 9], 20.4, 0.05));
     }
 
     #[test]
-    fn the_strand_never_reaches_him() {
-        every(0.05, |t| {
-            let f = compose(t);
-            let span = f.curves[4 * 3 + 3];
-            assert!(span[1] <= STRAND_REACH + 1e-6);
-        });
-    }
-
-    #[test]
-    fn the_noise_is_quiet_at_the_seam_and_loud_in_the_phrases() {
-        assert_eq!(noise(0.0), 0.0);
-        assert_eq!(noise(65.0), 0.0);
-        assert_eq!(noise(20.0), 1.0);
-        assert_eq!(ridge(0.0), 1.0);
-        assert_eq!(ridge(30.0), 0.0);
-        assert_eq!(ridge(68.0), 1.0);
-    }
-
-    #[test]
-    fn the_beats_and_keys_run_forward() {
-        assert_eq!(BEATS[0], 0.0);
-        assert!(BEATS.windows(2).all(|w| w[0] < w[1]));
-        assert_eq!(CAMERA[0].0, 0.0);
-        assert!(CAMERA.windows(2).all(|w| w[0].0 < w[1].0));
-        assert!(CAMERA[CAMERA.len() - 1].0 < LOOP_SECONDS);
-    }
-
-    #[test]
-    fn every_dark_theme_has_its_own_colours() {
-        let looks = [0, 2, 3, 4].map(look);
-        for (i, a) in looks.iter().enumerate() {
-            for b in &looks[i + 1..] {
-                assert_ne!(a.cold, b.cold);
-            }
+    fn every_dark_theme_keeps_its_accent_cold_and_a_warm_apart_from_it() {
+        for code in [0, 2, 3, 4] {
+            let l = look(code);
+            let palette = Palette::from_code(code);
+            assert_eq!(l.cold, palette.colors().unwrap().accent);
+            assert_eq!(l.mode, palette.mode());
+            let apart: f32 = (0..3).map(|i| (l.warm[i] - l.cold[i]).powi(2)).sum();
+            assert!(apart.sqrt() > 0.3, "{code}");
         }
-        assert_eq!(look(2), look(99));
-    }
-
-    #[test]
-    fn reduced_motion_holds_the_quiet() {
-        let f = compose(STILL);
-        assert_eq!(f.land[0], 0.0);
-        assert!(f.land[1] > 0.99);
-        assert!(f.curves[4 * 2 + 3][1] > 0.99, "the tone is up");
+        for code in [1, 5, 6, 255] {
+            assert_eq!(look(code), look(2));
+        }
     }
 }

@@ -134,6 +134,14 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   sweep crown → soles («сверху вниз») over an upright radar and aiming at what he senses.
   A figure out of his suit must not look naked («одень его в одежду, а то он голый»): give
   him ordinary clothes under any costume that comes off.
+- Page 09 «Тише шума» (2026-11-21): when he has had pictures made, the scene is his picture
+  in layers, animated like the Step 4 raster scenes; redrawing it in vector lines was
+  rejected («зачем мы делали картинки если ты все равно всё сделал вектором?»).
+- A plain realistic man as a scene's hero is «мимо нашего стиля… скучный». Heroes are cool
+  abstract characters like the steps' main pages: bald, statue-like, made of one material
+  (glass, light points, wireframe, jade…). Realistic people only in the texts about the
+  illusions of thinking. On 09 he chose a body woven of still strings («А Струны»); such a
+  body keeps dark gaps between its strings, never a milky grey. Passed («Ок, делай темы»).
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

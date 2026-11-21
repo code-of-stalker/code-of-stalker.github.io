@@ -338,7 +338,14 @@ Access via step 5 page 07 (index 6) or settings «ОТКРЫТЬ ШЕСТОЙ Ш
   the helmet down (46.8–51.8 s, ember edge, sparks in the dawn colour, green in Матрица) and
   under it he wears a sweater with a collar, trousers and boots (Art: «одень его … а то он
   голый»). Checked in all 4 dark themes, shipped to `main` 2026-11-21 (Art: «Пушим»).
-- 09, 10 need his pictures (briefs in the doc). Next: page 09 on `claude/step-6-scenes`.
+- Pictures for 09 and 10 made 2026-11-21 through Art's Dispatcher (Codex gpt-6-astra, high).
+  Art: «Фигура 1, места ок». 09: `graphics/inner-quiet/assets/figure.png` (variant 1
+  «контур»: a man in a sweater, trousers and boots, 3/4 front, arms down, glowing outline,
+  dark inside; cut out of black, body opaque, glow keyed). 10: `graphics/inner-anywhere/assets/`
+  `01-open … 07-dialogue.png`, 1024², eye-level camera, horizon at mid-height, the floor in
+  the centre left clear for a small figure. Sources, prompts and the unchosen variants:
+  `C:\Users\qtas5\Documents\Codex\2026-10-02\new-chat\work\step6-pictures`. Neither crate
+  exists yet (assets only). Next: page 09 directions on `claude/step-6-scenes`.
 
 ## Step 7 edits (branch `claude/step-7-edits`; 07, 08, 09 and the home card on `main` 2026-11-14)
 Art's notes on screens 7–9 and «красивую иллюстрацию на главную».

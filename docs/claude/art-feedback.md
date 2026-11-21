@@ -166,6 +166,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   - Nothing may come between the camera and him («почему камеру что-то загораживает?»).
   - A second person must not look like a clone of the hero, and a door must not open into a
     glowing void («уходит куда-то в светящуюся пустоту»): give the room behind it depth.
+- «Сквозной путь» round 3 (2026-11-22), to fix next:
+  - A cut to his eyes must last: the window POV at the start showed the train «буквально
+    секунду… нахуя тогда нам этот переход?». Hold the first-person view on the train longer.
+  - Clothes must cover the body: the friend's pelvis pokes out through her coat at the sides.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

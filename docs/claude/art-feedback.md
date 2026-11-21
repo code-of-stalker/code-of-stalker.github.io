@@ -130,6 +130,10 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
 - After «Спуск» shipped (2026-11-16): the first ring riding the sphere still «ходит тупо»
   (fix on the weekend), and once he lands the suit should dissolve beautifully. A costume
   may go, but as its own designed beat, never by just vanishing.
+- «Спуск» fixes (2026-11-21): of three rides for the first ring he chose the plain level
+  sweep crown → soles («сверху вниз») over an upright radar and aiming at what he senses.
+  A figure out of his suit must not look naked («одень его в одежду, а то он голый»): give
+  him ordinary clothes under any costume that comes off.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

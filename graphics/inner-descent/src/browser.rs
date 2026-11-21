@@ -42,7 +42,7 @@ const ATLAS_UNIT: u32 = 0;
 const WORLD_UNIT: u32 = 1;
 const BRIGHT_UNIT: u32 = 2;
 const SPARE_UNIT: u32 = 3;
-const NAMES: [&str; 35] = [
+const NAMES: [&str; 36] = [
     "u_eye",
     "u_right",
     "u_up",
@@ -58,6 +58,7 @@ const NAMES: [&str; 35] = [
     "u_scene",
     "u_light",
     "u_storm",
+    "u_suit",
     "u_src",
     "u_world",
     "u_bright",
@@ -566,6 +567,8 @@ impl InnerDescent {
         self.shared(p, &f, &[vx, vy, world_w as f32, world_h as f32]);
         gl.uniform4fv_with_f32_array(p.at("u_light"), &f.sky);
         gl.uniform4fv_with_f32_array(p.at("u_storm"), &f.storm);
+        let [edge, glow] = f.suit;
+        gl.uniform4f(p.at("u_suit"), edge, glow, 0.0, 0.0);
         gl.draw_arrays(Gl::TRIANGLES, 0, 3);
 
         // Its bright part, with mips for the bloom.

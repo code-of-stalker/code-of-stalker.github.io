@@ -5,9 +5,10 @@
 //! round the ring: x out from the field, z along the ring) so arcs are made
 //! of short straight boxes. `browser.rs` writes them into the data texture
 //! once; the groups' bounds let the shader skip a place the ray misses.
+use crate::math::V3;
 use crate::place::{
-    at_frame, CAR, CAR_FLOOR, CAFE, FACADE, FRIEND_DOOR, HOUSE, LAKE, PIER, PLATFORM, STATION,
-    TRACK,
+    at_frame, hf3, polar, polar3, CAFE, CAR, CAR_FLOOR, FACADE, FRIEND_DOOR, HOUSE, LAKE, PIER,
+    PLATFORM, STATION, TRACK,
 };
 
 /// What a surface is, for its light and its lines (`scene.frag` reads the
@@ -30,6 +31,8 @@ pub mod mat {
     pub const TREE: u32 = 14;
     pub const HILL: u32 = 15;
     pub const DARK: u32 = 16;
+    /// A car's lit pane: seen from outside only, it lets no shadow fall.
+    pub const GLASS: u32 = 17;
 }
 
 /// A car's door leaves slide open by this much with the doors.
@@ -134,8 +137,18 @@ fn wall_x(
 fn bars(beta: f32, x: [f32; 2], z: [f32; 2], y: [f32; 2]) -> Vec<Bx> {
     let (zm, ym) = (0.5 * (z[0] + z[1]), 0.5 * (y[0] + y[1]));
     vec![
-        bx(beta, [x[0], y[0], zm - 0.025], [x[1], y[1], zm + 0.025], mat::WOOD),
-        bx(beta, [x[0], ym - 0.025, z[0]], [x[1], ym + 0.025, z[1]], mat::WOOD),
+        bx(
+            beta,
+            [x[0], y[0], zm - 0.025],
+            [x[1], y[1], zm + 0.025],
+            mat::WOOD,
+        ),
+        bx(
+            beta,
+            [x[0], ym - 0.025, z[0]],
+            [x[1], ym + 0.025, z[1]],
+            mat::WOOD,
+        ),
     ]
 }
 
@@ -204,7 +217,7 @@ pub fn house() -> Vec<Bx> {
         out.push(bx(b, [x, 0.0, z], [x + 0.04, 0.42, z + 0.04], mat::WOOD));
     }
     // The lamp over the table and its cord.
-    out.push(bx(b, [13.36, 2.02, 2.86], [13.64, 2.16, 3.14], mat::LAMP));
+    out.push(bx(b, [13.36, 2.02, 2.86], [13.64, 2.16, 3.15], mat::LAMP));
     out.push(bx(b, [13.49, 2.16, 2.99], [13.51, h, 3.01], mat::DARK));
     // A cupboard in the table room.
     out.push(bx(b, [16.4, 0.0, 4.3], [16.84, 1.9, 5.7], mat::WOOD));
@@ -219,7 +232,15 @@ pub fn house() -> Vec<Bx> {
 /// lamp at each, the station's own house, benches.
 pub fn station() -> Vec<Bx> {
     let s = STATION;
-    let mut out = arc(s - 20.0, s + 22.0, 19.95, 22.15, [0.0, PLATFORM], 6.0, mat::STONE);
+    let mut out = arc(
+        s - 20.0,
+        s + 22.0,
+        19.95,
+        22.15,
+        [0.0, PLATFORM],
+        6.0,
+        mat::STONE,
+    );
     // The ramp up from the field, in five steps.
     for i in 0..5 {
         let a = s - 25.0 + i as f32;
@@ -227,16 +248,44 @@ pub fn station() -> Vec<Bx> {
         out.push(bx(a + 0.5, [20.5, 0.0, -0.2], [21.7, y, 0.2], mat::STONE));
     }
     for d in station_posts() {
-        out.push(bx(s + d, [20.39, PLATFORM, -0.06], [20.51, 3.4, 0.06], mat::POLE));
+        out.push(bx(
+            s + d,
+            [20.39, PLATFORM, -0.06],
+            [20.51, 3.4, 0.06],
+            mat::POLE,
+        ));
         out.push(bx(s + d, [20.9, 3.05, -0.1], [21.1, 3.18, 0.1], mat::LAMP));
-        out.push(bx(s + d, [20.45, 3.22, -0.03], [21.05, 3.27, 0.03], mat::POLE));
+        out.push(bx(
+            s + d,
+            [20.45, 3.22, -0.03],
+            [21.05, 3.27, 0.03],
+            mat::POLE,
+        ));
     }
-    out.extend(arc(s - 17.0, s + 21.0, 20.15, 22.05, [3.35, 3.45], 6.0, mat::ROOF));
+    out.extend(arc(
+        s - 17.0,
+        s + 21.0,
+        20.15,
+        22.05,
+        [3.35, 3.45],
+        6.0,
+        mat::ROOF,
+    ));
     // The station's house with its lit windows.
-    out.push(bx(s + 9.0, [17.3, 0.0, -1.6], [19.6, 3.4, 1.6], mat::FACADE));
+    out.push(bx(
+        s + 9.0,
+        [17.3, 0.0, -1.6],
+        [19.6, 3.4, 1.6],
+        mat::FACADE,
+    ));
     out.push(bx(s + 9.0, [17.1, 3.4, -1.8], [19.8, 3.6, 1.8], mat::ROOF));
     for d in [-10.0, 6.0, 14.0] {
-        out.push(bx(s + d, [20.2, PLATFORM, -0.7], [20.55, 0.72, 0.7], mat::WOOD));
+        out.push(bx(
+            s + d,
+            [20.2, PLATFORM, -0.7],
+            [20.55, 0.72, 0.7],
+            mat::WOOD,
+        ));
     }
     out
 }
@@ -250,7 +299,15 @@ pub fn station_posts() -> [f32; 5] {
 /// boat at rest.
 pub fn lake() -> Vec<Bx> {
     let l = LAKE;
-    let mut out = arc(l - 10.0, l + 10.0, 20.4, 22.15, [0.0, PLATFORM], 4.0, mat::STONE);
+    let mut out = arc(
+        l - 10.0,
+        l + 10.0,
+        20.4,
+        22.15,
+        [0.0, PLATFORM],
+        4.0,
+        mat::STONE,
+    );
     for i in 0..4 {
         let x = 19.6 + 0.2 * i as f32;
         let y = PLATFORM * (i as f32 + 0.5) / 4.0;
@@ -271,11 +328,31 @@ pub fn lake() -> Vec<Bx> {
         out.push(bx(l, [14.45, PIER, z], [14.57, 0.55, z + 0.12], mat::WOOD));
     }
     // The halt's shelter and its lamp.
-    out.push(bx(l + 6.0, [20.55, PLATFORM, -1.2], [20.65, 2.8, 1.2], mat::WALL));
-    out.push(bx(l + 6.0, [20.5, 2.8, -1.35], [21.9, 2.9, 1.35], mat::ROOF));
-    out.push(bx(l + 6.0, [21.1, 2.55, -0.08], [21.3, 2.68, 0.08], mat::LAMP));
+    out.push(bx(
+        l + 6.0,
+        [20.55, PLATFORM, -1.2],
+        [20.65, 2.8, 1.2],
+        mat::WALL,
+    ));
+    out.push(bx(
+        l + 6.0,
+        [20.5, 2.8, -1.35],
+        [21.9, 2.9, 1.35],
+        mat::ROOF,
+    ));
+    out.push(bx(
+        l + 6.0,
+        [21.1, 2.55, -0.08],
+        [21.3, 2.68, 0.08],
+        mat::LAMP,
+    ));
     // A boat on the water.
-    out.push(bx(l + 14.0, [12.3, -0.05, -1.4], [13.1, 0.22, 1.4], mat::WOOD));
+    out.push(bx(
+        l + 14.0,
+        [12.3, -0.05, -1.4],
+        [13.1, 0.22, 1.4],
+        mat::WOOD,
+    ));
     out
 }
 
@@ -305,7 +382,12 @@ pub fn street() -> Vec<Bx> {
         let mid = 0.5 * (a + b);
         let half = FACADE * (0.5 * (b - a) * crate::place::DEG).tan();
         out.push(bx(mid, [FACADE, 0.0, -half], [22.0, h, half], mat::FACADE));
-        out.push(bx(mid, [FACADE - 0.12, h, -half - 0.05], [22.0, h + 0.16, half + 0.05], mat::ROOF));
+        out.push(bx(
+            mid,
+            [FACADE - 0.12, h, -half - 0.05],
+            [22.0, h + 0.16, half + 0.05],
+            mat::ROOF,
+        ));
     }
     out.push(bx(CAFE, [19.4, 2.45, -1.3], [FACADE, 2.55, 1.3], mat::ROOF));
     for a in street_lamps() {
@@ -314,7 +396,12 @@ pub fn street() -> Vec<Bx> {
         out.push(bx(a, [19.6, 3.5, -0.1], [19.8, 3.66, 0.1], mat::LAMP));
     }
     // Her door's porch roof.
-    out.push(bx(FRIEND_DOOR, [19.5, 2.35, -0.8], [FACADE, 2.45, 0.8], mat::ROOF));
+    out.push(bx(
+        FRIEND_DOOR,
+        [19.5, 2.35, -0.8],
+        [FACADE, 2.45, 0.8],
+        mat::ROOF,
+    ));
     out
 }
 
@@ -326,8 +413,18 @@ pub fn car() -> Vec<Bx> {
     let x = |a: f32| TRACK + a;
     let t = 0.06;
     let mut out = vec![
-        bx(0.0, [x(-w), 0.05, -l + 0.3], [x(w), CAR_FLOOR - 0.08, l - 0.3], mat::DARK),
-        bx(0.0, [x(-w), CAR_FLOOR - 0.08, -l], [x(w), CAR_FLOOR, l], mat::CAR),
+        bx(
+            0.0,
+            [x(-w), 0.05, -l + 0.3],
+            [x(w), CAR_FLOOR - 0.08, l - 0.3],
+            mat::DARK,
+        ),
+        bx(
+            0.0,
+            [x(-w), CAR_FLOOR - 0.08, -l],
+            [x(w), CAR_FLOOR, l],
+            mat::CAR,
+        ),
         bx(0.0, [x(-w), 3.2, -l], [x(w), roof, l], mat::CAR),
         bx(0.0, [x(-w), CAR_FLOOR, -l], [x(w), 3.2, -l + t], mat::CAR),
         bx(0.0, [x(-w), CAR_FLOOR, l - t], [x(w), 3.2, l], mat::CAR),
@@ -346,7 +443,7 @@ pub fn car() -> Vec<Bx> {
         if door {
             p.extend([[-0.98, -0.65], [0.65, 0.98]]);
         } else {
-            p.extend([[-0.98, -0.35], [0.35, 0.98]]);
+            p.extend([[-0.98, -0.82], [0.82, 0.98]]);
         }
         p
     };
@@ -365,6 +462,23 @@ pub fn car() -> Vec<Bx> {
     for [a, b] in pillars(true) {
         out.push(bx(0.0, [i0, b0, a], [i1, b1, b], mat::CAR));
     }
+    // The lit panes, both sides, between the pillars (not in the door).
+    for (side, door) in [((o0, o1), false), ((i0, i1), true)] {
+        let mut cuts: Vec<[f32; 2]> = pillars(door);
+        cuts.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        for pair in cuts.windows(2) {
+            let (a, b) = (pair[0][1], pair[1][0]);
+            if door && a < 0.0 && b > 0.0 {
+                continue;
+            }
+            out.push(bx(
+                0.0,
+                [side.0 + 0.02, b0, a],
+                [side.1 - 0.02, b1, b],
+                mat::GLASS,
+            ));
+        }
+    }
     let leaf = |z: [f32; 2], flags| Bx {
         lo: [x(-w + t), CAR_FLOOR, z[0]],
         hi: [x(-w + t + 0.04), b1, z[1]],
@@ -377,18 +491,42 @@ pub fn car() -> Vec<Bx> {
     // Benches along both walls, clear of the doors.
     for (a, b) in [(-w + t, -0.82), (0.82, w - t)] {
         for z in [[-4.9, -1.05], [1.05, 4.9]] {
-            out.push(bx(0.0, [x(a), CAR_FLOOR, z[0]], [x(b), 0.74, z[1]], mat::WOOD));
-            let back = if a < 0.0 { [a, a + 0.08] } else { [b - 0.08, b] };
-            out.push(bx(0.0, [x(back[0]), 0.74, z[0]], [x(back[1]), 1.15, z[1]], mat::WOOD));
+            out.push(bx(
+                0.0,
+                [x(a), CAR_FLOOR, z[0]],
+                [x(b), 0.74, z[1]],
+                mat::WOOD,
+            ));
+            let back = if a < 0.0 {
+                [a, a + 0.08]
+            } else {
+                [b - 0.08, b]
+            };
+            out.push(bx(
+                0.0,
+                [x(back[0]), 0.74, z[0]],
+                [x(back[1]), 1.15, z[1]],
+                mat::WOOD,
+            ));
         }
     }
     // The rails by the doors (his hand on the far one at 1.16, 0.72).
     for a in [-1.16, 1.16] {
         for z in [-0.72, 0.72] {
-            out.push(bx(0.0, [x(a) - 0.025, CAR_FLOOR, z - 0.025], [x(a) + 0.025, 3.2, z + 0.025], mat::POLE));
+            out.push(bx(
+                0.0,
+                [x(a) - 0.025, CAR_FLOOR, z - 0.025],
+                [x(a) + 0.025, 3.2, z + 0.025],
+                mat::POLE,
+            ));
         }
     }
-    out.push(bx(0.0, [x(-0.14), 3.12, -l + 0.4], [x(0.14), 3.2, l - 0.4], mat::LAMP));
+    out.push(bx(
+        0.0,
+        [x(-0.14), 3.12, -l + 0.4],
+        [x(0.14), 3.2, l - 0.4],
+        mat::LAMP,
+    ));
     out
 }
 
@@ -404,8 +542,18 @@ pub fn masts(a: f32, b: f32) -> Vec<Bx> {
     let mut out = Vec::new();
     let mut d = (a / MAST_STEP).ceil() * MAST_STEP + 4.5;
     while d < b {
-        out.push(bx(d, [MAST_R - 0.08, 0.0, -0.08], [MAST_R + 0.08, 5.3, 0.08], mat::POLE));
-        out.push(bx(d, [TRACK - 0.3, WIRE_Y + 0.12, -0.035], [MAST_R, WIRE_Y + 0.2, 0.035], mat::POLE));
+        out.push(bx(
+            d,
+            [MAST_R - 0.08, 0.0, -0.08],
+            [MAST_R + 0.08, 5.3, 0.08],
+            mat::POLE,
+        ));
+        out.push(bx(
+            d,
+            [TRACK - 0.3, WIRE_Y + 0.12, -0.035],
+            [MAST_R, WIRE_Y + 0.2, 0.035],
+            mat::POLE,
+        ));
         d += MAST_STEP;
     }
     out
@@ -456,6 +604,64 @@ pub fn car_spacing() -> f32 {
     (2.0 * CAR[2] + 0.7) / TRACK
 }
 
+/// The crowd in the world: (x, z, size, phase).
+pub fn crowd_world() -> [[f32; 4]; 16] {
+    CROWD.map(|c| {
+        let [x, z] = polar(c[1], STATION + c[0]);
+        [x, z, c[2], c[3]]
+    })
+}
+
+/// The trees in the world: (x, z, height, the crown's radius).
+pub fn trees_world() -> [[f32; 4]; 10] {
+    TREES.map(|t| {
+        let [x, z] = polar(t[0], t[1]);
+        [x, z, t[2], t[3]]
+    })
+}
+
+/// Where a lamp's light reaches: anywhere, only inside the house, only
+/// outside it.
+pub const SIDE_ANY: u32 = 0;
+pub const SIDE_IN: u32 = 1;
+pub const SIDE_OUT: u32 = 2;
+
+/// A warm light: where, how far it reaches, which side of the house's walls
+/// it lights, and whether it is a bulb with a halo (a lit window is not).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Lamp {
+    pub at: [f32; 3],
+    pub radius: f32,
+    pub side: u32,
+    pub halo: bool,
+}
+
+/// The lamps: over the table, by the front door, under the station's
+/// canopy, at the halt, along the street, the café's window, her door.
+/// (The cars' own lamps light only inside them; `scene.frag` adds those.)
+pub fn lamps() -> Vec<Lamp> {
+    let lamp = |at: V3, radius, side, halo| Lamp {
+        at: at.arr(),
+        radius,
+        side,
+        halo,
+    };
+    let mut out = vec![
+        lamp(hf3(13.5, 1.98, 3.0), 2.4, SIDE_IN, true),
+        lamp(hf3(10.8, 2.25, -3.83), 2.6, SIDE_OUT, true),
+    ];
+    for d in station_posts() {
+        out.push(lamp(polar3(21.0, STATION + d, 3.0), 3.0, SIDE_ANY, true));
+    }
+    out.push(lamp(polar3(21.2, LAKE + 6.0, 2.5), 2.6, SIDE_ANY, true));
+    for a in street_lamps() {
+        out.push(lamp(polar3(19.7, a, 3.45), 3.2, SIDE_ANY, true));
+    }
+    out.push(lamp(polar3(19.3, CAFE, 1.4), 2.2, SIDE_ANY, false));
+    out.push(lamp(polar3(19.6, FRIEND_DOOR, 2.0), 1.6, SIDE_ANY, false));
+    out
+}
+
 /// A group of boxes and its bounds (world, or the car's frame).
 #[derive(Clone, Debug)]
 pub struct Group {
@@ -487,7 +693,11 @@ fn bounds(boxes: &[Bx], world: bool) -> ([f32; 3], [f32; 3]) {
             let x = if i & 1 == 0 { b.lo[0] } else { b.hi[0] };
             let y = if i & 2 == 0 { b.lo[1] } else { b.hi[1] };
             let z = if i & 4 == 0 { b.lo[2] } else { b.hi[2] };
-            let [wx, wz] = if world { at_frame(b.beta, x, z) } else { [x, z] };
+            let [wx, wz] = if world {
+                at_frame(b.beta, x, z)
+            } else {
+                [x, z]
+            };
             for (k, v) in [wx, y, wz].into_iter().enumerate() {
                 lo[k] = lo[k].min(v);
                 hi[k] = hi[k].max(v);
@@ -554,7 +764,7 @@ mod tests {
             for k in 0..3 {
                 assert!(b.hi[k] > b.lo[k], "{b:?}");
             }
-            assert!(b.mat <= mat::DARK);
+            assert!(b.mat <= mat::GLASS);
         }
     }
 
@@ -601,7 +811,10 @@ mod tests {
             assert_eq!(ground(p[0], p[1]), PLATFORM, "{c:?}");
             for d in station_posts() {
                 let q = polar(20.45, STATION + d);
-                assert!((p[0] - q[0]).hypot(p[1] - q[1]) > 0.45, "{c:?} by the post {d}");
+                assert!(
+                    (p[0] - q[0]).hypot(p[1] - q[1]) > 0.45,
+                    "{c:?} by the post {d}"
+                );
             }
         }
         let mut t = k.ramp - 3.0;

@@ -16,7 +16,7 @@ type Renderer = {
 };
 type Runtime = { mount(canvas: HTMLCanvasElement): Promise<Renderer> };
 let runtime: Promise<Runtime> | undefined;
-const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/inner-anywhere/runtime.js')
+const loadRuntime = () => runtime ??= (Function('url', 'return import(url)') as (url: string) => Promise<Runtime>)('/graphics/anywhere-path/runtime.js')
   .catch(error => { runtime = undefined; throw error; });
 
 export type InnerAnywhereProps = ArtProps & {
@@ -25,10 +25,10 @@ export type InnerAnywhereProps = ArtProps & {
 };
 
 /** Lifecycle, input and measured cadence only. The shared controller schedules
- * frames; Rust owns the seven places in layers and their changes under the
- * cold ring's scan line, the glass hero with the light inside him, the warm
- * second ring, the sectors that merge the places into one and the colors of
- * the four dark themes. */
+ * frames; Rust owns the night journey in engraving (the field, the house, the
+ * table, the station crowd, the train, the pier, the street, home), the
+ * camera, both rings, the route closing into a ring, the sphere over the world
+ * melting into code and the colors of the four dark themes. */
 export function InnerAnywhere(props: InnerAnywhereProps) {
   const controller = useEffectsController(), focused = useIsFocused(), colors = useThemeColors();
   const outputRef = useRef<HTMLCanvasElement>(null), sync = useRef<() => void>(() => {});
@@ -56,7 +56,7 @@ export function InnerAnywhere(props: InnerAnywhereProps) {
       controller.report(id, { level: snapshot.level, surface: 'artwork', density: output.width / Math.max(1, rect.width),
         buffer: [output.width, output.height], source: [output.width, output.height], blur: [0, 0], draws: renderer.frame_count(),
         sourceUpdates: 1, blurUpdates: 0, contourUpdates: 0, idle: !removeJob, cadence,
-        backend: 'Rust · inner anywhere WebGL2', textures: 0, textureBytes: 0 });
+        backend: 'Rust · anywhere path WebGL2', textures: 0, textureBytes: 0 });
       output.dataset.elapsed = renderer.elapsed().toFixed(3);
       output.dataset.frames = String(renderer.frame_count());
       output.dataset.density = (output.width / Math.max(1, rect.width)).toFixed(3);
@@ -141,9 +141,9 @@ export function InnerAnywhere(props: InnerAnywhereProps) {
     };
   }, [controller]);
   return <View testID="inner-anywhere" style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
-    {failed ? props.fallback : <div role="img" aria-label="Стеклянный человек со звездой в груди стоит в середине, а мир за ним меняется: поле, комната, кухня с собеседником, толпа, вагон поезда, тихий пирс, улица у кафе. Холодное кольцо идёт по сфере вокруг него, тёплое скользит по телу. В конце семь мест раскрываются секторами вокруг его звезды и сливаются в одну картину."
+    {failed ? props.fallback : <div role="img" aria-label="Ночная гравюра: человек идёт через поле в дом, сидит за столом напротив хозяина, проходит вокзал в толпе, едет в вагоне, стоит на тихом пирсе, гуляет с подругой по улице и возвращается домой. Холодное кольцо идёт по сфере вокруг него, тёплое скользит по телу и в конце оставляет его светлым. Потом его путь замыкается в кольцо, сфера накрывает весь мир, и мир тает в код."
       style={{ width: '100%', height: '100%', position: 'relative', pointerEvents: 'none' }}>
-      <canvas ref={outputRef} data-graphics="rust-inner-anywhere" aria-hidden
+      <canvas ref={outputRef} data-graphics="rust-anywhere-path" aria-hidden
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', visibility: ready ? 'visible' : 'hidden' }} />
     </div>}
   </View>;

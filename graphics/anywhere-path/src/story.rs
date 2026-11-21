@@ -208,7 +208,8 @@ impl Story {
         .iter()
         .map(|&(t, d)| (t, d * DEG))
         .collect();
-        h.ride_until(Ride::Train, keys.lake + 0.9, &world).mark("off");
+        h.ride_until(Ride::Train, keys.lake + 0.9, &world)
+            .mark("off");
         keys.off = h.when("off");
         // Out onto the halt, down to the shore, out along the pier.
         h.turn_to(facing(LAKE + 180.0));
@@ -220,8 +221,12 @@ impl Story {
         // Back to the shore, where she waits.
         let meet = polar(19.3, 244.2);
         let her = polar(20.1, 245.0);
-        h.walk(&[polar(19.6, LAKE), polar(19.35, 238.0), meet], ground, WALKING)
-            .mark("meet");
+        h.walk(
+            &[polar(19.6, LAKE), polar(19.35, 238.0), meet],
+            ground,
+            WALKING,
+        )
+        .mark("meet");
         keys.meet = h.when("meet");
         h.turn_to(toward(meet, her)).wait(1.0);
         let hero_way = [
@@ -392,7 +397,13 @@ impl Story {
 
                 // The train: his right hand on the door's rail, looking out
                 // at the country streaming past.
-                let ride = window(t, k.at_seat - 0.5, k.at_seat + 0.2, k.off - 0.1, k.off + 0.5);
+                let ride = window(
+                    t,
+                    k.at_seat - 0.5,
+                    k.at_seat + 0.2,
+                    k.off - 0.1,
+                    k.off + 0.5,
+                );
                 reach(pose, local, 1, car_point(phi, 1.16, 1.55, 0.72), ride);
                 look(pose, local, car_point(phi, 5.0, 1.5, 2.4), 0.55 * ride);
 
@@ -404,12 +415,29 @@ impl Story {
                     k.turn_back - 1.6,
                     k.turn_back - 0.9,
                 );
-                look(pose, local, local.world(v3(0.0, 1.6, 0.0)) + moon_dir() * 40.0, silence);
+                look(
+                    pose,
+                    local,
+                    local.world(v3(0.0, 1.6, 0.0)) + moon_dir() * 40.0,
+                    silence,
+                );
 
                 // With her: he looks at her, more when they stop; speaks.
                 let with_her = window(t, k.meet - 0.8, k.meet, k.parted + 1.4, k.parted + 1.8);
-                let walking = window(t, k.together + 0.4, k.together + 1.2, k.parted - 0.8, k.parted);
-                let talk = window(t, k.together + 1.0, k.together + 1.4, k.together + 3.4, k.together + 3.8);
+                let walking = window(
+                    t,
+                    k.together + 0.4,
+                    k.together + 1.2,
+                    k.parted - 0.8,
+                    k.parted,
+                );
+                let talk = window(
+                    t,
+                    k.together + 1.0,
+                    k.together + 1.4,
+                    k.together + 3.4,
+                    k.together + 3.8,
+                );
                 let her_head = self.head_near(FRIEND, t) - Y * 0.08;
                 look(
                     pose,
@@ -420,7 +448,13 @@ impl Story {
                 pose.arms[1] += 0.22 * talk * (0.5 + 0.5 * (TAU * t / 1.3).sin());
                 pose.bend[1] += 0.45 * talk;
                 // He waves after her.
-                let wave = window(t, k.parted + 0.4, k.parted + 0.7, k.parted + 1.4, k.parted + 1.7);
+                let wave = window(
+                    t,
+                    k.parted + 0.4,
+                    k.parted + 0.7,
+                    k.parted + 1.4,
+                    k.parted + 1.7,
+                );
                 let sway = 0.08 * (TAU * t / 0.7).sin();
                 hold(pose, 1, v3(-0.3 + sway, 1.76, 0.16), wave);
 
@@ -434,7 +468,11 @@ impl Story {
                 reach(pose, local, 1, hf3(13.66, 0.79, 3.48), 1.0);
                 let s = k.seated;
                 let with_him = window(t, s - 1.6, s - 0.6, k.risen + 0.6, k.risen + 1.6);
-                let at = if with_him > 0.0 { hero_head } else { hf3(13.5, 1.2, 1.9) };
+                let at = if with_him > 0.0 {
+                    hero_head
+                } else {
+                    hf3(13.5, 1.2, 1.9)
+                };
                 look(pose, local, at, 0.9 * with_him);
                 pose.nod += 0.3 * (1.0 - with_him);
                 // Listening, nods; then speaks with a hand.
@@ -445,9 +483,27 @@ impl Story {
                 reach(pose, local, 1, hf3(13.72, 1.0 + lift, 3.58), 0.85 * speak);
             }
             FRIEND => {
-                let with_him = window(t, k.meet - 2.2, k.meet - 1.0, k.parted + 0.2, k.parted + 0.6);
-                let walking = window(t, k.together + 0.4, k.together + 1.2, k.parted - 0.8, k.parted);
-                let talk = window(t, k.together + 4.0, k.together + 4.4, k.together + 6.6, k.together + 7.0);
+                let with_him = window(
+                    t,
+                    k.meet - 2.2,
+                    k.meet - 1.0,
+                    k.parted + 0.2,
+                    k.parted + 0.6,
+                );
+                let walking = window(
+                    t,
+                    k.together + 0.4,
+                    k.together + 1.2,
+                    k.parted - 0.8,
+                    k.parted,
+                );
+                let talk = window(
+                    t,
+                    k.together + 4.0,
+                    k.together + 4.4,
+                    k.together + 6.6,
+                    k.together + 7.0,
+                );
                 look(
                     pose,
                     local,
@@ -457,7 +513,13 @@ impl Story {
                 pose.arms[0] += 0.22 * talk * (0.5 + 0.5 * (TAU * t / 1.2).sin());
                 pose.bend[0] += 0.45 * talk;
                 // A wave from her door.
-                let wave = window(t, k.parted + 0.1, k.parted + 0.4, k.parted + 1.0, k.parted + 1.3);
+                let wave = window(
+                    t,
+                    k.parted + 0.1,
+                    k.parted + 0.4,
+                    k.parted + 1.0,
+                    k.parted + 1.3,
+                );
                 let sway = 0.08 * (TAU * t / 0.65).sin();
                 hold(pose, 0, v3(0.3 + sway, 1.72, 0.16), wave);
             }

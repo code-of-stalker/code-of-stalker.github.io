@@ -32,6 +32,7 @@ pub mod camera;
 pub mod math;
 pub mod place;
 pub mod scenery;
+pub mod shader;
 pub mod story;
 
 #[cfg(target_arch = "wasm32")]
@@ -159,7 +160,8 @@ impl Scene {
 
         // The train: where, its doors, its lit windows, its speed.
         let phi = self.story.world.train_at(t);
-        let speed = (self.story.world.train_at(t + 0.05) - self.story.world.train_at(t - 0.05)) / 0.1;
+        let speed =
+            (self.story.world.train_at(t + 0.05) - self.story.world.train_at(t - 0.05)) / 0.1;
         let doors = window(t, k.arrive + 0.3, k.arrive + 1.0, k.dep - 0.6, k.dep)
             + window(t, k.lake + 0.3, k.lake + 1.0, k.lake_dep - 0.6, k.lake_dep);
 
@@ -227,7 +229,12 @@ impl Scene {
             }
             let b = &fig.body;
             let base = (i * FIG_TEXELS) as f32;
-            s[4 * i] = [b.low.x, b.low.y, b.low.z, base + 0.9 * fig.accent.clamp(0.0, 1.0)];
+            s[4 * i] = [
+                b.low.x,
+                b.low.y,
+                b.low.z,
+                base + 0.9 * fig.accent.clamp(0.0, 1.0),
+            ];
             s[4 * i + 1] = [b.high.x, b.high.y, b.high.z, 0.0];
             let feet = v3(b.pelvis.x, b.low.y + 0.15, b.pelvis.z);
             let head = v3(b.head.x, b.head.y - 0.12, b.head.z);
@@ -342,17 +349,32 @@ mod tests {
     fn the_loop_closes_where_he_set_out() {
         let scene = Scene::new();
         let (a, b) = (scene.frame(LOOP - 0.001), scene.frame(0.0));
-        assert!(near(a.view.eye, b.view.eye, 0.05), "{:?} {:?}", a.view, b.view);
+        assert!(
+            near(a.view.eye, b.view.eye, 0.05),
+            "{:?} {:?}",
+            a.view,
+            b.view
+        );
         assert!(near(a.view.look, b.view.look, 0.05));
         for (fa, fb) in a.figures.iter().zip(b.figures.iter()) {
             if fa.seen <= 0.0 && fb.seen <= 0.0 {
                 continue;
             }
-            assert!(near(fa.body.head, fb.body.head, 0.03), "{:?} {:?}", fa.body.head, fb.body.head);
+            assert!(
+                near(fa.body.head, fb.body.head, 0.03),
+                "{:?} {:?}",
+                fa.body.head,
+                fb.body.head
+            );
         }
         for i in 0..4 {
             assert!((a.sphere[i] - b.sphere[i]).abs() < 0.05);
-            assert!((a.rings[i] - b.rings[i]).abs() < 0.05, "{:?} {:?}", a.rings, b.rings);
+            assert!(
+                (a.rings[i] - b.rings[i]).abs() < 0.05,
+                "{:?} {:?}",
+                a.rings,
+                b.rings
+            );
         }
         let ta = a.train[0].rem_euclid(TAU);
         let tb = b.train[0].rem_euclid(TAU);
@@ -396,7 +418,14 @@ mod tests {
             {
                 continue;
             }
-            assert!(w[0].1 < w[1].1, "{} {} then {} {}", w[0].0, w[0].1, w[1].0, w[1].1);
+            assert!(
+                w[0].1 < w[1].1,
+                "{} {} then {} {}",
+                w[0].0,
+                w[0].1,
+                w[1].0,
+                w[1].1
+            );
         }
         // The train is in before he reaches the platform's edge.
         assert!(k.arrive + 1.0 < k.board, "{} {}", k.arrive, k.board);

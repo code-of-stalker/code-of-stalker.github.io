@@ -124,7 +124,8 @@ const fn fixed(eye: V3, at: V3) -> Rig {
 impl Camera {
     pub fn new(story: &Story) -> Camera {
         let k = story.keys;
-        let mid = |a: [f32; 2], b: [f32; 2], y: f32| v3(0.5 * (a[0] + b[0]), y, 0.5 * (a[1] + b[1]));
+        let mid =
+            |a: [f32; 2], b: [f32; 2], y: f32| v3(0.5 * (a[0] + b[0]), y, 0.5 * (a[1] + b[1]));
         let opening = fixed(polar3(4.6, 236.0, 1.15), polar3(6.5, 25.0, 1.5));
         let car_ots = Rig::Car {
             eye: [-0.3, 1.75, 0.55],
@@ -156,7 +157,15 @@ impl Camera {
             // Close behind him through the front door.
             shot(k.door - 1.6, follow(1.6, 0.15, 1.7, 2.5, 1.45), 50.0, 1.6),
             // The room: through his eyes, the train past the window.
-            shot(k.window - 0.3, Rig::Pov { yaw: 0.0, pitch: -0.05 }, 55.0, 0.8),
+            shot(
+                k.window - 0.3,
+                Rig::Pov {
+                    yaw: 0.0,
+                    pitch: -0.05,
+                },
+                55.0,
+                0.8,
+            ),
             shot(
                 k.leave,
                 fixed(hf3(11.6, 1.75, -4.9), hf3(15.4, 1.1, -1.6)),
@@ -196,7 +205,12 @@ impl Camera {
                 46.0,
                 0.0,
             ),
-            shot(k.back_door + 1.0, follow(0.8, 3.4, 1.5, 0.6, 1.2), 46.0, 2.0),
+            shot(
+                k.back_door + 1.0,
+                follow(0.8, 3.4, 1.5, 0.6, 1.2),
+                46.0,
+                2.0,
+            ),
             // Up onto the platform among the crowd.
             shot(k.ramp - 1.0, follow(1.7, 0.4, 1.75, 3.0, 1.5), 48.0, 1.5),
             // The car: he comes in at the door.
@@ -212,7 +226,15 @@ impl Camera {
             shot(k.at_seat + 0.1, car_ots, 48.0, 1.0),
             // Motion: the country streams past his eyes, then the train
             // seen from the field.
-            shot(k.dep + 0.8, Rig::Pov { yaw: -0.3, pitch: -0.02 }, 55.0, 1.2),
+            shot(
+                k.dep + 0.8,
+                Rig::Pov {
+                    yaw: -0.12,
+                    pitch: -0.06,
+                },
+                55.0,
+                1.2,
+            ),
             shot(
                 k.dep + 5.2,
                 Rig::Car {
@@ -238,8 +260,21 @@ impl Camera {
             ),
             // Silence: out to the pier's end, then the moon through his eyes.
             shot(k.pier_end - 0.5, follow(3.0, 0.5, 1.7, 2.0, 1.4), 46.0, 0.0),
-            shot(k.pier_end + 0.5, follow(1.1, 0.35, 1.68, 3.0, 1.5), 46.0, 2.5),
-            shot(k.pier_end + 2.6, Rig::Pov { yaw: 0.0, pitch: 0.2 }, 55.0, 1.5),
+            shot(
+                k.pier_end + 0.5,
+                follow(1.1, 0.35, 1.68, 3.0, 1.5),
+                46.0,
+                2.5,
+            ),
+            shot(
+                k.pier_end + 2.6,
+                Rig::Pov {
+                    yaw: 0.0,
+                    pitch: 0.2,
+                },
+                55.0,
+                1.5,
+            ),
             // He turns back: seen from the shore.
             shot(
                 k.turn_back - 1.7,

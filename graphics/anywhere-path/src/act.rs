@@ -773,7 +773,11 @@ mod tests {
         plan.ride_until(Ride::Train, 10.0, &world);
         // A quarter round the ring the way it runs: from +x to +z, facing
         // the way the ring turned him.
-        assert!(plan.at.x.abs() < 1e-3 && (plan.at.z - 20.0).abs() < 1e-3, "{:?}", plan.at);
+        assert!(
+            plan.at.x.abs() < 1e-3 && (plan.at.z - 20.0).abs() < 1e-3,
+            "{:?}",
+            plan.at
+        );
         let l = plan.frame_at(5.0, &world);
         let a = l.origin.z.atan2(l.origin.x);
         assert!((a - monotone(&world.train, 5.0)).abs() < 1e-3);

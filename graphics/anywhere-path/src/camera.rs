@@ -172,6 +172,14 @@ impl Camera {
                 50.0,
                 0.0,
             ),
+            // The table room: he comes through the doorway toward us and
+            // goes to his chair.
+            shot(
+                k.through,
+                fixed(hf3(15.95, 1.6, 4.95), hf3(14.1, 1.05, 1.2)),
+                48.0,
+                0.0,
+            ),
             // One on one: over his shoulder, the reverse, the profile.
             shot(
                 k.seated - 0.6,
@@ -282,7 +290,21 @@ impl Camera {
                 46.0,
                 0.0,
             ),
-            shot(k.turn_back + 0.8, lead(2.6, 0.5, 1.6, 1.45), 46.0, 1.5),
+            // Back along the pier: close behind him, the shore ahead.
+            shot(
+                k.turn_back + 0.8,
+                follow(2.4, 0.3, 1.65, 3.0, 1.4),
+                46.0,
+                1.5,
+            ),
+            // From over the water: he comes off the pier, she waits on
+            // the shore.
+            shot(
+                k.turn_back + 3.0,
+                fixed(polar3(13.5, 240.0, 1.4), polar3(19.5, 238.5, 1.2)),
+                46.0,
+                0.0,
+            ),
             // Dialogue: the two of them, then walking together.
             shot(
                 k.meet - 1.5,

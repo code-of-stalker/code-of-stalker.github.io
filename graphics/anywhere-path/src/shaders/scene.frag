@@ -655,15 +655,53 @@ Hit trace(vec3 ro, vec3 rd) {
   return h;
 }
 
-// Whether anything stands between p and the moon (`skip` is the hit's id:
-// a person does not shadow itself with the capsule round it).
-bool occluded(vec3 ro, vec3 rd, int skip) {
+// How much light the segment a→b (radius ra at a, rb at b) lets past the
+// ray: none where the ray goes through it, all clear of it, and between a
+// penumbra that widens with the distance, as the moon's own does.
+float segShade(vec3 ro, vec3 rd, vec3 a, vec3 b, float ra, float rb) {
+  vec3 ba = b - a, oa = ro - a;
+  float bb = dot(rd, ba), cc = dot(ba, ba), dd = dot(rd, oa), ee = dot(ba, oa);
+  float u = clamp((ee - bb * dd) / max(cc - bb * bb, 1e-8), 0.0, 1.0);
+  vec3 q = a + ba * u;
+  float t = dot(q - ro, rd);
+  if (t <= 0.0) return 1.0;
+  float r = mix(ra, rb, u);
+  float pen = 0.015 + 0.05 * t;
+  return smoothstep(r - 0.4 * pen, r + pen, length(ro + rd * t - q));
+}
+// How much of the moon the people leave: each cone of each figure shown,
+// so the shadow has legs, arms and a head, and soft edges. One flat loop
+// over every figure's cones; a figure whose box the ray misses is skipped.
+// A figure does not shadow itself (`skip`).
+float figureShade(vec3 ro, vec3 rd, int skip) {
+  float lit = 1.0;
+  vec3 ird = safeInverse(rd);
+  bool near = false;
+  int base = 0;
+  for (int k = 0 + ZERO; k < FIGS * CONES; k++) {
+    int fi = k / CONES, c = k - fi * CONES;
+    if (c == 0) {
+      vec4 lo = u_fig[4 * fi], hi = u_fig[4 * fi + 1], head = u_fig[4 * fi + 3];
+      vec2 s = slab(ro, ird, lo.xyz - 0.3, hi.xyz + 0.3);
+      near = head.w > 0.5 && ID_FIG + fi != skip && s.x <= s.y && s.y > 0.0;
+      base = int(lo.w);
+    }
+    if (!near) continue;
+    vec4 a = tx(base + 3 * c), b = tx(base + 3 * c + 1);
+    lit *= segShade(ro, rd, a.xyz, b.xyz, a.w, b.w);
+  }
+  return lit;
+}
+
+// How much of the moon reaches p: none behind a wall, a roof or a tree;
+// the people's shadows soft (`skip` is the hit's id).
+float moonSeen(vec3 ro, vec3 rd, int skip) {
   float tmax = 120.0;
   int g = 0, i = 0, iEnd = 0;
   vec2 gc = vec2(1.0, 0.0);
   for (int k = 0 + ZERO; k < 2048; k++) {
     if (i < iEnd) {
-      if (boxAny(i, gc, ro, rd, tmax)) return true;
+      if (boxAny(i, gc, ro, rd, tmax)) return 0.0;
       i += 3;
     } else if (g < GROUPS) {
       vec4 a = u_g[3 * g], b = u_g[3 * g + 1], r = u_g[3 * g + 2];
@@ -681,30 +719,25 @@ bool occluded(vec3 ro, vec3 rd, int skip) {
   }
   vec3 ln;
   vec3 rt = roofT(ro, rd, ln);
-  if (rt.x <= rt.y && rt.y > 0.0) return true;
+  if (rt.x <= rt.y && rt.y > 0.0) return 0.0;
   for (int k = 0 + ZERO; k < TREE_N; k++) {
     vec4 tr = TREE_P[k];
     vec3 n;
     vec4 l = lobe(k, 0);
-    if (ballT(ro - l.xyz, rd, vec3(1.15, 1.35, 1.15) * l.w, n) > 0.0) return true;
+    if (ballT(ro - l.xyz, rd, vec3(1.15, 1.35, 1.15) * l.w, n) > 0.0) return 0.0;
     float cy = tr.z - 1.2 * tr.w;
-    if (cylT(ro - vec3(tr.x, 0.5 * cy, tr.y), rd, 0.08 + 0.04 * tr.w, 0.5 * cy, n) > 0.0) return true;
+    if (cylT(ro - vec3(tr.x, 0.5 * cy, tr.y), rd, 0.08 + 0.04 * tr.w, 0.5 * cy, n) > 0.0) return 0.0;
   }
+  float lit = 1.0;
   if (crowdShown() > 0.5) {
     for (int k = 0 + ZERO; k < CROWD_N; k++) {
       if (ID_CROWD + k == skip) continue;
       vec4 a = u_crowd[2 * k];
       vec3 at = vec3(a.x, PLATFORM, a.y);
-      if (capsuleT(ro, rd, at + vec3(0.0, 0.15 * a.z, 0.0), at + vec3(0.0, 1.55 * a.z, 0.0), 0.17 * a.z) > 0.0) return true;
+      lit *= segShade(ro, rd, at + vec3(0.0, 0.2 * a.z, 0.0), at + vec3(0.0, 1.5 * a.z, 0.0), 0.11 * a.z, 0.17 * a.z);
     }
   }
-  for (int f = 0 + ZERO; f < FIGS; f++) {
-    vec4 feet = u_fig[4 * f + 2], head = u_fig[4 * f + 3];
-    if (head.w < 0.5 || ID_FIG + f == skip) continue;
-    float t = capsuleT(ro, rd, feet.xyz, head.xyz, feet.w);
-    if (t > 0.0 && t < tmax) return true;
-  }
-  return false;
+  return lit * figureShade(ro, rd, skip);
 }
 
 // ---- the light ----
@@ -812,9 +845,48 @@ vec3 figureTone(int fi, int part) {
     if (legs) return tone(0.22, 0.0);
     return tone(0.5, 0.55);
   }
-  if (scarf) return tone(0.55, 0.3);
-  if (legs) return tone(0.2, -0.2);
-  return tone(0.38, -0.45);
+  // Her: long dark hair, a pale scarf, a warm long coat, dark legs.
+  if (part == CAP) return tone(0.14, 0.5);
+  if (part == SCARF) return tone(0.42, 0.85);
+  if (scarf) return tone(0.7, -0.4);
+  if (legs) return tone(0.1, 0.0);
+  return tone(0.42, 0.85);
+}
+
+// The hall behind her open door, seen through the doorway at `p` (on the
+// facade, facing `n`, `y0` up from the street): the ray goes on inside to
+// the back wall, a side wall, the floor or the ceiling. Its glow's colour
+// and strength.
+vec4 hallSeen(vec3 p, vec3 n, vec3 rd, float y0) {
+  const float D = 2.4, W = 0.7, H = 2.4;
+  vec3 side = vec3(n.z, 0.0, -n.x);
+  float a = FRIEND_DOOR * DEG;
+  float x0 = dot(p - vec3(cos(a), 0.0, sin(a)) * length(p.xz), side);
+  vec3 q = vec3(max(dot(rd, -n), 1e-3), rd.y, dot(rd, side));
+  float t = D / q.x;
+  float wall = 0.0;
+  if (abs(q.z) > 1e-4) {
+    float ts = (sign(q.z) * W - x0) / q.z;
+    if (ts < t) { t = ts; wall = 1.0; }
+  }
+  if (q.y < -1e-4) {
+    float tf = -y0 / q.y;
+    if (tf < t) { t = tf; wall = 2.0; }
+  } else if (q.y > 1e-4) {
+    float tc = (H - y0) / q.y;
+    if (tc < t) { t = tc; wall = 3.0; }
+  }
+  vec3 h = vec3(q.x * t, y0 + q.y * t, x0 + q.z * t);
+  vec3 toLamp = h - vec3(1.4, 2.2, 0.0);
+  float lit = 0.16 + 0.8 * exp(-dot(toLamp, toLamp) / 1.8);
+  // Panelled below, a darker doorway further in at the back.
+  if (wall < 2.0 && h.y < 0.9) lit *= 0.65;
+  if (wall == 0.0 && abs(h.z) < 0.36 && h.y < 2.0) lit *= 0.3;
+  if (wall == 1.0) lit *= 0.75;
+  if (wall == 2.0) lit *= 0.5;
+  if (wall == 3.0) lit = 0.08 + 1.3 * exp(-dot(toLamp.xz, toLamp.xz) / 0.03);
+  lit *= mix(1.0, 0.75, h.x / D);
+  return vec4(mix(u_warm, u_pale, 0.2), min(lit, 1.0));
 }
 
 struct Surf {
@@ -1073,18 +1145,23 @@ Surf surfaceOf(Hit h, vec3 ro, vec3 rd, vec3 p) {
         s.glow = mix(u_warm, u_pale, 0.25);
         alb = mullion ? tone(0.3, 0.3) : vec3(0.0);
       }
+      // Her open door: a dim hall behind it, a lamp further in.
       float door = abs(wrapDeg(th - FRIEND_DOOR)) * DEG * r;
-      if (door < 0.46 && lp.y < 2.15 && ln.x < 0.0) {
-        s.emit = 0.8;
-        s.glow = u_warm;
-        alb = vec3(0.0);
+      if (door < 0.52 && lp.y < 2.21 && ln.x < 0.0) {
+        alb = tone(0.3, 0.3);
+        if (door < 0.46 && lp.y < 2.15) {
+          vec4 g = hallSeen(p, n, rd, lp.y);
+          s.emit = g.w;
+          s.glow = g.rgb;
+          alb = vec3(0.0);
+        }
       }
     }
   }
 
   // The moon (in shadow or not), the night sky, the lamps.
   float moon = max(dot(n, MOON.xyz), 0.0);
-  if (moon > 0.0 && !far && occluded(p + n * 0.012 + MOON.xyz * 0.004, MOON.xyz, h.id)) moon = 0.0;
+  if (moon > 0.0 && !far) moon *= moonSeen(p + n * 0.012 + MOON.xyz * 0.004, MOON.xyz, h.id);
   s.moon = moon;
   bool indoor = inHouse(p) || inCar(p) >= 0;
   float ao = 1.0;

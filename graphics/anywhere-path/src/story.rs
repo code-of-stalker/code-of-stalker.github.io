@@ -7,7 +7,7 @@
 //! the table sits the whole loop; the friend shows only by the lake and in
 //! the street. Their hands and heads are added on top of their plans.
 use crate::act::{turn_between, Gait, Local, Path, Plan, Ride, World, WALKING};
-use crate::body::{build, Body, Pose, STAND, SWING_SHARE};
+use crate::body::{build, Body, Hair, Pose, STAND, SWING_SHARE};
 use crate::math::{mix, smooth, v3, window, V3, Y};
 use crate::place::{
     angle_of, car_point, facing, from_frame, ground, hf, hf3, polar, toward, DEG, FRIEND_DOOR,
@@ -38,6 +38,8 @@ pub struct Keys {
     /// The train passes his window.
     pub t_w: f32,
     pub leave: f32,
+    /// He comes up to the doorway into the table room.
+    pub through: f32,
     pub seated: f32,
     pub risen: f32,
     pub back_door: f32,
@@ -217,7 +219,8 @@ impl Story {
         h.walk(&[polar(23.0, LAKE), polar(15.4, LAKE)], ground, WALKING)
             .mark("pier_end");
         keys.pier_end = h.when("pier_end");
-        h.wait(4.5).turn_by(PI).mark("turn_back");
+        // He stands a long while: the moon through his eyes.
+        h.wait(8.5).turn_by(PI).mark("turn_back");
         keys.turn_back = h.when("turn_back");
         // Back to the shore, where she waits.
         let meet = polar(19.3, 244.2);
@@ -278,7 +281,7 @@ impl Story {
         };
         f.walk(&her_way, ground, gait).mark("parted");
         f.wait(0.4)
-            .walk(&[polar(20.0, FRIEND_DOOR)], ground, WALKING)
+            .walk(&[polar(20.35, FRIEND_DOOR)], ground, WALKING)
             .mark("in");
         keys.her_in = f.when("in");
         f.wait_until(LOOP);
@@ -297,6 +300,9 @@ impl Story {
         // Crossings the camera cuts on.
         keys.door = first(&h, &world, keys.go, keys.window, |p| {
             from_frame(HOUSE, p.x, p.z)[0] >= 11.0
+        });
+        keys.through = first(&h, &world, keys.leave, keys.seated, |p| {
+            from_frame(HOUSE, p.x, p.z)[1] >= -0.5
         });
         keys.back_door = first(&h, &world, road_from, keys.at_stop, |p| {
             from_frame(HOUSE, p.x, p.z)[1] >= 6.0
@@ -357,6 +363,16 @@ impl Story {
         let carried = self.world.carried(act.ride, act.t0, t);
         let local = act.frame(t, carried);
         let mut pose = act.pose(t, self.breath(i, t));
+        // Each their own: the one at the table bald, she with her hair
+        // down to her shoulders and a long coat.
+        match i {
+            HOST => pose.hair = Hair::Bald,
+            FRIEND => {
+                pose.hair = Hair::Long;
+                pose.coat = 0.1;
+            }
+            _ => {}
+        }
         self.gestures(i, t, &mut pose, &local, hero_head);
         act.body_at(t, &pose, carried)
     }

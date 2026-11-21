@@ -45,7 +45,7 @@ use watcher_scene_palette::Palette;
 
 pub use story::FIGS;
 
-pub const LOOP: f32 = 151.5;
+pub const LOOP: f32 = 155.5;
 
 /// The data texture: one row of cones per figure.
 pub const FIG_TEXELS: usize = 3 * body::PRIMITIVES;
@@ -72,15 +72,15 @@ pub const SLOTS: usize = ROUTE + ROUTE_N;
 
 /// The world is drawn at this share of the canvas and at most this wide
 /// (px), then blurred by the lens and scaled up.
-pub const WORLD_SCALE: f32 = 0.75;
-pub const WORLD_WIDTH: f32 = 1400.0;
+pub const WORLD_SCALE: f32 = 0.9;
+pub const WORLD_WIDTH: f32 = 1600.0;
 /// The widest blur of the lens (px of the world's frame), how densely its
 /// spiral gathers (smaller is denser), and how open it is: the blur of a
 /// thing far behind the focus, as a share of the frame's height over the
 /// lens.
-pub const BLUR_MAX: f32 = 12.0;
-pub const RAD_SCALE: f32 = 1.1;
-pub const APERTURE: f32 = 0.0105;
+pub const BLUR_MAX: f32 = 7.0;
+pub const RAD_SCALE: f32 = 1.0;
+pub const APERTURE: f32 = 0.0042;
 /// How much of the frame's light blooms round its brightest points.
 pub const BLOOM: f32 = 0.16;
 
@@ -197,9 +197,9 @@ impl Scene {
         // The lens: on him; through his eyes on what he looks at a few
         // metres off, and nearly all sharp; sharper too over the whole ring.
         let mid = v3(hero.pelvis.x, 0.5 * (low + head), hero.pelvis.z);
-        let focus = mix((mid - view.eye).length().max(0.8), 5.0, view.pov);
+        let focus = mix((mid - view.eye).length().max(0.8), 8.0, view.pov);
         let high = smooth(k.f0, k.f0 + 4.0, t) - smooth(LOOP - 4.5, LOOP - 0.6, t);
-        let open = APERTURE * mix(1.0, 0.35, view.pov) * (1.0 - 0.7 * high);
+        let open = APERTURE * mix(1.0, 0.15, view.pov) * (1.0 - 0.7 * high);
         Frame {
             t,
             view,

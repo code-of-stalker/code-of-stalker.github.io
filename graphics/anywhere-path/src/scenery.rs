@@ -335,7 +335,7 @@ pub fn lake() -> Vec<Bx> {
         l + 6.0,
         [20.55, PLATFORM, -1.2],
         [20.65, 2.8, 1.2],
-        mat::WALL,
+        mat::WOOD,
     ));
     out.push(bx(
         l + 6.0,

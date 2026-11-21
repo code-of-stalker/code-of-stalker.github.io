@@ -558,6 +558,7 @@ impl Walk {
             scarf: [0.0, 0.0, 0.0, -1.0],
             hair: Hair::Short,
             head: 1.0,
+            coat: 0.0,
         }
     }
 }
@@ -598,6 +599,10 @@ pub struct Pose {
     /// The head's size against a grown man's (a child's is bigger for her
     /// height).
     pub head: f32,
+    /// A long coat's skirt from the waist, its hem this far below the
+    /// knees (0: none). It takes the first of the scarf's links, so only
+    /// one without the scarf wears it.
+    pub coat: f32,
 }
 
 /// A body part's own left, up and forward.
@@ -910,8 +915,22 @@ pub fn build(pose: &Pose) -> Body {
     // twisting as it goes.
     let [wx, wz, phase, strength] = pose.scarf;
     if strength < 0.0 {
-        // No scarf: its links stand empty inside the pelvis.
-        for _ in 0..SCARF_LINKS {
+        // No scarf: its links stand empty inside the pelvis, or the first
+        // is a long coat's skirt flaring from the waist past the knees, its
+        // hem cut square.
+        let mut empty = SCARF_LINKS;
+        if pose.coat > 0.0 {
+            let hem = knees[0].lerp(knees[1], 0.5) - Y * pose.coat;
+            cone(
+                p + pelvic.up * 0.12,
+                0.14,
+                hem,
+                0.2,
+                cut(pelvic.forward, 0.78),
+            );
+            empty -= 1;
+        }
+        for _ in 0..empty {
             cone(p, 0.001, p + Y * 0.01, 0.001, None);
         }
     }

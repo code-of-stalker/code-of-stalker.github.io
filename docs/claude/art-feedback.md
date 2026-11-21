@@ -156,6 +156,16 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   - He liked the finale («конец неплохой»).
   - No sphere at all on this page, only the two rings («сферы тоже не должно быть, только 2
     кольца»).
+- «Сквозной путь» round 2 (smooth 3D), Art's notes by timecode:
+  - The camera must never hold on an empty room after he leaves the frame («4 секунды камера
+    стоит и мы видим просто пустую комнату?»): cut to where he goes.
+  - Not everything defocused («почему всё в расфокусе таком?»): keep depth of field light.
+  - A hard capsule shadow of the hero is «топорная»: soft shadows that follow the body.
+  - A first-person shot needs time («ты только переключил и он уже сразу идет обратно»):
+    hold it several seconds before he moves.
+  - Nothing may come between the camera and him («почему камеру что-то загораживает?»).
+  - A second person must not look like a clone of the hero, and a door must not open into a
+    glowing void («уходит куда-то в светящуюся пустоту»): give the room behind it depth.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

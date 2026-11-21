@@ -2,6 +2,7 @@ import { ArtLoading } from '../skeleton/ArtLoading';
 import { DynamicRings } from './DynamicRings.web';
 import { InnerClouds } from './InnerClouds.web';
 import { InnerDescent } from './InnerDescent.web';
+import { InnerQuiet } from './InnerQuiet.web';
 import { InnerFocus } from './InnerFocus.web';
 import { InnerEcho } from './InnerEcho.web';
 import { InnerFrame } from './InnerFrame.web';
@@ -44,6 +45,7 @@ export function StepFiveScene({ page, width, height, active, reducedMotion }: { 
     : page.webScene === 'inner-clouds' ? InnerClouds
     : page.webScene === 'inner-focus' ? InnerFocus
     : page.webScene === 'inner-descent' ? InnerDescent
+    : page.webScene === 'inner-quiet' ? InnerQuiet
     : page.webScene === 'dynamic-rings' || page.webScene === 'dynamic-life' || page.webScene === 'dynamic-night' || page.webScene === 'dynamic-inner' || page.webScene === 'dynamic-action' ? DynamicRings
     : isNightScene(page.webScene) ? NightCity
     : page.webScene === 'rope-dawn' ? RopeDawn

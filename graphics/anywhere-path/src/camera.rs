@@ -248,7 +248,7 @@ impl Camera {
             // Off at the lake.
             shot(
                 k.off - 0.5,
-                fixed(polar3(19.4, 238.0, 1.5), polar3(22.6, 232.3, 1.5)),
+                fixed(polar3(18.2, 226.0, 1.6), polar3(21.8, 232.5, 1.5)),
                 46.0,
                 0.0,
             ),
@@ -296,7 +296,7 @@ impl Camera {
             shot(k.together + 0.5, lead(3.2, -0.4, 1.6, 1.4), 46.0, 2.5),
             // Home across the field: the camera comes close to him.
             shot(k.home_go, lead(1.6, 0.2, 1.55, 1.35), 40.0, 2.0),
-            shot(k.home_go + 6.0, lead(1.15, 0.0, 1.45, 1.25), 34.0, 3.0),
+            shot(k.home_go + 6.0, lead(1.8, 0.2, 1.5, 1.3), 38.0, 3.0),
             // The finale: up over the whole ring.
             shot(k.f0 - 0.5, Rig::Crane, 46.0, 2.5),
             shot(LOOP - 5.0, opening, 46.0, 4.5),

@@ -84,8 +84,8 @@ export class AnywherePath {
         wasm.anywherepath_pause(this.__wbg_ptr, value);
     }
     /**
-     * Reduced motion holds one moment: at the table, one on one, his
-     * sphere and its rings round him.
+     * Reduced motion holds one moment: at the table, one on one, his two
+     * rings round him.
      * @param {boolean} value
      */
     reduced(value) {
@@ -146,9 +146,10 @@ export class Warm {
 if (Symbol.dispose) Warm.prototype[Symbol.dispose] = Warm.prototype.free;
 
 /**
- * Links the scene's program in the background on the canvas's own context,
- * so the constructor's link comes from the browser's program cache instead of
- * freezing the page (scene-palette `warm.rs`). Drop it after the scene is built.
+ * Links the scene's programs in the background on the canvas's own context,
+ * so the constructor's links come from the browser's program cache instead
+ * of freezing the page (scene-palette `warm.rs`). Drop it after the scene is
+ * built.
  * @param {HTMLCanvasElement} canvas
  * @returns {Warm}
  */
@@ -185,14 +186,25 @@ function __wbg_get_imports() {
         __wbg_attachShader_9567ae57af6746d5: function(arg0, arg1, arg2) {
             getObject(arg0).attachShader(getObject(arg1), getObject(arg2));
         },
+        __wbg_bindFramebuffer_378eb18ef219d37a: function(arg0, arg1, arg2) {
+            getObject(arg0).bindFramebuffer(arg1 >>> 0, getObject(arg2));
+        },
         __wbg_bindTexture_3cf008f256f3ed99: function(arg0, arg1, arg2) {
             getObject(arg0).bindTexture(arg1 >>> 0, getObject(arg2));
         },
         __wbg_bindVertexArray_f58af0a346185ec5: function(arg0, arg1) {
             getObject(arg0).bindVertexArray(getObject(arg1));
         },
+        __wbg_checkFramebufferStatus_301a7db105ca966b: function(arg0, arg1) {
+            const ret = getObject(arg0).checkFramebufferStatus(arg1 >>> 0);
+            return ret;
+        },
         __wbg_compileShader_c2b53ff3a8851f60: function(arg0, arg1) {
             getObject(arg0).compileShader(getObject(arg1));
+        },
+        __wbg_createFramebuffer_2c6b5b0f49c88e5d: function(arg0) {
+            const ret = getObject(arg0).createFramebuffer();
+            return isLikeNone(ret) ? 0 : addHeapObject(ret);
         },
         __wbg_createProgram_cbf448e6f18a9402: function(arg0) {
             const ret = getObject(arg0).createProgram();
@@ -209,6 +221,9 @@ function __wbg_get_imports() {
         __wbg_createVertexArray_b223ea69dd08fcab: function(arg0) {
             const ret = getObject(arg0).createVertexArray();
             return isLikeNone(ret) ? 0 : addHeapObject(ret);
+        },
+        __wbg_deleteFramebuffer_3f8ab330098bf8e6: function(arg0, arg1) {
+            getObject(arg0).deleteFramebuffer(getObject(arg1));
         },
         __wbg_deleteProgram_b524b30ad176cdb4: function(arg0, arg1) {
             getObject(arg0).deleteProgram(getObject(arg1));
@@ -227,6 +242,12 @@ function __wbg_get_imports() {
         },
         __wbg_drawArrays_08872e02fb57b847: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).drawArrays(arg1 >>> 0, arg2, arg3);
+        },
+        __wbg_framebufferTexture2D_73c52f23ec33aa22: function(arg0, arg1, arg2, arg3, arg4, arg5) {
+            getObject(arg0).framebufferTexture2D(arg1 >>> 0, arg2 >>> 0, arg3 >>> 0, getObject(arg4), arg5);
+        },
+        __wbg_generateMipmap_cd49f6eec9558721: function(arg0, arg1) {
+            getObject(arg0).generateMipmap(arg1 >>> 0);
         },
         __wbg_getContext_051324720aa5b7e8: function() { return handleError(function (arg0, arg1, arg2, arg3) {
             const ret = getObject(arg0).getContext(getStringFromWasm0(arg1, arg2), getObject(arg3));
@@ -308,6 +329,9 @@ function __wbg_get_imports() {
         __wbg_shaderSource_c8812639b47d87b9: function(arg0, arg1, arg2, arg3) {
             getObject(arg0).shaderSource(getObject(arg1), getStringFromWasm0(arg2, arg3));
         },
+        __wbg_texImage2D_151a358c7288e555: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+            getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, arg9 === 0 ? undefined : getArrayU8FromWasm0(arg9, arg10));
+        }, arguments); },
         __wbg_texImage2D_ca3d0fe24620ec85: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
             getObject(arg0).texImage2D(arg1 >>> 0, arg2, arg3, arg4, arg5, arg6, arg7 >>> 0, arg8 >>> 0, getObject(arg9));
         }, arguments); },
@@ -389,6 +413,11 @@ function dropObject(idx) {
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedDataViewMemory0 = null;

@@ -10,4 +10,4 @@ for (const file of ['watcher_anywhere_path.js', 'watcher_anywhere_path_bg.wasm']
 }
 await copyFile(path.join(scene, 'preview/runtime.mjs'), path.join(output, 'runtime.js'));
 if (!WebAssembly.validate(await readFile(path.join(output, 'pkg/watcher_anywhere_path_bg.wasm')))) throw new Error('Invalid anywhere-path WASM');
-console.log('Packaged Rust «Итог» (Сквозной путь): 145-second seamless loop; one night journey in pale engraving, field, house, the table one on one, the station crowd, the train, the silent pier, a walk with a friend, home; the warm ring climbs him and leaves him lit, then the route closes into a ring, his sphere grows over the world and the world melts into code.');
+console.log('Packaged Rust «Итог» (Сквозной путь): 151.5-second seamless loop; one night journey in smooth shaded 3D with fog, lamp glow, depth of field and bloom: field, house, the table one on one, the station crowd, the train, the silent pier, a walk with a friend, home; his two rings move with him, the warm one climbs him and leaves him lit, then the route closes into a ring, the cold ring lays itself round the world and the world melts into code.');

@@ -64,24 +64,37 @@ float noise1(float x, uint salt) {
   float u = f * f * (3.0 - 2.0 * f);
   return mix(hash1(int(i), salt), hash1(int(i) + 1, salt), u);
 }
+// The noises' lattice values: a float hash, far cheaper to compile than the
+// integer ones (a shader with many noises links in seconds, not tens).
+float latt2(vec2 p) {
+  vec3 q = fract(p.xyx * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+float latt3(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}
 float noise2(vec2 p, uint salt) {
+  p += vec2(float(salt) * 37.17, float(salt) * 11.31);
   vec2 i = floor(p);
   vec2 f = fract(p);
   vec2 u = f * f * (3.0 - 2.0 * f);
-  int x0 = int(i.x), y0 = int(i.y);
-  float a = hash2(x0, y0, salt), b = hash2(x0 + 1, y0, salt);
-  float c = hash2(x0, y0 + 1, salt), d = hash2(x0 + 1, y0 + 1, salt);
+  float a = latt2(i), b = latt2(i + vec2(1.0, 0.0));
+  float c = latt2(i + vec2(0.0, 1.0)), d = latt2(i + 1.0);
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 float noise3(vec3 p, uint salt) {
+  p += float(salt) * vec3(37.17, 11.31, 23.71);
   vec3 i = floor(p);
   vec3 f = fract(p);
   vec3 u = f * f * (3.0 - 2.0 * f);
-  int x = int(i.x), y = int(i.y), z = int(i.z);
-  float a = mix(hash3(x, y, z, salt), hash3(x + 1, y, z, salt), u.x);
-  float b = mix(hash3(x, y + 1, z, salt), hash3(x + 1, y + 1, z, salt), u.x);
-  float c = mix(hash3(x, y, z + 1, salt), hash3(x + 1, y, z + 1, salt), u.x);
-  float d = mix(hash3(x, y + 1, z + 1, salt), hash3(x + 1, y + 1, z + 1, salt), u.x);
+  vec2 e = vec2(1.0, 0.0);
+  float a = mix(latt3(i), latt3(i + e.xyy), u.x);
+  float b = mix(latt3(i + e.yxy), latt3(i + e.xxy), u.x);
+  float c = mix(latt3(i + e.yyx), latt3(i + e.xyx), u.x);
+  float d = mix(latt3(i + e.yxx), latt3(i + 1.0), u.x);
   return mix(mix(a, b, u.y), mix(c, d, u.y), u.z);
 }
 

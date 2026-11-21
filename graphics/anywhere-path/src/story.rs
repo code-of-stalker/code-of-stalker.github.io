@@ -151,8 +151,8 @@ impl Story {
                 hf(15.0, -1.6),
                 hf(14.5, -0.3),
                 hf(14.3, 0.9),
-                hf(14.1, 2.17),
-                hf(13.5, 2.17),
+                hf(14.1, 2.45),
+                hf(13.5, 2.45),
             ],
             ground,
             WALKING,
@@ -169,6 +169,7 @@ impl Story {
                 hf(14.95, 5.4),
                 hf(15.0, 6.7),
                 polar(18.6, 56.5),
+                polar(19.3, 72.0),
                 polar(20.6, STATION - 26.5),
                 polar(21.1, STATION - 24.5),
                 polar(21.2, STATION - 19.0),
@@ -285,7 +286,7 @@ impl Story {
         // ---- the one at the table ----
         let mut host = Plan::new(
             0.0,
-            hf3(13.5, 0.0, 3.83),
+            hf3(13.5, 0.0, 3.55),
             facing(HOUSE - 90.0),
             true,
             0.97,

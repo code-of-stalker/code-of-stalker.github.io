@@ -1,22 +1,25 @@
-//! The scene's shader source: common.glsl and scene.frag after the crate's
-//! constants as `#define`s, so Rust and the shader read one source. Native
-//! too, so a test and `examples/shader.rs` can check what the browser links.
+//! The shaders' sources: common.glsl and each pass (scene.frag the world,
+//! dof.frag the lens, finish.frag the frame) after the crate's constants as
+//! `#define`s, so Rust and the shaders read one source. Native too, so a
+//! test can check what the browser links.
 use crate::body::{
     BLEND, CAP, COLLAR, CUT_ROUND, FACE, FEET, HANDS, HEAD, LEGS, PRIMITIVES, SCARF, SCARF_LINKS,
     TOES,
 };
 use crate::place::{
-    CAFE, CAR, CAR_FLOOR, DEG, FRIEND_DOOR, HOUSE, PLATFORM, POND, STATION, TRACK, WATER_Y,
+    CAFE, CAR, CAR_FLOOR, DEG, FACADE, FRIEND_DOOR, HOUSE, PLATFORM, POND, STATION, TRACK, WATER_Y,
 };
 use crate::scenery::{
-    car_spacing, crowd_world, lamps, mat, trees_world, BAND, CROWD_HEAD, CROWD_R, CROWD_SHOULDER,
-    DOOR_SLIDE, LEAF_L, LEAF_R, RIDGE_X, RIDGE_Y, ROOF_SLOPE, WALL_H, WIRE_Y,
+    car_spacing, kind, lamps, mat, trees_world, BAND, CROWD_N, DOOR_SLIDE, LEAF_L, LEAF_R, RIDGE_X,
+    RIDGE_Y, ROOF_SLOPE, WALL_H, WIRE_Y,
 };
-use crate::{Scene, DATA_W, FIGS, LOOP, MELT, ROUTE_N, SLOTS};
+use crate::{Scene, BLOOM, BLUR_MAX, DATA_W, FIGS, LOOP, MELT, RAD_SCALE, ROUTE_N, SLOTS};
 
 pub const SCREEN: &str = include_str!("shaders/screen.vert");
 const COMMON: &str = include_str!("shaders/common.glsl");
 const SCENE: &str = include_str!("shaders/scene.frag");
+const DOF: &str = include_str!("shaders/dof.frag");
+const FINISH: &str = include_str!("shaders/finish.frag");
 /// The places' groups and the three cars.
 pub const GROUPS: usize = 4 + crate::scenery::MAST_SECTORS + 3;
 
@@ -43,7 +46,6 @@ fn defines() -> String {
             [l.at[0], l.at[1], l.at[2], w]
         })
         .collect();
-    let crowd = crowd_world();
     let trees = trees_world();
     let blend: Vec<String> = BLEND.iter().map(|b| float(*b)).collect();
     let mut lines: Vec<(String, String)> = vec![
@@ -73,6 +75,7 @@ fn defines() -> String {
         ("HOUSE".into(), float(HOUSE)),
         ("STATION".into(), float(STATION)),
         ("CAFE".into(), float(CAFE)),
+        ("FACADE".into(), float(FACADE)),
         ("FRIEND_DOOR".into(), float(FRIEND_DOOR)),
         ("TRACK".into(), float(TRACK)),
         ("CAR".into(), vec(&CAR)),
@@ -90,11 +93,16 @@ fn defines() -> String {
         ("LEAF_L".into(), LEAF_L.to_string()),
         ("LEAF_R".into(), LEAF_R.to_string()),
         ("WIRE_Y".into(), float(WIRE_Y)),
-        ("CROWD_R".into(), float(CROWD_R)),
-        ("CROWD_SHOULDER".into(), float(CROWD_SHOULDER)),
-        ("CROWD_HEAD".into(), float(CROWD_HEAD)),
-        ("CROWD_N".into(), int(crowd.len())),
-        ("CROWD_LIST".into(), list(&crowd)),
+        ("CROWD_N".into(), int(CROWD_N)),
+        ("K_COAT".into(), kind::COAT.to_string()),
+        ("K_HAT".into(), kind::HAT.to_string()),
+        ("K_BAG".into(), kind::BAG.to_string()),
+        ("K_PACK".into(), kind::PACK.to_string()),
+        ("K_PHONE".into(), kind::PHONE.to_string()),
+        ("K_BEANIE".into(), kind::BEANIE.to_string()),
+        ("BLUR_MAX".into(), float(BLUR_MAX)),
+        ("RAD_SCALE".into(), float(RAD_SCALE)),
+        ("BLOOM".into(), float(BLOOM)),
         ("TREE_N".into(), int(trees.len())),
         ("TREE_LIST".into(), list(&trees)),
         ("LAMP_N".into(), int(lamp_rows.len())),
@@ -135,6 +143,12 @@ fn defines() -> String {
 pub fn source() -> String {
     format!("#version 300 es\n{}{COMMON}\n{SCENE}", defines())
 }
+pub fn dof_source() -> String {
+    format!("#version 300 es\n{}{COMMON}\n{DOF}", defines())
+}
+pub fn finish_source() -> String {
+    format!("#version 300 es\n{}{COMMON}\n{FINISH}", defines())
+}
 
 #[cfg(test)]
 mod tests {
@@ -148,7 +162,9 @@ mod tests {
             "CONES",
             "GROUPS",
             "BLEND_LIST",
-            "CROWD_LIST",
+            "CROWD_N",
+            "K_PHONE",
+            "BLUR_MAX",
             "TREE_LIST",
             "LAMP_LIST",
             "CROWD_GONE",

@@ -11,7 +11,7 @@ pub const DEG: f32 = PI / 180.0;
 
 /// Where the places stand round the ring, degrees (θ = atan2(z, x)).
 pub const HOUSE: f32 = 30.0;
-pub const STATION: f32 = 85.0;
+pub const STATION: f32 = 115.0;
 pub const LAKE: f32 = 232.0;
 pub const CAFE: f32 = 262.0;
 pub const FRIEND_DOOR: f32 = 274.0;

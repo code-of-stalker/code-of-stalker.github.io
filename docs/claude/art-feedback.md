@@ -142,6 +142,20 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   (glass, light points, wireframe, jade…). Realistic people only in the texts about the
   illusions of thinking. On 09 he chose a body woven of still strings («А Струны»); such a
   body keeps dark gaps between its strings, never a milky grey. Passed («Ок, делай темы»).
+- Page 10 «Пробуй в любой среде» (2026-11-21): a standing hero with only the background
+  changing behind him («Он тот же») is «скучно и уныло»; he wants a whole 3D scene as in
+  Step 7. He chose «Сквозной путь» (a night journey through every place in the text).
+- «Сквозной путь» round 1, an engraved look, was rejected. Pale hatching on the dark page
+  «режет глаз… не столько стилизованно сколько неприятно». The bar is Step 7: smooth shaded
+  3D with fog, lamp glow and depth («глубины нет»). Details must hold up («в деталях просто
+  провал»):
+  - People must sit on chairs, not behind the chair back.
+  - A crowd is real varied people, never capsule dummies («люди на вокзале просто болванки?»).
+  - Places must read as separate: a house a few metres from the station platform reads as
+    «человек живет прямо на вокзале?».
+  - He liked the finale («конец неплохой»).
+  - No sphere at all on this page, only the two rings («сферы тоже не должно быть, только 2
+    кольца»).
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

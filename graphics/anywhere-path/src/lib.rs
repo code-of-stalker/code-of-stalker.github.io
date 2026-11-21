@@ -1,31 +1,30 @@
 //! «Сквозной путь», page 10 of Step 6 «Внутреннее кольцо» («Пробуй в любой
-//! среде»). One unbroken journey, drawn as a living engraving: pale hatching
-//! on the dark page. He sets out across an open field at night, goes into a
+//! среде»). One unbroken night journey in smooth shaded 3D: fog, lamp glow,
+//! depth of field and bloom. He sets out across an open field, goes into a
 //! house and looks out of the window as the train passes, sits at the table
 //! opposite the one who lives there, goes out of the back door to the
 //! station and up onto the platform among the crowd, rides the train round
 //! (the country streaming past), gets off at the lake and stands at the end
 //! of the pier in silence, meets a friend on the shore and walks with her
 //! along the street talking, and comes back alone across the field to where
-//! he set out. The camera hangs over his shoulder, cuts where the place
-//! changes and looks through his eyes at the window, in the car and at the
-//! moon.
+//! he set out. The camera stays near him, cuts where the place changes and
+//! looks through his eyes at the window, in the car and at the moon.
 //!
 //! The beats, phrase by phrase:
 //! «Пробуй делать эту практику в любой среде: …» the journey through the
-//! seven places, his sphere and its two rings with him everywhere.
+//! seven places, his two rings with him everywhere: the cold one rides an
+//! unseen sphere round him, the warm one scans his body.
 //! «Позволь телу запомнить …» on the way home the camera comes close; the
 //! warm ring climbs him and leaves him lit, and in the light the places show
 //! in him as traces (the grass, the window's bars, the table, the crowd's
-//! ticks, the train's streaks, the water's ripples, the street's waves); his
-//! hatching trembles to the wind, the crowd and the wheels.
+//! ticks, the train's streaks, the water's ripples, the street's waves).
 //! «Перепроверяй себя …» the camera rises over the whole ring; his route is
-//! drawn as one closed line, his sphere grows over the world, the cold ring
-//! lays itself round everything and the world melts into code round him.
-//! Then the night field comes back and the loop starts again.
+//! drawn as one closed line, the cold ring widens and lays itself round
+//! everything, and the world melts into code round him. Then the night
+//! field comes back and the loop starts again.
 //!
 //! Every value here is a pure function of loop time; `browser.rs` uploads
-//! it and `scene.frag` draws it.
+//! it and the three passes of `shaders/` draw it.
 pub mod act;
 pub mod body;
 pub mod camera;
@@ -46,7 +45,7 @@ use watcher_scene_palette::Palette;
 
 pub use story::FIGS;
 
-pub const LOOP: f32 = 145.0;
+pub const LOOP: f32 = 151.5;
 
 /// The data texture: one row of cones per figure.
 pub const FIG_TEXELS: usize = 3 * body::PRIMITIVES;
@@ -71,6 +70,20 @@ pub const ROUTE: usize = 16;
 pub const ROUTE_N: usize = 64;
 pub const SLOTS: usize = ROUTE + ROUTE_N;
 
+/// The world is drawn at this share of the canvas and at most this wide
+/// (px), then blurred by the lens and scaled up.
+pub const WORLD_SCALE: f32 = 0.75;
+pub const WORLD_WIDTH: f32 = 1400.0;
+/// The widest blur of the lens (px of the world's frame), how densely its
+/// spiral gathers (smaller is denser), and how open it is: the blur of a
+/// thing far behind the focus, as a share of the frame's height over the
+/// lens.
+pub const BLUR_MAX: f32 = 12.0;
+pub const RAD_SCALE: f32 = 1.1;
+pub const APERTURE: f32 = 0.0105;
+/// How much of the frame's light blooms round its brightest points.
+pub const BLOOM: f32 = 0.16;
+
 /// The warm ring's radius about him (body metres).
 pub const WARM_RADIUS: f32 = 0.42;
 /// The sphere and the cold ring in the finale: over the whole world.
@@ -91,6 +104,10 @@ pub struct Frame {
     pub fx: [f32; 4],
     pub mem: [f32; 4],
     pub mem2: [f32; 4],
+    /// The lens: the distance it is focused at (metres), how open it is.
+    pub lens: [f32; 2],
+    /// The crowd: per person where, which way, what it wears, its legs.
+    pub crowd: [[f32; 4]; 2 * scenery::CROWD_N],
 }
 
 pub struct Scene {
@@ -117,8 +134,8 @@ impl Scene {
         }
     }
 
-    /// The reduced-motion frame: at the table, one on one, his sphere and
-    /// its rings round him.
+    /// The reduced-motion frame: at the table, one on one, his two rings
+    /// round him.
     pub fn still(&self) -> f32 {
         self.story.keys.seated + 3.0
     }
@@ -131,7 +148,8 @@ impl Scene {
         let hero = &figures[story::HERO].body;
         let (low, head) = (hero.low.y, hero.head.y + 0.12);
 
-        // His sphere: round his body, over the whole world in the finale.
+        // The unseen sphere the cold ring rides: round his body, over the
+        // whole world in the finale.
         let fin = smooth(k.f0 + 6.0, k.f0 + 10.0, t) - smooth(LOOP - 4.5, LOOP - 0.6, t);
         let centre = v3(hero.pelvis.x, 0.5 * (low + head) + 0.05, hero.pelvis.z);
         let r = (0.55 * (head - low) + 0.12).max(0.8);
@@ -175,6 +193,13 @@ impl Scene {
         let clack = (t * 155.0 / LOOP).fract();
         let wind = (t * 23.0 / LOOP).fract();
         let crowd = window(t, k.ramp, k.ramp + 1.0, k.board, k.board + 1.0);
+
+        // The lens: on him; through his eyes on what he looks at a few
+        // metres off, and nearly all sharp; sharper too over the whole ring.
+        let mid = v3(hero.pelvis.x, 0.5 * (low + head), hero.pelvis.z);
+        let focus = mix((mid - view.eye).length().max(0.8), 5.0, view.pov);
+        let high = smooth(k.f0, k.f0 + 4.0, t) - smooth(LOOP - 4.5, LOOP - 0.6, t);
+        let open = APERTURE * mix(1.0, 0.35, view.pov) * (1.0 - 0.7 * high);
         Frame {
             t,
             view,
@@ -186,6 +211,8 @@ impl Scene {
             fx: [fog, drawn.max(0.0), route_light, melt.max(0.0)],
             mem: [fill_y, mem, low, head],
             mem2: [clack, wind, follow, crowd],
+            lens: [focus, open],
+            crowd: scenery::crowd(t),
         }
     }
 
@@ -294,11 +321,11 @@ fn route(story: &Story) -> [[f32; 4]; ROUTE_N] {
 /// The colours of one theme.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Look {
-    /// The page: the engraving's paper.
+    /// The page.
     pub paper: [f32; 3],
-    /// The engraving's lines.
+    /// The lines: rails, joints, glyph strokes.
     pub ink: [f32; 3],
-    /// The sphere and the first ring.
+    /// The cold ring.
     pub cold: [f32; 3],
     /// The second ring, the lit windows, the light in him.
     pub warm: [f32; 3],

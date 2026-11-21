@@ -208,13 +208,16 @@ pub fn house() -> Vec<Bx> {
     for (x, z) in [(12.95, 2.65), (14.0, 2.65), (12.95, 3.3), (14.0, 3.3)] {
         out.push(bx(b, [x, 0.0, z], [x + 0.05, 0.71, z + 0.05], mat::WOOD));
     }
-    // His chair (he faces +z) and the host's.
-    out.push(bx(b, [13.28, 0.42, 1.95], [13.72, 0.46, 2.39], mat::WOOD));
-    out.push(bx(b, [13.28, 0.46, 1.95], [13.72, 0.95, 1.99], mat::WOOD));
-    out.push(bx(b, [13.28, 0.42, 3.61], [13.72, 0.46, 4.05], mat::WOOD));
-    out.push(bx(b, [13.28, 0.46, 4.01], [13.72, 0.95, 4.05], mat::WOOD));
-    for (x, z) in [(13.3, 1.97), (13.66, 1.97), (13.3, 3.99), (13.66, 3.99)] {
-        out.push(bx(b, [x, 0.0, z], [x + 0.04, 0.42, z + 0.04], mat::WOOD));
+    // His chair (he faces +z) and the host's, each under the sitter's
+    // pelvis (SEAT_BACK behind the feet) with its back behind him.
+    out.push(bx(b, [13.28, 0.42, 1.8], [13.72, 0.46, 2.24], mat::WOOD));
+    out.push(bx(b, [13.28, 0.46, 1.8], [13.72, 0.95, 1.84], mat::WOOD));
+    out.push(bx(b, [13.28, 0.42, 3.76], [13.72, 0.46, 4.2], mat::WOOD));
+    out.push(bx(b, [13.28, 0.46, 4.16], [13.72, 0.95, 4.2], mat::WOOD));
+    for x in [13.3, 13.66] {
+        for z in [1.81, 2.19, 3.77, 4.15] {
+            out.push(bx(b, [x, 0.0, z], [x + 0.04, 0.42, z + 0.04], mat::WOOD));
+        }
     }
     // The lamp over the table and its cord.
     out.push(bx(b, [13.36, 2.02, 2.86], [13.64, 2.16, 3.15], mat::LAMP));
@@ -566,13 +569,13 @@ pub const CROWD: [[f32; 4]; 16] = [
     [-19.0, 22.0, 0.95, 0.65],
     [-16.5, 20.25, 1.0, 0.1],
     [-12.0, 22.0, 0.95, 0.7],
-    [-8.0, 20.25, 1.05, 0.3],
+    [-7.6, 20.25, 1.05, 0.3],
     [-4.0, 22.0, 0.97, 0.9],
     [-2.0, 20.3, 0.92, 0.5],
     [3.5, 21.9, 1.0, 0.2],
     [4.5, 20.9, 1.02, 0.6],
     [8.0, 21.6, 0.96, 0.4],
-    [8.3, 20.45, 1.0, 0.8],
+    [8.45, 20.45, 1.0, 0.8],
     [11.5, 21.3, 1.04, 0.15],
     [12.5, 22.0, 0.93, 0.55],
     [15.5, 20.8, 1.0, 0.35],
@@ -580,13 +583,113 @@ pub const CROWD: [[f32; 4]; 16] = [
     [19.5, 21.2, 1.03, 0.25],
     [20.5, 20.4, 0.97, 0.85],
 ];
-/// A person of the crowd: radius, shoulders' and head's height at size 1.
-pub const CROWD_R: f32 = 0.19;
-pub const CROWD_SHOULDER: f32 = 1.42;
-pub const CROWD_HEAD: f32 = 1.62;
+/// What each person of the crowd wears and does (`scene.frag` reads the
+/// same bits).
+pub mod kind {
+    /// A long coat to the knees.
+    pub const COAT: u32 = 1;
+    /// A hat with a brim.
+    pub const HAT: u32 = 2;
+    /// A bag on a strap at the hip.
+    pub const BAG: u32 = 4;
+    /// A backpack.
+    pub const PACK: u32 = 8;
+    /// Looking down at a phone in the right hand.
+    pub const PHONE: u32 = 16;
+    /// A knitted cap.
+    pub const BEANIE: u32 = 32;
+}
+/// Per person: which way it faces (degrees from facing the track, + along
+/// the ring), what it wears (`kind`), how far it paces along the platform
+/// to and fro (metres; 0 stands), and whom it talks to (-1 nobody).
+pub const CROWD_KIND: [[f32; 4]; 16] = {
+    use kind::*;
+    const fn k(bits: u32) -> f32 {
+        bits as f32
+    }
+    [
+        [-35.0, k(COAT | HAT), 0.0, -1.0],
+        [-60.0, k(PACK | BEANIE | PHONE), 0.0, -1.0],
+        [0.0, k(COAT | BAG), 1.1, -1.0],
+        [20.0, k(PHONE), 0.0, -1.0],
+        [-25.0, k(COAT | HAT), 0.0, -1.0],
+        [-80.0, k(BAG), 0.0, -1.0],
+        [0.0, k(COAT), 0.0, 7.0],
+        [0.0, k(BEANIE | PACK), 0.0, 6.0],
+        [0.0, k(COAT | HAT), 0.0, 9.0],
+        [0.0, k(BAG), 0.0, 8.0],
+        [-10.0, k(COAT | PHONE), 0.0, -1.0],
+        [0.0, k(COAT), 0.7, -1.0],
+        [0.0, k(BEANIE), 0.0, 13.0],
+        [0.0, k(COAT | BAG), 0.0, 12.0],
+        [-45.0, k(PHONE | PACK), 0.0, -1.0],
+        [5.0, k(COAT | HAT), 0.0, -1.0],
+    ]
+};
+/// How fast a pacing person walks its stretch (radians of its to-and-fro a
+/// second) and how fast its legs swing.
+const PACE: f32 = 0.42;
+const STRIDE: f32 = 5.5;
+
+/// Person `k` of the crowd at time `t`: where it stands (x, z), which way
+/// it faces (x, z) and how its legs swing (-1..1).
+pub fn crowd_pose(k: usize, t: f32) -> ([f32; 2], [f32; 2], f32) {
+    use std::f32::consts::{PI, TAU};
+    let c = CROWD[k];
+    let [face, _, pace, partner] = CROWD_KIND[k];
+    let deg = STATION + c[0];
+    let (sin, cos) = (deg * crate::place::DEG).sin_cos();
+    let (out, along) = ([cos, sin], [-sin, cos]);
+    let ph = c[3] * TAU;
+    let at = polar(c[1], deg);
+    if pace > 0.0 {
+        let w = t * PACE + ph;
+        let walk = pace * w.sin();
+        // Turning at each end through facing the track.
+        let turn = crate::math::smooth(-0.25, 0.25, w.cos());
+        let a = PI * (1.0 - turn);
+        let f = [
+            along[0] * a.cos() + out[0] * a.sin(),
+            along[1] * a.cos() + out[1] * a.sin(),
+        ];
+        let swing = (t * STRIDE + ph).sin() * crate::math::smooth(0.1, 0.5, w.cos().abs());
+        return ([at[0] + along[0] * walk, at[1] + along[1] * walk], f, swing);
+    }
+    let sway = [
+        0.025 * (t * 1.1 + ph).sin(),
+        0.025 * (t * 0.83 + 1.3 * ph).cos(),
+    ];
+    let at = [at[0] + sway[0], at[1] + sway[1]];
+    let f = if partner >= 0.0 {
+        let o = polar(
+            CROWD[partner as usize][1],
+            STATION + CROWD[partner as usize][0],
+        );
+        let d = [o[0] - at[0], o[1] - at[1]];
+        let l = d[0].hypot(d[1]).max(1e-4);
+        [d[0] / l, d[1] / l]
+    } else {
+        let (s, c) = (face * crate::place::DEG).sin_cos();
+        [out[0] * c + along[0] * s, out[1] * c + along[1] * s]
+    };
+    (at, f, 0.0)
+}
+
+/// The crowd for the shader (`u_crowd`): per person [x, z, size, kind] and
+/// [facing x, facing z, the legs' swing, phase].
+pub fn crowd(t: f32) -> [[f32; 4]; 2 * CROWD_N] {
+    let mut out = [[0.0; 4]; 2 * CROWD_N];
+    for k in 0..CROWD_N {
+        let (at, f, swing) = crowd_pose(k, t);
+        out[2 * k] = [at[0], at[1], CROWD[k][2], CROWD_KIND[k][1]];
+        out[2 * k + 1] = [f[0], f[1], swing, CROWD[k][3]];
+    }
+    out
+}
+pub const CROWD_N: usize = 16;
 
 /// The field's trees: (out, degrees, height, the crown's radius).
-pub const TREES: [[f32; 4]; 10] = [
+pub const TREES: [[f32; 4]; 15] = [
     [9.0, 120.0, 4.2, 1.3],
     [12.5, 150.0, 5.0, 1.6],
     [7.0, 175.0, 3.6, 1.1],
@@ -596,7 +699,13 @@ pub const TREES: [[f32; 4]; 10] = [
     [13.0, 345.0, 5.2, 1.7],
     [8.0, 70.0, 3.8, 1.2],
     [15.0, 300.0, 4.6, 1.4],
-    [16.5, 130.0, 5.4, 1.8],
+    [15.5, 162.0, 5.4, 1.8],
+    // A copse between the house and the station, on both sides of the line.
+    [13.0, 70.0, 5.4, 1.7],
+    [12.0, 78.0, 4.8, 1.5],
+    [10.6, 87.0, 5.6, 1.8],
+    [30.5, 66.0, 6.0, 2.0],
+    [31.0, 82.0, 5.4, 1.8],
 ];
 
 /// How far apart the cars' middles run, radians.
@@ -605,15 +714,8 @@ pub fn car_spacing() -> f32 {
 }
 
 /// The crowd in the world: (x, z, size, phase).
-pub fn crowd_world() -> [[f32; 4]; 16] {
-    CROWD.map(|c| {
-        let [x, z] = polar(c[1], STATION + c[0]);
-        [x, z, c[2], c[3]]
-    })
-}
-
 /// The trees in the world: (x, z, height, the crown's radius).
-pub fn trees_world() -> [[f32; 4]; 10] {
+pub fn trees_world() -> [[f32; 4]; 15] {
     TREES.map(|t| {
         let [x, z] = polar(t[0], t[1]);
         [x, z, t[2], t[3]]
@@ -806,25 +908,35 @@ mod tests {
         let s = Scenery::new(288);
         let hero = crate::Scene::new();
         let k = hero.story.keys;
-        for c in CROWD {
-            let p = polar(c[1], STATION + c[0]);
-            assert_eq!(ground(p[0], p[1]), PLATFORM, "{c:?}");
-            for d in station_posts() {
-                let q = polar(20.45, STATION + d);
-                assert!(
-                    (p[0] - q[0]).hypot(p[1] - q[1]) > 0.45,
-                    "{c:?} by the post {d}"
-                );
-            }
-        }
+        // Every person stays on the platform, clear of the posts, the
+        // benches, the others and his way, pacing or not.
         let mut t = k.ramp - 3.0;
-        while t < k.board {
+        while t < k.board + 1.0 {
             let f = hero.frame(t);
             let b = &f.figures[crate::story::HERO].body;
-            for c in CROWD {
-                let p = polar(c[1], STATION + c[0]);
-                let d = (p[0] - b.pelvis.x).hypot(p[1] - b.pelvis.z);
-                assert!(d > 0.5, "{c:?} at {t}: {d}");
+            for i in 0..CROWD_N {
+                let (p, _, _) = crowd_pose(i, t);
+                assert_eq!(ground(p[0], p[1]), PLATFORM, "{i} at {t}");
+                for d in station_posts() {
+                    let q = polar(20.45, STATION + d);
+                    let gap = (p[0] - q[0]).hypot(p[1] - q[1]);
+                    assert!(gap > 0.45, "{i} by the post {d} at {t}");
+                }
+                let (r, th) = (p[0].hypot(p[1]), crate::place::angle_of(p[0], p[1]));
+                for d in [-10.0f32, 6.0, 14.0] {
+                    let along = r * crate::place::wrap_deg(th - STATION - d) * crate::place::DEG;
+                    let clear = along.abs() > 0.8 || (r - 20.375).abs() > 0.36;
+                    assert!(clear, "{i} on the bench {d} at {t}: {along}");
+                }
+                for j in 0..i {
+                    let (q, _, _) = crowd_pose(j, t);
+                    let gap = (p[0] - q[0]).hypot(p[1] - q[1]);
+                    assert!(gap > 0.6, "{i} and {j} at {t}: {gap}");
+                }
+                if t < k.board {
+                    let d = (p[0] - b.pelvis.x).hypot(p[1] - b.pelvis.z);
+                    assert!(d > 0.5, "{i} at {t}: {d}");
+                }
             }
             t += 0.1;
         }

@@ -39,6 +39,7 @@ SOURCES = {
     "inner-labels": ["labels"],
     "inner-focus": ["labels"],
     "inner-descent": ["labels"],
+    "inner-quiet": ["figure"],
     "voice-fork": ["figure"],
     "night-city": ["phone"],
 }

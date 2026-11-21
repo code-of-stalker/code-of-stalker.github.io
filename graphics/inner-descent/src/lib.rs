@@ -149,33 +149,31 @@ pub const NOTICES_GO: [f32; 2] = [37.0, 38.2];
 
 // ---------- the rings
 
-/// The first ring: its plane's normal and radius over time, round his
-/// waist; at «Я Есть» it settles onto the ground round his feet.
-pub const OUTER: [(f32, [f32; 4]); 12] = [
-    (0.0, [0.5, 1.0, 0.6, 2.3]),
-    (9.0, [0.5, 1.0, 0.6, 2.3]),
-    (13.0, [0.3, 1.0, -0.2, 2.3]),
-    (18.0, [0.3, 1.0, -0.2, 2.3]),
-    (21.5, [0.45, 1.0, 0.5, 1.15]),
-    (26.0, [0.45, 1.0, 0.5, 1.15]),
-    (SWITCH, [0.3, 1.0, -0.2, 2.3]),
-    (37.0, [0.3, 1.0, -0.2, 2.3]),
-    (40.0, [0.35, 1.0, 0.4, 2.3]),
-    (46.0, [0.35, 1.0, 0.4, 2.3]),
-    (50.0, [0.0, 1.0, 0.0, 2.5]),
-    (60.0, [0.0, 1.0, 0.0, 2.5]),
+/// The first ring's sphere round his waist: its radius over time (m).
+pub const OUTER: [(f32, [f32; 1]); 12] = [
+    (0.0, [2.3]),
+    (9.0, [2.3]),
+    (13.0, [2.3]),
+    (18.0, [2.3]),
+    (21.5, [1.15]),
+    (26.0, [1.15]),
+    (SWITCH, [2.3]),
+    (37.0, [2.3]),
+    (40.0, [2.3]),
+    (46.0, [2.3]),
+    (50.0, [2.5]),
+    (60.0, [2.5]),
 ];
 pub const SETTLE: [f32; 2] = [46.0, 50.0];
 pub const FLOOR: V = [0.0, 0.02, 0.0];
-/// The first ring never rests: it rides the sphere round his waist (the
-/// keyed radius). Its plane leans `RIDE_TILT` off the keyed one and that
-/// lean goes round `RIDE_TURNS` times a loop, while the ring slides up and
-/// down the sphere between `RIDE_LATITUDE` (rad) every `RIDE_SECONDS`. On
-/// the soil it lies level and slides from the ground at his feet up to
-/// `SOIL_TOP` and back, on the ground at `STILL`.
-pub const RIDE_TILT: f32 = 0.35;
-pub const RIDE_TURNS: f32 = 3.0;
-pub const RIDE_LATITUDE: [f32; 2] = [-0.4, 0.4];
+/// The first ring never rests: it lies level and scans the whole sphere
+/// round his waist (the keyed radius), from over his crown (`SWEEP`, rad of
+/// latitude) to under his soles and back every `SWEEP_SECONDS`, as on page
+/// 06 (Art chose this ride on 2026-11-21). On the soil it slides from the
+/// ground at his feet up to `SOIL_TOP` and back every `RIDE_SECONDS`, on
+/// the ground at `STILL`.
+pub const SWEEP: [f32; 2] = [1.1, -1.05];
+pub const SWEEP_SECONDS: f32 = 10.0;
 pub const RIDE_SECONDS: f32 = 12.0;
 pub const SOIL_TOP: f32 = -0.12;
 /// Both runners go round `TURNS` times a loop; the second ring runs
@@ -492,38 +490,22 @@ impl Ring {
     }
 }
 
-/// The first ring: cold, scanning the space round him, riding the sphere
-/// round his waist; at «Я Есть» it lies level and rides up from the ground
-/// round his feet.
+/// The first ring: cold, scanning the space round him, sweeping the
+/// sphere round his waist from his crown to under his soles; at «Я Есть»
+/// it settles onto the soil and rides up from the ground round his feet.
 pub fn outer(t: f32) -> Ring {
     let t = wrap(t);
-    let [nx, ny, nz, r] = eased(&OUTER, t);
+    let [r] = eased(&OUTER, t);
     let settle = smooth(SETTLE[0], SETTLE[1], t);
-    // The lean of its plane goes round the keyed normal.
-    let keyed = norm([nx, ny, nz]);
-    let side = norm(cross(keyed, [0.0, 0.0, 1.0]));
-    let other = cross(keyed, side);
-    let (lean, round) = (
-        RIDE_TILT * (1.0 - settle),
-        TAU * RIDE_TURNS * t / LOOP_SECONDS,
-    );
-    let normal = add(
-        scale(keyed, lean.cos()),
-        scale(
-            add(scale(side, round.cos()), scale(other, round.sin())),
-            lean.sin(),
-        ),
-    );
-    // Up and down the sphere; on the soil from his feet up and back.
-    let [lo, hi] = RIDE_LATITUDE;
+    let [top, bottom] = SWEEP;
+    let sweep = top + (bottom - top) * (0.5 - 0.5 * (TAU * t / SWEEP_SECONDS).cos());
     let wave = (TAU * (t - STILL) / RIDE_SECONDS).cos();
-    let ride = 0.5 * (lo + hi) + 0.5 * (hi - lo) * wave;
     let ground = -((WAIST - FLOOR[1]) / r).clamp(-1.0, 1.0).asin();
     let soil = ground + (SOIL_TOP - ground) * (0.5 - 0.5 * wave);
-    let latitude = ride + (soil - ride) * settle;
-    let centre = add([0.0, WAIST, 0.0], scale(normal, r * latitude.sin()));
+    let latitude = sweep + (soil - sweep) * settle;
+    let centre = [0.0, WAIST + r * latitude.sin(), 0.0];
     let turn = TAU * TURNS * t / LOOP_SECONDS + 0.6;
-    Ring::new(centre, r * latitude.cos(), normal, turn, 0.95)
+    Ring::new(centre, r * latitude.cos(), [0.0, 1.0, 0.0], turn, 0.95)
 }
 
 /// Where the second ring scans him (m up his body).
@@ -547,6 +529,92 @@ pub fn inner(t: f32, pose: &Pose) -> Ring {
     let extra = EXTRA / (IN_STEP[0] + 0.5 * (IN_STEP[1] - IN_STEP[0]));
     let turn = TAU * TURNS * t / LOOP_SECONDS + 1.1 + TAU * extra * own;
     Ring::new(centre, r, normal, turn, 1.0)
+}
+
+// ---------- his suit
+
+/// Once he stands on the soil his suit burns away (s), from over his crown
+/// (`SUIT_TOP`, m up his body) to under his soles (`SUIT_FOOT`): a glowing
+/// edge runs down him and sheds flakes on the dawn wind, and at «Я Есть» he
+/// stands as he is.
+pub const SUIT: [f32; 2] = [46.8, 51.8];
+pub const SUIT_TOP: f32 = 2.0;
+pub const SUIT_FOOT: f32 = -0.12;
+/// Above this the edge has not begun: the whole suit is on.
+pub const SUIT_ON: f32 = 3.0;
+/// The flakes: how many fly at once, how long each lives (s), how big
+/// (m), the wind they ride (m/s, the world).
+pub const FLAKES: usize = 20;
+pub const FLAKE_LIFE: f32 = 1.7;
+pub const FLAKE_SIZE: f32 = 0.05;
+pub const WIND: V = [0.42, 0.38, -0.36];
+
+/// Where the burning edge is (m up his body) and how bright it burns.
+pub fn suit(t: f32) -> [f32; 2] {
+    let t = wrap(t);
+    if t < SUIT[0] {
+        return [SUIT_ON, 0.0];
+    }
+    let down = smooth(SUIT[0], SUIT[1], t);
+    let glow = window(t, [SUIT[0], SUIT[0] + 0.4, SUIT[1] - 0.3, SUIT[1] + 0.2]);
+    [SUIT_TOP + (SUIT_FOOT - SUIT_TOP) * down, glow]
+}
+
+fn hash(i: u32, k: u32) -> f32 {
+    let mut x = i.wrapping_mul(0x9e37_79b9) ^ k.wrapping_mul(0x85eb_ca6b) ^ 0x632b_e5ab;
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^= x >> 16;
+    (x >> 8) as f32 / 16_777_215.0
+}
+
+/// A point on his suit at height `y` (his frame), round the part there at
+/// the angle `a` (from +z toward +x), and the way out of it.
+fn on_suit(y: f32, a: f32, side: f32) -> (V, V) {
+    let out = [a.sin(), 0.0, a.cos()];
+    let (centre, r) = if y > 1.53 {
+        let dy = y - HELM[1];
+        ([0.0, y, HELM[2]], (0.04 - dy * dy).max(0.0025).sqrt())
+    } else if y > 0.95 {
+        ([0.0, y, -0.04], 0.25)
+    } else {
+        ([0.12 * side, y, 0.0], 0.1)
+    };
+    (add(centre, scale(out, r)), out)
+}
+
+/// The flakes the edge sheds: where each is (the world), the way out of
+/// his body it left by (the world), its light.
+pub fn flakes(t: f32, pose: &Pose) -> [(V, V, f32); FLAKES] {
+    let t = wrap(t);
+    std::array::from_fn(|i| {
+        let phase = FLAKE_LIFE * i as f32 / FLAKES as f32;
+        let k = ((t - SUIT[0] - phase) / FLAKE_LIFE).floor();
+        let born = SUIT[0] + phase + k * FLAKE_LIFE;
+        let age = t - born;
+        if k < 0.0 || born > SUIT[1] - 0.2 {
+            return ([0.0; 3], [0.0; 3], 0.0);
+        }
+        let (i, k) = (i as u32, k as u32);
+        let [edge, glow] = suit(born);
+        let side = if hash(i, k + 7) < 0.5 { -1.0 } else { 1.0 };
+        let (at, out) = on_suit(edge.max(0.05), TAU * hash(i, k), side);
+        let out = pose.way(out);
+        let lift = 0.7 + 0.6 * hash(i, k + 3);
+        let sway = 0.05 * (5.0 * age + TAU * hash(i, k + 5)).sin();
+        let p = add(
+            pose.to_world(at),
+            add(
+                scale(out, 0.18 * (1.0 - (-2.5 * age).exp()) + sway),
+                scale(WIND, lift * age * (0.4 + 0.6 * age / FLAKE_LIFE)),
+            ),
+        );
+        let u = age / FLAKE_LIFE;
+        let light = glow.max(0.65) * smooth(0.0, 0.1, age) * (1.0 - u) * (1.0 - u);
+        (p, out, light * (0.6 + 0.4 * hash(i, k + 9)))
+    })
 }
 
 // ---------- his voice
@@ -813,6 +881,9 @@ pub struct Frame {
     pub inside: [f32; 2],
     /// The altimeter: number, metres (1) or km (0), the marker (0..5), light.
     pub altimeter: [f32; 4],
+    /// His suit's burning edge (m up his body) and its glow (`suit`).
+    pub suit: [f32; 2],
+    pub flakes: [(V, V, f32); FLAKES],
 }
 
 pub fn compose(t: f32) -> Frame {
@@ -856,6 +927,8 @@ pub fn compose(t: f32) -> Frame {
         satellite: satellite(t),
         inside: inside(t),
         altimeter: [number as f32, if metres { 1.0 } else { 0.0 }, level, 0.95],
+        suit: suit(t),
+        flakes: flakes(t, &pose),
     }
 }
 
@@ -864,7 +937,7 @@ pub fn compose(t: f32) -> Frame {
 /// How many labels, glow dots and words lying in the scene the composite
 /// draws (`Marks`).
 pub const LABELS: usize = 7;
-pub const DOTS: usize = 22;
+pub const DOTS: usize = 22 + FLAKES;
 pub const TEXTS: usize = 6;
 /// His heart beats and his breath goes round this many times a loop.
 pub const HEARTBEATS: f32 = 66.0;
@@ -873,6 +946,8 @@ pub const BREATHS: f32 = 32.0;
 pub const WARM_INK: f32 = 0.0;
 pub const COLD_INK: f32 = 1.0;
 pub const PALE_INK: f32 = 2.0;
+/// The dawn's colour, as `DAWN` in land.frag (the code's green in Матрица).
+pub const DAWN_INK: f32 = 3.0;
 /// The middle of the letters inside an atlas row (px).
 const ROW_MIDDLE: f32 = 64.0;
 /// A word lying in the scene that he hides is flagged by this added to its
@@ -1192,6 +1267,18 @@ pub fn marks(f: &Frame) -> Marks {
     dots[20] = a;
     dots[21] = b;
 
+    // The flakes of his suit; he hides those that left from his far side.
+    for (i, &(p, out, light)) in f.flakes.iter().enumerate() {
+        if light <= 0.0 {
+            continue;
+        }
+        if let Some(at) = c.screen(p) {
+            let behind = dot(out, sub(c.eye, p)) < 0.0;
+            let ink = if i % 3 == 0 { PALE_INK } else { DAWN_INK };
+            dots[22 + i] = dot_at(at, FLAKE_SIZE * c.per_metre(p), light, ink, behind);
+        }
+    }
+
     // His inside: the heart, the breath, warm hands.
     let mut signs = [[0.0; 4]; 4];
     let [inside, visor] = f.inside;
@@ -1499,14 +1586,40 @@ mod tests {
         // At «Я Есть» the first ring lies on the ground round his feet.
         let r = outer(STILL);
         assert!(distance(r.centre, FLOOR) < 1e-4 && r.normal[1] > 0.999);
-        // And it never rests: its plane and its place move all the time.
+        // And it never rests: it slides up and down the sphere all the time.
         every(0.5, |t| {
             let (a, b) = (outer(t), outer(t + 0.5));
-            assert!(
-                distance(a.centre, b.centre) + distance(a.normal, b.normal) > 0.01,
-                "{t}"
-            );
+            assert!(distance(a.centre, b.centre) > 0.01, "{t}");
+            assert!(a.radius > 0.5 && a.centre.iter().all(|v| v.is_finite()));
         });
+    }
+
+    #[test]
+    fn the_suit_burns_away_once_he_stands() {
+        // On until he stands, gone by «Я Есть», back for the next loop.
+        assert_eq!(suit(SUIT[0] - 0.1)[0], SUIT_ON);
+        assert_eq!(suit(5.0)[0], SUIT_ON);
+        const { assert!(SUIT[0] >= STANDS[1] && SUIT[1] < STILL) };
+        assert!((suit(STILL)[0] - SUIT_FOOT).abs() < 1e-6);
+        // The edge only goes down.
+        let mut last = SUIT_ON;
+        every(0.1, |t| {
+            if t >= SUIT[0] {
+                let [edge, glow] = suit(t);
+                assert!(edge <= last + 1e-6 && (0.0..=1.0).contains(&glow), "{t}");
+                last = edge;
+            }
+        });
+        // Flakes fly only while it burns, and drift off him.
+        every(0.1, |t| {
+            for (p, _, light) in flakes(t, &pose(t)) {
+                if t < SUIT[0] || t > SUIT[1] + FLAKE_LIFE {
+                    assert_eq!(light, 0.0, "{t}");
+                }
+                assert!(p.iter().all(|v| v.is_finite()) && light >= 0.0);
+            }
+        });
+        assert!(flakes(49.0, &pose(49.0)).iter().any(|f| f.2 > 0.2));
     }
 
     #[test]

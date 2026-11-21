@@ -1,6 +1,7 @@
 // Him: a man in a space suit, front +z, feet on y = 0 of his own frame.
 // He wears his round helmet all the way down; his face behind the visor
-// (`headS`) is only seen through the glass. The world turns into his frame
+// (`headS`) is only seen through the glass, until the suit burns away
+// once he stands on the soil (`u_suit`). The world turns into his frame
 // by `loc` (body.rs `Pose::to_local`).
 
 float sdEll(vec3 p, vec3 r) {
@@ -68,14 +69,82 @@ float armsSp(vec3 a) {
   return smin(r, sdEll(a - vec3(0.312, 0.96, 0.2), vec3(0.04, 0.062, 0.05)), 0.02);
 }
 const vec3 HELM = vec3(0.0, 1.735, 0.012);
-float figure(vec3 q) {
+// His suit's burning edge (m up his body; above 2.1 the whole suit is on),
+// its glow (lib.rs `suit`).
+uniform vec4 u_suit;
+// His body under the suit and the suit's limbs share one skeleton.
+float coreS(vec3 q) {
   vec3 a = vec3(abs(q.x), q.y, q.z);
-  float d = smin(torsoS(q), legsSp(a), 0.06);
-  d = smin(d, armsSp(a), 0.04) - 0.045;
+  return smin(smin(torsoS(q), legsSp(a), 0.06), armsSp(a), 0.04);
+}
+float suitS(vec3 q, float core) {
+  float d = core - 0.045;
   d = smin(d, sdRC(q, vec3(0.0, 1.4, -0.04), vec3(0.0, 1.0, -0.03), 0.205, 0.18), 0.05);
   d = min(d, length(q - HELM) - 0.2);
   // The life-support pack on his back.
   return min(d, sdBox(q - vec3(0.0, 1.33, -0.255), vec3(0.18, 0.25, 0.075)) - 0.03);
+}
+// Him as he is, dressed: his neck, his head with its hair, his hands;
+// a loose sweater with a ribbed collar hanging over his trousers, the
+// sleeves ending at the wrists; boots with soles.
+float hairS(vec3 q) {
+  return max(sdEll(q - vec3(0.0, 1.748, -0.03), vec3(0.097, 0.108, 0.11)), 1.705 + 0.55 * q.z - q.y);
+}
+float skinS(vec3 q, float core) {
+  float d = smin(core - 0.008, sdCap(q, vec3(0.0, 1.5, -0.035), vec3(0.0, 1.66, -0.025), 0.047), 0.03);
+  return smin(d, headS(q), 0.02);
+}
+float sweaterS(vec3 q, float core) {
+  vec3 a = vec3(abs(q.x), q.y, q.z);
+  float d = max(core - 0.026, 0.93 - q.y);
+  d = max(d, -(sdEll(a - vec3(0.312, 0.95, 0.2), vec3(0.04, 0.062, 0.05)) - 0.035));
+  vec3 c = q - vec3(0.0, 1.583, -0.035);
+  return min(d, length(vec2(length(c.xz * vec2(1.0, 1.15)) - 0.058, c.y)) - 0.017);
+}
+float trousersS(vec3 q, float core) {
+  return max(max(core - 0.02, q.y - 1.0), abs(q.x) - 0.23);
+}
+float bootsS(vec3 q) {
+  vec3 a = vec3(abs(q.x), q.y, q.z);
+  float b = sdRC(a, vec3(0.125, 0.085, -0.045), vec3(0.135, 0.06, 0.13), 0.06, 0.05) - 0.014;
+  return max(b, -q.y);
+}
+float manS(vec3 q, float core) {
+  float d = min(min(sweaterS(q, core), trousersS(q, core)), bootsS(q));
+  return min(min(d, skinS(q, core)), hairS(q));
+}
+// How far above (+) or below (-) the burning edge a point is, the edge
+// ragged and creeping.
+float burn(vec3 q) {
+  float n = 0.6 * vnoise2(q.xy * 11.0 + vec2(q.z * 7.0, time * 0.4)) + 0.4 * vnoise2(q.zy * 19.0 + vec2(3.1, -time * 0.3));
+  return q.y - u_suit.x + 0.08 * (n - 0.5);
+}
+// The suit as a shell, gone above the edge.
+float burnt(vec3 q, float core) {
+  float s = suitS(q, core);
+  return max(max(s, -s - 0.02), 0.5 * burn(q));
+}
+float figure(vec3 q) {
+  float core = coreS(q);
+  if (u_suit.x > 2.1) return suitS(q, core);
+  return min(burnt(q, core), manS(q, core));
+}
+// What the surface at q (his frame) is: -1 the suit, 0 his skin, 1 his
+// hair, 2 the sweater, 3 the trousers, 4 the boots.
+int worn(vec3 q) {
+  if (u_suit.x > 2.1) return -1;
+  float core = coreS(q);
+  float s = sweaterS(q, core);
+  float tr = trousersS(q, core);
+  float b = bootsS(q);
+  float k = skinS(q, core);
+  float h = hairS(q);
+  float m = min(min(min(s, tr), min(b, k)), h);
+  if (burnt(q, core) < m) return -1;
+  if (m == h) return 1;
+  if (m == k) return 0;
+  if (m == b) return 4;
+  return m == s ? 2 : 3;
 }
 // A point of the scene in his own frame: turned back by his yaw, then
 // tipped back about his waist.

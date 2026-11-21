@@ -67,7 +67,7 @@ float glowDot(float r, float R) {
   return g * sq(R / Rs);
 }
 vec3 inkOf(float k) {
-  return k < 0.5 ? WARM : (k < 1.5 ? COLD : PALE);
+  return k < 0.5 ? WARM : (k < 1.5 ? COLD : (k < 2.5 ? PALE : mix(WARM, SKY, u_dusk.w)));
 }
 float dot2(vec2 v) {
   return dot(v, v);

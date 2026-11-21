@@ -174,12 +174,31 @@ vec3 manLand(vec3 ro, vec3 rd, float tb, float hk) {
     + PALE * 0.06 * max(-n.y, 0.0) * oc * (1.0 - sun);
   col += DAWN * 0.5 * sun * max(dot(n, dd), 0.0) * oc;
   col += mix(COLD, PALE, 0.4) * 0.28 * rim + DAWN * 0.3 * sun * rim * max(dot(n, dd) + 0.4, 0.0);
+  int w = worn(q);
+  if (w >= 0) {
+    // Himself out of the suit, in his own clothes, warmed by the dawn; his
+    // mouth lit by his voice.
+    vec3 warmth = DAWN * (0.07 + 0.14 * sun) * oc;
+    if (w == 0) return col * 0.66 + warmth + WARM * 0.5 * max(u_scene.w - 0.35, 0.0) * exp(-length(q - vec3(0.0, 1.668, 0.09)) / 0.035);
+    if (w == 1) return col * 0.28 + 0.3 * warmth;
+    if (w == 4) return (col * 0.24 + PALE * 0.05 * rim) * (q.y < 0.024 ? 0.45 : 1.0);
+    if (w == 3) return col * 0.4 * mix(vec3(1.0), COLD / max(max(COLD.r, COLD.g), max(COLD.b, 0.001)), 0.35) + 0.4 * warmth;
+    vec3 tint = mix(vec3(1.0), WARM / max(max(WARM.r, WARM.g), max(WARM.b, 0.001)), 0.5);
+    float knit = 0.88 + 0.12 * vnoise2(q.xy * vec2(140.0, 70.0) + q.z * 50.0);
+    return col * 0.58 * tint * knit + 0.6 * warmth;
+  }
   float seam = smoothstep(0.012, 0.0, abs(q.y - 0.98)) + smoothstep(0.01, 0.0, abs(q.y - 0.55)) + smoothstep(0.01, 0.0, abs(q.y - 1.23));
   col *= 1.0 - 0.35 * min(seam, 1.0);
   vec3 hq = q - HELM;
-  if (length(hq) < 0.204) {
+  if (length(hq) < 0.204 && length(hq) > 0.19) {
     vec3 hn = normalize(hq);
-    if (onVisor(hn)) return visor(ph, rd, n, hn, landSky(reflect(rd, n), hk), col);
+    if (onVisor(hn)) col = visor(ph, rd, n, hn, landSky(reflect(rd, n), hk), col);
+  }
+  // The burning edge: hot where it eats the suit, a glow just under it.
+  if (u_suit.x < 2.1) {
+    float b = min(burn(q), 0.0);
+    float e = u_suit.y * exp(b / 0.045);
+    col = col * (1.0 - 0.6 * u_suit.y * exp(b / 0.09)) + DAWN * 2.4 * e + PALE * 0.9 * e * e * e;
   }
   return col;
 }

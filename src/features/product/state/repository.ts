@@ -1,4 +1,4 @@
-import { accessibleProgress, DIARY_LIMIT_SECONDS, emptyProduct, patchProgress, STEP_WAIT_MS, validateDiaryCategory, validateDiaryText, validateMeta, validateObservationDraft, validateSnapshot } from './model';
+import { accessibleProgress, DIARY_LIMIT_SECONDS, emptyProduct, patchProgress, validateDiaryCategory, validateDiaryText, validateMeta, validateObservationDraft, validateSnapshot } from './model';
 import type { AudioRecord, DiaryAudio, DiaryCategory, DiaryEntry, Observation, ObservationDraft, ObservationMeta, ProductProgress, ProductSettings, ProductSnapshot } from './model';
 import { trimTextRuns, validateTextRuns, type DiaryTextRun } from '../diary/text-format';
 import { BACKUP_MAX_BYTES, BACKUP_METADATA_MAX_BYTES, backupAudioRecords, mergeBackup, validateBackup } from './backup-model';
@@ -111,7 +111,7 @@ export class ProductRepository {
         record.level === level && record.step === 1 && record.questionIndex === index));
       if (missing.length) throw new Error(`Сначала сохрани ответы на вопросы: ${missing.map(index => index + 1).join(', ')}.`);
       const completedAt = Date.now();
-      next.progress = { ...next.progress, completedAt, availableAt: completedAt + STEP_WAIT_MS };
+      next.progress = { ...next.progress, completedAt, availableAt: completedAt };
       return this.commit(next);
     });
   }

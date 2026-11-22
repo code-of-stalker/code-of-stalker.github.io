@@ -26,7 +26,6 @@ import { createRecordingHold } from '../audio/recording-hold';
 import { useProduct } from '../state/ProductProvider';
 import { useProductLayout, useProductSpacing } from '../layout';
 import { ProductIconButton, ProductScreen, ProductText } from '../ui';
-import { StepSignature } from '../motion/StepSignature';
 import { RecordingReview } from '../RecordingReview';
 import { DiaryGlass } from '../diary/DiaryGlass';
 import { PanelBorder } from '../PanelBorder';
@@ -65,12 +64,17 @@ export function ObservationScreen(props: ObservationScreenProps) {
     const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
     return () => subscription.remove();
   }, []);
-  const active = props.active !== false && focused && foreground;
+  const shown = props.active !== false && focused, active = shown && foreground;
+  const [reviewing, setReviewing] = useState(false);
   // A hidden section gets a fresh media lifetime: neither a microphone nor a
   // decrypted preview URI survives route blur/background and resumes silently.
-  return <ObservationScreenSession key={`${progress.selectedLevel}:${progress.step}:${active}`} {...props} active={active} />;
+  // One exception (Art 2026-11-22): a finished take waiting in its review stays
+  // through minimizing the app; a blur or a step change still drops it.
+  const [life, setLife] = useState({ active, shown, epoch: 0 });
+  if (life.active !== active || life.shown !== shown) setLife({ active, shown, epoch: reviewing && shown && life.shown ? life.epoch : life.epoch + 1 });
+  return <ObservationScreenSession key={`${progress.selectedLevel}:${progress.step}:${life.epoch}`} {...props} active={active} onReviewing={setReviewing} />;
 }
-function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onBack, onClose, onNavigationReady, onQuestionHeight, embedded = false, active = true, effectsActive = true, startAtEnd = false }: ObservationScreenProps) {
+function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onBack, onClose, onNavigationReady, onQuestionHeight, onReviewing, embedded = false, active = true, effectsActive = true, startAtEnd = false }: ObservationScreenProps & { onReviewing?: (value: boolean) => void }) {
   const styles = useThemeStyles(createStyles);
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const { inset } = useProductSpacing(), { air } = useProductLayout();
@@ -115,9 +119,13 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
   const busy = saving || preparing || recorder.phase === 'stopping';
   const player = useObservationPlayer(hasDraft ? recorder.draft!.uri : playbackUri);
   const cancelCapture = recorder.cancel, pausePlayback = player.pause;
+  // The parent remounts this session on every other hide, so only a minimized review reaches here mounted.
+  const keepTake = useRef(false);
+  useEffect(() => { keepTake.current = hasDraft; onReviewing?.(hasDraft); }, [hasDraft, onReviewing]);
+  useEffect(() => () => onReviewing?.(false), [onReviewing]);
   useEffect(() => {
     if (!active) return;
-    return () => { void cancelCapture(); };
+    return () => { if (!keepTake.current) void cancelCapture(); };
   }, [active, cancelCapture]);
   useEffect(() => {
     if (!active) return;
@@ -265,7 +273,7 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         </View>
         <View testID="observation-voice-meta" style={[styles.voiceMeta, compactVoice && { flex: 1, minWidth: 0 }]} onLayout={event => setVoiceMetaHeight(event.nativeEvent.layout.height)}>
         <ProductText testID="observation-timer" variant="label" style={[styles.timer, { opacity: review ? 0 : 1 }]}>{isRecording || preparing ? clock(recorder.durationMs) : selected ? `${clock(player.positionMs)} / ${clock(selected.durationMs)}` : '00:00'}</ProductText>
-        {(!selected || loadingAudio || preparing || isRecording) && <ProductText testID="observation-recording-hint" variant="label" style={[styles.hint, { opacity: review ? 0 : 1 }]}>{loadingAudio ? 'ОТКРЫВАЕМ ЗАПИСЬ' : preparing ? 'ПОДГОТОВКА МИКРОФОНА' : isRecording ? recordingMode === 'hold' ? 'ВВЕРХ — ЗАКРЕПИТЬ · ОТПУСТИ — ЗАКОНЧИТЬ' : 'НАЖМИ, ЧТОБЫ ЗАКОНЧИТЬ' : permissionHint || 'ЗАЖМИ И ГОВОРИ'}</ProductText>}
+        {(!selected || loadingAudio || preparing || isRecording) && <ProductText testID="observation-recording-hint" variant="label" style={[styles.hint, { opacity: review ? 0 : 1 }]}>{loadingAudio ? 'ОТКРЫВАЕМ ЗАПИСЬ' : preparing ? 'ПОДГОТОВКА МИКРОФОНА' : isRecording ? recordingMode === 'hold' ? 'ВВЕРХ — ЗАКРЕПИТЬ' : 'НАЖМИ, ЧТОБЫ ЗАКОНЧИТЬ' : permissionHint || 'ЗАЖМИ И ГОВОРИ'}</ProductText>}
         {!selected || isRecording ? <ProductText testID="observation-recording-limit" variant="label" style={[styles.limit, { opacity: review ? 0 : 1 }]}>ЗАПИСЬ ДО {recorder.limitSeconds / 60} МИНУТ</ProductText> : null}
         </View>
       </Reveal>
@@ -278,7 +286,6 @@ function ObservationScreenSession({ questionIndex, onQuestionChange, onDone, onB
         <ObservationActionButton label="ДОПОЛНИТЬ ОТВЕТ" icon="lips" onPress={() => void startRecording('toggle')} disabled={busy || !ready} style={styles.addButton} />
       </View> : null}
       {!selected && <ProductText variant="label" style={[styles.localNote, { opacity: review ? 0 : 1 }]}>ЗАПИСИ СОХРАНЯЮТСЯ НА ЭТОМ УСТРОЙСТВЕ</ProductText>}
-      {progress.step === 1 && question === questions.length - 1 && <StepSignature center active={active && !sheet && !review} reducedMotion={settings.reducedMotion} style={[styles.signature, { opacity: review ? 0 : 1 }]} />}
       </View>
       </ScrollGate>
       {!embedded && <View pointerEvents={review ? 'none' : 'auto'} style={{ opacity: review ? 0 : 1 }}><TaskStepSelector step={progress.step === 2 ? 2 : 1} availableAt={progress.availableAt} testUnlockAll={settings.testUnlockAll} open={selectorOpen}
@@ -348,7 +355,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   dateButton: { padding: 12, marginTop: 2, flexDirection: 'row', gap: 8, alignItems: 'center' },
   date: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, color: colors.muted },
   addButton: { width: '80%', maxWidth: 340, marginTop: 8, minHeight: 36 },
-  signature: { marginTop: 14 },
   localNote: { fontSize: 6, lineHeight: 10, marginTop: 8, textAlign: 'center', color: colors.muted, letterSpacing: 0.5 },
   modalBackdrop: { flex: 1, backgroundColor: colors.background === '#000000' ? '#000000cf' : colors.overlay, padding: 16, alignItems: 'center', justifyContent: 'flex-end' },
   recordingsSheet: { width: '100%', maxWidth: 440, alignSelf: 'center', maxHeight: '100%', gap: 8 },

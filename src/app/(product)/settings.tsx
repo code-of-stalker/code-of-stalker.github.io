@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { forgetIntensiveHere, hasDevice } from '../../features/intensive/session';
 import { SettingsScreen } from '../../features/product/screens/SettingsScreen';
 import { useProduct } from '../../features/product/state/ProductProvider';
-import { STEP_WAIT_MS } from '../../features/product/state/model';
 import { ProductText, ScreenTransition } from '../../features/product/ui';
 
 export default function Settings() {
@@ -19,7 +18,6 @@ export default function Settings() {
   return <ScreenTransition reducedMotion={settings.reducedMotion}>
     <SettingsScreen settings={settings} onChange={patch => { void updateSettings(patch).catch(() => {}); }}
       onBack={() => router.dismissTo('/home')} resetting={resetting} intensiveHere={intensiveHere}
-      onPreviewCooldown={() => router.push({ pathname: '/practice', params: { preview: 'cooldown', deadline: String(Date.now() + STEP_WAIT_MS) } })}
       onOpenSecondStep={() => { void openStep(2); }}
       onOpenThirdStep={() => { void openStep(3); }}
       onOpenFourthStep={() => { void openStep(4); }}

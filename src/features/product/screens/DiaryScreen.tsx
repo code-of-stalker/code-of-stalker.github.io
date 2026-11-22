@@ -77,7 +77,7 @@ export function DiaryScreen({ onBack, onArchitecture, onStep }: DiaryScreenProps
   const alive = useRef(true);
   const focusAfterSheet = useRef(false);
   const leaveAction = useRef(onBack);
-  const voice = useDiaryVoice({ active: focused && foreground, enabled: ready && !busy && !resetting && sheet === null, category, onSaved: () => afterSave(true) });
+  const voice = useDiaryVoice({ active: focused && foreground, focused, enabled: ready && !busy && !resetting && sheet === null, category, onSaved: () => afterSave(true) });
   useBackSwipeBlocked(voice.capturing || voice.review);
   useEffect(() => {
     if (!voice.review) return;

@@ -162,7 +162,8 @@ test('completion checks the committed four answers and starts exactly one 24 hou
   const finalSave=repository.save(draft,{...meta,questionIndex:3});
   const completion=repository.completeFirstStep();
   await finalSave;const completed=await completion;
-  assert.equal(completed.progress.availableAt-completed.progress.completedAt,24*60*60*1000);
+  // Step 2 opens at once (Art 2026-11-22: no day-long wait).
+  assert.equal(completed.progress.availableAt,completed.progress.completedAt);
   await repository.save(draft,{...meta,questionIndex:3});
   const again=await repository.completeFirstStep();
   assert.equal(again.progress.completedAt,completed.progress.completedAt);

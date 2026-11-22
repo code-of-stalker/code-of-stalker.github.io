@@ -28,12 +28,13 @@ function captureFixture(mimeType = 'audio/webm', metered = false, limitSeconds) 
     useRef: value => ({ current: value }), useCallback: callback => callback, useEffect: callback => effects.push(callback),
   };
   const listeners = new Map();
+  const doc = { visibilityState: 'visible', addEventListener: (name, cb) => listeners.set(name, cb), removeEventListener: name => listeners.delete(name) };
   vm.runInNewContext(compile('./useObservationRecorder.ts'), { exports,
     require: name => name === 'react' ? react : name.includes('ProductProvider') ? { useProduct: () => ({ settings: {} }) } : name.includes('microphone-input') ? microphones : name.includes('webUpdateSafety') ? { blockWebUpdate() { updateBlocks++; return () => { updateBlocks--; }; } } : name.includes('voice-signal') ? signals : name.includes('/state/model') ? model : name.includes('voice-types') ? { voiceWaveform: () => [] } : { silentBands: { low: 0, mid: 0, high: 0 }, measureVoiceSpectrum: () => ({ low: 0, mid: 0, high: 0 }) },
     window: {}, navigator: { mediaDevices: { getUserMedia: () => open() } }, MediaRecorder: Recorder,
     Blob, URL: { createObjectURL: () => 'blob:synthetic-take', revokeObjectURL: uri => revoked.push(uri) },
     Date: class extends Date { static now() { return now; } },
-    document: { visibilityState: 'visible', addEventListener: (name, cb) => listeners.set(name, cb), removeEventListener: name => listeners.delete(name) },
+    document: doc,
     AudioContext: metered ? class {
       state = 'running'; sampleRate = 48000;
       resume() { return Promise.resolve(); } close() { this.state = 'closed'; return Promise.resolve(); }
@@ -46,6 +47,7 @@ function captureFixture(mimeType = 'audio/webm', metered = false, limitSeconds) 
   return { hook, state: () => state[2], permission: () => state[5], recorders, tracks, revoked, makeStream,
     setOpen: value => { open = value; }, advance: ms => { now += ms; }, tick: () => interval?.(), writes,
     draw: time => { const pending = [...frames.values()]; frames.clear(); for (const callback of pending) callback(time); },
+    hide: () => { doc.visibilityState = 'hidden'; listeners.get('visibilitychange')?.(); },
     updateBlocks: () => updateBlocks, dispose: () => cleanups.forEach(fn => fn?.()) };
 }
 
@@ -57,6 +59,24 @@ test('a pending permission, live recording and unsaved review all defer release 
   s.advance(2100); await s.hook.stop(); assert.equal(s.state().phase, 'ready'); assert.equal(s.updateBlocks(), 1);
   await s.hook.clear(); assert.equal(s.updateBlocks(), 0);
   s.dispose(); assert.equal(s.updateBlocks(), 0);
+});
+
+test('minimizing during review keeps the finished take (Art 2026-11-22)', async () => {
+  const s = captureFixture();
+  try {
+    await s.hook.start(); s.advance(2100); await s.hook.stop(); assert.equal(s.state().phase, 'ready');
+    s.hide(); await Promise.resolve();
+    assert.equal(s.state().phase, 'ready'); assert.equal(s.state().draft.durationMs, 2100); assert.equal(s.revoked.length, 0);
+  } finally { s.dispose(); }
+});
+
+test('minimizing during a live take still stops it and releases the microphone', async () => {
+  const s = captureFixture();
+  try {
+    await s.hook.start(); assert.equal(s.state().phase, 'recording');
+    s.hide(); await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(s.state().draft, null); assert.equal(s.tracks[0].stopped, 1);
+  } finally { s.dispose(); }
 });
 
 test('30 live microphone samples bypass React state, and cancellation clears the signal', async () => {

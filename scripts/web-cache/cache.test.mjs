@@ -96,6 +96,9 @@ test('manifest is deterministic, excludes audio and versions any asset/engine ch
   const html = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   assert.equal((html.match(/rel="manifest"/g) ?? []).length, 1);
   assert.match(html, /name="apple-mobile-web-app-capable" content="yes"/);
+  assert.match(html, /name="apple-mobile-web-app-status-bar-style" content="black-translucent"/);
+  assert.equal((html.match(/id="watcher-app-page"/g) ?? []).length, 1);
+  assert.equal((html.match(/name="viewport"[^>]*viewport-fit=cover/g) ?? []).length, 1);
   assert.ok(!isCacheAsset('graphics/audio.mp3'));
   await fs.writeFile(path.join(root, 'graphics/pkg/engine.wasm'), 'engine-v2');
   assert.notEqual((await prepareWebCache(root)).version, release.version);

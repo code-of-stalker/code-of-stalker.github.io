@@ -36,6 +36,7 @@ const WORLD_NAMES: &[&str] = &[
     "u_paper",
     "u_ink",
     "u_cold",
+    "u_night",
     "u_warm",
     "u_pale",
     "u_code",
@@ -543,6 +544,7 @@ impl AnywherePath {
         gl.uniform3fv_with_f32_array(p.at("u_paper"), &l.paper);
         gl.uniform3fv_with_f32_array(p.at("u_ink"), &l.ink);
         gl.uniform3fv_with_f32_array(p.at("u_cold"), &l.cold);
+        gl.uniform3fv_with_f32_array(p.at("u_night"), &l.night);
         gl.uniform3fv_with_f32_array(p.at("u_warm"), &l.warm);
         gl.uniform3fv_with_f32_array(p.at("u_pale"), &l.pale);
         gl.uniform3fv_with_f32_array(p.at("u_code"), &l.code);

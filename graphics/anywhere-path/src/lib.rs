@@ -327,6 +327,10 @@ pub struct Look {
     pub ink: [f32; 3],
     /// The cold ring.
     pub cold: [f32; 3],
+    /// The cold the night's light leans to: the moon, the sky, the fog and
+    /// the cold surfaces. The cold ring's own hue where it is muted; on a
+    /// one-hue theme a paler one, so the world does not drown in it.
+    pub night: [f32; 3],
     /// The second ring, the lit windows, the light in him.
     pub warm: [f32; 3],
     /// White-hot cores.
@@ -341,22 +345,55 @@ const fn rgb(r: u8, g: u8, b: u8) -> [f32; 3] {
 
 /// The app theme by its `graphicsPalette` code: 0 Искра, 2 Тишина, 3 Астрал,
 /// 4 Матрица. The site has only these dark themes; any other code shows Тишина.
+/// On a black page (Искра, Матрица) the night brings its own dusk, added to
+/// the page under everything but the soft edges, and the world is inked in a
+/// pale tint of the theme so a figure keeps its shape; only the rings, the
+/// lamps and the code carry the full hue.
 pub fn look(code: u32) -> Look {
-    let (palette, warm, pale) = match Palette::from_code(code) {
-        Palette::Dark => (Palette::Dark, rgb(255, 122, 40), rgb(255, 244, 170)),
-        Palette::Violet => (Palette::Violet, rgb(240, 158, 128), rgb(200, 212, 248)),
-        Palette::Matrix => (Palette::Matrix, rgb(255, 184, 64), rgb(190, 255, 205)),
-        _ => (Palette::Neutral, rgb(242, 179, 117), rgb(214, 218, 210)),
+    let palette = match Palette::from_code(code) {
+        p @ (Palette::Dark | Palette::Violet | Palette::Matrix) => p,
+        _ => Palette::Neutral,
     };
     let colors = palette.colors().expect("a dark theme has its colors");
-    let ink = match palette {
-        Palette::Dark | Palette::Matrix => colors.accent,
-        _ => colors.highlight,
+    let lift =
+        |page: [f32; 3], dusk: [f32; 3]| [page[0] + dusk[0], page[1] + dusk[1], page[2] + dusk[2]];
+    let (paper, ink, night, warm, pale) = match palette {
+        // Искра: pale straw, an ember night (its yellow on black reads olive).
+        Palette::Dark => (
+            lift(colors.paper, rgb(21, 14, 8)),
+            rgb(232, 214, 176),
+            rgb(226, 150, 74),
+            rgb(255, 122, 40),
+            rgb(255, 244, 170),
+        ),
+        // Матрица: a grey-green world, the code green kept for the light.
+        Palette::Matrix => (
+            lift(colors.paper, rgb(4, 17, 9)),
+            rgb(190, 210, 194),
+            rgb(70, 200, 112),
+            rgb(255, 184, 64),
+            rgb(190, 255, 205),
+        ),
+        Palette::Violet => (
+            colors.paper,
+            colors.highlight,
+            colors.accent,
+            rgb(240, 158, 128),
+            rgb(200, 212, 248),
+        ),
+        _ => (
+            colors.paper,
+            colors.highlight,
+            colors.accent,
+            rgb(242, 179, 117),
+            rgb(214, 218, 210),
+        ),
     };
     Look {
-        paper: colors.paper,
+        paper,
         ink,
         cold: colors.accent,
+        night,
         warm,
         pale,
         code: colors.accent,
@@ -552,6 +589,31 @@ mod tests {
             assert!(luma(l.warm) > 0.4, "{code}");
         }
         assert_eq!(look(9), look(2));
+    }
+
+    #[test]
+    fn a_one_hue_theme_lights_its_world_paler_than_its_rings() {
+        let spread = |c: [f32; 3]| {
+            c.iter().fold(0.0f32, |m, v| m.max(*v)) - c.iter().fold(1.0f32, |m, v| m.min(*v))
+        };
+        for code in [2, 3] {
+            let l = look(code);
+            assert_eq!(l.night, l.cold, "{code}");
+            assert_eq!(
+                l.paper,
+                Palette::from_code(code).colors().unwrap().paper,
+                "{code}"
+            );
+        }
+        for code in [0, 4] {
+            let l = look(code);
+            assert!(
+                spread(l.ink) < 0.25 && spread(l.night) < spread(l.cold),
+                "{code}"
+            );
+            let page = Palette::from_code(code).colors().unwrap().paper;
+            assert!((0..3).all(|i| l.paper[i] > page[i]), "{code}");
+        }
     }
 
     #[test]

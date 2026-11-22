@@ -14,6 +14,7 @@ uniform vec4 u_crowd[2 * CROWD_N]; // per person: [x, z, size, kind], [facing x,
 uniform vec3 u_paper;
 uniform vec3 u_ink;
 uniform vec3 u_cold;
+uniform vec3 u_night; // the cold of the night's light (the cold ring's, or paler)
 uniform vec3 u_warm;
 uniform vec3 u_pale;
 uniform vec3 u_code;
@@ -820,14 +821,14 @@ float contact(vec3 p, vec3 n) {
 // A colour of the theme: how much light it sends back, leaning warm (> 0)
 // or cold (< 0).
 vec3 tone(float a, float tint) {
-  return a * mix(u_ink, tint > 0.0 ? u_warm : u_cold, 0.7 * abs(tint));
+  return a * mix(u_ink, tint > 0.0 ? u_warm : u_night, 0.7 * abs(tint));
 }
 vec3 moonColor() {
-  return mix(u_ink, u_cold, 0.4);
+  return mix(u_ink, u_night, 0.4);
 }
 vec3 fogColor(vec3 rd) {
   float toMoon = max(dot(rd, MOON.xyz), 0.0);
-  return u_paper + 0.055 * mix(u_ink, u_cold, 0.6) + 0.05 * u_pale * pow(toMoon, 6.0);
+  return u_paper + 0.055 * mix(u_ink, u_night, 0.6) + 0.05 * u_pale * pow(toMoon, 6.0);
 }
 // The night sky without its stars: the glow along the horizon (the fog's
 // own colour there), the moon's halo, the moon.
@@ -837,7 +838,7 @@ vec3 skyBase(vec3 rd) {
   float ang = acos(clamp(dot(rd, MOON.xyz), -1.0, 1.0));
   vec3 col = mix(fogColor(rd), u_paper * 0.85, smoothstep(0.0, 0.6, el));
   float band = smoothstep(0.5, 0.85, noise2(vec2(az * 3.0, el * 22.0), 61u)) * window(el, 0.03, 0.08, 0.3, 0.45);
-  col += band * mix(u_ink, u_cold, 0.5) * (0.025 + 0.1 * exp(-ang / 0.4));
+  col += band * mix(u_ink, u_night, 0.5) * (0.025 + 0.1 * exp(-ang / 0.4));
   col += u_pale * (0.16 * exp(-ang / 0.06) + 0.06 * exp(-ang / 0.3));
   return col;
 }
@@ -1140,7 +1141,7 @@ Surf surfaceOf(Hit h, vec3 ro, vec3 rd, vec3 p) {
   ao *= contact(p, n);
   float sky = (0.55 + 0.45 * n.y) * (indoor ? 0.3 : 1.0) * ao;
   float lamp = far ? 0.0 : lampLight(p, n) * mix(0.6, 1.0, ao);
-  vec3 skyC = mix(u_cold, u_ink, 0.3);
+  vec3 skyC = mix(u_night, u_ink, 0.3);
   vec3 col = alb * (0.62 * moon * moonC + 0.16 * sky * skyC + 0.95 * lamp * u_warm) + 1.5 * alb * extra;
   if (shine > 0.0) {
     vec3 r = reflect(rd, n);

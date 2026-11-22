@@ -33,6 +33,8 @@ export type LevelsScreenProps = {
   selectedLevel: LevelId | null;
   /** The level the person is on now, marked «ВЫ ЗДЕСЬ»; null before any level is chosen. */
   currentLevel?: LevelId | null;
+  /** Levels the person already walks: their button says «ПРОДОЛЖИТЬ» instead of its first-visit word. */
+  continued?: readonly LevelId[];
   onStart: (level: LevelId) => void;
   onBack: () => void;
   onDiary: () => void;
@@ -40,7 +42,7 @@ export type LevelsScreenProps = {
   effectsActive?: boolean;
 };
 
-export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
+export function LevelsScreen({ selectedLevel, currentLevel = null, continued = [], onStart, onBack, onDiary, reducedMotion = false, effectsActive = true }: LevelsScreenProps) {
   const styles = useThemeStyles(createStyles);
   const colors = useThemeColors();
   const actions = useMemo(() => Object.fromEntries(productLevels.map(level => [level.id, levelActionArtwork(level.id, colors.accent)])) as Record<LevelId, {uri:string}>, [colors.accent]);
@@ -79,6 +81,7 @@ export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBa
         <View style={[styles.levels, air > 1 && { gap: 24 * air }]}>
           {productLevels.map((level,index) => {
             const expanded = open.includes(level.id), here = level.id === currentLevel;
+            const action = continued.includes(level.id) ? 'ПРОДОЛЖИТЬ' : level.action;
             return (
               <PanelScan key={level.id} delay={index*100} reducedMotion={reducedMotion} style={styles.level}>
                 <LevelFrame level={level.id} expanded={expanded} width={contentWidth} />
@@ -106,9 +109,9 @@ export function LevelsScreen({ selectedLevel, currentLevel = null, onStart, onBa
                     <View style={styles.levelCopy}>
                       <Image pointerEvents="none" source={fade} style={styles.artFade} contentFit="fill" />
                       <ProductText variant="body" style={styles.description}>{typeset(level.description)}</ProductText>
-                      <Pressable accessibilityRole="button" accessibilityLabel={level.action} onPress={() => onStart(level.id)} style={styles.action}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={() => onStart(level.id)} style={styles.action}>
                         <PanelArtwork source={actions[level.id]} flipY={level.id === 'guidance'} />
-                        <ProductText variant="title" style={styles.actionLabel}>{level.action}</ProductText>
+                        <ProductText variant="title" style={styles.actionLabel}>{action}</ProductText>
                         <View pointerEvents="none" style={styles.arrow}><RustIcon name="level-arrow" width={32} height={32} round={false} color={colors.onAccent} autoplay
                           fallback={<Image pointerEvents="none" source={arrow} tintColor={colors.onAccent} style={styles.arrowImage} contentFit="contain" />} /></View>
                       </Pressable>

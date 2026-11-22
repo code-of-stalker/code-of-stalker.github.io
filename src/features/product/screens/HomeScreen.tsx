@@ -15,6 +15,8 @@ import { ProductIconButton, ProductScreen, ProductText } from '../ui';
 
 export type HomeScreenProps = {
   started: boolean;
+  /** The person joined the Intensive: the card shows its helix instead of the base step. */
+  intensive?: boolean;
   levelLabel: string;
   step: number;
   stepLabel: string;
@@ -28,6 +30,7 @@ const arrow = require('../../../../assets/product/home-arrow.svg');
 
 export function HomeScreen({
   started,
+  intensive = false,
   levelLabel,
   step,
   stepLabel,
@@ -68,14 +71,15 @@ export function HomeScreen({
       {/* Landscape tablets and desktops place the two cards side by side. */}
       <View style={[styles.cards, { gap: gutter, marginTop: gutter * air }, columns === 2 && styles.cardRow]}>
         <Reveal delay={100} reducedMotion={reducedMotion} style={styles.cardSlot}>
-          <View style={styles.cardSlot}><HomeCard artwork={{ kind: started ? step >= 4 ? 'grounding-here' : step === 3 ? 'thought-loop' : step === 2 ? 'book' : 'cells' : 'distance',
-            webScene: started && step >= 7 ? 'lighthouse-hero' : started && step >= 6 ? 'inner-hero' : started && step >= 5 ? 'sphere-hero' : started && step >= 4 ? 'simple-practice' : undefined, reducedMotion, onPress: onArchitecture,
-            accessibilityLabel: started ? `Архитектура наблюдения. ${levelLabel}, ${stepLabel}. Продолжить` : 'Архитектура наблюдения. Выбрать уровень' }}>
+          <View style={styles.cardSlot}><HomeCard artwork={intensive ? { kind: 'parallel', reducedMotion, onPress: onArchitecture, accessibilityLabel: 'Архитектура наблюдения. Интенсив. Выбрать уровень' }
+            : { kind: started ? step >= 4 ? 'grounding-here' : step === 3 ? 'thought-loop' : step === 2 ? 'book' : 'cells' : 'distance',
+              webScene: started && step >= 7 ? 'lighthouse-hero' : started && step >= 6 ? 'inner-hero' : started && step >= 5 ? 'sphere-hero' : started && step >= 4 ? 'simple-practice' : undefined, reducedMotion, onPress: onArchitecture,
+              accessibilityLabel: started ? `Архитектура наблюдения. ${levelLabel}, ${stepLabel}. Выбрать уровень` : 'Архитектура наблюдения. Выбрать уровень' }}>
             <View pointerEvents="none" style={[styles.numberPosition, { top: inset, left: inset }]}><ProductText variant="label" style={styles.number}>01 /</ProductText></View>
             <HomeCardCopy inset={inset} gradient="architecture" style={large && styles.copyLarge}>
               <ProductText variant="title" fitToWidth={oneLine} minFontSize={20} style={titleStyle}>{oneLine ? 'АРХИТЕКТУРА НАБЛЮДЕНИЯ' : 'АРХИТЕКТУРА\nНАБЛЮДЕНИЯ'}</ProductText>
               <ProductText variant="label" style={styles.cardCaption}>
-                {started ? `${levelLabel} · ${stepLabel}` : 'ВЫСТАВЬ ДИСТАНЦИЮ'}
+                {intensive ? 'ИНТЕНСИВ' : started ? `${levelLabel} · ${stepLabel}` : 'ВЫСТАВЬ ДИСТАНЦИЮ'}
               </ProductText>
             </HomeCardCopy>
             <View pointerEvents="none" style={[styles.arrow, large && styles.arrowLarge]}>{arrowImage}</View>

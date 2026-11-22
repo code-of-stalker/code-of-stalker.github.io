@@ -37,5 +37,5 @@ export function ObservationFlow({ embedded = false, active = true, effectsActive
   return <ObservationScreen embedded={embedded} active={active} effectsActive={effectsActive} startAtEnd={startAtEnd} onNavigationReady={onNavigationReady} onQuestionHeight={onQuestionHeight} questionIndex={Math.min(3, progress.questionIndex)}
     onQuestionChange={questionIndex => { void updateProgress({ questionIndex, practiceStage: progress.step === 2 ? 3 : 4 }).catch(() => {}); }}
     onDone={() => { void done(); }} onBack={onBack ?? (() => { void returnToTask(); })}
-    onClose={() => router.dismissTo('/levels')} />;
+    onClose={() => router.dismissTo('/home')} />;
 }

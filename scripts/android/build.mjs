@@ -2,7 +2,7 @@
 //
 //   npm run build:android            export + build; signs with Art's release key if it exists
 //                                    (asks for its password; nothing is stored)
-//   npm run build:android -- --test  emulator checks: signed with the SDK debug key, page inspectable
+//   npm run build:android -- --test  device checks: signed with the SDK debug key, page inspectable
 //   npm run sign:android             sign the last build again (e.g. after creating the key)
 //
 // Tools live outside the repo, in %USERPROFILE%\Android (override: WATCHER_ANDROID_HOME):
@@ -70,6 +70,16 @@ const gradleOut = path.join(work, 'out', 'app', 'outputs');
 const builtApk = () => [path.join(gradleOut, 'apk', 'release', 'app-release.apk'), path.join(gradleOut, 'apk', 'release', 'app-release-unsigned.apk')].find(f => fs.existsSync(f));
 const builtAab = path.join(gradleOut, 'bundle', 'release', 'app-release.aab');
 
+// Test builds use the SDK's standard debug key (public password "android"); Gradle only
+// creates it during a debug build, so make it here the same way.
+const debugKeystore = path.join(os.homedir(), '.android', 'debug.keystore');
+if (test && !signOnly && !fs.existsSync(debugKeystore)) {
+  fs.mkdirSync(path.dirname(debugKeystore), { recursive: true });
+  run(path.join(jdk, 'bin', windows ? 'keytool.exe' : 'keytool'), ['-genkeypair', '-keystore', debugKeystore, '-storepass', 'android',
+    '-alias', 'androiddebugkey', '-keypass', 'android', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10950',
+    '-dname', 'CN=Android Debug,O=Android,C=US']);
+}
+
 if (!signOnly) {
   if (!Number.isInteger(versionCode) || versionCode < 1) fail('Cannot read the git commit count for versionCode.');
   console.log(`\nCode Of Stalker for Android ${versionName} (versionCode ${versionCode})${test ? ', test build' : ''}`);
@@ -102,7 +112,7 @@ if (!apk) fail('No release APK found; run npm run build:android first.');
 if (test) {
   const target = path.join(outDir, `${base}-test.apk`);
   fs.copyFileSync(apk, target);
-  console.log(`\nTest APK (debug key, not for Art's phone): ${target} (${size(target)})`);
+  console.log(`\nTest APK (debug key; uninstall it before installing the release APK): ${target} (${size(target)})`);
   process.exit(0);
 }
 

@@ -828,7 +828,8 @@ Art: «приложение работало без интернета … од�
   `CodeOfStalkerAndroid` message channel + `ACTION_CREATE_DOCUMENT`.
 - Build: `npm run build:android` (export → app variant → Gradle → APK + AAB in
   `output/android/`, signs with Art's key after a hidden password prompt);
-  `-- --test` = SDK debug key + inspectable page, for the emulator only;
+  `-- --test` = SDK debug key + inspectable page, for device checks over USB (no emulator);
+  uninstall the test app before installing a release build (different key);
   `npm run sign:android` re-signs the last build. Tools outside the repo in
   `%USERPROFILE%\Android\` (`jdk-17*`, `sdk`, `gradle-home`, `build`); env vars only inside
   the script. versionCode = commit count, versionName = `YYYY.MM.DD-<sha7>`.
@@ -838,6 +839,19 @@ Art: «приложение работало без интернета … од�
   updates the sideloaded install.
 - Package id `code.of.stalker`, name «Код Сталкера» (Art, 2026-11-22; permanent).
 - Versions: AGP 9.5.2, Gradle 9.6.0 (wrapper pinned by sha256), compileSdk 37, targetSdk 36, minSdk 26.
+- Status 2026-11-23 (night, Art stopped for the day): test APK 615 checked on Art's phone
+  (TECNO SPARK 10 Pro, Android 13, Mali-G52) over USB. Passed: all 7 steps in all 4 dark
+  themes, status bar per theme, offline from the APK, mic, diary across restart and
+  over-install, backup save and restore, Back, outside link → Chrome, Intensive on the local
+  demo only (real server untouched). Open: site-vs-app speed comparison, real airplane mode
+  (needs Art's OK), release signing (Art's key). Release APK/AAB build unsigned; AAB ≈90 MB.
+  Full notes and phone test scripts: the coordinator's shared notes folder `android-apk/`.
+- Waits for Art: keep or hide backup in the app (he asked why it is needed); then the report
+  with the keytool command, then his «ок» for `/ship-to-main`.
+- Found on the phone, not fixed (affects the site too): Step 5 «sphere-everywhere» shader
+  fails on Mali GPUs (`float[4](...)` array constructors in
+  `graphics/sphere-everywhere/src/shaders/scene.frag`; fix: `highp float a[4];` + per-element
+  assignment, checked on the phone). Backup texts say «браузер»/«данные сайта» in the app too.
 
 ## Open decisions and ideas (nothing promised)
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.

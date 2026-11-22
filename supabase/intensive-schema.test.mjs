@@ -441,3 +441,71 @@ describe('staff names', () => {
     await rows(people.walker, 'aal1', "update public.profiles set name = 'Путник' where id = $1", [people.walker]);
   });
 });
+
+describe('limits', () => {
+  // Small numbers for a test; running the file again brings the real ones back.
+  const setLimits = (...numbers) => db.exec(`create or replace function private.limits()
+    returns table (messages_per_minute int, texts_per_day int, voice_mb_per_day int, database_mb int, voice_stop_percent int)
+    language sql stable set search_path = '' as $$ select ${numbers.map(Number).join(', ')}; $$;`);
+  const sealed = () => [b64(randomBytes(12)), b64(randomBytes(40))];
+  const voice = (who, aal, chat, bytes = 3000) => rows(who, aal, 'select * from public.send_voice($1, 1, $2, $3, $4, $5)',
+    [chat, ...sealed(), b64(randomBytes(12)), b64(randomBytes(bytes))]);
+  let walker, chat;
+  before(async () => {
+    walker = await signUp('limits walker');
+    [{ c: chat }] = await rows(people.yana, 'aal2', 'select public.admin_assign_guide($1, $2) as c', [walker, people.guide]);
+  });
+
+  it('the real limits: 30 a minute, 300 texts and 20 MB of voice a day, voice stops at 450 of 500 MB', async () => {
+    assert.deepEqual((await db.query('select * from private.limits()')).rows,
+      [{ messages_per_minute: 30, texts_per_day: 300, voice_mb_per_day: 20, database_mb: 500, voice_stop_percent: 90 }]);
+  });
+  it('thirty messages a minute from one person in one chat, deleted ones included; others go on', async () => {
+    const first = await rows(walker, 'aal1', 'insert into public.messages (chat_id, iv, body) values ($1, $2, $3) returning id', [chat, ...sealed()]);
+    await rows(walker, 'aal1', 'select public.delete_message($1)', [first[0].id]);
+    for (let i = 1; i < 30; i++) await sendAs(walker, 'aal1', chat);
+    await fails(sendAs(walker, 'aal1', chat), /rate limit: 30 messages a minute/);
+    await fails(voice(walker, 'aal1', chat), /rate limit: 30 messages a minute/);
+    await sendAs(people.guide, 'aal2', chat);
+    await sendAs(people.walker, 'aal1', people.chat);
+  });
+  it('a day holds only so many texts; voice is counted apart', async () => {
+    await setLimits(1000, 35, 20, 500, 90);
+    for (let i = 30; i < 35; i++) await sendAs(walker, 'aal1', chat);
+    await fails(sendAs(walker, 'aal1', chat), /rate limit: 35 text messages a day/);
+    await voice(walker, 'aal1', chat);
+    await sendAs(people.guide, 'aal2', chat);
+  });
+  it('a day holds only so much voice for one person in a chat', async () => {
+    await setLimits(1000, 1000, 1, 500, 90);
+    await voice(walker, 'aal1', chat, 600000);
+    await fails(voice(walker, 'aal1', chat, 600000), /rate limit: 1 MB of voice a day/);
+    await sendAs(walker, 'aal1', chat);
+    await voice(people.guide, 'aal2', chat, 600000);
+  });
+  it('a nearly full database takes no new voice, while text goes on', async () => {
+    await setLimits(1000, 1000, 20, 1, 90);
+    await fails(voice(people.guide, 'aal2', chat), /storage full/);
+    await sendAs(people.guide, 'aal2', chat);
+    const [gauge] = await rows(people.yana, 'aal2', 'select * from public.admin_storage()');
+    assert.ok(Number(gauge.used_bytes) > 900000);
+    assert.equal(Number(gauge.total_bytes), 1000000);
+    assert.equal(Number(gauge.voice_stop_bytes), 900000);
+  });
+  it('only the main admin, with a TOTP session, sees the database size', async () => {
+    await fails(rows(people.guide, 'aal2', 'select * from public.admin_storage()'), /main admin only/);
+    await fails(rows(people.yana, 'aal1', 'select * from public.admin_storage()'), /totp session/);
+    await fails(rows(people.guide, 'aal2', 'select * from private.storage()'), /permission denied/);
+    await fails(rows(null, null, 'select * from public.admin_storage()'), /permission denied/);
+  });
+  it('running the file again brings the real limits back and keeps every message', async () => {
+    const count = async () => (await db.query('select count(*)::int as n from public.messages')).rows[0].n;
+    const before = await count();
+    await db.exec(schema);
+    assert.equal(await count(), before);
+    const [gauge] = await rows(people.yana, 'aal2', 'select * from public.admin_storage()');
+    assert.equal(Number(gauge.total_bytes), 500000000);
+    assert.equal(Number(gauge.voice_stop_bytes), 450000000);
+    await voice(people.guide, 'aal2', chat);
+  });
+});

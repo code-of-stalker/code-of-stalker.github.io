@@ -4,7 +4,7 @@
  * the screens can be tried before the real project exists. Never used on the site.
  */
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, UnlockResult } from './backend';
+import type { AuthStore, Backend, BackendFactory, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Storage, UnlockResult } from './backend';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
 import { newPhrase } from './phrase';
@@ -24,6 +24,10 @@ const SESSION = 'demo-session';
 const DAY = 86_400_000;
 /** The demo server's open invite code; public, like the demo TOTP code 123456. */
 export const DEMO_INVITE = 'ABCD-EFGH-2345';
+/** The numbers of private.limits() in the schema (MB = 1,000,000 bytes). */
+const LIMITS = { perMinute: 30, textsPerDay: 300, voiceBytesPerDay: 20_000_000, databaseBytes: 500_000_000, voiceStopPercent: 90 };
+/** What the demo pretends the rest of the database takes. */
+const DEMO_BASE_BYTES = 37_600_000;
 
 /** The schema's private.invite_key: case, hyphens and spaces ignored. */
 const inviteKey = (raw: string) => raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -112,6 +116,31 @@ class DemoServer {
   }
 
   live(chatId: string) { return this.messages.filter(m => m.chatId === chatId && !m.deletedAt); }
+
+  storage(): Storage {
+    let used = DEMO_BASE_BYTES;
+    for (const m of this.messages) used += 200 + (m.body?.length ?? 0);
+    for (const media of this.media.values()) used += media.body.length;
+    return { usedBytes: used, totalBytes: LIMITS.databaseBytes, voiceStopBytes: LIMITS.databaseBytes * LIMITS.voiceStopPercent / 100 };
+  }
+
+  /** The schema's limit_messages trigger and the checks of send_voice. */
+  checkLimits(chatId: string, senderId: string, kind: MessageKind, audioBytes = 0) {
+    const now = Date.now();
+    const mine = this.messages.filter(m => m.chatId === chatId && m.senderId === senderId);
+    if (kind === 'voice') {
+      const storage = this.storage();
+      if (storage.usedBytes >= storage.voiceStopBytes) throw new BackendError('storage-full', 'storage full: no new voice messages until space is freed');
+      const today = mine.filter(m => now - Date.parse(m.createdAt) < DAY).reduce((sum, m) => sum + (this.media.get(m.id)?.body.length ?? 0), 0);
+      if (today + audioBytes > LIMITS.voiceBytesPerDay) throw new BackendError('rate-limit', `rate limit: ${LIMITS.voiceBytesPerDay / 1_000_000} MB of voice a day in one chat`);
+    }
+    if (mine.filter(m => now - Date.parse(m.createdAt) < 60_000).length >= LIMITS.perMinute) {
+      throw new BackendError('rate-limit', `rate limit: ${LIMITS.perMinute} messages a minute in one chat`);
+    }
+    if (kind === 'text' && mine.filter(m => m.kind === 'text' && now - Date.parse(m.createdAt) < DAY).length >= LIMITS.textsPerDay) {
+      throw new BackendError('rate-limit', `rate limit: ${LIMITS.textsPerDay} text messages a day in one chat`);
+    }
+  }
 
   insertMessage(chatId: string, senderId: string, keyVersion: number, iv: string, body: string, kind: MessageKind = 'text'): MessageRow {
     const row: MessageRow = {
@@ -341,6 +370,7 @@ function connect(store: AuthStore): Backend {
     async sendVoice(chatId, keyVersion, iv, body, audioIv, audioBody) {
       await wait();
       const userId = member(chatId);
+      s.checkLimits(chatId, userId, 'voice', audioBody.length);
       const row = s.insertMessage(chatId, userId, keyVersion, iv, body, 'voice');
       s.media.set(row.id, { chatId, iv: audioIv, body: audioBody });
       return { ...row };
@@ -371,6 +401,7 @@ function connect(store: AuthStore): Backend {
     async send(chatId, keyVersion, iv, body) {
       await wait();
       const userId = member(chatId);
+      s.checkLimits(chatId, userId, 'text');
       const row = { ...s.insertMessage(chatId, userId, keyVersion, iv, body) };
       const chat = s.chats.get(chatId)!;
       // A seeded guide answers the walker, so the live update can be seen.
@@ -459,6 +490,11 @@ function connect(store: AuthStore): Backend {
       mainAdmin();
       const found = s.invites.find(i => i.id === id);
       if (found && !found.revokedAt) found.revokedAt = new Date().toISOString();
+    },
+    async storage() {
+      await wait();
+      mainAdmin();
+      return s.storage();
     },
   };
 }

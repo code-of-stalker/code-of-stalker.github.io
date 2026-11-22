@@ -8,13 +8,17 @@
 -- * Every table has row level security. Direct writes are limited to a person's
 --   own name, own key rows and own messages; roles and assignments change only
 --   through the admin_* functions, which check the main admin and a TOTP session.
+--   Editing, deleting and voice messages go through edit_message, delete_message
+--   and send_voice, which accept only the sender, still a member of the chat.
 -- * A profile is created only by create_profile, with an invite code the main
 --   admin made (uses and expiry counted here). An account without a profile sees
 --   nothing. Signing in with the 12 words on a new device needs no code.
 -- * Nobody takes the name of a guide, an admin or the main admin: case, spaces,
 --   punctuation and Latin letters that look Cyrillic are ignored when comparing.
---   Editing, deleting and voice messages go through edit_message, delete_message
---   and send_voice, which accept only the sender, still a member of the chat.
+-- * Limits for each person in each chat: 30 messages a minute and 300 text
+--   messages a day (deleted ones count too), 20 MB of voice a day. At 90% of the
+--   500 MB database no new voice is taken; text goes on. Nothing is deleted by
+--   itself. The numbers live in private.limits(): change one and run the file again.
 -- * Messages and chat keys are end-to-end encrypted in the browser; the database
 --   holds only ciphertext and public keys.
 -- * Guides, admins, the main admin and anyone who enabled TOTP get no data
@@ -115,6 +119,8 @@ alter table public.messages drop constraint if exists messages_content_check,
     (deleted_at is null and iv is not null and body is not null)
     or (deleted_at is not null and iv is null and body is null));
 create index if not exists messages_chat_id_idx on public.messages (chat_id, id);
+-- Counts one person's recent messages in a chat for the limits.
+create index if not exists messages_sender_idx on public.messages (sender_id, chat_id, created_at);
 
 -- The sealed audio of a voice message, apart from the row, so chat loads and live
 -- events stay light. About 1 MB of audio at most (5 minutes of voice).
@@ -373,6 +379,61 @@ create policy messages_send on public.messages for insert to authenticated
 drop policy if exists message_media_read on public.message_media;
 create policy message_media_read on public.message_media for select to authenticated
   using (private.chat_role(chat_id, auth.uid()) is not null);
+
+-- ---------------------------------------------------------------- limits
+
+-- Every limit in one place (MB = 1,000,000 bytes). Change a number and run the file again.
+drop function if exists private.limits();
+create function private.limits()
+returns table (messages_per_minute int, texts_per_day int, voice_mb_per_day int, database_mb int, voice_stop_percent int)
+language sql stable set search_path = '' as $$
+  select 30, 300, 20, 500, 90;
+$$;
+
+-- One person's messages in one chat are counted one at a time, so a burst cannot slip past.
+create or replace function private.lock_sender(chat uuid)
+returns void language sql volatile security definer set search_path = '' as $$
+  select pg_advisory_xact_lock(hashtextextended(auth.uid()::text || ':' || chat::text, 0));
+$$;
+
+-- Too many messages from one person in one chat are refused, text and voice alike.
+create or replace function private.limit_messages()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  per_minute int;
+  per_day int;
+  recent int;
+begin
+  if auth.uid() is null then return new; end if;
+  select l.messages_per_minute, l.texts_per_day into per_minute, per_day from private.limits() l;
+  perform private.lock_sender(new.chat_id);
+  select count(*) into recent from public.messages m
+    where m.sender_id = auth.uid() and m.chat_id = new.chat_id and m.created_at > now() - interval '1 minute';
+  if recent >= per_minute then
+    raise exception 'rate limit: % messages a minute in one chat', per_minute;
+  end if;
+  if new.kind = 'text' then
+    select count(*) into recent from public.messages m
+      where m.sender_id = auth.uid() and m.chat_id = new.chat_id and m.kind = 'text' and m.created_at > now() - interval '1 day';
+    if recent >= per_day then
+      raise exception 'rate limit: % text messages a day in one chat', per_day;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists limit_messages on public.messages;
+create trigger limit_messages before insert on public.messages
+  for each row execute function private.limit_messages();
+
+-- How full the database is, against its limit and the point where voice stops.
+create or replace function private.storage()
+returns table (used_bytes bigint, total_bytes bigint, voice_stop_bytes bigint)
+language sql stable security definer set search_path = '' as $$
+  select pg_database_size(current_database()), l.database_mb::bigint * 1000000,
+    l.database_mb::bigint * 1000000 * l.voice_stop_percent / 100
+  from private.limits() l;
+$$;
 
 -- The sender, role and time come from the server, not from the client.
 create or replace function private.stamp_message()
@@ -725,12 +786,37 @@ begin
 end;
 $$;
 
+-- The main admin's gauge of the database size.
+create or replace function public.admin_storage()
+returns table (used_bytes bigint, total_bytes bigint, voice_stop_bytes bigint)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform private.require_main_admin();
+  return query select s.used_bytes, s.total_bytes, s.voice_stop_bytes from private.storage() s;
+end;
+$$;
+
 -- A voice message: the sealed description as a message row, the sealed audio beside it.
+-- Refused past the daily voice limit, and for everyone once the database is nearly full.
 create or replace function public.send_voice(chat uuid, version int, sealed_iv text, sealed_body text, audio_iv text, audio_body text)
 returns public.messages language plpgsql volatile security definer set search_path = '' as $$
-declare made public.messages;
+declare
+  made public.messages;
+  per_day bigint;
+  today bigint;
 begin
   perform private.require_member(chat);
+  if (select s.used_bytes >= s.voice_stop_bytes from private.storage() s) then
+    raise exception 'storage full: no new voice messages until space is freed';
+  end if;
+  select l.voice_mb_per_day::bigint * 1000000 into per_day from private.limits() l;
+  perform private.lock_sender(chat);
+  select coalesce(sum(octet_length(mm.body)), 0) into today
+    from public.message_media mm join public.messages m on m.id = mm.message_id
+    where m.sender_id = auth.uid() and m.chat_id = chat and m.created_at > now() - interval '1 day';
+  if today + coalesce(octet_length(audio_body), 0) > per_day then
+    raise exception 'rate limit: % MB of voice a day in one chat', per_day / 1000000;
+  end if;
   insert into public.messages (chat_id, key_version, kind, iv, body)
     values (chat, version, 'voice', sealed_iv, sealed_body) returning * into made;
   insert into public.message_media (message_id, chat_id, iv, body) values (made.id, chat, audio_iv, audio_body);
@@ -788,10 +874,13 @@ revoke all on function public.my_status(), public.register_device(uuid, text),
   public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
   public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping(),
   public.check_invite(text), public.create_profile(text, text, text, text, text),
-  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid)
+  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid),
+  public.admin_storage()
   from public, anon, authenticated;
 revoke all on all functions in schema private from public, anon;
 grant execute on all functions in schema private to authenticated;
+-- The database size is the main admin's to see, through admin_storage().
+revoke execute on function private.storage() from authenticated;
 grant execute on function public.my_status(), public.register_device(uuid, text),
   public.unlock_device(uuid, text), public.forget_device(uuid), public.my_chats(),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
@@ -799,7 +888,8 @@ grant execute on function public.my_status(), public.register_device(uuid, text)
   public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
   public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping(),
   public.check_invite(text), public.create_profile(text, text, text, text, text),
-  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid)
+  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid),
+  public.admin_storage()
   to authenticated;
 grant execute on function public.unlock_device(uuid, text), public.ping(), public.check_invite(text) to anon;
 

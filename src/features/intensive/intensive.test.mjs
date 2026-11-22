@@ -377,3 +377,27 @@ test('an invite code opens the door once per use; a staff name stays theirs', as
   assert.equal(await demoBackend.checkInvite(other), 'revoked');
   yana.lock();
 });
+
+test('the demo keeps the chat limits of the schema; only the main admin sees the database size', async () => {
+  storage.clear();
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => firstName(p.name) === name).entropy);
+  const alex = await as('Алекс');
+  const [chat] = await alex.myChats();
+  await alex.chatCipher(chat.chatId);
+  let sent = 0, refused;
+  while (sent <= 30) {
+    try { await alex.send(chat.chatId, `Заметил ${sent}`); sent += 1; } catch (problem) { refused = problem; break; }
+  }
+  assert.equal(refused?.code, 'rate-limit');
+  assert.match(refused.message, /30 messages a minute/);
+  await assert.rejects(alex.storage(), error => error.code === 'denied');
+
+  const yana = await as('Яна');
+  await yana.verifyTotp('123456');
+  const gauge = await yana.storage();
+  assert.deepEqual([gauge.totalBytes, gauge.voiceStopBytes], [500_000_000, 450_000_000]);
+  assert.ok(gauge.usedBytes > 0 && gauge.usedBytes < gauge.voiceStopBytes);
+  alex.lock();
+  yana.lock();
+});

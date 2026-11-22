@@ -22,6 +22,7 @@ import { GlassField, Glyph, ListGroup, ListItem, useRoleInks } from './chrome';
 import { Chip, formatTime, Note, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 import { InviteCodes } from './InviteCodes';
+import { StorageGauge } from './StorageGauge';
 import { isStaff, PersonCard, plain, RoleTags, waitedFor } from './PersonCard';
 import { RoleMark } from './RoleMark';
 
@@ -387,6 +388,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     <View style={styles.footer}>{refresh}</View>
     {error ? <Note tone="error">{error}</Note> : null}
     <InviteCodes session={session} />
+    <StorageGauge session={session} />
     {moveSheet}
   </View>;
 
@@ -418,6 +420,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
       }) : <ListItem glyph="people" title="Проводников пока нет" hint="Дайте права проводника кому-нибудь из людей" last />}
     </ListGroup>
     <InviteCodes session={session} />
+    <StorageGauge session={session} />
     <ProductText maxFontSize={13} style={styles.hint}>Откройте человека в списке, чтобы назначить проводника или изменить права. Отметьте нескольких идущих, чтобы перевести их разом.</ProductText>
   </View>;
 

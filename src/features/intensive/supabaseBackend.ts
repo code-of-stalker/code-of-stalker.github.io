@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageRow, Place, StaffRole, Status, UnlockResult } from './backend';
+import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageRow, Place, StaffRole, Status, Storage, UnlockResult } from './backend';
 
 type Config = { url: string; publishableKey: string };
 type Raw = Record<string, unknown>;
@@ -10,6 +10,7 @@ function fail(error: { message?: string; code?: string; status?: number } | null
   const message = error?.message ?? 'unknown error';
   if (/fetch|network|Failed to fetch|timeout/i.test(message)) throw new BackendError('network', message);
   if (error?.status === 429 || /rate limit/i.test(message)) throw new BackendError('rate-limit', message);
+  if (/storage full/i.test(message)) throw new BackendError('storage-full', message);
   const invite = /invite (wrong|expired|used up|revoked)/i.exec(message)?.[1]?.toLowerCase() as Exclude<InviteState, 'ok'> | undefined;
   if (invite) throw new BackendError('invite', message, invite);
   if (/name taken by staff/i.test(message)) throw new BackendError('name-taken', message);
@@ -220,6 +221,10 @@ function connect(config: Config, store: AuthStore): Backend {
     },
     createInvite: (uses, days) => rpc<string>('admin_create_invite', { uses, days }),
     async revokeInvite(id) { await rpc('admin_revoke_invite', { invite: id }); },
+    async storage(): Promise<Storage> {
+      const [row] = await rpc<Raw[]>('admin_storage');
+      return { usedBytes: Number(row.used_bytes), totalBytes: Number(row.total_bytes), voiceStopBytes: Number(row.voice_stop_bytes) };
+    },
   };
 }
 

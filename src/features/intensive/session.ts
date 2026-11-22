@@ -1,5 +1,5 @@
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, TotpEnrollment } from './backend';
+import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, Storage, TotpEnrollment } from './backend';
 import { clearChatMemory, forgetSeen } from './chatMemory';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
@@ -370,6 +370,7 @@ export class IntensiveSession {
   invites(): Promise<Invite[]> { return this.backend.invites(); }
   createInvite(uses: number, days: number): Promise<string> { return this.backend.createInvite(uses, days); }
   revokeInvite(id: string) { return this.backend.revokeInvite(id); }
+  storage(): Promise<Storage> { return this.backend.storage(); }
 
   async assignGuide(walkerId: string, guideId: string | null) {
     const chatId = await this.backend.assignGuide(walkerId, guideId);

@@ -52,6 +52,23 @@ export function problemText(problem: unknown, fallback?: string, formal = false)
   return fallback ?? (formal ? 'Что-то пошло не так. Попробуйте ещё раз.' : 'Что-то пошло не так. Попробуй ещё раз.');
 }
 
+/**
+ * Why a message did not go when a chat limit or a full server stopped it; null for any other
+ * problem. The message stays in the feed with «Повторить», so nothing typed or recorded is lost.
+ */
+export function limitText(problem: unknown, voice: boolean, formal = false): string | null {
+  if (!(problem instanceof BackendError)) return null;
+  const say = (informal: string, polite: string) => formal ? polite : informal;
+  if (problem.code === 'storage-full') return 'Голосовые сейчас не принимаются: на сервере кончается место. Запись не пропала. Можно написать текстом.';
+  if (problem.code !== 'rate-limit') return null;
+  if (/a day/i.test(problem.message)) return voice
+    ? say('За сутки в этом чате уже много голосовых. Запись не пропала: нажми «Повторить» позже или напиши текстом.',
+      'За сутки в этом чате уже много голосовых. Запись не пропала: нажмите «Повторить» позже или напишите текстом.')
+    : say('За сутки в этом чате уже много сообщений. Текст не пропал: нажми «Повторить» позже.',
+      'За сутки в этом чате уже много сообщений. Текст не пропал: нажмите «Повторить» позже.');
+  return say('Слишком часто. Подожди минуту и нажми «Повторить».', 'Слишком часто. Подождите минуту и нажмите «Повторить».');
+}
+
 export function formatTime(iso: string) {
   const date = new Date(iso), now = new Date();
   const time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });

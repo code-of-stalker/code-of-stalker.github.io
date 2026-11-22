@@ -65,6 +65,9 @@ export type Invite = {
   expiresAt: string; revokedAt: string | null; createdAt: string;
 };
 
+/** How full the database is; past `voiceStopBytes` the server takes no new voice. */
+export type Storage = { usedBytes: number; totalBytes: number; voiceStopBytes: number };
+
 /** Auth session storage: memory only; the device vault seals it under the PIN. */
 export type AuthStore = {
   getItem(key: string): string | null;
@@ -73,7 +76,8 @@ export type AuthStore = {
 };
 
 export class BackendError extends Error {
-  readonly code: 'network' | 'denied' | 'not-found' | 'invalid' | 'rate-limit' | 'invite' | 'name-taken' | 'unknown';
+  /** 'rate-limit' also when a chat limit stops a message; 'storage-full' when the server takes no new voice. */
+  readonly code: 'network' | 'denied' | 'not-found' | 'invalid' | 'rate-limit' | 'storage-full' | 'invite' | 'name-taken' | 'unknown';
   /** For 'invite': why the code does not open. */
   readonly invite?: Exclude<InviteState, 'ok'>;
   constructor(code: BackendError['code'], message: string, invite?: Exclude<InviteState, 'ok'>) {
@@ -114,8 +118,9 @@ export interface Backend {
   messages(chatId: string, afterId?: number): Promise<MessageRow[]>;
   /** Rows edited or deleted after `since` (a server time), deleted ones included. */
   changes(chatId: string, since: string): Promise<MessageRow[]>;
+  /** 'rate-limit' past the chat limits (per minute, per day). */
   send(chatId: string, keyVersion: number, iv: string, body: string): Promise<MessageRow>;
-  /** Sender only; the sealed audio is stored beside the row. */
+  /** Sender only; the sealed audio is stored beside the row. 'rate-limit' past the limits, 'storage-full' when the database is nearly full. */
   sendVoice(chatId: string, keyVersion: number, iv: string, body: string, audioIv: string, audioBody: string): Promise<MessageRow>;
   /** The sealed audio of a voice message. */
   media(messageId: number): Promise<{ iv: string; body: string } | null>;
@@ -136,6 +141,8 @@ export interface Backend {
   /** Main admin only: a new code for `uses` people, valid `days` days, as XXXX-XXXX-XXXX. */
   createInvite(uses: number, days: number): Promise<string>;
   revokeInvite(id: string): Promise<void>;
+  /** Main admin only: how full the database is. */
+  storage(): Promise<Storage>;
 }
 
 export interface BackendFactory {

@@ -9,7 +9,7 @@ import { useProductLayout } from '../../product/layout';
 import type { ProductColors } from '../../product/theme';
 import { ProductIconButton, ProductText } from '../../product/ui';
 import { BackendError } from '../backend';
-import type { Place } from '../backend';
+import type { InviteState, Place } from '../backend';
 import { Glyph, Hero, useContour } from './chrome';
 import { SlideMark } from '../../product/motion/SlideMark';
 import { Breathe } from '../../product/motion/Breathe';
@@ -26,11 +26,24 @@ const FormalContext = createContext(false);
 export const FormalTone = FormalContext.Provider;
 export const useFormal = () => useContext(FormalContext);
 
+/** Why an invite code does not open, in the walker's words. */
+export function inviteText(state: Exclude<InviteState, 'ok'>) {
+  switch (state) {
+    case 'wrong': return 'Такого кода нет. Проверь, как он написан.';
+    case 'expired': return 'Срок этого кода истёк. Попроси новый.';
+    case 'used up': return 'По этому коду уже вошли все, для кого он был. Попроси новый.';
+    case 'revoked': return 'Этот код отозван. Попроси новый.';
+  }
+}
+
 /** A plain Russian sentence for any failure; details stay in the console. */
 export function problemText(problem: unknown, fallback?: string, formal = false) {
   const offline = formal ? 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' : 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
   if (problem instanceof BackendError) {
     if (problem.code === 'network') return offline;
+    if (problem.code === 'invite' && problem.invite) return inviteText(problem.invite);
+    if (problem.code === 'name-taken') return formal ? 'Это имя уже у человека из команды Интенсива. Напишите имя иначе, чтобы вас не путали.'
+      : 'Это имя уже у человека из команды Интенсива. Напиши имя иначе, чтобы вас не путали.';
     if (problem.code === 'rate-limit') return formal ? 'Слишком много попыток. Подождите несколько минут.' : 'Слишком много попыток. Подожди несколько минут.';
     if (problem.code === 'denied') return formal ? 'Нет доступа. Возможно, права изменились: войдите заново.' : 'Нет доступа. Возможно, права изменились: войди заново.';
   }

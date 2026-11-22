@@ -81,6 +81,29 @@ export function ConfirmWords({ words, positions, busy, error, onConfirmed, onBac
 }
 
 /**
+ * The Intensive opens by invitation. The code is checked before the 12 words appear,
+ * so a bad code shows before anything has to be written down. `demoCode` is the demo
+ * server's public code, shown in development only.
+ */
+export function InviteStep({ busy, error, onSubmit, demoCode }: { busy: boolean; error: string; onSubmit: (code: string) => void; demoCode?: string }) {
+  const styles = useThemeStyles(createStyles);
+  const [code, setCode] = useState('');
+  const length = code.replace(/[^A-Za-z0-9]/g, '').length;
+  const valid = length >= 10 && length <= 32;
+  const submit = () => { if (valid && !busy) onSubmit(code); };
+  return <View style={styles.stack}>
+    <Hero glyph="key" title="КОД ПРИГЛАШЕНИЯ" tight lines={['Интенсив открыт по приглашению. Введи код, который тебе дали.',
+      'Нет кода? Попроси его у того, кто позвал тебя в Интенсив.']} />
+    <GlassField label="КОД" value={code} maxLength={40} autoFocus autoCapitalize="characters" autoComplete="off" placeholder="XXXX-XXXX-XXXX"
+      style={styles.invite} accessibilityLabel="Код приглашения" returnKeyType="done"
+      onChangeText={text => setCode(text.toUpperCase())} onSubmitEditing={submit} />
+    {error ? <Note tone="error">{error}</Note> : null}
+    {demoCode ? <Note>{`Демо-сервер: код ${demoCode}`}</Note> : null}
+    <ProductButton label={busy ? 'ПРОВЕРЯЮ КОД…' : 'ДАЛЬШЕ'} onPress={submit} disabled={busy || !valid} />
+  </View>;
+}
+
+/**
  * First name and surname. `adding` asks an account made before surnames were asked
  * for the missing surname, with its first name already filled in.
  */
@@ -213,5 +236,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   secretBlock: { gap: 8 },
   secret: { textAlign: 'center', fontSize: 12, lineHeight: 20, letterSpacing: 1, color: colors.text },
   code: { textAlign: 'center', fontSize: 24, lineHeight: 30, letterSpacing: 8 },
+  invite: { textAlign: 'center', fontSize: 20, lineHeight: 28, letterSpacing: 3 },
   ownCode: { fontSize: 24, lineHeight: 30, letterSpacing: 2 },
 });

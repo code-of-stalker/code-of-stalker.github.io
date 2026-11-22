@@ -6,8 +6,13 @@
 --
 -- Security model (the repository is public, so nothing here relies on the client):
 -- * Every table has row level security. Direct writes are limited to a person's
---   own profile, own key rows and own messages; roles and assignments change only
+--   own name, own key rows and own messages; roles and assignments change only
 --   through the admin_* functions, which check the main admin and a TOTP session.
+-- * A profile is created only by create_profile, with an invite code the main
+--   admin made (uses and expiry counted here). An account without a profile sees
+--   nothing. Signing in with the 12 words on a new device needs no code.
+-- * Nobody takes the name of a guide, an admin or the main admin: case, spaces,
+--   punctuation and Latin letters that look Cyrillic are ignored when comparing.
 --   Editing, deleting and voice messages go through edit_message, delete_message
 --   and send_voice, which accept only the sender, still a member of the chat.
 -- * Messages and chat keys are end-to-end encrypted in the browser; the database
@@ -139,6 +144,20 @@ create table if not exists public.blocked_accounts (
   blocked_at timestamptz not null default now()
 );
 
+-- Invite codes from the main admin. Reached only through check_invite,
+-- create_profile and the admin_* functions; no policy lets anyone read it.
+create table if not exists public.invite_codes (
+  id uuid primary key default gen_random_uuid(),
+  -- Upper case without separators; what a person types is reduced the same way.
+  code text not null unique check (code ~ '^[A-Z0-9]{10,32}$'),
+  max_uses int not null default 3 check (max_uses between 1 and 100),
+  used int not null default 0 check (used >= 0),
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_by uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.identity_keys enable row level security;
 alter table public.main_admins enable row level security;
@@ -150,6 +169,7 @@ alter table public.messages enable row level security;
 alter table public.message_media enable row level security;
 alter table public.devices enable row level security;
 alter table public.blocked_accounts enable row level security;
+alter table public.invite_codes enable row level security;
 
 -- ---------------------------------------------------------------- private helpers
 -- The private schema is not exposed through the API, so these are not callable
@@ -235,13 +255,60 @@ begin
 end;
 $$;
 
+-- A name reduced for comparison: case, spaces and punctuation dropped, ё as е,
+-- and the Latin letters and digits that look Cyrillic read as Cyrillic. Explicit
+-- tables, so the result does not depend on the database locale.
+create or replace function private.name_key(raw text)
+returns text language sql immutable set search_path = '' as $$
+  select regexp_replace(
+    translate(
+      lower(translate(coalesce(raw, ''), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя')),
+      'ёabcehkmoptxy03', 'еавсенкмортхуоз'),
+    '[^a-z0-9а-я]', '', 'g');
+$$;
+
+-- An invite code as typed: case, hyphens and spaces ignored.
+create or replace function private.invite_key(raw text)
+returns text language sql immutable set search_path = '' as $$
+  select upper(regexp_replace(coalesce(raw, ''), '[^A-Za-z0-9]', '', 'g'));
+$$;
+
+-- Why a code does not open the door, or null when it does.
+create or replace function private.invite_problem(hit public.invite_codes)
+returns text language sql stable set search_path = '' as $$
+  select case
+    when hit.id is null then 'wrong'
+    when hit.revoked_at is not null then 'revoked'
+    when hit.expires_at <= now() then 'expired'
+    when hit.used >= hit.max_uses then 'used up'
+  end;
+$$;
+
+-- Twelve characters without look-alikes (no 0, O, 1, I, L), shown as XXXX-XXXX-XXXX.
+create or replace function private.new_invite_code()
+returns text language plpgsql volatile set search_path = '' as $$
+declare
+  alphabet constant text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  made text := '';
+  b int;
+begin
+  while char_length(made) < 12 loop
+    b := get_byte(extensions.gen_random_bytes(1), 0);
+    -- 248 = 8 × 31: higher bytes would favour the first letters.
+    if b < 248 then made := made || substr(alphabet, b % 31 + 1, 1); end if;
+  end loop;
+  return made;
+end;
+$$;
+
 -- ---------------------------------------------------------------- policies
 
 do $$
 declare t text;
 begin
   foreach t in array array['profiles', 'identity_keys', 'main_admins', 'staff_roles',
-    'guide_admins', 'chats', 'chat_keys', 'messages', 'message_media', 'devices', 'blocked_accounts'] loop
+    'guide_admins', 'chats', 'chat_keys', 'messages', 'message_media', 'devices', 'blocked_accounts',
+    'invite_codes'] loop
     execute format('drop policy if exists mfa_required on public.%I', t);
     execute format('create policy mfa_required on public.%I as restrictive for all to authenticated
       using (private.mfa_ok()) with check (private.mfa_ok())', t);
@@ -255,9 +322,8 @@ $$;
 drop policy if exists profiles_read on public.profiles;
 create policy profiles_read on public.profiles for select to authenticated
   using (private.can_see_profile(id));
+-- Profiles are made by create_profile only, with an invite code.
 drop policy if exists profiles_create on public.profiles;
-create policy profiles_create on public.profiles for insert to authenticated
-  with check (id = auth.uid());
 drop policy if exists profiles_rename on public.profiles;
 create policy profiles_rename on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
@@ -266,8 +332,6 @@ drop policy if exists identity_keys_own on public.identity_keys;
 create policy identity_keys_own on public.identity_keys for select to authenticated
   using (user_id = auth.uid());
 drop policy if exists identity_keys_create on public.identity_keys;
-create policy identity_keys_create on public.identity_keys for insert to authenticated
-  with check (user_id = auth.uid());
 
 drop policy if exists main_admins_read on public.main_admins;
 create policy main_admins_read on public.main_admins for select to authenticated
@@ -338,14 +402,30 @@ drop trigger if exists stamp_chat_key on public.chat_keys;
 create trigger stamp_chat_key before insert on public.chat_keys
   for each row execute function private.stamp_chat_key();
 
+-- A guide's, an admin's or the main admin's name is theirs alone.
+create or replace function private.check_profile_name()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if exists (select 1 from public.profiles p
+      where p.id <> new.id and private.is_staff(p.id)
+        and private.name_key(p.name) = private.name_key(new.name)) then
+    raise exception 'name taken by staff' using errcode = '22023';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists check_profile_name on public.profiles;
+create trigger check_profile_name before insert or update of name on public.profiles
+  for each row execute function private.check_profile_name();
+
 -- ---------------------------------------------------------------- grants
 
 revoke all on public.profiles, public.identity_keys, public.main_admins, public.staff_roles,
   public.guide_admins, public.chats, public.chat_keys, public.messages, public.message_media,
-  public.devices, public.blocked_accounts
+  public.devices, public.blocked_accounts, public.invite_codes
   from anon, authenticated, public;
-grant select, insert (id, name, public_key), update (name) on public.profiles to authenticated;
-grant select, insert (user_id, iv, wrapped_private_key) on public.identity_keys to authenticated;
+grant select, update (name) on public.profiles to authenticated;
+grant select on public.identity_keys to authenticated;
 grant select on public.main_admins, public.staff_roles, public.guide_admins, public.chats to authenticated;
 grant select, delete, insert (chat_id, version, member_id, ephemeral_key, iv, wrapped_key) on public.chat_keys to authenticated;
 grant select, insert (chat_id, key_version, iv, body) on public.messages to authenticated;
@@ -368,6 +448,40 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'blocked', private.is_blocked(auth.uid()));
 $$;
 
+-- Whether an invite code opens the door: 'ok', 'wrong', 'expired', 'used up' or
+-- 'revoked'. Callable before sign-up, so a person learns of a bad code before
+-- writing down the 12 words. It never shows a code.
+create or replace function public.check_invite(invite text)
+returns text language plpgsql stable security definer set search_path = '' as $$
+declare hit public.invite_codes;
+begin
+  select * into hit from public.invite_codes c where c.code = private.invite_key(invite);
+  return coalesce(private.invite_problem(hit), 'ok');
+end;
+$$;
+
+-- The one way to make a profile: a signed-in account without one, a valid invite
+-- code (one use counted, under a row lock), a name and the identity key.
+create or replace function public.create_profile(invite text, name text, public_key text, key_iv text, wrapped_key text)
+returns void language plpgsql volatile security definer set search_path = '' as $$
+declare
+  me uuid := auth.uid();
+  hit public.invite_codes;
+  problem text;
+begin
+  if me is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  if exists (select 1 from public.profiles p where p.id = me) then
+    raise exception 'profile exists' using errcode = '23505';
+  end if;
+  select * into hit from public.invite_codes c where c.code = private.invite_key(invite) for update;
+  problem := private.invite_problem(hit);
+  if problem is not null then raise exception 'invite %', problem using errcode = '22023'; end if;
+  insert into public.profiles (id, name, public_key) values (me, btrim(create_profile.name), create_profile.public_key);
+  insert into public.identity_keys (user_id, iv, wrapped_private_key) values (me, key_iv, wrapped_key);
+  update public.invite_codes c set used = c.used + 1 where c.id = hit.id;
+end;
+$$;
+
 -- Seal a device: the client sends a PIN verifier, the server keeps it with a
 -- fresh pepper and returns the pepper once.
 create or replace function public.register_device(device uuid, verifier text)
@@ -378,6 +492,9 @@ declare
   fresh bytea := extensions.gen_random_bytes(32);
 begin
   if me is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  if not exists (select 1 from public.profiles p where p.id = me) then
+    raise exception 'create a profile first' using errcode = '42501';
+  end if;
   if length(check_bytes) <> 32 then raise exception 'bad verifier' using errcode = '22023'; end if;
   insert into public.devices (id, user_id, verifier, pepper) values (device, me, check_bytes, fresh);
   -- Keep the ten most recent devices of a person.
@@ -569,6 +686,45 @@ begin
 end;
 $$;
 
+-- A new invite code: `uses` people, valid `days` days. Returns the code once
+-- formatted as XXXX-XXXX-XXXX; admin_invites lists it again.
+create or replace function public.admin_create_invite(uses int default 3, days int default 30)
+returns text language plpgsql volatile security definer set search_path = '' as $$
+declare made text;
+begin
+  perform private.require_main_admin();
+  if uses is null or uses not between 1 and 100 then raise exception 'uses out of range' using errcode = '22023'; end if;
+  if days is null or days not between 1 and 365 then raise exception 'days out of range' using errcode = '22023'; end if;
+  loop
+    made := private.new_invite_code();
+    exit when not exists (select 1 from public.invite_codes c where c.code = made);
+  end loop;
+  insert into public.invite_codes (code, max_uses, expires_at, created_by)
+    values (made, uses, now() + make_interval(days => days), auth.uid());
+  return substr(made, 1, 4) || '-' || substr(made, 5, 4) || '-' || substr(made, 9, 4);
+end;
+$$;
+
+-- Every invite code, newest first, with what is left of it.
+create or replace function public.admin_invites()
+returns table (id uuid, code text, max_uses int, used int, expires_at timestamptz, revoked_at timestamptz, created_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform private.require_main_admin();
+  return query
+    select c.id, c.code, c.max_uses, c.used, c.expires_at, c.revoked_at, c.created_at
+    from public.invite_codes c order by c.created_at desc, c.id;
+end;
+$$;
+
+create or replace function public.admin_revoke_invite(invite uuid)
+returns void language plpgsql volatile security definer set search_path = '' as $$
+begin
+  perform private.require_main_admin();
+  update public.invite_codes c set revoked_at = now() where c.id = invite and c.revoked_at is null;
+end;
+$$;
+
 -- A voice message: the sealed description as a message row, the sealed audio beside it.
 create or replace function public.send_voice(chat uuid, version int, sealed_iv text, sealed_body text, audio_iv text, audio_body text)
 returns public.messages language plpgsql volatile security definer set search_path = '' as $$
@@ -630,7 +786,9 @@ revoke all on function public.my_status(), public.register_device(uuid, text),
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
   public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
   public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
-  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping()
+  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping(),
+  public.check_invite(text), public.create_profile(text, text, text, text, text),
+  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid)
   from public, anon, authenticated;
 revoke all on all functions in schema private from public, anon;
 grant execute on all functions in schema private to authenticated;
@@ -639,9 +797,11 @@ grant execute on function public.my_status(), public.register_device(uuid, text)
   public.chat_members(uuid), public.admin_directory(), public.admin_set_role(uuid, text, boolean),
   public.admin_assign_guide(uuid, uuid), public.admin_assign_admin(uuid, uuid),
   public.admin_block(uuid, boolean), public.send_voice(uuid, int, text, text, text, text),
-  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping()
+  public.edit_message(bigint, int, text, text), public.delete_message(bigint), public.ping(),
+  public.check_invite(text), public.create_profile(text, text, text, text, text),
+  public.admin_create_invite(int, int), public.admin_invites(), public.admin_revoke_invite(uuid)
   to authenticated;
-grant execute on function public.unlock_device(uuid, text), public.ping() to anon;
+grant execute on function public.unlock_device(uuid, text), public.ping(), public.check_invite(text) to anon;
 
 -- ---------------------------------------------------------------- realtime
 

@@ -4,7 +4,7 @@
  * the screens can be tried before the real project exists. Never used on the site.
  */
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, DirectoryEntry, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, UnlockResult } from './backend';
+import type { AuthStore, Backend, BackendFactory, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, UnlockResult } from './backend';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
 import { newPhrase } from './phrase';
@@ -21,6 +21,27 @@ export type DemoPersona = { name: string; label: string; entropy: Bytes };
 const wait = (ms = 120) => new Promise(resolve => setTimeout(resolve, ms));
 const denied = (message = 'permission denied') => new BackendError('denied', message);
 const SESSION = 'demo-session';
+const DAY = 86_400_000;
+/** The demo server's open invite code; public, like the demo TOTP code 123456. */
+export const DEMO_INVITE = 'ABCD-EFGH-2345';
+
+/** The schema's private.invite_key: case, hyphens and spaces ignored. */
+const inviteKey = (raw: string) => raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+/** The schema's private.name_key: case, spaces and punctuation dropped, Latin look-alikes as Cyrillic. */
+export function nameKey(raw: string) {
+  const latin: Record<string, string> = { a: 'а', b: 'в', c: 'с', e: 'е', h: 'н', k: 'к', m: 'м', o: 'о', p: 'р', t: 'т', x: 'х', y: 'у', '0': 'о', '3': 'з', 'ё': 'е' };
+  return [...raw.toLowerCase()].map(ch => latin[ch] ?? ch).join('').replace(/[^a-z0-9а-я]/g, '');
+}
+const INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newInviteCode() {
+  let made = '';
+  while (made.length < 12) {
+    const b = globalThis.crypto.getRandomValues(new Uint8Array(1))[0];
+    if (b < 248) made += INVITE_ALPHABET[b % 31];
+  }
+  return made;
+}
+const showInvite = (code: string) => code.match(/.{1,4}/g)!.join('-');
 
 class DemoServer {
   users = new Map<string, User>();
@@ -32,6 +53,7 @@ class DemoServer {
   media = new Map<number, { chatId: string; iv: string; body: string }>();
   devices = new Map<string, Device>();
   listeners = new Map<string, Set<(row: MessageRow) => void>>();
+  invites: Invite[] = [];
   personas: DemoPersona[] = [];
   privateKeys = new Map<string, CryptoKey>();
   private nextMessage = 1;
@@ -52,6 +74,29 @@ class DemoServer {
   mfaOk(uid: string, aal: string) { const u = this.users.get(uid); return aal === 'aal2' || !(this.isStaff(uid) || u?.totp?.verified); }
   /** The two restrictive policies of the schema: the TOTP step and blocking. */
   allowed(uid: string, aal: string) { return this.mfaOk(uid, aal) && !this.blocked.has(uid); }
+
+  inviteState(code: string): InviteState {
+    const found = this.invites.find(i => i.code === inviteKey(code));
+    if (!found) return 'wrong';
+    if (found.revokedAt) return 'revoked';
+    if (Date.parse(found.expiresAt) <= Date.now()) return 'expired';
+    return found.used >= found.maxUses ? 'used up' : 'ok';
+  }
+  /** The schema's check_profile_name trigger. */
+  checkName(name: string, selfId: string) {
+    const key = nameKey(name);
+    if ([...this.users.values()].some(u => u.id !== selfId && u.name && this.isStaff(u.id) && nameKey(u.name) === key)) {
+      throw new BackendError('name-taken', 'name taken by staff');
+    }
+  }
+  addInvite(code: string, maxUses: number, used: number, createdDaysAgo: number, validDays: number, revokedDaysAgo?: number) {
+    const created = Date.now() - createdDaysAgo * DAY;
+    this.invites.unshift({
+      id: globalThis.crypto.randomUUID(), code: inviteKey(code), maxUses, used,
+      createdAt: new Date(created).toISOString(), expiresAt: new Date(created + validDays * DAY).toISOString(),
+      revokedAt: revokedDaysAgo === undefined ? null : new Date(Date.now() - revokedDaysAgo * DAY).toISOString(),
+    });
+  }
 
   /** The walker's first message after the team's last answer. */
   waitingSince(chatId: string): string | null {
@@ -123,6 +168,11 @@ class DemoServer {
     const dina = await this.addPerson('Дина Лебедева', 'ИДУЩАЯ С ПРОВОДНИКОМ', [], false, 2500);
     await this.addPerson('Ника Зорина', 'ИДУЩИЙ, ЖДЁТ НАЗНАЧЕНИЯ', [], false, 40);
     const timur = await this.addPerson('Тимур Каримов', 'ИДУЩИЙ, ДОСТУП ЗАКРЫТ', [], false, 5000);
+    // Codes the main admin made earlier, newest last: expired, used up, revoked, open.
+    this.addInvite('R7KM-2QXW-HT4P', 3, 1, 70, 30);
+    this.addInvite('N4VD-8JZE-M3CA', 3, 3, 24, 30);
+    this.addInvite('Y2SF-WB6K-PQ9T', 3, 0, 9, 30, 6);
+    this.addInvite(DEMO_INVITE, 10, 1, 3, 30);
     this.guideAdmins.set(mira, oleg);
     this.blocked.add(timur);
     const chat = async (walkerId: string, minutesAgo: number) => {
@@ -203,16 +253,22 @@ function connect(store: AuthStore): Backend {
       const { user, aal } = me();
       return { id: user.id, name: user.name ?? null, hasProfile: !!user.name, roles: [...user.roles].sort(), mainAdmin: user.main, aal, hasTotp: !!user.totp?.verified, needsTotp: s.isStaff(user.id), blocked: s.blocked.has(user.id) };
     },
-    async createProfile(id, name, publicKey, wrapped) {
+    async createProfile(id, name, publicKey, wrapped, invite) {
       await wait();
       const { user } = me();
-      if (user.id !== id || user.name) throw denied();
-      Object.assign(user, { name, publicKey, identity: wrapped });
+      if (user.id !== id) throw denied();
+      if (user.name) throw new BackendError('invalid', 'profile exists');
+      const state = s.inviteState(invite);
+      if (state !== 'ok') throw new BackendError('invite', `invite ${state}`, state);
+      s.checkName(name, user.id);
+      Object.assign(user, { name: name.trim(), publicKey, identity: wrapped });
+      s.invites.find(i => i.code === inviteKey(invite))!.used += 1;
     },
     async renameProfile(id, name) {
       await wait();
       const { user, aal } = me();
       if (user.id !== id || !user.name || !s.allowed(user.id, aal)) throw denied();
+      s.checkName(name, user.id);
       user.name = name;
     },
     async identity() {
@@ -223,6 +279,7 @@ function connect(store: AuthStore): Backend {
     async registerDevice(deviceId, verifier) {
       await wait();
       const { user } = me();
+      if (!user.name) throw denied('create a profile first');
       const pepper = c.toBase64(c.randomBytes(32));
       s.devices.set(deviceId, { id: deviceId, userId: user.id, verifier, pepper, failures: 0 });
       return pepper;
@@ -382,11 +439,33 @@ function connect(store: AuthStore): Backend {
       if (user.main) throw new BackendError('invalid', 'a main admin cannot be blocked');
       if (blocked) s.blocked.add(userId); else s.blocked.delete(userId);
     },
+    async invites() {
+      await wait();
+      mainAdmin();
+      return s.invites.map(i => ({ ...i }));
+    },
+    async createInvite(uses, days) {
+      await wait();
+      mainAdmin();
+      if (!(uses >= 1 && uses <= 100)) throw new BackendError('invalid', 'uses out of range');
+      if (!(days >= 1 && days <= 365)) throw new BackendError('invalid', 'days out of range');
+      let code = newInviteCode();
+      while (s.invites.some(i => i.code === code)) code = newInviteCode();
+      s.addInvite(code, uses, 0, 0, days);
+      return showInvite(code);
+    },
+    async revokeInvite(id) {
+      await wait();
+      mainAdmin();
+      const found = s.invites.find(i => i.id === id);
+      if (found && !found.revokedAt) found.revokedAt = new Date().toISOString();
+    },
   };
 }
 
-export const demoBackend: BackendFactory & { personas(): Promise<DemoPersona[]> } = {
+export const demoBackend: BackendFactory & { personas(): Promise<DemoPersona[]>; invite: string } = {
   demo: true,
+  invite: DEMO_INVITE,
   async personas() { const s = demoServer(); await s.ready; return s.personas; },
   async unlockDevice(deviceId, verifier): Promise<UnlockResult> {
     const s = demoServer();
@@ -397,6 +476,11 @@ export const demoBackend: BackendFactory & { personas(): Promise<DemoPersona[]> 
     device.failures += 1;
     if (device.failures >= 5) { s.devices.delete(deviceId); return { status: 'wiped' }; }
     return { status: 'wrong', left: 5 - device.failures };
+  },
+  async checkInvite(code) {
+    const s = demoServer();
+    await s.ready; await wait(200);
+    return s.inviteState(code);
   },
   connect,
 };

@@ -28,7 +28,7 @@ globalThis.localStorage = {
 
 const c = load('crypto');
 const phrase = load('phrase');
-const { demoBackend } = load('demoBackend');
+const { demoBackend, DEMO_INVITE, nameKey } = load('demoBackend');
 const { IntensiveSession, hasDevice, shortCode, cleanName, joinName, isFullName, firstName } = load('session');
 
 test('12 words and the key line encode the same secret', () => {
@@ -81,7 +81,7 @@ test('a new account seals on the device, opens with the PIN and is wiped after f
   const { entropy } = phrase.newPhrase();
   const session = await IntensiveSession.create(demoBackend, entropy);
   assert.equal(session.status.hasProfile, false);
-  await session.createProfile('  Лея   Гурова ');
+  await session.createProfile('  Лея   Гурова ', DEMO_INVITE);
   assert.equal(session.status.name, 'Лея Гурова');
   assert.equal(session.needsTotpStep, false);
   await session.sealDevice('482915');
@@ -118,7 +118,7 @@ test('names are a first name and a surname; an older one-word name gets its surn
   storage.clear();
   const walker = await IntensiveSession.create(demoBackend, phrase.newPhrase().entropy);
   await assert.rejects(walker.rename('Лея Гурова'), error => error.code === 'denied');
-  await walker.createProfile('Лея');
+  await walker.createProfile('Лея', DEMO_INVITE.toLowerCase());
   assert.equal(isFullName(walker.status.name), false);
   await walker.rename('  Лея  Гурова ');
   assert.equal(walker.status.name, 'Лея Гурова');
@@ -182,7 +182,7 @@ test('members read the seeded chat; the main admin assigns a guide and the key r
 
   // A stranger never sees the chat.
   const stranger = await IntensiveSession.create(demoBackend, phrase.newPhrase().entropy);
-  await stranger.createProfile('Чужой');
+  await stranger.createProfile('Чужой', DEMO_INVITE);
   assert.deepEqual(await stranger.myChats(), []);
   await assert.rejects(stranger.messages(chatId), /member/);
 });
@@ -335,7 +335,7 @@ test('a fresh unlock signs in anew and leaves the device session untouched', asy
   storage.clear();
   const { entropy } = phrase.newPhrase();
   const session = await IntensiveSession.create(demoBackend, entropy);
-  await session.createProfile('Ева');
+  await session.createProfile('Ева', DEMO_INVITE);
   await session.sealDevice('482915');
   session.lock();
   const sealed = storage.get('intensive.device.v1');
@@ -344,4 +344,36 @@ test('a fresh unlock signs in anew and leaves the device session untouched', asy
   assert.equal(opened.session.status.name, 'Ева');
   assert.equal(storage.get('intensive.device.v1'), sealed);
   opened.session.lock();
+});
+
+test('an invite code opens the door once per use; a staff name stays theirs', async () => {
+  storage.clear();
+  assert.equal(await demoBackend.checkInvite(` ${DEMO_INVITE.toLowerCase()} `), 'ok');
+  assert.equal(await demoBackend.checkInvite('ABCD-EFGH-2346'), 'wrong');
+  assert.equal(nameKey('ЯHA  Opлoвa.'), nameKey('яна орлова'));
+
+  const personas = await demoBackend.personas();
+  const yana = await IntensiveSession.restore(demoBackend, personas.find(p => firstName(p.name) === 'Яна').entropy);
+  await assert.rejects(yana.invites(), error => error.code === 'denied');
+  await yana.verifyTotp('123456');
+  const code = await yana.createInvite(1, 7);
+  assert.match(code, /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}(-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}){2}$/);
+  const made = (await yana.invites())[0];
+  assert.deepEqual([made.code, made.maxUses, made.used, made.revokedAt], [code.replaceAll('-', ''), 1, 0, null]);
+
+  const first = await IntensiveSession.create(demoBackend, phrase.newPhrase().entropy);
+  await assert.rejects(first.createProfile('Яна  Орлова', code), error => error.code === 'name-taken');
+  await assert.rejects(first.createProfile('Гость', 'ABCD-EFGH-2346'), error => error.code === 'invite' && error.invite === 'wrong');
+  await first.createProfile('Гость', code);
+  await assert.rejects(first.rename('МИРА СОКОЛОВА'), error => error.code === 'name-taken');
+  first.lock();
+  const second = await IntensiveSession.create(demoBackend, phrase.newPhrase().entropy);
+  await assert.rejects(second.createProfile('Второй', code), error => error.code === 'invite' && error.invite === 'used up');
+  await assert.rejects(second.sealDevice('482915'), error => error.code === 'denied');
+  second.lock();
+
+  const other = await yana.createInvite(3, 30);
+  await yana.revokeInvite((await yana.invites())[0].id);
+  assert.equal(await demoBackend.checkInvite(other), 'revoked');
+  yana.lock();
 });

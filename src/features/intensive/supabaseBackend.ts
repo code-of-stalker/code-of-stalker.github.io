@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, KeyRow, Member, MessageRow, Place, StaffRole, Status, UnlockResult } from './backend';
+import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, InviteState, KeyRow, Member, MessageRow, Place, StaffRole, Status, UnlockResult } from './backend';
 
 type Config = { url: string; publishableKey: string };
 type Raw = Record<string, unknown>;
@@ -10,6 +10,9 @@ function fail(error: { message?: string; code?: string; status?: number } | null
   const message = error?.message ?? 'unknown error';
   if (/fetch|network|Failed to fetch|timeout/i.test(message)) throw new BackendError('network', message);
   if (error?.status === 429 || /rate limit/i.test(message)) throw new BackendError('rate-limit', message);
+  const invite = /invite (wrong|expired|used up|revoked)/i.exec(message)?.[1]?.toLowerCase() as Exclude<InviteState, 'ok'> | undefined;
+  if (invite) throw new BackendError('invite', message, invite);
+  if (/name taken by staff/i.test(message)) throw new BackendError('name-taken', message);
   if (error?.code === '42501' || /permission|row-level security|not a member|main admin only|totp session/i.test(message)) throw new BackendError('denied', message);
   if (error?.code === '22023' || error?.code === '23505' || /invalid/i.test(message)) throw new BackendError('invalid', message);
   throw new BackendError('unknown', message);
@@ -71,11 +74,9 @@ function connect(config: Config, store: AuthStore): Backend {
         blocked: !!raw.blocked,
       } satisfies Status;
     },
-    async createProfile(id, name, publicKey, wrapped) {
-      const profile = await client.from('profiles').insert({ id, name, public_key: publicKey });
-      if (profile.error) fail(profile.error);
-      const key = await client.from('identity_keys').insert({ user_id: id, iv: wrapped.iv, wrapped_private_key: wrapped.data });
-      if (key.error) fail(key.error);
+    async createProfile(_id, name, publicKey, wrapped, invite) {
+      // The server takes the account from the session and checks the code under a lock.
+      await rpc('create_profile', { invite, name, public_key: publicKey, key_iv: wrapped.iv, wrapped_key: wrapped.data });
     },
     async renameProfile(id, name) {
       const { data, error } = await client.from('profiles').update({ name }).eq('id', id).select('id');
@@ -210,21 +211,35 @@ function connect(config: Config, store: AuthStore): Backend {
     assignGuide: (walkerId, guideId) => rpc<string>('admin_assign_guide', { walker: walkerId, guide: guideId }),
     async assignAdmin(guideId, adminId) { await rpc('admin_assign_admin', { guide: guideId, admin: adminId }); },
     async setBlocked(userId, blocked) { await rpc('admin_block', { target: userId, blocked }); },
+    async invites() {
+      const rows = await rpc<Raw[]>('admin_invites');
+      return rows.map((row): Invite => ({
+        id: String(row.id), code: String(row.code), maxUses: Number(row.max_uses), used: Number(row.used),
+        expiresAt: String(row.expires_at), revokedAt: optional(row.revoked_at), createdAt: String(row.created_at),
+      }));
+    },
+    createInvite: (uses, days) => rpc<string>('admin_create_invite', { uses, days }),
+    async revokeInvite(id) { await rpc('admin_revoke_invite', { invite: id }); },
   };
 }
 
 export function supabaseBackend(config: Config): BackendFactory {
   // Device unlocking happens before any session exists; this client never stores one.
   let anon: SupabaseClient | null = null;
+  const anonClient = () => anon ??= createClient(config.url, config.publishableKey, {
+    auth: { storageKey: 'intensive-anon', persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
   return {
     demo: false,
     async unlockDevice(deviceId, verifier) {
-      anon ??= createClient(config.url, config.publishableKey, {
-        auth: { storageKey: 'intensive-anon', persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      });
-      const { data, error } = await anon.rpc('unlock_device', { device: deviceId, verifier });
+      const { data, error } = await anonClient().rpc('unlock_device', { device: deviceId, verifier });
       if (error) fail(error);
       return data as UnlockResult;
+    },
+    async checkInvite(code) {
+      const { data, error } = await anonClient().rpc('check_invite', { invite: code });
+      if (error) fail(error);
+      return data as InviteState;
     },
     connect: store => connect(config, store),
   };

@@ -16,9 +16,10 @@ export default function Practice() {
   const [fallbackDeadline] = useState(() => Date.now() + STEP_WAIT_MS);
   const requestedDeadline = Number(deadline);
   const previewDeadline = Number.isSafeInteger(requestedDeadline) && requestedDeadline > 0 ? requestedDeadline : fallbackDeadline;
-  function returnToOrigin() {
+  // Back steps out to the level choice; close (Art 2026-11-22) leaves the base level for home.
+  function returnToOrigin(home = false) {
     if (from === 'diary') { if (router.canGoBack()) router.back(); else router.dismissTo('/diary'); }
-    else router.dismissTo(previewing || from === 'settings' ? '/settings' : '/levels');
+    else router.dismissTo(previewing || from === 'settings' ? '/settings' : home ? '/home' : '/levels');
   }
   async function questions(step = 1) {
     if (previewing) return;
@@ -73,7 +74,7 @@ export default function Practice() {
       startAtEnd={!previewing && returnToEnd}
       onStageChange={previewing ? undefined : practiceStage => { void updateProgress({ practiceStage }).catch(() => {}); }}
       testUnlockAll={!previewing && settings.testUnlockAll} reducedMotion={settings.reducedMotion}
-      onBack={returnToOrigin} onClose={returnToOrigin}
+      onBack={() => returnToOrigin()} onClose={() => returnToOrigin(true)}
       onLevels={() => router.dismissTo('/levels')}
       onDiary={() => router.push('/diary')}
       onPreviousStep={() => { void previousStep(); }}

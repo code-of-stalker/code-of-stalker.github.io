@@ -77,3 +77,37 @@ test('invalid stage is rejected without replacing persisted progress', async () 
     assert.equal(read().progress.practiceStage, 0);
   }
 });
+
+test('the home card keeps the furthest step after going back to reread', async () => {
+  const { store, read } = fixture();
+  const earned = { selectedLevel: 'basic', completedAt: 1000, availableAt: 2000, secondStepCompletedAt: 3000 };
+  await store.updateProgress({ ...earned, step: 3 });
+  for (const step of [4, 5, 6, 7]) await store.updateProgress(model.enterStep(step));
+  await store.updateProgress({ step: 3 });
+  assert.equal(read().progress.step, 3);
+  assert.equal(read().progress.reachedStep, 7);
+  assert.equal(model.furthestStep(model.accessibleProgress(read().progress)), 7);
+  // Continuing from the card goes back to step seven; reading on in step three keeps it.
+  await store.updateProgress({ stepThreeReading: { chapter: 0, page: 2, offset: 0 } });
+  assert.equal(model.furthestStep(read().progress), 7);
+});
+test('saves from before reachedStep derive the furthest step from their unlock flags', () => {
+  const base = { ...model.emptyProduct().progress, selectedLevel: 'basic', completedAt: 1000, availableAt: 2000, secondStepCompletedAt: 3000 };
+  assert.equal(model.furthestStep({ ...base, step: 3, fourthStepUnlocked: true, fifthStepUnlocked: true, sixthStepUnlocked: true, seventhStepUnlocked: true }), 7);
+  assert.equal(model.furthestStep({ ...base, step: 2, fourthStepUnlocked: true }), 4);
+  assert.equal(model.furthestStep({ ...base, step: 1 }), 3);
+  // Finishing step one only starts the wait: the card stays on step one until step two is entered.
+  assert.equal(model.furthestStep({ ...model.emptyProduct().progress, completedAt: 1000, availableAt: 2000 }), 1);
+  const snapshot = model.emptyProduct(); snapshot.progress.reachedStep = 8;
+  assert.throws(() => model.validateSnapshot(snapshot), /настройки/);
+});
+test('a step seen only in the all-open preview counts only while the preview is on', async () => {
+  const { store, read } = fixture();
+  await store.updateSettings({ testUnlockAll: true });
+  await store.updateProgress({ selectedLevel: 'basic', step: 7 });
+  await store.updateProgress({ step: 3 });
+  assert.equal(model.furthestStep(read().progress, true), 7);
+  await store.updateSettings({ testUnlockAll: false });
+  assert.equal(model.furthestStep(model.accessibleProgress(read().progress)), 1);
+  assert.equal(model.furthestStep(read().progress, true), 7);
+});

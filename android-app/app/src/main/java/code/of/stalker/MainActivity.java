@@ -1,4 +1,4 @@
-package io.github.codeofstalker;
+package code.of.stalker;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;

@@ -1,4 +1,4 @@
-package io.github.codeofstalker;
+package code.of.stalker;
 
 import android.content.res.AssetManager;
 import android.webkit.WebResourceResponse;

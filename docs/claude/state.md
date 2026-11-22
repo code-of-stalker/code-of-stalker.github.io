@@ -836,7 +836,8 @@ Art: «приложение работало без интернета … од�
   `%USERPROFILE%\Android\keys\code-of-stalker-release.jks`, alias `code-of-stalker`. Without
   it no update and no Play release. Play App Signing: upload this same key, so Play
   updates the sideloaded install.
-- Versions: AGP 9.5.2, Gradle 9.6.0, compileSdk 37, targetSdk 36, minSdk 26.
+- Package id `code.of.stalker`, name «Код Сталкера» (Art, 2026-11-22; permanent).
+- Versions: AGP 9.5.2, Gradle 9.6.0 (wrapper pinned by sha256), compileSdk 37, targetSdk 36, minSdk 26.
 
 ## Open decisions and ideas (nothing promised)
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.

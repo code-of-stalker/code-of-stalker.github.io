@@ -10,12 +10,12 @@ plugins {
 def prop = { String name, String fallback -> providers.gradleProperty(name).getOrElse(fallback) }
 
 android {
-    namespace = 'io.github.codeofstalker'
+    namespace = 'code.of.stalker'
     compileSdk = 37
 
     defaultConfig {
-        // The package id is permanent: Android keeps the diary per package (and per signing key).
-        applicationId = prop('watcherApplicationId', 'io.github.codeofstalker')
+        // Permanent (Art, 2026-11-22): Android keeps the diary per package and signing key.
+        applicationId = 'code.of.stalker'
         minSdk = 26
         targetSdk = 36
         versionCode = prop('versionCode', '1') as int
@@ -42,10 +42,14 @@ android {
         }
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     sourceSets {
         main {
-            def assets = providers.gradleProperty('watcherAssets')
-            if (assets.isPresent()) this.assets.srcDirs = [assets.get()]
+            def webAssets = providers.gradleProperty('watcherAssets')
+            if (webAssets.isPresent()) assets.srcDirs = [webAssets.get()]
         }
     }
 

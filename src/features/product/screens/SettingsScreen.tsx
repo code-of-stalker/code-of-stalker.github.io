@@ -16,14 +16,12 @@ import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { ProductToggle } from '../ProductToggle';
 import { BackupSection } from '../settings/BackupSection';
 import { qualityNames } from '../motion/effectQuality';
-import { ObservationIcon } from '../ObservationControls';
 import { MicrophoneSettings } from '../settings/MicrophoneSettings';
 
 export type SettingsScreenProps = {
   settings: ProductSettings;
   onChange: (settings: Partial<ProductSettings>) => void;
   onBack: () => void;
-  onPreviewCooldown: () => void;
   onOpenSecondStep: () => void;
   onOpenThirdStep: () => void;
   onOpenFourthStep: () => void;
@@ -82,7 +80,7 @@ function ToggleRow({ label, detail, enabled, onToggle }: { label: string; detail
   );
 }
 
-export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onOpenSeventhStep, onReset, resetting = false, intensiveHere = false }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onChange, onBack, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onOpenSeventhStep, onReset, resetting = false, intensiveHere = false }: SettingsScreenProps) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [confirmReset, setConfirmReset] = useState(false), [resetError, setResetError] = useState('');
@@ -138,7 +136,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
         <View style={styles.divider} />
         <ToggleRow label="Диагностика эффектов" detail="УРОВЕНЬ КАЧЕСТВА И ПЛАВНОСТЬ ДЛЯ ПРОВЕРКИ НА УСТРОЙСТВЕ" enabled={effectDiagnostics} onToggle={() => diagnosticsPreference.set(!effectDiagnostics)} />
         <View style={styles.divider} />
-        <ToggleRow label="Всё открыто" detail="ПРОСМОТР ГОТОВЫХ ШАГОВ БЕЗ ПРОХОЖДЕНИЯ И ОЖИДАНИЯ СУТОК. ПРОХОЖДЕНИЕ НЕ ЗАСЧИТЫВАЕТСЯ."
+        <ToggleRow label="Всё открыто" detail="ПРОСМОТР ГОТОВЫХ ШАГОВ БЕЗ ПРОХОЖДЕНИЯ. ПРОХОЖДЕНИЕ НЕ ЗАСЧИТЫВАЕТСЯ."
           enabled={settings.testUnlockAll ?? false} onToggle={() => onChange({ testUnlockAll: !settings.testUnlockAll })} />
         {settings.testUnlockAll && <>
           <ProductButton label="ОТКРЫТЬ ВТОРОЙ ШАГ" kind="outline" onPress={onOpenSecondStep} />
@@ -148,15 +146,6 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
           <ProductButton label="ОТКРЫТЬ ШЕСТОЙ ШАГ" kind="outline" onPress={onOpenSixthStep} />
           <ProductButton label="ОТКРЫТЬ СЕДЬМОЙ ШАГ" kind="outline" onPress={onOpenSeventhStep} />
         </>}
-        <View style={styles.divider} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Второй шаг с таймером"
-          accessibilityHint="Открыть тестовый экран ожидания второго шага" onPress={onPreviewCooldown} style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <ProductText variant="title" style={styles.sectionTitle}>Второй шаг с таймером</ProductText>
-            <ProductText variant="label" style={styles.toggleDescription}>ОТКРЫТЬ ТЕСТОВЫЙ ЭКРАН ОЖИДАНИЯ</ProductText>
-          </View>
-          <View style={styles.previewArrow}><ObservationIcon name="arrow" size={16} /></View>
-        </Pressable>
         <View style={styles.divider} />
         <BackupSection />
         <View style={styles.section}>
@@ -204,7 +193,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   toggleRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, gap: 16 },
   toggleCopy: { flex: 1, gap: 8 },
   toggleDescription: { color: colors.muted, fontSize: 10, lineHeight: 13 },
-  previewArrow: { width: 16, height: 16, marginHorizontal: 10 },
   resetDescription: { color: colors.muted, lineHeight: 18 },
   resetBackdrop: { flex: 1, backgroundColor: colors.background === '#000000' ? '#000c' : colors.overlay, justifyContent: 'center', padding: 16 },
   resetPanel: { width: '100%', maxWidth: 420, alignSelf: 'center', gap: 16 },

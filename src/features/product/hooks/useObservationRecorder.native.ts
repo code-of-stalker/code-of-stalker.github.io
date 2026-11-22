@@ -25,7 +25,7 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS)
         shouldPlayInBackground: false, playsInSilentMode: true, shouldRouteThroughEarpiece: false, interruptionMode: 'doNotMix' }),
       foreground: () => AppState.currentState === 'active', discard: discardVoiceFile, changed: next => { phase.current = next.phase; setState(next); } }, limitSeconds);
     machine.current = capture;
-    const appState = AppState.addEventListener('change', next => { if (next === 'background') void capture.cancel(); });
+    const appState = AppState.addEventListener('change', next => { if (next === 'background' && phase.current !== 'ready') void capture.cancel(); });
     return () => { appState.remove(); machine.current = null; void capture.dispose(); };
   }, [recorder, limitSeconds]);
   useEffect(() => {

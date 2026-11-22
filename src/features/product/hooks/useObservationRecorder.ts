@@ -175,7 +175,7 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
       if (!alive.current) return;
       permission = value; changed(); permission.addEventListener('change', changed);
     }).catch(() => {});
-    const hidden = () => { if (document.visibilityState === 'hidden') void cancel(); };
+    const hidden = () => { if (document.visibilityState === 'hidden' && current.current.phase !== 'ready') void cancel(); };
     document.addEventListener('visibilitychange', hidden);
     return () => { alive.current = false; permission?.removeEventListener('change', changed); document.removeEventListener('visibilitychange', hidden); void cancel(); };
   }, [cancel]);

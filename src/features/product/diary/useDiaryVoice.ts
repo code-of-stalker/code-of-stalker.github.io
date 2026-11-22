@@ -5,8 +5,9 @@ import { DIARY_LIMIT_SECONDS, type DiaryCategory } from '../state/model';
 import { useProduct } from '../state/ProductProvider';
 import { createDiaryRecordingGesture } from './recording-gesture';
 
-export function useDiaryVoice({ active, enabled, category, onSaved }: {
-  active: boolean; enabled: boolean; category: DiaryCategory; onSaved(): void;
+export function useDiaryVoice({ active, focused = active, enabled, category, onSaved }: {
+  /** `focused` is the route alone: minimizing the app keeps a finished take in its review (Art 2026-11-22). */
+  active: boolean; focused?: boolean; enabled: boolean; category: DiaryCategory; onSaved(): void;
 }) {
   const recorder = useObservationRecorder(DIARY_LIMIT_SECONDS), player = useObservationPlayer(recorder.draft?.uri ?? null);
   const { saveDiaryVoice } = useProduct();
@@ -26,7 +27,7 @@ export function useDiaryVoice({ active, enabled, category, onSaved }: {
   }));
   useEffect(() => { if (['idle', 'ready', 'error'].includes(recorder.phase)) gesture.reset(); }, [gesture, recorder.phase]);
   const cancel = recorder.cancel, pause = player.pause;
-  useEffect(() => { if (!active) { pause(); void cancel(); } }, [active, cancel, pause]);
+  useEffect(() => { if (!active) { pause(); if (!focused || snapshot.current.recorder.phase !== 'ready') void cancel(); } }, [active, focused, cancel, pause]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const activate = useCallback(async () => {
     const s = snapshot.current;

@@ -96,7 +96,7 @@ export function DiaryVoiceComposer({ category, active, onSaved, onClose, registe
           </RecordingGesture>
         </View>
         <ProductText variant="label">{diaryClock(recorder.durationMs)} / 15:00</ProductText>
-        <ProductText style={styles.prompt} color={colors.muted}>{preparing ? 'ПОДГОТОВКА МИКРОФОНА' : recorder.phase === 'stopping' ? 'ЗАВЕРШАЕМ ЗАПИСЬ…' : recording ? mode.current === 'hold' ? 'ВВЕРХ — ЗАКРЕПИТЬ · ОТПУСТИ — ЗАКОНЧИТЬ' : 'НАЖМИ, ЧТОБЫ ЗАКОНЧИТЬ' : hint || 'ЗАЖМИ И ГОВОРИ · ИЛИ КОСНИСЬ ДЛЯ ЗАПИСИ'}</ProductText>
+        <ProductText style={styles.prompt} color={colors.muted}>{preparing ? 'ПОДГОТОВКА МИКРОФОНА' : recorder.phase === 'stopping' ? 'ЗАВЕРШАЕМ ЗАПИСЬ…' : recording ? mode.current === 'hold' ? 'ВВЕРХ — ЗАКРЕПИТЬ' : 'НАЖМИ, ЧТОБЫ ЗАКОНЧИТЬ' : hint || 'ЗАЖМИ И ГОВОРИ · ИЛИ КОСНИСЬ ДЛЯ ЗАПИСИ'}</ProductText>
         {!!recorder.error && <ProductText accessibilityRole="alert" style={styles.prompt}>{recorder.error}</ProductText>}
         </View>
         <ProductButton label="ОТМЕНА" kind="ghost" disabled={saving} onPress={requestClose} />

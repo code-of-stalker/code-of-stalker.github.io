@@ -3,7 +3,7 @@ import { useThemeStyles } from '../ProductTheme';
 import type { ProductColors } from '../theme';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { firstStepExplanations, productStepNames } from '../content';
 import { typeset } from '../typeset';
@@ -12,7 +12,6 @@ import { Reveal } from '../motion/Reveal';
 import { ScrollGate } from '../motion/ScrollGate';
 import { StepPanel } from '../motion/StepPanel';
 import { ReadingExpansion } from '../motion/ReadingExpansion';
-import { StepDropdown } from '../motion/StepDropdown';
 import { ScrollCue } from '../motion/ScrollCue';
 import { scrollCueFooterInset, type ScrollCueState } from '../motion/ScrollCue.types';
 import { ContentSwap } from '../motion/ContentSwap';
@@ -24,7 +23,6 @@ import { EconomyReadingPages, type ReadingPagePosition } from '../motion/Economy
 import { StepTwoTaskPage } from '../motion/StepTwoTaskPage';
 import type { ObservationNavigation } from './ObservationScreen';
 import type { PracticeStage } from '../state/model';
-import { PracticeCooldown } from './PracticeCooldown';
 import { StepThreeScreen } from './StepThreeScreen';
 import { StepFourScreen } from './StepFourScreen';
 import { StepFiveScreen } from './StepFiveScreen';
@@ -46,10 +44,6 @@ export type PracticeIntroScreenProps = {
   onStageChange?: (stage: PracticeStage) => void;
   onCompleteSecondStep?: () => Promise<void>;
 };
-function remainingTime(deadline: number, now: number) {
-  const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));
-  return [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map(value => String(value).padStart(2, '0')).join(':');
-}
 const ignoreMeasuredHeight = () => {};
 // The pages own their illustrations, so the reading window needs no tracking.
 const ignoreViewport = () => {};
@@ -65,7 +59,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const request = useReadingDestination(), destination = request?.step === step ? request : null;
   const focused = useIsFocused();
   const currentStep: 1 | 2 = step === 2 ? 2 : 1;
-  const [stage, setStage] = useState(() => destination?.stage ?? (step === 1 ? showQuestions ? 4 : initialStage : !testUnlockAll && (availableAt ?? 0) > Date.now() ? 0 : initialStage));
+  const [stage, setStage] = useState(() => destination?.stage ?? (step === 1 ? showQuestions ? 4 : initialStage : initialStage));
   const [readingChapter, setReadingChapter] = useState<0 | 1>(destination?.chapter ?? 0);
   const [returnToDream, setReturnToDream] = useState(false);
   const stepTwoBack = useRef<(() => void) | null>(null);
@@ -82,8 +76,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const [viewport, setViewport] = useState({ width: 320, height: 568 });
   const [ready, setReady] = useState(false), [progress, setProgress] = useState(0), [changing, setChanging] = useState(false);
   const [entryScanning, setEntryScanning] = useState(false);
-  const [selectorOpen, setSelectorOpen] = useState(false), [now, setNow] = useState(Date.now);
-  const [menuContentHeight, setMenuContentHeight] = useState(0);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const motion = usePracticeMotion((currentStep === 1 || stage > 0) && ready, reducedMotion, viewport.height);
   const [leavingScale, setLeavingScale] = useState(1);
   const blurTarget = useRef<View | null>(null), transitionLocked = useRef(false);
@@ -98,7 +91,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
       return previous?.visible === next?.visible && previous?.progress === next?.progress && previous?.label === next?.label ? previous : next;
     });
   }, []);
-  const deadline = availableAt ?? 0, coolingDown = currentStep === 2 && deadline > now && !testUnlockAll;
   const { gutter } = productSpacing(viewport.width);
   // Art 2026-11-11: the cue sits centered at the very bottom on every stage, under the step selector.
   const bottomInset = Math.max(gutter, scrollCueFooterInset);
@@ -111,15 +103,8 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
   const heroHeight = hero.height + (air - 1) * 32;
   const insightWidth = Math.max(1, illustrationWidth - inset * 2);
   const explanationArt = (art: string) => ({ width: illustrationWidth, height: illustrationWidth * (art === 'attention' ? 1 : 244 / 320) });
-  const canAdvance = (currentStep === 1 ? stage < 4 : !coolingDown) && !selectorOpen && !changing;
+  const canAdvance = (currentStep !== 1 || stage < 4) && !selectorOpen && !changing;
   const canNavigate = !selectorOpen && !changing;
-  useEffect(() => {
-    if (currentStep !== 2 || deadline <= Date.now()) return;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const update = (state: string) => { if (timer) clearInterval(timer); timer = undefined; setNow(Date.now()); if (state === 'active') timer = setInterval(() => setNow(Date.now()), 1000); };
-    update(AppState.currentState); const listener = AppState.addEventListener('change', update);
-    return () => { if (timer) clearInterval(timer); listener.remove(); };
-  }, [currentStep, deadline]);
   function resetTransition() {
     setReady(false); setProgress(0); motion.reset();
   }
@@ -194,8 +179,6 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
     if (stage === questionStage && observationNavigation.current) observationNavigation.current.back();
     else if (!changing) { if (currentStep === 2 && stage > 0) retreat(); else if (stage > 0) changeStage(stage - 1); else if (readingChapter === 1) changeReadingChapter(0); else onBack(); }
   });
-  const menu = <StepDropdown step={currentStep} availableAt={availableAt} testUnlockAll={testUnlockAll} reducedMotion={reducedMotion} inset={inset} embedded={stage === 0} onNaturalHeight={setMenuContentHeight}
-    onClose={() => setSelectorOpen(false)} onSelect={value => { setSelectorOpen(false); if (value !== currentStep) onSelectStep(value); }} />;
   const explanationStage = Math.max(1, Math.min(3, stage));
   const hasNextReadingPage = stage === 0 && economyPage.index < economyPage.count - 1;
   const cue = <ScrollCue visible={stage === questionStage ? !!recordingCue?.visible && !changing && !selectorOpen : ready && canNavigate && !selectorOpen && (canAdvance || hasNextReadingPage || progress < 0)}
@@ -209,12 +192,7 @@ function PracticeSession({ step, availableAt, testUnlockAll = false, reducedMoti
       <View style={styles.viewport} onLayout={event => setViewport(event.nativeEvent.layout)}>
         <View style={[styles.scene, { padding: gutter, paddingBottom: bottomInset }]}>
           <PracticeEntryTransition showTask={stage > 0} scanning={entryScanning} height={sceneHeight}
-            reducedMotion={reducedMotion} onComplete={finishEntryScan} intro={motion.frame(coolingDown ?
-            <PracticeCooldown title={`ШАГ ${currentStep}. ${productStepNames[currentStep]}`} time={remainingTime(deadline, now)} deadline={deadline} now={now}
-              heroHeight={hero.height} heroWidth={hero.width} gutter={gutter} inset={inset} expanded={selectorOpen} menu={selectorOpen ? menu : undefined} menuContentHeight={menuContentHeight}
-              reducedMotion={reducedMotion} active={!changing} onBack={onBack} onClose={onClose}
-              onRetreat={retreat} onReady={setReady} onProgress={setProgress}
-              onSelect={() => setSelectorOpen(value => !value)} onDiary={onDiary} /> : <ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
+            reducedMotion={reducedMotion} onComplete={finishEntryScan} intro={motion.frame(<ReadingExpansion gutter={gutter} bottomInset={bottomInset} inset={inset} heroHeight={heroHeight} viewportHeight={viewport.height}
                 reducedMotion={reducedMotion} onClose={onClose} enabled={canNavigate}
                 // Like steps 3–4, scrolling back on the closed cover of Step 2 enters the end of Step 1.
                 {...currentStep === 2 ? { onRetreat: retreat, onRetreatProgress: setProgress, onRetreatReady: setReady } : {}}

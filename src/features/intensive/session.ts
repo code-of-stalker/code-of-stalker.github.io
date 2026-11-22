@@ -1,5 +1,5 @@
 import { BackendError } from './backend';
-import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, TotpEnrollment } from './backend';
+import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, Storage, TotpEnrollment } from './backend';
 import { clearChatMemory, forgetSeen } from './chatMemory';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
@@ -108,9 +108,10 @@ export class IntensiveSession {
     return session;
   }
 
-  async createProfile(name: string) {
+  /** Needs the invite code; the server counts one use. */
+  async createProfile(name: string, invite: string) {
     const identity = await c.createIdentity(this.entropy);
-    await this.backend.createProfile(this.id, cleanName(name), identity.publicKey, identity.wrapped);
+    await this.backend.createProfile(this.id, cleanName(name), identity.publicKey, identity.wrapped, invite);
     this.identityKey = identity.privateKey;
     await this.refresh();
   }
@@ -366,6 +367,10 @@ export class IntensiveSession {
   directory(): Promise<DirectoryEntry[]> { return this.backend.directory(); }
   setRole(userId: string, role: StaffRole, enabled: boolean) { return this.backend.setRole(userId, role, enabled); }
   setBlocked(userId: string, blocked: boolean) { return this.backend.setBlocked(userId, blocked); }
+  invites(): Promise<Invite[]> { return this.backend.invites(); }
+  createInvite(uses: number, days: number): Promise<string> { return this.backend.createInvite(uses, days); }
+  revokeInvite(id: string) { return this.backend.revokeInvite(id); }
+  storage(): Promise<Storage> { return this.backend.storage(); }
 
   async assignGuide(walkerId: string, guideId: string | null) {
     const chatId = await this.backend.assignGuide(walkerId, guideId);

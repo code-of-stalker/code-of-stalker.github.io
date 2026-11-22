@@ -50,11 +50,19 @@ async function as(who, aal, work) {
 const rows = async (who, aal, sql, params = []) => as(who, aal, tx => tx.query(sql, params)).then(r => r.rows);
 const fails = async (promise, pattern) => assert.rejects(promise, pattern);
 
-async function signUp(name) {
+// The test door: a code made by the project owner in the SQL editor, typed loosely.
+const DOOR = 'TESTDOOR2345', typedDoor = ' testdoor-2345 ';
+/** An account that signed up but has no profile yet. */
+async function account() {
   const id = randomUUID();
   await db.query('insert into auth.users (id) values ($1)', [id]);
-  await rows(id, 'aal1', 'insert into public.profiles (id, name, public_key) values ($1, $2, $3)', [id, name, key()]);
-  await rows(id, 'aal1', 'insert into public.identity_keys (user_id, iv, wrapped_private_key) values ($1, $2, $3)', [id, b64(randomBytes(12)), b64(randomBytes(140))]);
+  return id;
+}
+const createProfile = (id, invite, name) => rows(id, 'aal1', 'select public.create_profile($1, $2, $3, $4, $5)',
+  [invite, name, key(), b64(randomBytes(12)), b64(randomBytes(140))]);
+async function signUp(name) {
+  const id = await account();
+  await createProfile(id, typedDoor, name);
   people[name] = id;
   return id;
 }
@@ -67,15 +75,17 @@ before(async () => {
   await db.exec(supabaseStandIn);
   await db.exec(schema);
   await db.exec(schema); // A second run must succeed: Art may paste an updated file.
+  await db.query("insert into public.invite_codes (code, max_uses, expires_at) values ($1, 100, now() + interval '1 day')", [DOOR]);
   for (const name of ['yana', 'guide', 'admin', 'walker', 'stranger', 'guide2']) await signUp(name);
   await db.query('insert into public.main_admins (user_id) values ($1)', [people.yana]);
 });
 
 describe('accounts', () => {
-  it('a person creates only their own profile', async () => {
-    const id = randomUUID();
-    await db.query('insert into auth.users (id) values ($1)', [id]);
-    await fails(rows(people.walker, 'aal1', 'insert into public.profiles (id, name, public_key) values ($1, $2, $3)', [id, 'fake', key()]), /row-level security/);
+  it('nobody writes a profile or a key row directly', async () => {
+    const id = await account();
+    await fails(rows(id, 'aal1', 'insert into public.profiles (id, name, public_key) values ($1, $2, $3)', [id, 'fake', key()]), /permission denied/);
+    await fails(rows(id, 'aal1', 'insert into public.identity_keys (user_id, iv, wrapped_private_key) values ($1, $2, $3)',
+      [id, b64(randomBytes(12)), b64(randomBytes(140))]), /permission denied/);
   });
   it('a walker sees only their own profile before assignment', async () => {
     const seen = await rows(people.walker, 'aal1', 'select id from public.profiles');
@@ -99,9 +109,11 @@ describe('accounts', () => {
     await fails(rows(people.stranger, 'aal2', "select public.admin_set_role($1, 'guide', true)", [people.stranger]), /main admin only/);
     await fails(rows(people.stranger, 'aal2', 'select public.admin_assign_guide($1, $2)', [people.walker, people.stranger]), /main admin only/);
   });
-  it('anon reaches only the device unlock and the ping', async () => {
+  it('anon reaches only the device unlock, the invite check and the ping', async () => {
     await fails(rows(null, null, 'select public.my_status()'), /permission denied/);
     await fails(rows(null, null, 'select * from public.profiles'), /permission denied/);
+    await fails(rows(null, null, "select public.create_profile('x', 'x', 'x', 'x', 'x')"), /permission denied/);
+    await fails(rows(null, null, 'select * from public.admin_invites()'), /permission denied/);
     assert.equal((await rows(null, null, 'select public.ping() as one'))[0].one, 1);
   });
 });
@@ -341,5 +353,159 @@ describe('device PIN', () => {
     assert.equal((await rows(null, null, 'select public.unlock_device($1, $2) as r', [other, verifier]))[0].r.status, 'ok');
     await rows(people.walker, 'aal1', 'select public.forget_device($1)', [other]);
     assert.equal((await rows(null, null, 'select public.unlock_device($1, $2) as r', [other, verifier]))[0].r.status, 'missing');
+  });
+});
+
+describe('invite codes', () => {
+  const check = invite => rows(null, null, 'select public.check_invite($1) as r', [invite]).then(r => r[0].r);
+  const make = (code, extra = {}) => db.query(`insert into public.invite_codes (code, max_uses, used, expires_at, revoked_at)
+    values ($1, $2, $3, now() + $4::interval, $5) returning id`, [code, extra.max ?? 3, extra.used ?? 0, extra.valid ?? '1 day', extra.revoked ?? null]).then(r => r.rows[0].id);
+
+  it('anon learns before sign-up whether a code opens, typed in any case and with hyphens', async () => {
+    assert.equal(await check(typedDoor), 'ok');
+    assert.equal(await check('TEST-DOOR-2345'), 'ok');
+    assert.equal(await check('TESTDOOR2346'), 'wrong');
+    assert.equal(await check(''), 'wrong');
+    await make('EXPIREDCODE22', { valid: '-1 minute' });
+    await make('USEDUPCODE223', { max: 2, used: 2 });
+    await make('REVOKEDCODE22', { revoked: new Date() });
+    assert.equal(await check('expiredcode22'), 'expired');
+    assert.equal(await check('usedupcode223'), 'used up');
+    assert.equal(await check('revokedcode22'), 'revoked');
+  });
+  it('a profile needs a valid code, and each use counts', async () => {
+    await make('ONEUSECODE234', { max: 1 });
+    for (const [code, problem] of [['NOSUCHCODE234', /invite wrong/], ['EXPIREDCODE22', /invite expired/],
+      ['USEDUPCODE223', /invite used up/], ['REVOKEDCODE22', /invite revoked/]]) {
+      const id = await account();
+      await fails(createProfile(id, code, 'Гость'), problem);
+      assert.equal((await db.query('select count(*)::int as n from public.profiles where id = $1', [id])).rows[0].n, 0);
+    }
+    const first = await account(), second = await account();
+    await createProfile(first, 'one-use-code-234', '  Первый  ');
+    assert.equal((await db.query('select name from public.profiles where id = $1', [first])).rows[0].name, 'Первый');
+    assert.equal((await rows(first, 'aal1', 'select * from public.identity_keys')).length, 1);
+    await fails(createProfile(second, 'ONEUSECODE234', 'Второй'), /invite used up/);
+    await fails(createProfile(first, typedDoor, 'Снова'), /profile exists/);
+  });
+  it('an account without a profile reads nothing and seals no device', async () => {
+    const id = await account();
+    assert.equal((await rows(id, 'aal1', 'select * from public.profiles')).length, 0);
+    assert.deepEqual(await rows(id, 'aal1', 'select * from public.my_chats()'), []);
+    await fails(rows(id, 'aal1', 'select public.register_device($1, $2)', [randomUUID(), b64(randomBytes(32))]), /create a profile first/);
+  });
+  it('the codes table is closed to everyone, the main admin included', async () => {
+    await fails(rows(people.walker, 'aal1', 'select * from public.invite_codes'), /permission denied/);
+    await fails(rows(people.yana, 'aal2', 'select * from public.invite_codes'), /permission denied/);
+    await fails(rows(null, null, 'select * from public.invite_codes'), /permission denied/);
+    await fails(rows(people.walker, 'aal1', 'update public.invite_codes set used = 0'), /permission denied/);
+  });
+  it('only the main admin, with a TOTP session, makes, lists and revokes codes', async () => {
+    await fails(rows(people.stranger, 'aal2', 'select public.admin_create_invite()'), /main admin only/);
+    await fails(rows(people.yana, 'aal1', 'select public.admin_create_invite()'), /totp session required/);
+    await fails(rows(people.guide, 'aal2', 'select * from public.admin_invites()'), /main admin only/);
+    const [{ admin_create_invite: code }] = await rows(people.yana, 'aal2', 'select public.admin_create_invite()');
+    assert.match(code, /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}-[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/);
+    const listed = (await rows(people.yana, 'aal2', 'select * from public.admin_invites()')).find(r => r.code === code.replaceAll('-', ''));
+    assert.equal(listed.max_uses, 3);
+    assert.equal(listed.used, 0);
+    const days = (listed.expires_at - listed.created_at) / 864e5;
+    assert.ok(days > 29.9 && days < 30.1, `valid ${days} days`);
+    assert.equal(await check(code.toLowerCase()), 'ok');
+    await fails(rows(people.stranger, 'aal2', 'select public.admin_revoke_invite($1)', [listed.id]), /main admin only/);
+    await rows(people.yana, 'aal2', 'select public.admin_revoke_invite($1)', [listed.id]);
+    assert.equal(await check(code), 'revoked');
+    const [{ admin_create_invite: five }] = await rows(people.yana, 'aal2', 'select public.admin_create_invite(5, 7)');
+    assert.equal((await rows(people.yana, 'aal2', 'select * from public.admin_invites()')).find(r => r.code === five.replaceAll('-', '')).max_uses, 5);
+    await fails(rows(people.yana, 'aal2', 'select public.admin_create_invite(0, 30)'), /uses out of range/);
+    await fails(rows(people.yana, 'aal2', 'select public.admin_create_invite(3, 0)'), /days out of range/);
+  });
+});
+
+describe('staff names', () => {
+  it('a staff member keeps and respells their own name', async () => {
+    await rows(people.yana, 'aal2', "update public.profiles set name = 'Яна Орлова' where id = $1", [people.yana]);
+    await rows(people.yana, 'aal2', "update public.profiles set name = 'Яна  Орлова' where id = $1", [people.yana]);
+  });
+  it('nobody else takes it, whatever the case, spaces, punctuation or Latin look-alikes', async () => {
+    // 'ЯHA OPЛOBA' and 'Яна Opлoвa' carry Latin H, A, O, P, B, o, a.
+    for (const name of ['яна орлова', 'ЯНА ОРЛОВА.', 'Яна-Орлова', 'ЯHA OPЛOBA', 'Яна Opлoвa', 'Яна Орлoва']) {
+      await fails(createProfile(await account(), typedDoor, name), /name taken by staff/, name);
+    }
+    await fails(rows(people.walker, 'aal1', "update public.profiles set name = 'GUIDE' where id = $1", [people.walker]), /name taken by staff/);
+    await fails(rows(people.walker, 'aal1', "update public.profiles set name = ' Admin ' where id = $1", [people.walker]), /name taken by staff/);
+  });
+  it('other names, and a walker\'s name, stay free', async () => {
+    await createProfile(await account(), typedDoor, 'Яна Смирнова');
+    await createProfile(await account(), typedDoor, 'walker');
+    await rows(people.walker, 'aal1', "update public.profiles set name = 'Путник' where id = $1", [people.walker]);
+  });
+});
+
+describe('limits', () => {
+  // Small numbers for a test; running the file again brings the real ones back.
+  const setLimits = (...numbers) => db.exec(`create or replace function private.limits()
+    returns table (messages_per_minute int, texts_per_day int, voice_mb_per_day int, database_mb int, voice_stop_percent int)
+    language sql stable set search_path = '' as $$ select ${numbers.map(Number).join(', ')}; $$;`);
+  const sealed = () => [b64(randomBytes(12)), b64(randomBytes(40))];
+  const voice = (who, aal, chat, bytes = 3000) => rows(who, aal, 'select * from public.send_voice($1, 1, $2, $3, $4, $5)',
+    [chat, ...sealed(), b64(randomBytes(12)), b64(randomBytes(bytes))]);
+  let walker, chat;
+  before(async () => {
+    walker = await signUp('limits walker');
+    [{ c: chat }] = await rows(people.yana, 'aal2', 'select public.admin_assign_guide($1, $2) as c', [walker, people.guide]);
+  });
+
+  it('the real limits: 30 a minute, 300 texts and 20 MB of voice a day, voice stops at 450 of 500 MB', async () => {
+    assert.deepEqual((await db.query('select * from private.limits()')).rows,
+      [{ messages_per_minute: 30, texts_per_day: 300, voice_mb_per_day: 20, database_mb: 500, voice_stop_percent: 90 }]);
+  });
+  it('thirty messages a minute from one person in one chat, deleted ones included; others go on', async () => {
+    const first = await rows(walker, 'aal1', 'insert into public.messages (chat_id, iv, body) values ($1, $2, $3) returning id', [chat, ...sealed()]);
+    await rows(walker, 'aal1', 'select public.delete_message($1)', [first[0].id]);
+    for (let i = 1; i < 30; i++) await sendAs(walker, 'aal1', chat);
+    await fails(sendAs(walker, 'aal1', chat), /rate limit: 30 messages a minute/);
+    await fails(voice(walker, 'aal1', chat), /rate limit: 30 messages a minute/);
+    await sendAs(people.guide, 'aal2', chat);
+    await sendAs(people.walker, 'aal1', people.chat);
+  });
+  it('a day holds only so many texts; voice is counted apart', async () => {
+    await setLimits(1000, 35, 20, 500, 90);
+    for (let i = 30; i < 35; i++) await sendAs(walker, 'aal1', chat);
+    await fails(sendAs(walker, 'aal1', chat), /rate limit: 35 text messages a day/);
+    await voice(walker, 'aal1', chat);
+    await sendAs(people.guide, 'aal2', chat);
+  });
+  it('a day holds only so much voice for one person in a chat', async () => {
+    await setLimits(1000, 1000, 1, 500, 90);
+    await voice(walker, 'aal1', chat, 600000);
+    await fails(voice(walker, 'aal1', chat, 600000), /rate limit: 1 MB of voice a day/);
+    await sendAs(walker, 'aal1', chat);
+    await voice(people.guide, 'aal2', chat, 600000);
+  });
+  it('a nearly full database takes no new voice, while text goes on', async () => {
+    await setLimits(1000, 1000, 20, 1, 90);
+    await fails(voice(people.guide, 'aal2', chat), /storage full/);
+    await sendAs(people.guide, 'aal2', chat);
+    const [gauge] = await rows(people.yana, 'aal2', 'select * from public.admin_storage()');
+    assert.ok(Number(gauge.used_bytes) > 900000);
+    assert.equal(Number(gauge.total_bytes), 1000000);
+    assert.equal(Number(gauge.voice_stop_bytes), 900000);
+  });
+  it('only the main admin, with a TOTP session, sees the database size', async () => {
+    await fails(rows(people.guide, 'aal2', 'select * from public.admin_storage()'), /main admin only/);
+    await fails(rows(people.yana, 'aal1', 'select * from public.admin_storage()'), /totp session/);
+    await fails(rows(people.guide, 'aal2', 'select * from private.storage()'), /permission denied/);
+    await fails(rows(null, null, 'select * from public.admin_storage()'), /permission denied/);
+  });
+  it('running the file again brings the real limits back and keeps every message', async () => {
+    const count = async () => (await db.query('select count(*)::int as n from public.messages')).rows[0].n;
+    const before = await count();
+    await db.exec(schema);
+    assert.equal(await count(), before);
+    const [gauge] = await rows(people.yana, 'aal2', 'select * from public.admin_storage()');
+    assert.equal(Number(gauge.total_bytes), 500000000);
+    assert.equal(Number(gauge.voice_stop_bytes), 450000000);
+    await voice(people.guide, 'aal2', chat);
   });
 });

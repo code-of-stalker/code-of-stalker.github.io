@@ -9,7 +9,7 @@ import { useProductLayout } from '../../product/layout';
 import type { ProductColors } from '../../product/theme';
 import { ProductIconButton, ProductText } from '../../product/ui';
 import { BackendError } from '../backend';
-import type { Place } from '../backend';
+import type { InviteState, Place } from '../backend';
 import { Glyph, Hero, useContour } from './chrome';
 import { SlideMark } from '../../product/motion/SlideMark';
 import { Breathe } from '../../product/motion/Breathe';
@@ -26,17 +26,47 @@ const FormalContext = createContext(false);
 export const FormalTone = FormalContext.Provider;
 export const useFormal = () => useContext(FormalContext);
 
+/** Why an invite code does not open; formal, like the rest of the code step. */
+export function inviteText(state: Exclude<InviteState, 'ok'>) {
+  switch (state) {
+    case 'wrong': return 'Такого кода нет. Проверьте, как он написан.';
+    case 'expired': return 'Срок этого кода истёк. Попросите новый.';
+    case 'used up': return 'По этому коду уже вошли все, для кого он был. Попросите новый.';
+    case 'revoked': return 'Этот код отозван. Попросите новый.';
+  }
+}
+
 /** A plain Russian sentence for any failure; details stay in the console. */
 export function problemText(problem: unknown, fallback?: string, formal = false) {
   const offline = formal ? 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' : 'Нет связи с сервером. Проверь интернет и попробуй ещё раз.';
   if (problem instanceof BackendError) {
     if (problem.code === 'network') return offline;
+    if (problem.code === 'invite' && problem.invite) return inviteText(problem.invite);
+    if (problem.code === 'name-taken') return formal ? 'Это имя уже у человека из команды Интенсива. Напишите имя иначе, чтобы вас не путали.'
+      : 'Это имя уже у человека из команды Интенсива. Напиши имя иначе, чтобы вас не путали.';
     if (problem.code === 'rate-limit') return formal ? 'Слишком много попыток. Подождите несколько минут.' : 'Слишком много попыток. Подожди несколько минут.';
     if (problem.code === 'denied') return formal ? 'Нет доступа. Возможно, права изменились: войдите заново.' : 'Нет доступа. Возможно, права изменились: войди заново.';
   }
   if (problem instanceof Error && /Failed to fetch|NetworkError|Load failed/i.test(problem.message)) return offline;
   console.warn('[intensive]', problem);
   return fallback ?? (formal ? 'Что-то пошло не так. Попробуйте ещё раз.' : 'Что-то пошло не так. Попробуй ещё раз.');
+}
+
+/**
+ * Why a message did not go when a chat limit or a full server stopped it; null for any other
+ * problem. The message stays in the feed with «Повторить», so nothing typed or recorded is lost.
+ */
+export function limitText(problem: unknown, voice: boolean, formal = false): string | null {
+  if (!(problem instanceof BackendError)) return null;
+  const say = (informal: string, polite: string) => formal ? polite : informal;
+  if (problem.code === 'storage-full') return 'Голосовые сейчас не принимаются: на сервере кончается место. Запись не пропала. Можно написать текстом.';
+  if (problem.code !== 'rate-limit') return null;
+  if (/a day/i.test(problem.message)) return voice
+    ? say('За сутки в этом чате уже много голосовых. Запись не пропала: нажми «Повторить» позже или напиши текстом.',
+      'За сутки в этом чате уже много голосовых. Запись не пропала: нажмите «Повторить» позже или напишите текстом.')
+    : say('За сутки в этом чате уже много сообщений. Текст не пропал: нажми «Повторить» позже.',
+      'За сутки в этом чате уже много сообщений. Текст не пропал: нажмите «Повторить» позже.');
+  return say('Слишком часто. Подожди минуту и нажми «Повторить».', 'Слишком часто. Подождите минуту и нажмите «Повторить».');
 }
 
 export function formatTime(iso: string) {

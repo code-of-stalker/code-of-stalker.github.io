@@ -20,8 +20,8 @@ import { AdminConsole } from './AdminConsole';
 import { AdminPanel } from './AdminPanel';
 import { ChatList, ChatView } from './ChatView';
 import { ConfirmSheet, GlassIconButton, Plate } from './chrome';
-import { ConfirmWords, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
-import { FormalTone, Header, Loading, Note, PinPad, problemText, Skeleton, Tabs } from './parts';
+import { ConfirmWords, InviteStep, NameStep, PhraseView, RestoreStep, TotpEnroll, TotpVerify, Unavailable, Waiting, Welcome } from './EntrySteps';
+import { FormalTone, Header, inviteText, Loading, Note, PinPad, problemText, Skeleton, Tabs } from './parts';
 import { Appear } from '../../product/motion/Appear';
 
 /** Locks the account when the page stays hidden this long. */
@@ -31,6 +31,8 @@ type Step =
   | { kind: 'loading' }
   | { kind: 'unavailable'; title: string; lines: string[] }
   | { kind: 'welcome'; notice?: string }
+  // `signedIn`: an account made earlier has no profile yet, so the code is asked for before the name.
+  | { kind: 'invite'; signedIn?: boolean }
   | { kind: 'phrase'; words: string[]; entropy: Bytes }
   | { kind: 'confirm'; words: string[]; entropy: Bytes; positions: number[] }
   | { kind: 'restore'; notice?: string; fromPin?: boolean }
@@ -74,6 +76,9 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   const sessionRef = useRef<IntensiveSession | null>(null);
   // The admin page keeps a words sign-in for this page only; the PIN is set in the app.
   const skipSeal = useRef(adminPage);
+  // The invite code checked before the words; the profile is created with it after the name.
+  const inviteRef = useRef('');
+  const demoInvite = factory?.demo ? (factory as BackendFactory & { invite?: string }).invite : undefined;
 
   const go = useCallback((next: Step) => { setError(''); setStep(next); }, []);
   const run = useCallback(async (work: () => Promise<void>, fallback?: string) => {
@@ -124,7 +129,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
     const status = s.status!;
     if (status.blocked) return deny('ДОСТУП ЗАКРЫТ', ['Главный админ закрыл этому аккаунту доступ к Интенсиву. Переписка сохранена.', `Код аккаунта: ${shortCode(s.id)}. ${adminPage ? 'Назовите' : 'Назови'} его главному админу, если это ошибка.`]);
     if (adminPage && !status.mainAdmin) return deny('ТОЛЬКО ДЛЯ ГЛАВНОГО АДМИНА', ['Эта страница управляет Интенсивом: людьми, проводниками и доступом. Ваш аккаунт её не открывает.']);
-    if (!status.hasProfile) return go({ kind: 'name' });
+    if (!status.hasProfile) return go(inviteRef.current ? { kind: 'name' } : { kind: 'invite', signedIn: true });
     if (!s.sealed && !skipSeal.current) return go({ kind: 'pin' });
     if (status.needsTotp && !status.hasTotp) return enroll(s, true, 'home');
     if (s.needsTotpStep) return go({ kind: 'totp-verify' });
@@ -134,7 +139,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
   }, [adminPage, deny, enroll, go]);
 
   const leave = useCallback((notice?: string) => {
-    sessionRef.current?.lock(); sessionRef.current = null; setSession(null); skipSeal.current = adminPage;
+    sessionRef.current?.lock(); sessionRef.current = null; setSession(null); skipSeal.current = adminPage; inviteRef.current = '';
     go(adminPage ? { kind: 'restore', notice } : { kind: 'welcome', notice });
   }, [adminPage, go]);
 
@@ -162,7 +167,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
       body = <View style={styles.stack}>
         {step.notice ? <Plate glyph="alert" title="Аккаунт убран с устройства">{step.notice}</Plate> : null}
         <Welcome busy={busy} personas={personas}
-          onCreate={() => { const { words, entropy } = newPhrase(); go({ kind: 'phrase', words, entropy }); }}
+          onCreate={() => { inviteRef.current = ''; go({ kind: 'invite' }); }}
           onRestore={() => go({ kind: 'restore' })}
           onPersona={persona => { void run(async () => {
             skipSeal.current = true;
@@ -171,6 +176,18 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
           }); }} />
         {error ? <Note tone="error">{error}</Note> : null}
       </View>;
+      break;
+    case 'invite':
+      subtitle = 'НОВЫЙ АККАУНТ';
+      if (!step.signedIn) back = () => go({ kind: 'welcome' });
+      body = <InviteStep busy={busy} error={error} demoCode={demoInvite} onSubmit={code => { void run(async () => {
+        const state = await factory!.checkInvite(code);
+        if (state !== 'ok') { setError(inviteText(state)); return; }
+        inviteRef.current = code;
+        if (step.signedIn) { go({ kind: 'name' }); return; }
+        const { words, entropy } = newPhrase();
+        go({ kind: 'phrase', words, entropy });
+      }, 'Не удалось проверить код. Попробуй ещё раз.'); }} />;
       break;
     case 'phrase':
       subtitle = 'НОВЫЙ АККАУНТ'; back = () => go({ kind: 'welcome' });
@@ -205,7 +222,15 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
       const adding = !!step.adding;
       subtitle = adding ? adminPage ? 'АДМИНКА' : 'АККАУНТ' : 'НОВЫЙ АККАУНТ';
       body = <NameStep adding={adding} initial={adding ? session?.status?.name ?? '' : ''} busy={busy} error={error} onSubmit={name => { void run(async () => {
-        if (adding) await session!.rename(name); else await session!.createProfile(name);
+        if (adding) await session!.rename(name);
+        else {
+          try { await session!.createProfile(name, inviteRef.current); }
+          catch (problem) {
+            // The code ran out or was revoked after the check: ask for another one.
+            if (problem instanceof BackendError && problem.code === 'invite') { inviteRef.current = ''; setStep({ kind: 'invite', signedIn: true }); }
+            throw problem;
+          }
+        }
         enter(session!);
       }); }} />;
       break;

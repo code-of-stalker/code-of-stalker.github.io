@@ -57,6 +57,17 @@ export type UnlockResult =
 
 export type TotpEnrollment = { factorId: string; qr: string; secret: string };
 
+/** What the server says of an invite code; anything but 'ok' keeps the door shut. */
+export type InviteState = 'ok' | 'wrong' | 'expired' | 'used up' | 'revoked';
+/** An invite code as the main admin sees it; `code` is stored without hyphens. */
+export type Invite = {
+  id: string; code: string; maxUses: number; used: number;
+  expiresAt: string; revokedAt: string | null; createdAt: string;
+};
+
+/** How full the database is; past `voiceStopBytes` the server takes no new voice. */
+export type Storage = { usedBytes: number; totalBytes: number; voiceStopBytes: number };
+
 /** Auth session storage: memory only; the device vault seals it under the PIN. */
 export type AuthStore = {
   getItem(key: string): string | null;
@@ -65,10 +76,14 @@ export type AuthStore = {
 };
 
 export class BackendError extends Error {
-  readonly code: 'network' | 'denied' | 'not-found' | 'invalid' | 'rate-limit' | 'unknown';
-  constructor(code: BackendError['code'], message: string) {
+  /** 'rate-limit' also when a chat limit stops a message; 'storage-full' when the server takes no new voice. */
+  readonly code: 'network' | 'denied' | 'not-found' | 'invalid' | 'rate-limit' | 'storage-full' | 'invite' | 'name-taken' | 'unknown';
+  /** For 'invite': why the code does not open. */
+  readonly invite?: Exclude<InviteState, 'ok'>;
+  constructor(code: BackendError['code'], message: string, invite?: Exclude<InviteState, 'ok'>) {
     super(message);
     this.code = code;
+    this.invite = invite;
   }
 }
 
@@ -83,8 +98,9 @@ export interface Backend {
   /** Stops token refresh and live channels; the connection is not used again. */
   close(): void;
   status(): Promise<Status>;
-  createProfile(id: string, name: string, publicKey: string, wrapped: { iv: string; data: string }): Promise<void>;
-  /** Only the account's own name; staff need the TOTP step first. */
+  /** Only with a valid invite code, which loses one use; 'invite' or 'name-taken' otherwise. */
+  createProfile(id: string, name: string, publicKey: string, wrapped: { iv: string; data: string }, invite: string): Promise<void>;
+  /** Only the account's own name; staff need the TOTP step first. 'name-taken' for a staff name. */
   renameProfile(id: string, name: string): Promise<void>;
   identity(): Promise<{ iv: string; data: string } | null>;
   registerDevice(deviceId: string, verifier: string): Promise<string>;
@@ -102,8 +118,9 @@ export interface Backend {
   messages(chatId: string, afterId?: number): Promise<MessageRow[]>;
   /** Rows edited or deleted after `since` (a server time), deleted ones included. */
   changes(chatId: string, since: string): Promise<MessageRow[]>;
+  /** 'rate-limit' past the chat limits (per minute, per day). */
   send(chatId: string, keyVersion: number, iv: string, body: string): Promise<MessageRow>;
-  /** Sender only; the sealed audio is stored beside the row. */
+  /** Sender only; the sealed audio is stored beside the row. 'rate-limit' past the limits, 'storage-full' when the database is nearly full. */
   sendVoice(chatId: string, keyVersion: number, iv: string, body: string, audioIv: string, audioBody: string): Promise<MessageRow>;
   /** The sealed audio of a voice message. */
   media(messageId: number): Promise<{ iv: string; body: string } | null>;
@@ -119,11 +136,20 @@ export interface Backend {
   assignAdmin(guideId: string, adminId: string | null): Promise<void>;
   /** Main admin only; a main admin cannot be blocked. */
   setBlocked(userId: string, blocked: boolean): Promise<void>;
+  /** Main admin only: every invite code, newest first. */
+  invites(): Promise<Invite[]>;
+  /** Main admin only: a new code for `uses` people, valid `days` days, as XXXX-XXXX-XXXX. */
+  createInvite(uses: number, days: number): Promise<string>;
+  revokeInvite(id: string): Promise<void>;
+  /** Main admin only: how full the database is. */
+  storage(): Promise<Storage>;
 }
 
 export interface BackendFactory {
   readonly demo: boolean;
   /** Called without a session: the device has none until the PIN opens it. */
   unlockDevice(deviceId: string, verifier: string): Promise<UnlockResult>;
+  /** Called before sign-up, so a bad code shows before the 12 words. */
+  checkInvite(code: string): Promise<InviteState>;
   connect(store: AuthStore): Backend;
 }

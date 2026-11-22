@@ -46,6 +46,7 @@ export const glyphs = {
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5',
   close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
   refresh: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4',
+  storage: 'M5 6.5C5 4.8 8.1 3.5 12 3.5s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3ZM5 6.5v11c0 1.7 3.1 3 7 3s7-1.3 7-3v-11M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3',
 };
 export type GlyphName = keyof typeof glyphs;
 

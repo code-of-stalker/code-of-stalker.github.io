@@ -35,7 +35,7 @@ import { EditBar } from '../../product/messages/EditBar';
 import { canCopy, finePointer, useMenuAnchor } from '../../product/messages/menu';
 import type { MenuItem, MenuRect } from '../../product/messages/menu';
 import { MessageMenu } from '../../product/messages/MessageMenu';
-import { problemText, useFormal } from './parts';
+import { limitText, problemText, useFormal } from './parts';
 import { useChatVoice, VOICE_LIMIT_SECONDS } from './useChatVoice';
 
 const MAX_LENGTH = 4000;
@@ -362,7 +362,8 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
       setError('');
     } catch (problem) {
       setPending(current => current.map(p => p.key === item.key ? { ...p, failed: true } : p));
-      setError(problemText(problem, say('Сообщение не ушло. Нажми «Повторить».', 'Сообщение не ушло. Нажмите «Повторить».'), formal));
+      setError(limitText(problem, item.kind === 'voice', formal)
+        ?? problemText(problem, say('Сообщение не ушло. Нажми «Повторить».', 'Сообщение не ушло. Нажмите «Повторить».'), formal));
     }
   };
   const queue = (item: Pending) => {

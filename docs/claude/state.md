@@ -812,6 +812,32 @@ Art re-ran `supabase/intensive-schema.sql` on the real server.
 - Every step ends with the «#Яна Корнилова» signature (`StepSignature`); step 4 got it on
   2026-10-31 at the end of block 2 page 08.
 
+## Android app (branch `claude/android-apk`, not on `main`)
+Art: «приложение работало без интернета … один раз скачал апк и не мучаешься»; later Google Play.
+- Scheme: `android-app/` (plain Gradle Java, no Capacitor/Expo native) is one WebView that
+  serves the web export from the APK's `assets/www` at `https://appassets.androidplatform.net`
+  (`WebViewAssetLoader`, `WebExport.java`: extensionless path → index.html, missing → 404,
+  `no-cache`). Never change that origin, the package id or the key: the diary (IndexedDB)
+  lives under them, a change loses it.
+- App export variant `scripts/android/prepare-app-export.mjs`: the site export minus the
+  service worker, update probe, cache aliases and 404.html; CSP identical to the site's
+  (tested). The site build is unchanged.
+- Web bridge `src/features/product/platform/androidApp.ts` (no-op on the site): theme →
+  system bars, Android back (`window.watcherAndroidBack`: topmost overlay closes, /home
+  leaves the app, else the screen's back action), backup save through a chunked
+  `CodeOfStalkerAndroid` message channel + `ACTION_CREATE_DOCUMENT`.
+- Build: `npm run build:android` (export → app variant → Gradle → APK + AAB in
+  `output/android/`, signs with Art's key after a hidden password prompt);
+  `-- --test` = SDK debug key + inspectable page, for the emulator only;
+  `npm run sign:android` re-signs the last build. Tools outside the repo in
+  `%USERPROFILE%\Android\` (`jdk-17*`, `sdk`, `gradle-home`, `build`); env vars only inside
+  the script. versionCode = commit count, versionName = `YYYY.MM.DD-<sha7>`.
+- Release key (Art creates it, never in the repo):
+  `%USERPROFILE%\Android\keys\code-of-stalker-release.jks`, alias `code-of-stalker`. Without
+  it no update and no Play release. Play App Signing: upload this same key, so Play
+  updates the sideloaded install.
+- Versions: AGP 9.5.2, Gradle 9.6.0, compileSdk 37, targetSdk 36, minSdk 26.
+
 ## Open decisions and ideas (nothing promised)
 - Security, Art to decide: optional PIN lock for the diary; Expo SDK 58 upgrade later.
 - Never enable GitHub Pages on another `code-of-stalker` repo: same origin means full access

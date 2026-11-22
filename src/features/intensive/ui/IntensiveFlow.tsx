@@ -197,7 +197,7 @@ export function IntensiveFlow({ onExit, mode = 'app' }: { onExit: () => void; mo
       break;
     case 'confirm':
       subtitle = 'НОВЫЙ АККАУНТ'; back = () => go({ kind: 'phrase', words: step.words, entropy: step.entropy });
-      body = <ConfirmWords words={step.words} positions={step.positions} busy={busy} error={error}
+      body = <ConfirmWords words={step.words} keyLine={phraseKey(step.entropy)} positions={step.positions} busy={busy} error={error}
         onBack={() => go({ kind: 'phrase', words: step.words, entropy: step.entropy })}
         onConfirmed={() => { void run(async () => { enter(await IntensiveSession.create(factory!, step.entropy)); }, 'Не удалось создать аккаунт. Попробуй ещё раз.'); }} />;
       break;

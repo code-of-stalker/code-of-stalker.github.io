@@ -54,28 +54,41 @@ export function PhraseView({ words, keyLine, title, intro, doneLabel, onDone }: 
   </View>;
 }
 
-export function ConfirmWords({ words, positions, busy, error, onConfirmed, onBack }: {
-  words: string[]; positions: number[]; busy: boolean; error: string; onConfirmed: () => void; onBack: () => void;
+/**
+ * Proves the secret was saved: three of the 12 words, or (Art 2026-11-22) the whole
+ * key line for someone who kept the line instead of the words.
+ */
+export function ConfirmWords({ words, keyLine, positions, busy, error, onConfirmed, onBack }: {
+  words: string[]; keyLine: string; positions: number[]; busy: boolean; error: string; onConfirmed: () => void; onBack: () => void;
 }) {
   const styles = useThemeStyles(createStyles);
+  const [byKey, setByKey] = useState(false);
   const [typed, setTyped] = useState<string[]>(positions.map(() => ''));
+  const [typedKey, setTypedKey] = useState('');
   const [mismatch, setMismatch] = useState(false);
+  const hex = (text: string) => text.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
   const check = () => {
-    const ok = positions.every((position, i) => typed[i].trim().toLowerCase() === words[position]);
+    const ok = byKey ? hex(typedKey) === hex(keyLine) : positions.every((position, i) => typed[i].trim().toLowerCase() === words[position]);
     setMismatch(!ok);
     if (ok) onConfirmed();
   };
+  const switchMode = () => { setByKey(value => !value); setMismatch(false); };
   return <View style={styles.stack}>
-    <Hero glyph="check" title="ПРОВЕРИМ ЗАПИСЬ" lines={['Введи слова под этими номерами.']} tight />
-    {positions.map((position, i) => <GlassField key={position} label={`СЛОВО № ${position + 1}`} value={typed[i]} autoCapitalize="none" autoFocus={i === 0}
-      onChangeText={text => setTyped(current => current.map((value, j) => j === i ? text : value))}
-      returnKeyType={i === positions.length - 1 ? 'done' : 'next'}
-      onSubmitEditing={i === positions.length - 1 ? check : undefined} />)}
-    {mismatch ? <Note tone="error">Слова не совпали. Проверь запись.</Note> : null}
+    <Hero glyph="check" title="ПРОВЕРИМ ЗАПИСЬ" lines={[byKey ? 'Введи строку из 32 знаков целиком.' : 'Введи слова под этими номерами.']} tight />
+    {byKey
+      ? <GlassField key="key" label="СТРОКА ИЗ 32 ЗНАКОВ" value={typedKey} multiline autoFocus autoCapitalize="characters" autoComplete="off"
+        placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" accessibilityLabel="Строка из 32 знаков" onChangeText={setTypedKey} />
+      : positions.map((position, i) => <GlassField key={position} label={`СЛОВО № ${position + 1}`} value={typed[i]} autoCapitalize="none" autoFocus={i === 0}
+        onChangeText={text => setTyped(current => current.map((value, j) => j === i ? text : value))}
+        returnKeyType={i === positions.length - 1 ? 'done' : 'next'}
+        onSubmitEditing={i === positions.length - 1 ? check : undefined} />)}
+    {mismatch ? <Note tone="error">{byKey ? 'Строка не совпала. Проверь запись.' : 'Слова не совпали. Проверь запись.'}</Note> : null}
     {error ? <Note tone="error">{error}</Note> : null}
     <View style={styles.actions}>
-      <ProductButton label={busy ? 'СОЗДАЮ АККАУНТ…' : 'ПРОВЕРИТЬ'} onPress={check} disabled={busy || typed.some(value => !value.trim())} />
-      <ProductButton label="ПОКАЗАТЬ СЛОВА ЕЩЁ РАЗ" kind="ghost" onPress={onBack} disabled={busy} />
+      <ProductButton label={busy ? 'СОЗДАЮ АККАУНТ…' : 'ПРОВЕРИТЬ'} onPress={check}
+        disabled={busy || (byKey ? hex(typedKey).length !== 32 : typed.some(value => !value.trim()))} />
+      <ProductButton label={byKey ? 'ПРОВЕРИТЬ ПО СЛОВАМ' : 'ПРОВЕРИТЬ ПО СТРОКЕ'} kind="outline" onPress={switchMode} disabled={busy} />
+      <ProductButton label="ПОКАЗАТЬ ЕЩЁ РАЗ" kind="ghost" onPress={onBack} disabled={busy} />
     </View>
   </View>;
 }
@@ -204,7 +217,7 @@ export function TotpVerify({ busy, error, onVerify }: { busy: boolean; error: st
 export function Waiting({ name, code, busy, onRefresh }: { name: string; code: string; busy: boolean; onRefresh: () => void }) {
   const styles = useThemeStyles(createStyles);
   return <View style={styles.stack}>
-    <Hero glyph="clock" title={`${firstName(name)}, ПРОВОДНИК СКОРО БУДЕТ`} lines={['Яна назначит тебе проводника. Когда это случится, здесь откроется ваша переписка.']} />
+    <Hero glyph="clock" title={`${firstName(name).toUpperCase()}, ПРОВОДНИК СКОРО БУДЕТ`} lines={['Яна назначит тебе проводника. Когда это случится, здесь откроется ваша переписка.']} />
     <Plate glyph="person" label="ТВОЙ КОД" title={code} selectable titleStyle={styles.ownCode}>Назови его Яне, чтобы она нашла тебя быстрее.</Plate>
     <ProductButton label={busy ? 'ПРОВЕРЯЮ…' : 'ПРОВЕРИТЬ СНОВА'} kind="outline" onPress={onRefresh} disabled={busy} />
   </View>;

@@ -7,7 +7,7 @@ import { ProductButton } from '../../product/ui';
 import type { DirectoryEntry, Place, StaffRole } from '../backend';
 import type { IntensiveSession } from '../session';
 import { shortCode } from '../session';
-import { Avatar, ConfirmSheet, Glyph, ListGroup, ListItem, ProfileHead, RoleTag, useRoleInks } from './chrome';
+import { Avatar, ConfirmSheet, ListGroup, ListItem, ProfileHead, RoleTag, useRoleInks } from './chrome';
 import { formatTime, Note, placeLabels, problemText } from './parts';
 import { RoleMark } from './RoleMark';
 
@@ -72,8 +72,7 @@ export function PersonCard({ session, person, directory, avatars = true, onChang
   };
   const pick = (entry: DirectoryEntry, chosen: boolean, last: boolean, onPick: () => void) => <ListItem key={entry.userId}
     avatar={avatars ? <Avatar name={entry.name} size={36} accent /> : undefined} title={entry.name} badge={entry.mainAdmin ? <RoleTag role="main" label={placeLabels.main} /> : undefined}
-    selected={chosen} chevron={false} right={chosen ? <Glyph name="check" size={18} /> : undefined}
-    onPress={busy || chosen ? undefined : onPick} last={last} />;
+    selected={chosen} radio onPress={busy || chosen ? undefined : onPick} last={last} />;
   const lines = [
     `КОД ${shortCode(person.userId)}`,
     places.length ? null : person.guideId ? 'ИДУЩИЙ' : `ИДУЩИЙ · ЖДЁТ ПРОВОДНИКА С ${formatTime(person.createdAt)}`,

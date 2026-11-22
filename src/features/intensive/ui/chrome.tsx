@@ -14,6 +14,7 @@ import { fitPanelPath } from '../../product/motion/glassShape';
 import { PanelArtwork } from '../../product/motion/PanelArtwork';
 import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
+import { RadioMark } from '../../product/RadioMark';
 import { useProduct } from '../../product/state/ProductProvider';
 import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
@@ -307,15 +308,18 @@ export function ListGroup({ caption, children, footer, card = false, divided = f
  * `checked` makes the row a switch for screen readers; the caller draws the toggle on the right. `badge` sits under the title, after the detail (a role tag).
  * `detail` is a data line in the body's capitals; `hint` is a sentence about the row in plain small text (Art 2026-11-12: capitals there read «ужасно»).
  */
-export function ListItem({ title, detail, hint, badge, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, chevron = !!onPress && checked === undefined, last = false, accessibilityLabel }: {
+/** `radio` makes the row one choice of a group: a radio mark on the right, `selected` is the chosen one. */
+export function ListItem({ title, detail, hint, badge, glyph, avatar, right, onPress, tone = 'text', selected = false, checked, radio = false, chevron = !!onPress && checked === undefined && !radio, last = false, accessibilityLabel }: {
   title: string; detail?: string; hint?: string; badge?: ReactNode; glyph?: GlyphName; avatar?: ReactNode; right?: ReactNode; onPress?: () => void;
-  tone?: 'text' | 'accent' | 'error'; selected?: boolean; checked?: boolean; chevron?: boolean; last?: boolean; accessibilityLabel?: string;
+  tone?: 'text' | 'accent' | 'error'; selected?: boolean; checked?: boolean; radio?: boolean; chevron?: boolean; last?: boolean; accessibilityLabel?: string;
 }) {
   const colors = useThemeColors(), styles = useThemeStyles(createStyles);
   const card = useContext(CardContext), divided = useContext(DividedContext);
   const ink = tone === 'error' ? colors.error : tone === 'accent' ? colors.accent : colors.text;
-  const role = checked !== undefined ? 'switch' : onPress ? 'button' : undefined;
-  return <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel} accessibilityState={role ? { selected, checked, disabled: !onPress } : undefined} disabled={!onPress} onPress={onPress}
+  const role = radio ? 'radio' : checked !== undefined ? 'switch' : onPress ? 'button' : undefined;
+  const trailing = radio ? <RadioMark selected={selected} /> : right;
+  return <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel} disabled={!onPress} onPress={onPress}
+    accessibilityState={role ? { selected, checked: radio ? selected : checked, disabled: !onPress && !radio } : undefined}
     style={({ pressed }) => [styles.item, card && styles.cardItem, (pressed || selected) && { backgroundColor: colors.subtle }]}>
     {avatar ?? (glyph ? <View style={styles.itemGlyph}><Glyph name={glyph} size={20} color={tone === 'error' ? colors.error : colors.accent} /></View> : null)}
     <View style={[styles.itemBody, card && styles.cardItemBody, (!card || divided) && !last && styles.itemLine]}>
@@ -325,7 +329,7 @@ export function ListItem({ title, detail, hint, badge, glyph, avatar, right, onP
         {hint ? <ProductText numberOfLines={3} maxFontSize={14} color={colors.muted} style={styles.itemHint}>{hint}</ProductText> : null}
         {badge}
       </View>
-      {right}
+      {trailing}
       {chevron ? <Glyph name="right" size={16} color={colors.faint} /> : null}
     </View>
   </Pressable>;

@@ -14,6 +14,7 @@ import { useEffectsDiagnostics } from '../motion/EffectsQuality';
 import { diagnosticsPreference } from '../motion/EffectsController';
 import { useBackSwipe } from '../navigation/BackSwipeProvider';
 import { ProductToggle } from '../ProductToggle';
+import { RadioMark } from '../RadioMark';
 import { BackupSection } from '../settings/BackupSection';
 import { qualityNames } from '../motion/effectQuality';
 import { MicrophoneSettings } from '../settings/MicrophoneSettings';
@@ -37,8 +38,6 @@ export type SettingsScreenProps = {
 const assets = {
   theme: require('../../../../assets/product/settings-theme.svg'),
   startup: require('../../../../assets/product/settings-startup.svg'),
-  radioOn: require('../../../../assets/product/settings-radio-on.svg'),
-  radioOff: require('../../../../assets/product/settings-radio-off.svg'),
 };
 
 function SectionHeading({ title, icon, glyph }: { title: string; icon: ImageSource; glyph: 'theme' | 'startup' }) {
@@ -57,8 +56,7 @@ function RadioRow({ label, detail, selected, onPress, disabled = false }: { labe
   const styles = useThemeStyles(createStyles);
   return (
     <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected, disabled }} aria-checked={selected} aria-disabled={disabled} accessibilityLabel={label} onPress={onPress} disabled={disabled} style={[styles.radioRow, disabled && styles.disabledRow]}>
-      <RustIcon name="radio" width={14} height={16} stroke={1.2} filled={selected} color={colors.iconTint ?? (selected ? '#F5DD07' : '#B69D4B')}
-        fallback={<Image source={selected ? assets.radioOn : assets.radioOff} tintColor={colors.iconTint} style={styles.radioImage} contentFit="contain" />} />
+      <RadioMark selected={selected} />
       <View style={styles.optionCopy}>
         <ProductText variant="label" style={[styles.optionLabel, { color: selected ? colors.text : colors.muted }]}>{label}</ProductText>
         {detail ? <ProductText variant="label" style={styles.optionDetail}>{detail}</ProductText> : null}
@@ -186,7 +184,6 @@ const createStyles = (colors: ProductColors) => StyleSheet.create({
   sectionTitle: { fontSize: 14, lineHeight: 18 },
   radioRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 10 },
   disabledRow: { opacity: 0.45 },
-  radioImage: { width: 14, height: 16 },
   optionCopy: { flex: 1, gap: 4, paddingVertical: 4 },
   optionLabel: { fontSize: 10, lineHeight: 14 },
   optionDetail: { fontSize: 8, lineHeight: 12, letterSpacing: 2.2, color: colors.faint },

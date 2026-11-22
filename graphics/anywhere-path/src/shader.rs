@@ -7,11 +7,12 @@ use crate::body::{
     TOES,
 };
 use crate::place::{
-    CAFE, CAR, CAR_FLOOR, DEG, FACADE, FRIEND_DOOR, HOUSE, PLATFORM, POND, STATION, TRACK, WATER_Y,
+    CAFE, CAR, CAR_FLOOR, DEG, FACADE, FRIEND_DOOR, HER_DOOR, HOUSE, PLATFORM, POND, STATION,
+    TRACK, WATER_Y,
 };
 use crate::scenery::{
-    car_spacing, kind, lamps, mat, trees_world, BAND, CROWD_N, DOOR_SLIDE, LEAF_L, LEAF_R, RIDGE_X,
-    RIDGE_Y, ROOF_SLOPE, WALL_H, WIRE_Y,
+    car_spacing, kind, lamps, mat, trees_world, BAND, CROWD_N, DOOR_SLIDE, LEAF_H, LEAF_L, LEAF_R,
+    RIDGE_X, RIDGE_Y, ROOF_SLOPE, WALL_H, WIRE_Y,
 };
 use crate::{Scene, BLOOM, BLUR_MAX, DATA_W, FIGS, LOOP, MELT, RAD_SCALE, ROUTE_N, SLOTS};
 
@@ -77,6 +78,7 @@ fn defines() -> String {
         ("CAFE".into(), float(CAFE)),
         ("FACADE".into(), float(FACADE)),
         ("FRIEND_DOOR".into(), float(FRIEND_DOOR)),
+        ("HER_DOOR".into(), vec(&HER_DOOR)),
         ("TRACK".into(), float(TRACK)),
         ("CAR".into(), vec(&CAR)),
         ("CAR_FLOOR".into(), float(CAR_FLOOR)),
@@ -92,6 +94,7 @@ fn defines() -> String {
         ("DOOR_SLIDE".into(), float(DOOR_SLIDE)),
         ("LEAF_L".into(), LEAF_L.to_string()),
         ("LEAF_R".into(), LEAF_R.to_string()),
+        ("LEAF_H".into(), LEAF_H.to_string()),
         ("WIRE_Y".into(), float(WIRE_Y)),
         ("CROWD_N".into(), int(CROWD_N)),
         ("K_COAT".into(), kind::COAT.to_string()),
@@ -179,7 +182,7 @@ mod tests {
         assert!(s.starts_with("#version 300 es\n"));
         // Each lamp's code: the reach, the side, the halo.
         for l in lamps() {
-            assert!(l.radius < 100.0 && l.side <= 2);
+            assert!(l.radius < 100.0 && l.side <= 3);
         }
     }
 }

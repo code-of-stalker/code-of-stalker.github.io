@@ -176,7 +176,7 @@ impl Scene {
         let warm_y = mix(scan_y, fill_y, follow);
         let mem = window(t, k.home_go + 0.5, k.home_go + 1.5, k.f0 + 2.0, k.f0 + 4.0);
 
-        // The train: where, its doors, its lit windows, its speed.
+        // The train: where, its doors, its speed; and how far her door stands open.
         let phi = self.story.world.train_at(t);
         let speed =
             (self.story.world.train_at(t + 0.05) - self.story.world.train_at(t - 0.05)) / 0.1;
@@ -204,7 +204,7 @@ impl Scene {
             t,
             view,
             figures,
-            train: [phi, doors.min(1.0), 1.0, speed],
+            train: [phi, doors.min(1.0), self.story.her_door(t), speed],
             sphere: [centre.x, centre.y, centre.z, radius],
             rings: [cold_y, warm_y, WARM_RADIUS, 1.0],
             ringfx: [1.0, 1.0, 1.0, fin],
@@ -433,7 +433,10 @@ mod tests {
             ("meet", k.meet),
             ("together", k.together),
             ("parted", k.parted),
+            ("her_at_door", k.her_at_door),
             ("her_in", k.her_in),
+            ("her_faced", k.her_faced),
+            ("her_shut", k.her_shut),
             ("home_go", k.home_go),
             ("f0", k.f0),
         ];
@@ -441,7 +444,10 @@ mod tests {
             println!("{name:>10} {at:7.2}");
         }
         for w in order.windows(2) {
-            if w[1].0 == "her_in" || w[0].0 == "her_in" || w[1].0 == "arrive" || w[0].0 == "arrive"
+            if w[1].0.starts_with("her_")
+                || w[0].0.starts_with("her_")
+                || w[1].0 == "arrive"
+                || w[0].0 == "arrive"
             {
                 continue;
             }
@@ -457,7 +463,8 @@ mod tests {
         // The train is in before he reaches the platform's edge.
         assert!(k.arrive + 1.0 < k.board, "{} {}", k.arrive, k.board);
         assert!(LOOP - k.f0 >= 20.0, "the finale is {} s", LOOP - k.f0);
-        assert!(k.her_in < k.f0);
+        assert!(k.parted < k.her_at_door && k.her_at_door < k.her_in);
+        assert!(k.her_in < k.her_faced && k.her_shut < k.f0);
     }
 
     #[test]

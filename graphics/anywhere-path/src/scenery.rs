@@ -7,8 +7,8 @@
 //! once; the groups' bounds let the shader skip a place the ray misses.
 use crate::math::V3;
 use crate::place::{
-    at_frame, hf3, polar, polar3, CAFE, CAR, CAR_FLOOR, FACADE, FRIEND_DOOR, HOUSE, LAKE, PIER,
-    PLATFORM, STATION, TRACK,
+    at_frame, hf3, polar, polar3, CAFE, CAR, CAR_FLOOR, FACADE, FRIEND_DOOR, HER_DOOR, HOUSE, LAKE,
+    PIER, PLATFORM, STATION, TRACK,
 };
 
 /// What a surface is, for its light and its lines (`scene.frag` reads the
@@ -40,6 +40,8 @@ pub const DOOR_SLIDE: f32 = 0.62;
 /// Flags: the left and the right leaf of a car's door.
 pub const LEAF_L: u32 = 1;
 pub const LEAF_R: u32 = 2;
+/// Flag: her door's leaf, turned about its hinge by the door's opening.
+pub const LEAF_H: u32 = 4;
 
 /// The house's wall height and its roof (`scene.frag` builds the roof).
 pub const WALL_H: f32 = 2.75;
@@ -384,7 +386,11 @@ pub fn street() -> Vec<Bx> {
     for (a, b, h) in street_houses() {
         let mid = 0.5 * (a + b);
         let half = FACADE * (0.5 * (b - a) * crate::place::DEG).tan();
-        out.push(bx(mid, [FACADE, 0.0, -half], [22.0, h, half], mat::FACADE));
+        if a < FRIEND_DOOR && b > FRIEND_DOOR {
+            out.extend(her_house(a, b, h));
+        } else {
+            out.push(bx(mid, [FACADE, 0.0, -half], [22.0, h, half], mat::FACADE));
+        }
         out.push(bx(
             mid,
             [FACADE - 0.12, h, -half - 0.05],
@@ -406,6 +412,30 @@ pub fn street() -> Vec<Bx> {
         mat::ROOF,
     ));
     out
+}
+
+/// Her house, in her door's frame: the block round a real doorway and the
+/// narrow hall behind it, its back wall, and the door's leaf on its hinge.
+fn her_house(a: f32, b: f32, h: f32) -> Vec<Bx> {
+    let d = FRIEND_DOOR;
+    let [w, top, back] = HER_DOOR;
+    let tan = |deg: f32| (deg * crate::place::DEG).tan();
+    let (z0, z1) = (-FACADE * tan(d - a), FACADE * tan(b - d));
+    vec![
+        bx(d, [FACADE, 0.0, z0], [22.0, h, -w], mat::FACADE),
+        bx(d, [FACADE, 0.0, w], [22.0, h, z1], mat::FACADE),
+        bx(d, [FACADE, top, -w], [22.0, h, w], mat::FACADE),
+        bx(d, [back, 0.0, -w], [22.0, top, w], mat::WALL),
+        Bx {
+            flags: LEAF_H,
+            ..bx(
+                d,
+                [FACADE + 0.05, 0.0, -w + 0.01],
+                [FACADE + 0.11, top - 0.03, w - 0.01],
+                mat::WOOD,
+            )
+        },
+    ]
 }
 
 /// One car in its own frame: x is TRACK + across, y up, z along. A hollow
@@ -723,10 +753,12 @@ pub fn trees_world() -> [[f32; 4]; 15] {
 }
 
 /// Where a lamp's light reaches: anywhere, only inside the house, only
-/// outside it.
+/// outside it, only in her hall.
 pub const SIDE_ANY: u32 = 0;
 pub const SIDE_IN: u32 = 1;
 pub const SIDE_OUT: u32 = 2;
+/// Only inside her hall.
+pub const SIDE_HALL: u32 = 3;
 
 /// A warm light: where, how far it reaches, which side of the house's walls
 /// it lights, and whether it is a bulb with a halo (a lit window is not).
@@ -739,7 +771,8 @@ pub struct Lamp {
 }
 
 /// The lamps: over the table, by the front door, under the station's
-/// canopy, at the halt, along the street, the café's window, her door.
+/// canopy, at the halt, along the street, the café's window, her door and
+/// her hall.
 /// (The cars' own lamps light only inside them; `scene.frag` adds those.)
 pub fn lamps() -> Vec<Lamp> {
     let lamp = |at: V3, radius, side, halo| Lamp {
@@ -761,6 +794,7 @@ pub fn lamps() -> Vec<Lamp> {
     }
     out.push(lamp(polar3(19.3, CAFE, 1.4), 2.2, SIDE_ANY, false));
     out.push(lamp(polar3(19.6, FRIEND_DOOR, 2.0), 1.6, SIDE_ANY, false));
+    out.push(lamp(polar3(21.3, FRIEND_DOOR, 2.0), 1.5, SIDE_HALL, false));
     out
 }
 

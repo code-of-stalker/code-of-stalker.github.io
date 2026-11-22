@@ -5,10 +5,11 @@
 //! finale), its lens, and how long it eases in from the shot before (0: a
 //! cut). He is followed by a smoothed anchor so his steps never shake it.
 use crate::act::turn_between;
-use crate::math::{min_jerk, mix, rotate, v3, V3, Y};
+use crate::math::{min_jerk, mix, rotate, v3, window, V3, Y};
 use crate::place::{car_point, hf3, polar, polar3, DEG};
 use crate::story::{Story, HERO};
 use crate::LOOP;
+use std::f32::consts::TAU;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Rig {
@@ -30,16 +31,22 @@ pub enum Rig {
         ahead: f32,
         look: f32,
     },
-    /// Ahead of him looking back at him.
+    /// Ahead of him looking back at him, or at a point `behind` him.
     Lead {
         front: f32,
         side: f32,
         up: f32,
         look: f32,
+        behind: f32,
     },
     /// Through his eyes, turned `yaw` to his left and `pitch` up.
     Pov {
         yaw: f32,
+        pitch: f32,
+    },
+    /// Through his eyes at the window: they follow the train as it passes,
+    /// then go where he goes.
+    Watch {
         pitch: f32,
     },
     /// The finale: up from his face to over the whole ring.
@@ -107,6 +114,24 @@ fn ahead(h: f32) -> V3 {
     v3(h.sin(), 0.0, h.cos())
 }
 
+/// Through his eyes, turned `yaw` to his left and `pitch` up, with the
+/// small drift of a breathing head.
+fn pov(story: &Story, yaw: f32, pitch: f32, fov: f32, t: f32) -> View {
+    let (a, h) = smoothed(story, t);
+    let f = ahead(h);
+    let eye = a + Y * 1.62 + f * 0.1;
+    let yaw = yaw + 0.014 * (TAU * t / 4.3).sin();
+    let pitch = pitch + 0.01 * (TAU * t / 3.1 + 1.0).sin();
+    let d = rotate(f, Y, yaw);
+    let d = d * pitch.cos() + Y * pitch.sin();
+    View {
+        eye,
+        look: eye + d,
+        fov,
+        pov: 1.0,
+    }
+}
+
 /// His right, as a walker facing `h` sees it.
 fn right(h: f32) -> V3 {
     v3(-h.cos(), 0.0, h.sin())
@@ -143,6 +168,7 @@ impl Camera {
             side,
             up,
             look,
+            behind: 0.0,
         };
         let shot = |at: f32, rig: Rig, fov: f32, blend: f32| Shot {
             at,
@@ -156,22 +182,10 @@ impl Camera {
             shot(k.go + 2.5, follow(3.2, 0.6, 1.75, 2.0, 1.3), 46.0, 2.5),
             // Close behind him through the front door.
             shot(k.door - 1.6, follow(1.6, 0.15, 1.7, 2.5, 1.45), 50.0, 1.6),
-            // The room: through his eyes, the train past the window.
-            shot(
-                k.window - 0.3,
-                Rig::Pov {
-                    yaw: 0.0,
-                    pitch: -0.05,
-                },
-                55.0,
-                0.8,
-            ),
-            shot(
-                k.leave,
-                fixed(hf3(11.6, 1.75, -4.9), hf3(15.4, 1.1, -1.6)),
-                50.0,
-                0.0,
-            ),
+            // The room: through his eyes, which follow the train past the
+            // window; then he turns away and goes round to the doorway of
+            // the table room, still through his eyes.
+            shot(k.window - 0.3, Rig::Watch { pitch: -0.03 }, 55.0, 0.8),
             // The table room: he comes through the doorway toward us and
             // goes to his chair.
             shot(
@@ -316,9 +330,22 @@ impl Camera {
                 0.0,
             ),
             shot(k.together + 0.5, lead(3.2, -0.4, 1.6, 1.4), 46.0, 2.5),
-            // Home across the field: the camera comes close to him.
-            shot(k.home_go, lead(1.6, 0.2, 1.55, 1.35), 40.0, 2.0),
-            shot(k.home_go + 6.0, lead(1.8, 0.2, 1.5, 1.3), 38.0, 3.0),
+            // Home across the field: he walks toward us on one side of
+            // the frame, and past him she goes in at her door and shuts it;
+            // then the camera comes close to him.
+            shot(
+                k.home_go,
+                Rig::Lead {
+                    front: 2.4,
+                    side: -1.3,
+                    up: 1.55,
+                    look: 1.4,
+                    behind: 3.0,
+                },
+                42.0,
+                2.0,
+            ),
+            shot(k.her_shut + 0.8, lead(1.8, 0.2, 1.5, 1.3), 38.0, 3.0),
             // The finale: up over the whole ring.
             shot(k.f0 - 0.5, Rig::Crane, 46.0, 2.5),
             shot(LOOP - 5.0, opening, 46.0, 4.5),
@@ -382,25 +409,32 @@ impl Camera {
                 side,
                 up,
                 look,
+                behind,
             } => {
                 let (a, h) = smoothed(story, t);
                 plain(
                     a + ahead(h) * front + right(h) * side + Y * up,
-                    a + Y * look,
+                    a - ahead(h) * behind + Y * look,
                 )
             }
-            Rig::Pov { yaw, pitch } => {
+            Rig::Pov { yaw, pitch } => pov(story, yaw, pitch, fov, t),
+            Rig::Watch { pitch } => {
+                let k = story.keys;
                 let (a, h) = smoothed(story, t);
-                let f = ahead(h);
-                let eye = a + Y * 1.62 + f * 0.1;
-                let d = rotate(f, Y, yaw);
-                let d = d * pitch.cos() + Y * pitch.sin();
-                View {
-                    eye,
-                    look: eye + d,
+                let car = car_point(story.world.train_at(t), 0.0, 1.9, 0.0) - a;
+                let toward = turn_between(h, car.x.atan2(car.z));
+                let follow = window(t, k.t_w - 2.6, k.t_w - 1.4, k.t_w + 1.4, k.t_w + 2.8);
+                // As he turns away the eyes go first, so they cross the
+                // bare wall quickly and find the doorway.
+                let (_, next) = smoothed(story, t + 0.6);
+                let lead = 0.8 * turn_between(h, next);
+                pov(
+                    story,
+                    0.42 * (toward / 0.42).tanh() * follow + lead,
+                    pitch,
                     fov,
-                    pov: 1.0,
-                }
+                    t,
+                )
             }
             Rig::Crane => {
                 let (a, _) = smoothed(story, t);

@@ -170,6 +170,13 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   - A cut to his eyes must last: the window POV at the start showed the train «буквально
     секунду… нахуя тогда нам этот переход?». Hold the first-person view on the train longer.
   - Clothes must cover the body: the friend's pelvis pokes out through her coat at the sides.
+- «Сквозной путь» round 4 (2026-11-22):
+  - A first-person view must be alive, not a frozen stare («просто стоит как будто он залип на
+    поезд»): the gaze follows what passes and breathes. Nor may it cut to third person the
+    moment he moves: keep his eyes through the turn and the walk to the next place.
+  - A person leaves through a real door, never fades into a wall («исчезает в текстурах»):
+    a doorway with a room behind it, the leaf swings open, she goes in and shuts it, and the
+    camera keeps the door in view.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

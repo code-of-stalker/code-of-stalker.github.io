@@ -10,8 +10,8 @@ use crate::act::{turn_between, Gait, Local, Path, Plan, Ride, World, WALKING};
 use crate::body::{build, Body, Hair, Pose, STAND, SWING_SHARE};
 use crate::math::{mix, smooth, v3, window, V3, Y};
 use crate::place::{
-    angle_of, car_point, facing, from_frame, ground, hf, hf3, polar, toward, DEG, FRIEND_DOOR,
-    HOUSE, LAKE, MOON_AZ, MOON_EL, STATION,
+    angle_of, car_point, facing, from_frame, ground, her_leaf, hf, hf3, polar, toward, DEG,
+    FRIEND_DOOR, HER_DOOR_OPEN, HOUSE, LAKE, MOON_AZ, MOON_EL, STATION,
 };
 use crate::LOOP;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
@@ -58,7 +58,12 @@ pub struct Keys {
     pub meet: f32,
     pub together: f32,
     pub parted: f32,
+    /// She comes to her door (it swings open), is in her hall, has turned
+    /// to the door, has pulled it shut.
+    pub her_at_door: f32,
     pub her_in: f32,
+    pub her_faced: f32,
+    pub her_shut: f32,
     pub home_go: f32,
     /// He is back where he set out: the finale.
     pub f0: f32,
@@ -282,10 +287,18 @@ impl Story {
             ..TOGETHER
         };
         f.walk(&her_way, ground, gait).mark("parted");
-        f.wait(0.4)
-            .walk(&[polar(20.35, FRIEND_DOOR)], ground, WALKING)
+        // A wave, then up to her door and in: it swings open as she comes;
+        // she turns and pulls it shut behind her.
+        let inside = polar(21.3, FRIEND_DOOR + 0.4);
+        f.wait(1.0)
+            .walk(&[polar(19.8, FRIEND_DOOR + 0.2), inside], ground, WALKING)
             .mark("in");
         keys.her_in = f.when("in");
+        keys.her_at_door = first(&f, &world, keys.parted, keys.her_in, |p| r_of(p) >= 19.75);
+        f.turn_to(toward(inside, polar(19.0, FRIEND_DOOR + 0.4)))
+            .mark("faced");
+        keys.her_faced = f.when("faced");
+        keys.her_shut = keys.her_faced + 1.5;
         f.wait_until(LOOP);
 
         // ---- the one at the table ----
@@ -327,16 +340,25 @@ impl Story {
     }
 
     /// How much of the friend shows: she comes while he stands on the
-    /// pier (the camera on the lake) and goes in at her door.
+    /// pier (the camera on the lake) and goes once her door is shut.
     pub fn seen(&self, i: usize, t: f32) -> f32 {
         let k = &self.keys;
         match i {
             FRIEND => {
                 smooth(k.pier_end + 2.4, k.pier_end + 3.2, t)
-                    * (1.0 - smooth(k.her_in - 0.5, k.her_in + 0.3, t))
+                    * (1.0 - smooth(k.her_shut, k.her_shut + 0.3, t))
             }
             _ => 1.0,
         }
+    }
+
+    /// How far her door stands open, radians: it swings in as she opens it
+    /// and shuts as she pulls it.
+    pub fn her_door(&self, t: f32) -> f32 {
+        let k = &self.keys;
+        HER_DOOR_OPEN
+            * (smooth(k.her_at_door - 0.6, k.her_at_door + 0.2, t)
+                - smooth(k.her_faced - 0.1, k.her_shut, t))
     }
 
     pub fn figures(&self, t: f32) -> Vec<Figure> {
@@ -541,6 +563,37 @@ impl Story {
                 );
                 let sway = 0.08 * (TAU * t / 0.65).sin();
                 hold(pose, 0, v3(0.3 + sway, 1.72, 0.16), wave);
+                // Her right hand on the door's handle: she pushes it open,
+                // then pulls it shut until it swings out of reach; a last
+                // look at him as she does.
+                let handle = her_leaf(self.her_door(t), 0.8, 1.0);
+                let push = window(
+                    t,
+                    k.her_at_door - 1.0,
+                    k.her_at_door - 0.6,
+                    k.her_at_door + 0.1,
+                    k.her_at_door + 0.4,
+                );
+                let pull = window(
+                    t,
+                    k.her_faced - 0.5,
+                    k.her_faced - 0.1,
+                    k.her_shut - 0.6,
+                    k.her_shut - 0.3,
+                );
+                reach(pose, local, 1, handle, 0.9 * (push + pull));
+                look(
+                    pose,
+                    local,
+                    hero_head,
+                    0.7 * window(
+                        t,
+                        k.her_faced - 0.6,
+                        k.her_faced,
+                        k.her_shut - 0.4,
+                        k.her_shut,
+                    ),
+                );
             }
             _ => {}
         }

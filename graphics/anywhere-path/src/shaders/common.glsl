@@ -21,7 +21,7 @@ uniform vec4 u_res;  // target width, height px
 #define UP     u_d[2]   // up axis
 #define FWD    u_d[3]   // view axis, lens
 #define MOON   u_d[5]   // toward the moon
-#define TRAIN  u_d[6]   // the middle car's angle (rad), its doors, -, speed
+#define TRAIN  u_d[6]   // the middle car's angle (rad), its doors, her door's opening (rad), speed
 #define SPHERE u_d[7]   // his sphere: centre, radius
 #define RINGS  u_d[8]   // the cold ring's height, the warm ring's, its radius
 #define RINGFX u_d[9]   // -, -, -, the finale

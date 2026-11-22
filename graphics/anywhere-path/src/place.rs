@@ -23,6 +23,11 @@ pub const PLATFORM: f32 = 0.3;
 pub const PIER: f32 = 0.25;
 /// The street's facades face the field this far out.
 pub const FACADE: f32 = 20.2;
+/// Her door: half its width, its height, and the hall behind it as far as
+/// its back wall.
+pub const HER_DOOR: [f32; 3] = [0.45, 2.15, 21.9];
+/// How far her door swings open, radians.
+pub const HER_DOOR_OPEN: f32 = 1.45;
 /// The moon: its bearing and height, degrees.
 pub const MOON_AZ: f32 = 50.0;
 pub const MOON_EL: f32 = 24.0;
@@ -50,6 +55,16 @@ pub fn at_frame(alpha: f32, x: f32, z: f32) -> [f32; 2] {
 pub fn from_frame(alpha: f32, x: f32, z: f32) -> [f32; 2] {
     let (s, c) = (alpha * DEG).sin_cos();
     [x * c + z * s, -x * s + z * c]
+}
+
+/// A point of her door's leaf, `along` metres from its hinge and `y` up,
+/// with the door open `a` radians (it swings into the hall): world.
+/// (`scene.frag` turns the leaf's box about the same hinge.)
+pub fn her_leaf(a: f32, along: f32, y: f32) -> V3 {
+    let (hx, hz) = (FACADE + 0.08, -HER_DOOR[0] + 0.01);
+    let (s, c) = a.sin_cos();
+    let [x, z] = at_frame(FRIEND_DOOR, hx + along * s, hz + along * c);
+    v3(x, y, z)
 }
 
 /// The house's frame: x 11–17 from the front door to the back wall.

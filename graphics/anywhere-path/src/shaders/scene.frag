@@ -83,6 +83,11 @@ bool inHouse(vec3 p) {
   vec3 q = toFrame(p, csOf(HOUSE));
   return q.x > 11.0 && q.x < 17.0 && q.z > -5.5 && q.z < 6.0 && q.y < WALL_H + 0.01;
 }
+// Whether p is in her hall, behind her doorway.
+bool inHall(vec3 p) {
+  vec3 q = toFrame(p, csOf(FRIEND_DOOR));
+  return q.x > FACADE + 0.02 && q.x < HER_DOOR.z + 0.01 && abs(q.z) < HER_DOOR.x + 0.01 && q.y < HER_DOOR.y + 0.01;
+}
 vec2 carCs(int k) {
   float phi = TRAIN.x + float(k - 1) * CAR_SPACING;
   return vec2(cos(phi), sin(phi));
@@ -205,6 +210,16 @@ void boxHit(int at, vec2 gc, int gid, vec3 ro, vec3 rd, inout Hit h) {
   int mat = int(a.w + 0.5);
   if (mat == M_GLASS && g_eyeInCar) return;
   vec3 o = toFrame(ro, c), d = toFrame(rd, c);
+  // Her door's leaf: the ray into its closed place, turned back about
+  // the hinge by the door's opening.
+  vec2 turn = vec2(1.0, 0.0);
+  if (flags == LEAF_H) {
+    turn = vec2(cos(TRAIN.z), sin(TRAIN.z));
+    vec2 hinge = vec2(0.5 * (lo.x + hi.x), lo.z);
+    vec2 q = o.xz - hinge;
+    o.xz = hinge + vec2(q.x * turn.x - q.y * turn.y, q.x * turn.y + q.y * turn.x);
+    d.xz = vec2(d.x * turn.x - d.z * turn.y, d.x * turn.y + d.z * turn.x);
+  }
   vec3 m = 0.5 * (lo + hi), hs = 0.5 * (hi - lo);
   vec3 n;
   vec2 s = boxT(o - m, d, hs, n);
@@ -212,7 +227,7 @@ void boxHit(int at, vec2 gc, int gid, vec3 ro, vec3 rd, inout Hit h) {
     h.t = s.x;
     h.mat = mat;
     h.id = gid;
-    h.n = fromFrame(n, c);
+    h.n = fromFrame(vec3(n.x * turn.x + n.z * turn.y, n.y, -n.x * turn.y + n.z * turn.x), c);
     h.ln = n;
     h.lp = o + d * s.x;
     h.top = hi.y;
@@ -222,7 +237,7 @@ void boxHit(int at, vec2 gc, int gid, vec3 ro, vec3 rd, inout Hit h) {
 bool boxAny(int at, vec2 gc, vec3 ro, vec3 rd, float tmax) {
   vec4 a = tx(at), b = tx(at + 1), r = tx(at + 2);
   int mat = int(a.w + 0.5);
-  if (mat == M_LAMP || mat == M_GLASS) return false;
+  if (mat == M_LAMP || mat == M_GLASS || int(b.w + 0.5) == LEAF_H) return false;
   vec2 c = vec2(gc.x * r.x - gc.y * r.y, gc.y * r.x + gc.x * r.y);
   vec3 o = toFrame(ro, c), d = toFrame(rd, c);
   vec2 s = slab(o, safeInverse(d), a.xyz, b.xyz);
@@ -753,7 +768,7 @@ float lampLight(vec3 p, vec3 n) {
     float w = mod(L.w, 1000.0);
     float side = floor(w / 100.0);
     float R = w - 100.0 * side;
-    if ((side == 1.0 && !house) || (side == 2.0 && house)) continue;
+    if ((side == 1.0 && !house) || (side == 2.0 && house) || (side == 3.0 && !inHall(p))) continue;
     vec3 d = L.xyz - p;
     float dist = length(d);
     float lam = max(dot(n, d) / max(dist, 1e-4), 0.0) * 0.85 + 0.15;
@@ -851,42 +866,6 @@ vec3 figureTone(int fi, int part) {
   if (scarf) return tone(0.7, -0.4);
   if (legs) return tone(0.1, 0.0);
   return tone(0.42, 0.85);
-}
-
-// The hall behind her open door, seen through the doorway at `p` (on the
-// facade, facing `n`, `y0` up from the street): the ray goes on inside to
-// the back wall, a side wall, the floor or the ceiling. Its glow's colour
-// and strength.
-vec4 hallSeen(vec3 p, vec3 n, vec3 rd, float y0) {
-  const float D = 2.4, W = 0.7, H = 2.4;
-  vec3 side = vec3(n.z, 0.0, -n.x);
-  float a = FRIEND_DOOR * DEG;
-  float x0 = dot(p - vec3(cos(a), 0.0, sin(a)) * length(p.xz), side);
-  vec3 q = vec3(max(dot(rd, -n), 1e-3), rd.y, dot(rd, side));
-  float t = D / q.x;
-  float wall = 0.0;
-  if (abs(q.z) > 1e-4) {
-    float ts = (sign(q.z) * W - x0) / q.z;
-    if (ts < t) { t = ts; wall = 1.0; }
-  }
-  if (q.y < -1e-4) {
-    float tf = -y0 / q.y;
-    if (tf < t) { t = tf; wall = 2.0; }
-  } else if (q.y > 1e-4) {
-    float tc = (H - y0) / q.y;
-    if (tc < t) { t = tc; wall = 3.0; }
-  }
-  vec3 h = vec3(q.x * t, y0 + q.y * t, x0 + q.z * t);
-  vec3 toLamp = h - vec3(1.4, 2.2, 0.0);
-  float lit = 0.16 + 0.8 * exp(-dot(toLamp, toLamp) / 1.8);
-  // Panelled below, a darker doorway further in at the back.
-  if (wall < 2.0 && h.y < 0.9) lit *= 0.65;
-  if (wall == 0.0 && abs(h.z) < 0.36 && h.y < 2.0) lit *= 0.3;
-  if (wall == 1.0) lit *= 0.75;
-  if (wall == 2.0) lit *= 0.5;
-  if (wall == 3.0) lit = 0.08 + 1.3 * exp(-dot(toLamp.xz, toLamp.xz) / 0.03);
-  lit *= mix(1.0, 0.75, h.x / D);
-  return vec4(mix(u_warm, u_pale, 0.2), min(lit, 1.0));
 }
 
 struct Surf {
@@ -1137,7 +1116,7 @@ Surf surfaceOf(Hit h, vec3 ro, vec3 rd, vec3 p) {
       }
       float th = atan(p.z, p.x) / DEG;
       float r = length(p.xz);
-      // The café's big window and her lit door.
+      // The café's big window.
       float cafe = abs(wrapDeg(th - CAFE)) * DEG * r;
       if (cafe < 1.25 && lp.y > 0.35 && lp.y < 2.3 && ln.x < 0.0) {
         bool mullion = abs(cafe - 0.62) < 0.035 || lp.y < 0.42;
@@ -1145,17 +1124,9 @@ Surf surfaceOf(Hit h, vec3 ro, vec3 rd, vec3 p) {
         s.glow = mix(u_warm, u_pale, 0.25);
         alb = mullion ? tone(0.3, 0.3) : vec3(0.0);
       }
-      // Her open door: a dim hall behind it, a lamp further in.
+      // Her doorway's frame.
       float door = abs(wrapDeg(th - FRIEND_DOOR)) * DEG * r;
-      if (door < 0.52 && lp.y < 2.21 && ln.x < 0.0) {
-        alb = tone(0.3, 0.3);
-        if (door < 0.46 && lp.y < 2.15) {
-          vec4 g = hallSeen(p, n, rd, lp.y);
-          s.emit = g.w;
-          s.glow = g.rgb;
-          alb = vec3(0.0);
-        }
-      }
+      if (door < HER_DOOR.x + 0.07 && lp.y < HER_DOOR.y + 0.06 && ln.x < 0.0 && r < FACADE + 0.02) alb = tone(0.3, 0.3);
     }
   }
 
@@ -1163,7 +1134,7 @@ Surf surfaceOf(Hit h, vec3 ro, vec3 rd, vec3 p) {
   float moon = max(dot(n, MOON.xyz), 0.0);
   if (moon > 0.0 && !far) moon *= moonSeen(p + n * 0.012 + MOON.xyz * 0.004, MOON.xyz, h.id);
   s.moon = moon;
-  bool indoor = inHouse(p) || inCar(p) >= 0;
+  bool indoor = inHouse(p) || inCar(p) >= 0 || inHall(p);
   float ao = 1.0;
   if (abs(n.y) < 0.6) ao = mix(0.45, 1.0, smoothstep(0.0, 0.7, p.y - floorY));
   ao *= contact(p, n);

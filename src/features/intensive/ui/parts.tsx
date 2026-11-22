@@ -26,13 +26,13 @@ const FormalContext = createContext(false);
 export const FormalTone = FormalContext.Provider;
 export const useFormal = () => useContext(FormalContext);
 
-/** Why an invite code does not open, in the walker's words. */
+/** Why an invite code does not open; formal, like the rest of the code step. */
 export function inviteText(state: Exclude<InviteState, 'ok'>) {
   switch (state) {
-    case 'wrong': return 'Такого кода нет. Проверь, как он написан.';
-    case 'expired': return 'Срок этого кода истёк. Попроси новый.';
-    case 'used up': return 'По этому коду уже вошли все, для кого он был. Попроси новый.';
-    case 'revoked': return 'Этот код отозван. Попроси новый.';
+    case 'wrong': return 'Такого кода нет. Проверьте, как он написан.';
+    case 'expired': return 'Срок этого кода истёк. Попросите новый.';
+    case 'used up': return 'По этому коду уже вошли все, для кого он был. Попросите новый.';
+    case 'revoked': return 'Этот код отозван. Попросите новый.';
   }
 }
 

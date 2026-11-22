@@ -92,8 +92,7 @@ export function InviteStep({ busy, error, onSubmit, demoCode }: { busy: boolean;
   const valid = length >= 10 && length <= 32;
   const submit = () => { if (valid && !busy) onSubmit(code); };
   return <View style={styles.stack}>
-    <Hero glyph="key" title="КОД ПРИГЛАШЕНИЯ" tight lines={['Интенсив открыт по приглашению. Введи код, который тебе дали.',
-      'Нет кода? Попроси его у того, кто позвал тебя в Интенсив.']} />
+    <Hero glyph="key" title="КОД ПРИГЛАШЕНИЯ" tight lines={['Чтобы создать аккаунт, введите код, который вам передали.']} />
     <GlassField label="КОД" value={code} maxLength={40} autoFocus autoCapitalize="characters" autoComplete="off" placeholder="XXXX-XXXX-XXXX"
       style={styles.invite} accessibilityLabel="Код приглашения" returnKeyType="done"
       onChangeText={text => setCode(text.toUpperCase())} onSubmitEditing={submit} />

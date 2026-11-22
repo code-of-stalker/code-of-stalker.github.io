@@ -1,0 +1,18 @@
+// Android shell of Code Of Stalker: a WebView that serves the app's own web export
+// from the APK (see README.md). Built by `npm run build:android`.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = 'code-of-stalker'
+include ':app'

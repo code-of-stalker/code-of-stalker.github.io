@@ -101,3 +101,15 @@ secrets.*.json
 # Claude Code: personal settings and notes stay local
 /.claude/settings.local.json
 /CLAUDE.local.md
+
+# Android app shell (android-app/): build output and machine paths stay out of the repo.
+# Gradle's build folder is redirected outside the repo by scripts/android/build.mjs.
+/android-app/.gradle/
+/android-app/.kotlin/
+/android-app/.idea/
+/android-app/build/
+/android-app/app/build/
+/android-app/local.properties
+/android-app/app/src/main/assets/
+*.aab
+*.idsig

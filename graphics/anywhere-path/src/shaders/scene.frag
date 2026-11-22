@@ -847,7 +847,7 @@ vec3 figureTone(int fi, int part) {
   }
   // Her: long dark hair, a pale scarf, a warm long coat, dark legs.
   if (part == CAP) return tone(0.14, 0.5);
-  if (part == SCARF) return tone(0.42, 0.85);
+  if (part == SCARF || part == SCARF + 1) return tone(0.42, 0.85);
   if (scarf) return tone(0.7, -0.4);
   if (legs) return tone(0.1, 0.0);
   return tone(0.42, 0.85);

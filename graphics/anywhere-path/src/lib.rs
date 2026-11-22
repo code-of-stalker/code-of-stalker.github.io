@@ -45,7 +45,7 @@ use watcher_scene_palette::Palette;
 
 pub use story::FIGS;
 
-pub const LOOP: f32 = 155.5;
+pub const LOOP: f32 = 159.5;
 
 /// The data texture: one row of cones per figure.
 pub const FIG_TEXELS: usize = 3 * body::PRIMITIVES;

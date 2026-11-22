@@ -600,8 +600,8 @@ pub struct Pose {
     /// height).
     pub head: f32,
     /// A long coat's skirt from the waist, its hem this far below the
-    /// knees (0: none). It takes the first of the scarf's links, so only
-    /// one without the scarf wears it.
+    /// knees (0: none). It takes the first two of the scarf's links (the
+    /// skirt, the hips), so only one without the scarf wears it.
     pub coat: f32,
 }
 
@@ -916,19 +916,28 @@ pub fn build(pose: &Pose) -> Body {
     let [wx, wz, phase, strength] = pose.scarf;
     if strength < 0.0 {
         // No scarf: its links stand empty inside the pelvis, or the first
-        // is a long coat's skirt flaring from the waist past the knees, its
-        // hem cut square.
+        // two are a long coat: its skirt flaring past the knees, its hem
+        // cut square, and the coat over the hips.
         let mut empty = SCARF_LINKS;
         if pose.coat > 0.0 {
+            // The skirt, then the coat over the hips, wider than the
+            // pelvis (HIP + its 0.1 radius) so the hips never show through.
             let hem = knees[0].lerp(knees[1], 0.5) - Y * pose.coat;
             cone(
-                p + pelvic.up * 0.12,
-                0.14,
+                p - pelvic.up * 0.04,
+                0.215,
                 hem,
-                0.2,
-                cut(pelvic.forward, 0.78),
+                0.25,
+                cut(pelvic.forward, 0.8),
             );
-            empty -= 1;
+            cone(
+                p + pelvic.up * 0.12,
+                0.18,
+                p - pelvic.up * 0.06,
+                0.22,
+                Some((pelvic.forward, 0.8)),
+            );
+            empty -= 2;
         }
         for _ in 0..empty {
             cone(p, 0.001, p + Y * 0.01, 0.001, None);

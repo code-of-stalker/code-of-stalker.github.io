@@ -143,8 +143,10 @@ impl Story {
         h.turn_to(facing(HOUSE)).mark("window");
         keys.go = h.when("go");
         keys.window = h.when("window");
-        keys.t_w = keys.window + 1.3;
-        h.wait(2.4).mark("leave");
+        // He stands a while: the night through his eyes, the train comes,
+        // passes the window and goes.
+        keys.t_w = keys.window + 3.2;
+        h.wait(6.4).mark("leave");
         keys.leave = h.when("leave");
         // Round the room's corner, through the partition's doorway, to his
         // chair; he sits opposite the one who lives here.
@@ -191,16 +193,16 @@ impl Story {
         );
         h.turn_to(facing(STATION + 0.6)).mark("at_seat");
         keys.at_seat = h.when("at_seat");
-        keys.arrive = keys.t_w + 9.0;
+        keys.arrive = keys.leave + 7.9;
         keys.dep = keys.at_seat + 0.6;
         keys.lake = keys.dep + 12.0;
         keys.lake_dep = keys.lake + 6.4;
         world.train = [
             (0.0, -70.0),
             (4.0, -70.0),
-            (keys.t_w - 1.2, 9.0),
+            (keys.t_w - 1.6, 5.0),
             (keys.t_w, 21.5),
-            (keys.t_w + 1.2, 34.0),
+            (keys.t_w + 1.6, 38.0),
             (keys.arrive, STATION),
             (keys.dep, STATION),
             (keys.lake, LAKE),

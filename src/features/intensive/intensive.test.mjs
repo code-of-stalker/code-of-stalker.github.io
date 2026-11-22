@@ -401,3 +401,32 @@ test('the demo keeps the chat limits of the schema; only the main admin sees the
   alex.lock();
   yana.lock();
 });
+
+test('with the TOTP step switched off on the server, staff and the main admin go in without a code', async () => {
+  storage.clear();
+  const personas = await demoBackend.personas();
+  const as = async name => IntensiveSession.restore(demoBackend, personas.find(p => firstName(p.name) === name).entropy);
+  const before = await as('Яна');
+  assert.equal(before.needsTotpStep, true);
+  await assert.rejects(before.storage(), error => error.code === 'denied');
+  before.lock();
+
+  demoBackend.requireTotp(false);
+  try {
+    const yana = await as('Яна');
+    assert.equal(yana.status.totpOff, true);
+    assert.equal(yana.status.needsTotp, false);
+    assert.equal(yana.needsTotpStep, false);
+    assert.ok((await yana.storage()).totalBytes > 0);
+    assert.ok((await yana.myChats()).length > 0);
+    const mira = await as('Мира');
+    assert.equal(mira.needsTotpStep, false);
+    assert.ok((await mira.myChats()).length > 0);
+    yana.lock(); mira.lock();
+  } finally { demoBackend.requireTotp(true); }
+
+  const after = await as('Яна');
+  assert.equal(after.status.totpOff, false);
+  assert.equal(after.needsTotpStep, true);
+  after.lock();
+});

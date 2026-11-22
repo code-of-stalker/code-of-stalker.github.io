@@ -23,6 +23,11 @@
 --   holds only ciphertext and public keys.
 -- * Guides, admins, the main admin and anyone who enabled TOTP get no data
 --   without an aal2 (TOTP-verified) session: a restrictive policy on every table.
+--   For testing only, the project owner may switch the TOTP step off in this SQL
+--   editor (no deploy needed); /admin then warns that it is off:
+--     create or replace function private.totp_required() returns boolean language sql stable set search_path = '' as $$ select false; $$;
+--   The same line with `select true` switches it back on, and so does running
+--   this file again.
 -- * The PIN of each device is checked here: five wrong PINs delete the device's
 --   pepper, and the device can no longer open its sealed phrase.
 -- * A blocked account gets no data at all (a second restrictive policy) until the
@@ -207,10 +212,16 @@ returns boolean language sql stable set search_path = '' as $$
   select coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2';
 $$;
 
+-- The TOTP step is on. Running this file switches it back on (see the header).
+create or replace function private.totp_required()
+returns boolean language sql stable set search_path = '' as $$
+  select true;
+$$;
+
 -- Staff, and anyone who enabled TOTP, must hold a TOTP-verified session.
 create or replace function private.mfa_ok()
 returns boolean language sql stable security definer set search_path = '' as $$
-  select private.aal2() or not (
+  select private.aal2() or not private.totp_required() or not (
     private.is_staff(auth.uid())
     or exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status::text = 'verified')
   );
@@ -244,7 +255,7 @@ begin
   if not private.is_main_admin(auth.uid()) then
     raise exception 'main admin only' using errcode = '42501';
   end if;
-  if not private.aal2() then
+  if private.totp_required() and not private.aal2() then
     raise exception 'totp session required' using errcode = '42501';
   end if;
 end;
@@ -505,7 +516,8 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'main_admin', private.is_main_admin(auth.uid()),
     'aal', coalesce(auth.jwt() ->> 'aal', 'aal1'),
     'has_totp', exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status::text = 'verified'),
-    'needs_totp', private.is_staff(auth.uid()),
+    'needs_totp', private.totp_required() and private.is_staff(auth.uid()),
+    'totp_off', not private.totp_required(),
     'blocked', private.is_blocked(auth.uid()));
 $$;
 

@@ -61,6 +61,8 @@ class DemoServer {
   personas: DemoPersona[] = [];
   privateKeys = new Map<string, CryptoKey>();
   private nextMessage = 1;
+  /** private.totp_required() of the schema. */
+  totpRequired = true;
   ready: Promise<void>;
 
   constructor() { this.ready = this.seed(); }
@@ -75,7 +77,7 @@ class DemoServer {
     return null;
   }
   isStaff(uid: string) { const u = this.users.get(uid); return !!u && (u.main || u.roles.size > 0); }
-  mfaOk(uid: string, aal: string) { const u = this.users.get(uid); return aal === 'aal2' || !(this.isStaff(uid) || u?.totp?.verified); }
+  mfaOk(uid: string, aal: string) { const u = this.users.get(uid); return aal === 'aal2' || !this.totpRequired || !(this.isStaff(uid) || u?.totp?.verified); }
   /** The two restrictive policies of the schema: the TOTP step and blocking. */
   allowed(uid: string, aal: string) { return this.mfaOk(uid, aal) && !this.blocked.has(uid); }
 
@@ -256,7 +258,7 @@ function connect(store: AuthStore): Backend {
   const mainAdmin = () => {
     const { user, aal } = me();
     if (!user.main) throw denied('main admin only');
-    if (aal !== 'aal2') throw denied('totp session required');
+    if (s.totpRequired && aal !== 'aal2') throw denied('totp session required');
     return user;
   };
   return {
@@ -280,7 +282,7 @@ function connect(store: AuthStore): Backend {
     async status() {
       await wait(60);
       const { user, aal } = me();
-      return { id: user.id, name: user.name ?? null, hasProfile: !!user.name, roles: [...user.roles].sort(), mainAdmin: user.main, aal, hasTotp: !!user.totp?.verified, needsTotp: s.isStaff(user.id), blocked: s.blocked.has(user.id) };
+      return { id: user.id, name: user.name ?? null, hasProfile: !!user.name, roles: [...user.roles].sort(), mainAdmin: user.main, aal, hasTotp: !!user.totp?.verified, needsTotp: s.totpRequired && s.isStaff(user.id), totpOff: !s.totpRequired, blocked: s.blocked.has(user.id) };
     },
     async createProfile(id, name, publicKey, wrapped, invite) {
       await wait();
@@ -499,10 +501,12 @@ function connect(store: AuthStore): Backend {
   };
 }
 
-export const demoBackend: BackendFactory & { personas(): Promise<DemoPersona[]>; invite: string } = {
+export const demoBackend: BackendFactory & { personas(): Promise<DemoPersona[]>; invite: string; requireTotp(on: boolean): void } = {
   demo: true,
   invite: DEMO_INVITE,
   async personas() { const s = demoServer(); await s.ready; return s.personas; },
+  /** The owner's switch line in the SQL editor. */
+  requireTotp(on) { demoServer().totpRequired = on; },
   async unlockDevice(deviceId, verifier): Promise<UnlockResult> {
     const s = demoServer();
     await s.ready; await wait(200);

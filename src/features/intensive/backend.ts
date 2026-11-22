@@ -11,6 +11,8 @@ export type Status = {
   aal: 'aal1' | 'aal2';
   hasTotp: boolean;
   needsTotp: boolean;
+  /** The owner switched the TOTP step off on the server for testing: nobody is asked for a code. */
+  totpOff: boolean;
   /** Closed by the main admin: the server returns no data until unblocked. */
   blocked: boolean;
 };

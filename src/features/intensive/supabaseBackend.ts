@@ -72,7 +72,7 @@ function connect(config: Config, store: AuthStore): Backend {
         id: String(raw.id), name: optional(raw.name), hasProfile: !!raw.has_profile,
         roles: (raw.roles as StaffRole[]) ?? [], mainAdmin: !!raw.main_admin,
         aal: raw.aal === 'aal2' ? 'aal2' : 'aal1', hasTotp: !!raw.has_totp, needsTotp: !!raw.needs_totp,
-        blocked: !!raw.blocked,
+        totpOff: !!raw.totp_off, blocked: !!raw.blocked,
       } satisfies Status;
     },
     async createProfile(_id, name, publicKey, wrapped, invite) {

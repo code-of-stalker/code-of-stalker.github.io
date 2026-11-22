@@ -600,8 +600,8 @@ pub struct Pose {
     /// height).
     pub head: f32,
     /// A long coat's skirt from the waist, its hem this far below the
-    /// knees (0: none). It takes the first two of the scarf's links (the
-    /// skirt, the hips), so only one without the scarf wears it.
+    /// knees (0: none). It takes the first three of the scarf's links (two
+    /// flaps, the hips), so only one without the scarf wears it.
     pub coat: f32,
 }
 
@@ -916,20 +916,25 @@ pub fn build(pose: &Pose) -> Body {
     let [wx, wz, phase, strength] = pose.scarf;
     if strength < 0.0 {
         // No scarf: its links stand empty inside the pelvis, or the first
-        // two are a long coat: its skirt flaring past the knees, its hem
+        // three are a long coat: its two flaps flaring past the knees, hems
         // cut square, and the coat over the hips.
         let mut empty = SCARF_LINKS;
         if pose.coat > 0.0 {
-            // The skirt, then the coat over the hips, wider than the
-            // pelvis (HIP + its 0.1 radius) so the hips never show through.
-            let hem = knees[0].lerp(knees[1], 0.5) - Y * pose.coat;
-            cone(
-                p - pelvic.up * 0.04,
-                0.215,
-                hem,
-                0.25,
-                cut(pelvic.forward, 0.8),
-            );
+            // Each flap hangs from the waist over one leg and swings with
+            // its knee, so a stride never pushes a knee out through the
+            // cloth; standing, the two close into one skirt.
+            for (i, s) in sides.iter().enumerate() {
+                let out = (knees[i] - p).dot(pelvic.left);
+                cone(
+                    p - pelvic.up * 0.04 + pelvic.left * (0.035 * s),
+                    0.19,
+                    knees[i] - pelvic.left * (0.6 * out) - Y * pose.coat,
+                    0.22,
+                    cut(pelvic.forward, 0.9),
+                );
+            }
+            // The coat over the hips, wider than the pelvis (HIP + its 0.1
+            // radius) so the hips never show through.
             cone(
                 p + pelvic.up * 0.12,
                 0.18,
@@ -937,7 +942,7 @@ pub fn build(pose: &Pose) -> Body {
                 0.22,
                 Some((pelvic.forward, 0.8)),
             );
-            empty -= 2;
+            empty -= 3;
         }
         for _ in 0..empty {
             cone(p, 0.001, p + Y * 0.01, 0.001, None);

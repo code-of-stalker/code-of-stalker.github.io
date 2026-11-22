@@ -177,6 +177,8 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   - A person leaves through a real door, never fades into a wall («исчезает в текстурах»):
     a doorway with a room behind it, the leaf swings open, she goes in and shuts it, and the
     camera keeps the door in view.
+  - Legs must never pass through a skirt or coat in a stride («ноги сквозь платье проходят»):
+    one stiff cone cannot hold two swinging legs; give each leg its own flap that follows its knee.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

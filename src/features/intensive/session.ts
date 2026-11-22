@@ -1,6 +1,6 @@
 import { BackendError } from './backend';
 import type { AuthStore, Backend, BackendFactory, ChatSummary, DirectoryEntry, Invite, KeyRow, Member, MessageKind, MessageRow, Place, StaffRole, Status, Storage, TotpEnrollment } from './backend';
-import { clearChatMemory, forgetSeen } from './chatMemory';
+import { clearChatMemory, forgetReportFolded, forgetSeen } from './chatMemory';
 import * as c from './crypto';
 import type { Bytes } from './crypto';
 
@@ -20,6 +20,12 @@ export const hasDevice = () => readDevice() !== null;
 export function wipeDevice() {
   try { globalThis.localStorage?.removeItem(DEVICE_KEY); } catch { /* Storage may be blocked; nothing to wipe then. */ }
   forgetSeen();
+}
+/** «Сбросить всё» in the settings: the account and every Intensive mark leave this device; the 12 words bring it back. */
+export function forgetIntensiveHere() {
+  wipeDevice();
+  forgetReportFolded();
+  clearChatMemory();
 }
 
 /** Auth tokens live in memory; every change is resealed into the device vault. */

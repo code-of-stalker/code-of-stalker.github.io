@@ -53,6 +53,10 @@ export function reportFolded() {
   try { return globalThis.localStorage?.getItem(FOLD_KEY) === '1'; } catch { return false; }
 }
 
+export function forgetReportFolded() {
+  try { globalThis.localStorage?.removeItem(FOLD_KEY); } catch { /* Nothing stored then. */ }
+}
+
 export function keepReportFolded(folded: boolean) {
   try { globalThis.localStorage?.setItem(FOLD_KEY, folded ? '1' : '0'); } catch { /* Storage may be blocked; the plate then opens unfolded. */ }
 }

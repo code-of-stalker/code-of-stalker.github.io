@@ -142,6 +142,43 @@ Read before any visual work. One line per lesson; add new ones with `/handoff`.
   (glass, light points, wireframe, jade…). Realistic people only in the texts about the
   illusions of thinking. On 09 he chose a body woven of still strings («А Струны»); such a
   body keeps dark gaps between its strings, never a milky grey. Passed («Ок, делай темы»).
+- Page 10 «Пробуй в любой среде» (2026-11-21): a standing hero with only the background
+  changing behind him («Он тот же») is «скучно и уныло»; he wants a whole 3D scene as in
+  Step 7. He chose «Сквозной путь» (a night journey through every place in the text).
+- «Сквозной путь» round 1, an engraved look, was rejected. Pale hatching on the dark page
+  «режет глаз… не столько стилизованно сколько неприятно». The bar is Step 7: smooth shaded
+  3D with fog, lamp glow and depth («глубины нет»). Details must hold up («в деталях просто
+  провал»):
+  - People must sit on chairs, not behind the chair back.
+  - A crowd is real varied people, never capsule dummies («люди на вокзале просто болванки?»).
+  - Places must read as separate: a house a few metres from the station platform reads as
+    «человек живет прямо на вокзале?».
+  - He liked the finale («конец неплохой»).
+  - No sphere at all on this page, only the two rings («сферы тоже не должно быть, только 2
+    кольца»).
+- «Сквозной путь» round 2 (smooth 3D), Art's notes by timecode:
+  - The camera must never hold on an empty room after he leaves the frame («4 секунды камера
+    стоит и мы видим просто пустую комнату?»): cut to where he goes.
+  - Not everything defocused («почему всё в расфокусе таком?»): keep depth of field light.
+  - A hard capsule shadow of the hero is «топорная»: soft shadows that follow the body.
+  - A first-person shot needs time («ты только переключил и он уже сразу идет обратно»):
+    hold it several seconds before he moves.
+  - Nothing may come between the camera and him («почему камеру что-то загораживает?»).
+  - A second person must not look like a clone of the hero, and a door must not open into a
+    glowing void («уходит куда-то в светящуюся пустоту»): give the room behind it depth.
+- «Сквозной путь» round 3 (2026-11-22), to fix next:
+  - A cut to his eyes must last: the window POV at the start showed the train «буквально
+    секунду… нахуя тогда нам этот переход?». Hold the first-person view on the train longer.
+  - Clothes must cover the body: the friend's pelvis pokes out through her coat at the sides.
+- «Сквозной путь» round 4 (2026-11-22):
+  - A first-person view must be alive, not a frozen stare («просто стоит как будто он залип на
+    поезд»): the gaze follows what passes and breathes. Nor may it cut to third person the
+    moment he moves: keep his eyes through the turn and the walk to the next place.
+  - A person leaves through a real door, never fades into a wall («исчезает в текстурах»):
+    a doorway with a room behind it, the leaf swings open, she goes in and shuts it, and the
+    camera keeps the door in view.
+  - Legs must never pass through a skirt or coat in a stride («ноги сквозь платье проходят»):
+    one stiff cone cannot hold two swinging legs; give each leg its own flap that follows its knee.
 
 ## Step 7 «Динамическая сфера»
 - The finale must be all 3D and «прям оочень качественное исполнение»; he judges the scene itself, not its color («я не про цвет говорил а про сцену саму»).

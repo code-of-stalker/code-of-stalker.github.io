@@ -32,6 +32,8 @@ export type SettingsScreenProps = {
   onOpenSeventhStep: () => void;
   onReset: () => Promise<void>;
   resetting?: boolean;
+  /** An Intensive account is stored on this device: the reset removes it too. */
+  intensiveHere?: boolean;
 };
 
 const assets = {
@@ -80,7 +82,7 @@ function ToggleRow({ label, detail, enabled, onToggle }: { label: string; detail
   );
 }
 
-export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onOpenSeventhStep, onReset, resetting = false }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, onOpenSecondStep, onOpenThirdStep, onOpenFourthStep, onOpenFifthStep, onOpenSixthStep, onOpenSeventhStep, onReset, resetting = false, intensiveHere = false }: SettingsScreenProps) {
   const colors = useThemeColors();
   const styles = useThemeStyles(createStyles);
   const [confirmReset, setConfirmReset] = useState(false), [resetError, setResetError] = useState('');
@@ -170,6 +172,7 @@ export function SettingsScreen({ settings, onChange, onBack, onPreviewCooldown, 
         <View style={styles.resetBackdrop}><Panel filled style={styles.resetPanel}>
           <ProductText variant="title">НАЧАТЬ ЗАНОВО?</ProductText>
           <ProductText style={styles.resetDescription}>Все записи, прогресс и настройки будут удалены. Затем заново подберём настройки для этого устройства.</ProductText>
+          {intensiveHere ? <ProductText style={styles.resetDescription}>Аккаунт Интенсива тоже уйдёт с этого устройства. Вернуть его можно только по 12 словам.</ProductText> : null}
           {resetError ? <ProductText accessibilityRole="alert" color={colors.error}>{resetError}</ProductText> : null}
           <ProductButton label={resetting ? 'СБРАСЫВАЕМ…' : 'УДАЛИТЬ ВСЁ И НАЧАТЬ'} disabled={resetting} onPress={() => { void reset(); }} />
           <ProductButton label="ОТМЕНА" kind="outline" disabled={resetting} onPress={() => setConfirmReset(false)} />

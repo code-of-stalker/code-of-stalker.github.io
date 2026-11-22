@@ -29,7 +29,7 @@ globalThis.localStorage = {
 const c = load('crypto');
 const phrase = load('phrase');
 const { demoBackend, DEMO_INVITE, nameKey } = load('demoBackend');
-const { IntensiveSession, hasDevice, shortCode, cleanName, joinName, isFullName, firstName } = load('session');
+const { IntensiveSession, hasDevice, forgetIntensiveHere, shortCode, cleanName, joinName, isFullName, firstName } = load('session');
 
 test('12 words and the key line encode the same secret', () => {
   const { words, entropy } = phrase.newPhrase();
@@ -429,4 +429,23 @@ test('with the TOTP step switched off on the server, staff and the main admin go
   assert.equal(after.status.totpOff, false);
   assert.equal(after.needsTotpStep, true);
   after.lock();
+});
+
+test('«Сбросить всё» takes the Intensive account and its marks off this device', () => {
+  const before = new Map(storage);
+  try {
+    storage.set('intensive.device.v1', JSON.stringify({ v: 1, deviceId: 'd1', salt: 's', sealed: { iv: 'i', data: 'x' } }));
+    storage.set('intensive.seen.v1', JSON.stringify({ chat: 3 }));
+    storage.set('intensive.reportFolded.v1', '1');
+    storage.set('product.other', 'stays');
+    assert.equal(hasDevice(), true);
+    forgetIntensiveHere();
+    assert.equal(hasDevice(), false);
+    assert.equal(storage.has('intensive.seen.v1'), false);
+    assert.equal(storage.has('intensive.reportFolded.v1'), false);
+    assert.equal(storage.get('product.other'), 'stays');
+  } finally {
+    storage.clear();
+    for (const [key, value] of before) storage.set(key, value);
+  }
 });

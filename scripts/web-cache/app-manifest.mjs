@@ -35,12 +35,20 @@ export async function prepareAppManifest(root, html) {
   await fs.writeFile(path.join(root, 'watcher.webmanifest'), JSON.stringify(manifest, null, 2) + '\n');
   const tags = [
     `<title>${name}</title>`,
+    // Expo's viewport plus `viewport-fit=cover`: the screens get real safe-area insets
+    // (env(safe-area-inset-*)) and pad themselves away from the clock and the home bar.
+    '<meta id="watcher-app-viewport" name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover">',
     '<link id="watcher-app-manifest" rel="manifest" href="/watcher.webmanifest">',
     `<link id="watcher-app-favicon" rel="icon" type="image/png" sizes="32x32" href="${favicon}">`,
     `<link id="watcher-app-icon" rel="apple-touch-icon" sizes="180x180" href="${appleIcon}">`,
     '<meta id="watcher-app-capable" name="apple-mobile-web-app-capable" content="yes">',
     `<meta id="watcher-app-title" name="apple-mobile-web-app-title" content="${name}">`,
     '<meta id="watcher-app-theme" name="theme-color" content="#000000">',
+    // Home-screen app on iPhone/iPad: the page runs under the clock with light status text
+    // instead of iOS's white bar (Art 2026-11-22). The screens pad the top by the safe area.
+    '<meta id="watcher-app-status-bar" name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+    // The page is dark before React paints, so the area under the clock never flashes white.
+    '<style id="watcher-app-page">html,body{background-color:#000}</style>',
     `<meta id="watcher-app-og-title" property="og:title" content="${name}">`,
     `<meta id="watcher-app-og-site" property="og:site_name" content="${name}">`,
     '<meta id="watcher-app-og-type" property="og:type" content="website">',
@@ -56,7 +64,9 @@ export async function prepareAppManifest(root, html) {
     `<meta id="watcher-app-twitter-image" name="twitter:image" content="${siteUrl}${preview}">`,
     '<meta id="watcher-app-twitter-image-alt" name="twitter:image:alt" content="Иллюстрация второго шага архитектуры наблюдения">',
   ].join('\n');
-  html = html.replace(/<(?:link|meta)\b[^>]*\bid="watcher-app-[^"]+"[^>]*>\s*/g, '');
+  html = html.replace(/<(?:link|meta)\b[^>]*\bid="watcher-app-[^"]+"[^>]*>\s*/g, '')
+    .replace(/<style\b[^>]*\bid="watcher-app-[^"]+"[^>]*>[\s\S]*?<\/style>\s*/g, '')
+    .replace(/<meta\b[^>]*\bname="viewport"[^>]*>\s*/gi, '');
   html = html.replace(/<title\b[^>]*>[\s\S]*?<\/title>\s*/gi, '')
     .replace(/<link\b[^>]*\brel="(?:shortcut )?icon"[^>]*>\s*/gi, '');
   return /<head\b[^>]*>/i.test(html) ? html.replace(/(<head\b[^>]*>)\s*/i, '$1\n' + tags + '\n')

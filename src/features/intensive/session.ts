@@ -216,8 +216,8 @@ export class IntensiveSession {
     await this.refresh();
   }
 
-  /** Staff, and walkers who turned it on, must pass the TOTP step first. */
-  get needsTotpStep() { return !!this.status && (this.status.needsTotp || this.status.hasTotp) && this.status.aal !== 'aal2'; }
+  /** Staff, and walkers who turned it on, must pass the TOTP step first, unless the server switched it off. */
+  get needsTotpStep() { return !!this.status && !this.status.totpOff && (this.status.needsTotp || this.status.hasTotp) && this.status.aal !== 'aal2'; }
 
   async openIdentity() {
     if (this.identityKey) return;

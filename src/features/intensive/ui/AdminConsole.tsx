@@ -376,9 +376,14 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
     </DiaryDesignPanel>
   </BottomSheet>;
 
+  // While the owner has the TOTP step switched off on the server for testing, the console says so first.
+  const totpOff = session.status?.totpOff
+    ? <Note tone="error">Второй ключ выключен для теста: все входят без кода из приложения. Перед запуском включите его обратно.</Note> : null;
+
   // ------------------------------------------------------------- phone and narrow windows
 
   if (!wide) return <View style={styles.stack}>
+    {totpOff}
     {tabs}
     {search}
     {/* The filters run to the screen's edges: the first lines up with the page, the rest slide off the glass (Art 2026-11-12). */}
@@ -426,6 +431,7 @@ export function AdminConsole({ session, onOpenChat }: { session: IntensiveSessio
 
   // The search sits over the list it searches (Art 2026-11-12), the filters right under it.
   return <View style={styles.workspace}>
+    {totpOff}
     <View style={styles.toolbar}>
       <View style={styles.tabsWide}>{tabs}</View>
       <View style={styles.refreshWide}>{refresh}</View>

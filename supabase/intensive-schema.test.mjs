@@ -509,3 +509,47 @@ describe('limits', () => {
     await voice(people.guide, 'aal2', chat);
   });
 });
+
+describe('the TOTP switch', () => {
+  // The line from the header that the owner pastes into the SQL editor, run as it is written.
+  const offLine = schema.split('\n').map(line => line.replace(/^--\s+/, '')).find(line => line.startsWith('create or replace function private.totp_required()'));
+  const onLine = offLine.replace('select false;', 'select true;');
+  const status = async (who, aal) => (await rows(who, aal, 'select public.my_status()'))[0].my_status;
+
+  it('is on unless the owner switches it off', async () => {
+    assert.ok(offLine.includes('select false;'));
+    const yana = await status(people.yana, 'aal1');
+    assert.equal(yana.needs_totp, true);
+    assert.equal(yana.totp_off, false);
+    assert.equal((await rows(people.guide, 'aal1', 'select * from public.chats')).length, 0);
+    await fails(rows(people.yana, 'aal1', 'select * from public.admin_directory()'), /totp session required/);
+  });
+  it('switched off, staff and the main admin work without a TOTP session; the rest of the rules stay', async () => {
+    await db.exec(offLine);
+    const yana = await status(people.yana, 'aal1');
+    assert.equal(yana.needs_totp, false);
+    assert.equal(yana.totp_off, true);
+    assert.equal((await status(people.walker, 'aal1')).totp_off, true);
+    assert.ok((await rows(people.guide, 'aal1', 'select * from public.chats')).length > 0);
+    assert.ok((await rows(people.yana, 'aal1', 'select * from public.admin_directory()')).length > 0);
+    await rows(people.yana, 'aal1', 'select * from public.admin_storage()');
+    assert.deepEqual(await sendAs(people.guide, 'aal1', people.chat), [{ sender_id: people.guide, sender_role: 'guide' }]);
+    // Still only the main admin manages, and a stranger still sees only their own profile.
+    await fails(rows(people.guide, 'aal1', 'select * from public.admin_directory()'), /main admin only/);
+    assert.equal((await rows(people.stranger, 'aal1', 'select * from public.messages')).length, 0);
+    assert.equal((await rows(null, null, 'select * from public.profiles').catch(() => [])).length, 0);
+  });
+  it('the same line with true switches it back on', async () => {
+    await db.exec(onLine);
+    assert.equal((await status(people.yana, 'aal1')).totp_off, false);
+    assert.equal((await rows(people.guide, 'aal1', 'select * from public.chats')).length, 0);
+    await fails(rows(people.yana, 'aal1', 'select * from public.admin_directory()'), /totp session required/);
+  });
+  it('running the file again switches it back on', async () => {
+    await db.exec(offLine);
+    assert.equal((await status(people.yana, 'aal1')).totp_off, true);
+    await db.exec(schema);
+    assert.equal((await status(people.yana, 'aal1')).totp_off, false);
+    await fails(rows(people.yana, 'aal1', 'select * from public.admin_directory()'), /totp session required/);
+  });
+});

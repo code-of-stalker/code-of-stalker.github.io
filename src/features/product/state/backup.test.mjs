@@ -84,6 +84,25 @@ test('import preserves newer records and progress, deduplicates repeated imports
   const conflict = sample(); conflict.snapshot.observations[0].durationMs += 1;
   assert.throws(() => mergeBackup(merged, conflict), /конфликтующим/);
 });
+test('a level merely selected on a new device does not hide the copy\'s progress', () => {
+  const data = sample();
+  Object.assign(data.snapshot.progress, { step: 4, reachedStep: 4, availableAt: 200, secondStepCompletedAt: 300, fourthStepUnlocked: true });
+  const tapped = emptyProduct(); tapped.progress.selectedLevel = 'basic';
+  const restored = mergeBackup(tapped, data);
+  assert.equal(restored.progress.step, 4); assert.equal(restored.progress.fourthStepUnlocked, true);
+  assert.equal(restored.settings.theme, 'neutral', 'Nothing was used on the device yet, so the copy restores its settings too');
+});
+test('a diary in use takes the copy\'s progress only when the copy got further', () => {
+  const data = sample();
+  Object.assign(data.snapshot.progress, { step: 4, reachedStep: 4, availableAt: 200, secondStepCompletedAt: 300, fourthStepUnlocked: true });
+  const used = emptyProduct(); used.progress.selectedLevel = 'basic'; used.settings.theme = 'violet';
+  used.diaryEntries = [{ id: '4'.repeat(32), category: 'dynamics', kind: 'text', createdAt: 500, text: 'Новая запись' }];
+  const merged = mergeBackup(used, data);
+  assert.equal(merged.progress.step, 4); assert.equal(merged.settings.theme, 'violet'); assert.equal(merged.diaryEntries.length, 3);
+  // The device is ahead: an older copy never moves it back.
+  Object.assign(used.progress, { step: 5, reachedStep: 5, availableAt: 150, secondStepCompletedAt: 160, fourthStepUnlocked: true, fifthStepUnlocked: true });
+  assert.equal(mergeBackup(used, data).progress.step, 5);
+});
 test('protection reports the actual grant, denial, unsupported API and optional capacity failures', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   try {

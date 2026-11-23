@@ -1,5 +1,5 @@
-import { audioByteLimit, observationAad, validateSnapshot } from './model';
-import type { AudioRecord, DiaryAudio, ProductSnapshot } from './model';
+import { audioByteLimit, observationAad, recordedStep, validateSnapshot } from './model';
+import type { AudioRecord, DiaryAudio, ProductProgress, ProductSnapshot } from './model';
 
 export type BackupAudio = { id: string; bytes: Uint8Array<ArrayBuffer> };
 export type BackupData = { createdAt: number; snapshot: ProductSnapshot; audio: BackupAudio[] };
@@ -22,6 +22,18 @@ export function validateBackup(data: BackupData) {
   }
   if (records.size) throw new Error('В копии отсутствуют голосовые записи.');
 }
+/** Selecting a level alone is not progress: nothing was answered, read or unlocked yet. */
+function started(progress: ProductProgress) {
+  return recordedStep(progress) > 1 || progress.questionIndex > 0 || progress.availableAt !== null || progress.completedAt !== null;
+}
+/** Course milestones in order: furthest step entered, step two opened, step two done, level done. */
+function milestones(progress: ProductProgress) {
+  return [recordedStep(progress), progress.availableAt === null ? 0 : 1, progress.secondStepCompletedAt ? 1 : 0, progress.completedAt === null ? 0 : 1];
+}
+function further(a: ProductProgress, b: ProductProgress) {
+  const x = milestones(a), y = milestones(b), index = x.findIndex((value, i) => value !== y[i]);
+  return index >= 0 && x[index] > y[index];
+}
 export function mergeBackup(current: ProductSnapshot, data: BackupData): ProductSnapshot {
   validateBackup(data); validateSnapshot(current);
   const existing = new Map([...current.observations, ...(current.diaryEntries ?? [])].map(record => [record.id, record]));
@@ -32,11 +44,13 @@ export function mergeBackup(current: ProductSnapshot, data: BackupData): Product
     const incomingAudio = !('kind' in record) || record.kind === 'audio';
     if (previousAudio !== incomingAudio || (previousAudio && incomingAudio && observationAad(previous as AudioRecord) !== observationAad(record as AudioRecord))) throw new Error('В копии есть запись с конфликтующим идентификатором. Текущие данные не изменены.');
   }
-  // A new installation recovers the complete snapshot. An existing diary keeps
-  // its current settings/progress and newer records; repeated imports are safe.
-  const populated = existing.size > 0 || current.progress.selectedLevel !== null || current.progress.completedAt !== null;
+  // A new installation recovers the complete snapshot, even if a level was already tapped there.
+  // An existing diary keeps its settings and newer records, and its progress unless the copy got
+  // further through the course; repeated imports are safe.
+  const populated = existing.size > 0 || started(current.progress);
   const base = populated ? current : data.snapshot;
-  const next: ProductSnapshot = { ...base,
+  const progress = populated && further(data.snapshot.progress, current.progress) ? data.snapshot.progress : base.progress;
+  const next: ProductSnapshot = { ...base, progress,
     // Rendering preferences belong to the current device, even on an empty diary.
     settings: current.settings.effectQuality === undefined ? base.settings : { ...base.settings,
       effectQuality: current.settings.effectQuality, effectTargetFps: current.settings.effectTargetFps, smoothness: current.settings.smoothness },

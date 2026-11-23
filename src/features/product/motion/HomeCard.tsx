@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { PropsWithChildren } from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -12,11 +12,16 @@ import type { HomeTitleGradient } from './homeTitleGradient';
 import { ScanLight } from './ScanLight';
 import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
+import { SkeletonBlock, SkeletonHost } from '../skeleton/Skeleton';
 
 export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { kind: ArtKind; webScene?: WebScene; onPress(): void; accessibilityLabel: string; reducedMotion?: boolean } }>) {
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const { ref, report, progress, initialStyle } = usePanelReveal(true, !!artwork.reducedMotion);
+  // On the web the reveal mask hides the whole card, its illustration's skeleton included, until
+  // the surface draws its first frame; this skeleton holds the card's place outside the mask.
+  const [drawn, setDrawn] = useState(Platform.OS !== 'web' || !!artwork.reducedMotion);
+  const shown = useCallback(() => setDrawn(true), []);
   const {size,onLayout}=usePanelSize({width:288,height:200},ref);
   const glass = useMemo(() => homeGlassShape(width, size.width, size.height), [width, size]);
   const fillClip = Platform.OS === 'web' ? { clipPath: `path('${glass.path}')` } as ViewStyle : undefined;
@@ -24,7 +29,7 @@ export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { k
   return <View style={styles.card}><View ref={ref} style={[styles.card, initialStyle]} onLayout={onLayout}>
     {/* Clip every interior layer together; cut corners reveal the moving backdrop. */}
     <View testID="home-card-fill" style={[StyleSheet.absoluteFill, fillClip]}>
-      <View style={StyleSheet.absoluteFill}><Art {...artwork} height={size.height} width={size.width} glass={glass} presentation="card" onRevealProgress={report} /></View>
+      <View style={StyleSheet.absoluteFill}><Art {...artwork} height={size.height} width={size.width} glass={glass} presentation="card" onRevealProgress={report} onReady={shown} /></View>
       {children}
     </View>
     {Platform.OS !== 'web' && <PanelArtwork source={themedMask} style={styles.mask} />}
@@ -34,7 +39,9 @@ export function HomeCard({ children, artwork }: PropsWithChildren<{ artwork: { k
       <path d={glass.path} fill="none" stroke={colors.accent} strokeWidth={0.25} vectorEffect="non-scaling-stroke" />
     </svg> : <GlassOutline width={size.width} height={size.height} path={glass.path} />}
     <NativePanelReveal progress={progress} height={size.height} />
-  </View><ScanLight path={glass.path}/></View>;
+  </View><SkeletonHost ready={drawn} reducedMotion={artwork.reducedMotion} testID="home-card-skeleton" style={fillClip}>
+    <SkeletonBlock style={StyleSheet.absoluteFill} />
+  </SkeletonHost><ScanLight path={glass.path}/></View>;
 }
 
 // The shade begins at the text block and spans the whole card: flush to the

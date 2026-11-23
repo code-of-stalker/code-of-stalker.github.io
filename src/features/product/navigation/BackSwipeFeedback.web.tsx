@@ -56,7 +56,8 @@ export function BackSwipeFeedback({ children, feedbackRef, reducedMotion }: Back
     <div ref={page} data-back-swipe="idle" style={{flex:1,minWidth:0,minHeight:0,display:'flex',flexDirection:'column',transformOrigin:'right center',background:colors.background}}>{children}</div>
     <div ref={cue} aria-hidden data-back-swipe-cue style={{position:'absolute',left:12,top:100,opacity:0,pointerEvents:'none',zIndex:10000,color:colors.accent,display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
       <svg width="42" height="42" viewBox="0 0 42 42"><path d="M.25 .25H31.75L41.75 10.25V41.75H10.25L.25 31.75Z" fill={colors.background} stroke="currentColor" strokeWidth=".25"/><path d="M27 21H15m0 0 5-5m-5 5 5 5" fill="none" stroke="currentColor" strokeWidth=".75"/></svg>
-      <span ref={label} style={{fontFamily:'DisketMono',fontSize:9,letterSpacing:.8}}>НАЗАД</span>
+      {/* Written by the first drag: an idle page (the first setup screen among them) carries no «НАЗАД» text. */}
+      <span ref={label} style={{fontFamily:'DisketMono',fontSize:9,letterSpacing:.8}} />
     </div>
   </div>;
 }

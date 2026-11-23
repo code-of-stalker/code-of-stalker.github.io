@@ -40,11 +40,52 @@ final class Harness: NSObject, WKScriptMessageHandler {
       window.fetch = function (input, init) { const url = typeof input === 'string' ? input : input && input.url; if (outside(url)) send('outside', 'fetch ' + url); return fetch0.apply(this, arguments); };
       const open0 = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function (method, url) { if (outside(url)) send('outside', 'xhr ' + url); return open0.apply(this, arguments); };
-      if (window.WebSocket) window.WebSocket = new Proxy(window.WebSocket, { construct(target, args) { send('outside', 'ws ' + args[0]); return Reflect.construct(target, args); } });
+      // WebKit throws at once when the page CSP refuses a socket. The development build's
+      // reload client opens one at start, and the throw stops the whole bundle; a closed
+      // stand-in socket lets the demo build start, as a refused connection would elsewhere.
+      const refused = url => {
+        const socket = new EventTarget();
+        Object.assign(socket, { url: String(url), readyState: 3, protocol: '', extensions: '', bufferedAmount: 0, binaryType: 'blob', send() {}, close() {} });
+        setTimeout(() => {
+          const error = new Event('error'), close = new CloseEvent('close', { code: 1006, wasClean: false });
+          if (typeof socket.onerror === 'function') socket.onerror(error);
+          socket.dispatchEvent(error);
+          if (typeof socket.onclose === 'function') socket.onclose(close);
+          socket.dispatchEvent(close);
+        }, 0);
+        return socket;
+      };
+      if (window.WebSocket) window.WebSocket = new Proxy(window.WebSocket, { construct(target, args) {
+        send('outside', 'ws ' + args[0]);
+        try { return Reflect.construct(target, args); } catch (error) { send('ws-refused', args[0] + ' ' + (error && error.name)); return refused(args[0]); }
+      } });
       if (window.EventSource) window.EventSource = new Proxy(window.EventSource, { construct(target, args) { send('outside', 'sse ' + args[0]); return Reflect.construct(target, args); } });
       try { new PerformanceObserver(list => { for (const entry of list.getEntries()) if (outside(entry.name)) send('outside', 'resource ' + entry.name); }).observe({ type: 'resource', buffered: true }); } catch {}
     })();
     """
+
+    /// `-harnessNoGpu`: the page sees no WebGL and no WebGPU. The GitHub Mac's simulator GPU
+    /// runs out of memory under the scenes and then WebKit stops painting the whole page, so
+    /// the screen checks run without scenes and a separate pass records what graphics do.
+    private static let noGpuScript = """
+    (() => {
+      const handler = window.webkit.messageHandlers.harnessEvents;
+      const hidden = new Set();
+      const note = type => { if (hidden.has(type)) return; hidden.add(type); try { handler.postMessage(JSON.stringify({ kind: 'gpu-hidden', text: type, path: location.pathname })); } catch {} };
+      for (const Canvas of [window.HTMLCanvasElement, window.OffscreenCanvas].filter(Boolean)) {
+        const original = Canvas.prototype.getContext;
+        Canvas.prototype.getContext = function (type, ...rest) {
+          if (/^(webgl2?|experimental-webgl|webgpu)$/.test(String(type))) { note(String(type)); return null; }
+          return original.call(this, type, ...rest);
+        };
+      }
+      try { Object.defineProperty(Navigator.prototype, 'gpu', { get: () => undefined, configurable: true }); } catch {}
+      try { if (navigator.gpu) Object.defineProperty(navigator, 'gpu', { value: undefined, configurable: true }); } catch {}
+      if (navigator.gpu) note('webgpu-still-visible');
+    })();
+    """
+
+    static var noGpu: Bool { ProcessInfo.processInfo.arguments.contains("-harnessNoGpu") }
 
     private static let offlineRules = """
     [{"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}},
@@ -78,6 +119,7 @@ final class Harness: NSObject, WKScriptMessageHandler {
         if #available(iOS 16.4, *) { webView.isInspectable = true }
         let content = webView.configuration.userContentController
         content.addUserScript(WKUserScript(source: Self.eventsScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if Self.noGpu { content.addUserScript(WKUserScript(source: Self.noGpuScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)) }
         content.add(self, contentWorld: .page, name: "harnessEvents")
         event("launch", ProcessInfo.processInfo.arguments.joined(separator: " "))
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in

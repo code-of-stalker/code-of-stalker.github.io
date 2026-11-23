@@ -229,9 +229,14 @@ export class App {
     const body = `if (!window.__harness) window.__harness = (${pageHelpers.toString()})();
 const value = await (${f.toString()})(window.__harness, ...${JSON.stringify(args)});
 return JSON.stringify({ value: value === undefined ? null : value });`;
-    const reply = await this.command('js', body, timeout);
-    if (!reply.ok) throw new Error(`js: ${reply.error}`);
-    return JSON.parse(reply.value).value;
+    for (let attempt = 0; ; attempt++) {
+      const reply = await this.command('js', body, timeout);
+      if (reply.ok) return JSON.parse(reply.value).value;
+      // WKErrorDomain 5 (unsupported result type) comes back when the page reloads during
+      // the call: the answer is lost, not wrong. Ask again once the new page is up.
+      if (attempt < 2 && /WKErrorDomain 5\b/.test(reply.error)) { await sleep(1500); continue; }
+      throw new Error(`js: ${reply.error}`);
+    }
   }
 
   async native() {

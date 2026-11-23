@@ -1,4 +1,4 @@
-import type { EffectsSnapshot } from '../motion/EffectsController';
+import type { EffectsController, EffectsSnapshot } from '../motion/EffectsController';
 import type { EffectQuality, TargetFps } from '../motion/effectQuality';
 
 export const deviceOptimizationKey = 'watcher.device.optimization.v1';
@@ -18,6 +18,13 @@ const tiers: EffectQuality[] = ['high', 'balanced', 'economy'];
 const safeChoice: OptimizationChoice = { quality: 'balanced', targetFps: 60, smoothness: false };
 const percentile = (values: number[], fraction: number) => [...values].sort((a, b) => a - b)[Math.max(0, Math.ceil(values.length * fraction) - 1)] ?? 0;
 
+/** Hands the chosen profile to the graphics engine, then lets the app continue. A failed engine (a Rust panic
+ * poisons every later call) must never keep the person on the setup screen, so its error is only logged. */
+export function deliverProfile(engine: Pick<EffectsController, 'finishOptimization'> | null | undefined, profile: DeviceOptimizationProfile, onFinish: (profile: DeviceOptimizationProfile) => void) {
+  try { engine?.finishOptimization(profile.quality, profile.targetFps, profile.smoothness); }
+  catch (problem) { console.warn('Device optimization: the graphics engine failed; continuing with the chosen settings.', problem); }
+  onFinish(profile);
+}
 export function readDeviceProfile(text: string | null): DeviceOptimizationProfile | null {
   if (!text) return null;
   try {

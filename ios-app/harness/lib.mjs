@@ -8,7 +8,9 @@ import path from 'node:path';
 
 export const BUNDLE = 'code.of.stalker';
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-export const simctl = (...args) => execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+// Synchronous, so a hung simulator call would stop the whole run: it is killed after 10 minutes
+// and throws, which fails only the check that made it.
+export const simctl = (...args) => execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'], timeout: 10 * 60 * 1000 }).trim();
 
 /** The newest available simulator whose name matches one of `names`, in that order of preference. */
 export function pickDevice(names, fallback) {

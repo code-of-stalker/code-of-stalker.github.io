@@ -102,15 +102,60 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Simulator checks (offline fence on)
-        timeout-minutes: 120
+      # One step per part, each uploading its own results: run 4 lost its runner after 93 minutes
+      # and with it every result, so a late failure now costs only the part in progress.
+      # Run 3 took 30 min (iPhone), 1 (Intensive), 9 (iPad), 3 (graphics).
+      - name: Simulator checks, iPhone (offline fence on)
+        timeout-minutes: 60
         run: |
           node ios-app/harness/run.mjs --app "$RUNNER_TEMP/apps/check/CodeOfStalker.app" \
-            --demo "$RUNNER_TEMP/apps/demo/CodeOfStalker.app" --out "$RUNNER_TEMP/ios-check"
+            --only phone --out "$RUNNER_TEMP/ios-check/phone"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ios-simulator-check
-          path: ${{ runner.temp }}/ios-check
+          name: ios-simulator-check-phone
+          path: ${{ runner.temp }}/ios-check/phone
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Simulator checks, Intensive on the demo server (offline fence on)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 15
+        run: |
+          node ios-app/harness/run.mjs --app "$RUNNER_TEMP/apps/check/CodeOfStalker.app" \
+            --demo "$RUNNER_TEMP/apps/demo/CodeOfStalker.app" --only intensive --out "$RUNNER_TEMP/ios-check/intensive"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-check-intensive
+          path: ${{ runner.temp }}/ios-check/intensive
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Simulator checks, iPad (offline fence on)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 35
+        run: |
+          node ios-app/harness/run.mjs --app "$RUNNER_TEMP/apps/check/CodeOfStalker.app" \
+            --only ipad --out "$RUNNER_TEMP/ios-check/ipad"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-check-ipad
+          path: ${{ runner.temp }}/ios-check/ipad
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Simulator graphics pass (information only, offline fence on)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        run: |
+          node ios-app/harness/run.mjs --app "$RUNNER_TEMP/apps/check/CodeOfStalker.app" \
+            --only graphics --out "$RUNNER_TEMP/ios-check/graphics"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-check-graphics
+          path: ${{ runner.temp }}/ios-check/graphics
           if-no-files-found: warn
           retention-days: 14

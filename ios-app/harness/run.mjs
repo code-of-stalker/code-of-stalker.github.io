@@ -36,12 +36,16 @@ const log = (...items) => {
 };
 const summary = { started: new Date().toISOString(), devices: {}, checks: {} };
 const save = () => fs.writeFileSync(path.join(out, 'summary.json'), JSON.stringify(summary, null, 2));
+// The longest check took about 10 minutes (run 3); one that hangs is ended so the rest still run.
+const CHECK_LIMIT_MS = 20 * 60 * 1000;
 /** `run` returns its findings; `problems` (unmet expectations) fail the check. `info` checks never fail the run. */
 async function check(name, run, { info = false } = {}) {
   log(`\n=== ${name}`);
   const started = Date.now();
+  let timer;
   try {
-    const result = await run();
+    const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${CHECK_LIMIT_MS / 60000} min`)), CHECK_LIMIT_MS); });
+    const result = await Promise.race([run(), limit]).finally(() => clearTimeout(timer));
     const problems = result?.problems ?? [];
     summary.checks[name] = { ok: problems.length === 0, info, ...result };
     for (const problem of problems) log('PROBLEM', name, problem);

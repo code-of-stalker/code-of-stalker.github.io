@@ -70,12 +70,23 @@ test('minimizing during review keeps the finished take (Art 2026-11-22)', async 
   } finally { s.dispose(); }
 });
 
-test('minimizing during a live take still stops it and releases the microphone', async () => {
+test('minimizing during a live take stops it like the stop button: the microphone is released and the take waits for review', async () => {
   const s = captureFixture();
   try {
-    await s.hook.start(); assert.equal(s.state().phase, 'recording');
+    await s.hook.start(); assert.equal(s.state().phase, 'recording'); s.advance(3400);
     s.hide(); await new Promise(resolve => setTimeout(resolve, 0));
-    assert.equal(s.state().draft, null); assert.equal(s.tracks[0].stopped, 1);
+    assert.equal(s.state().phase, 'ready'); assert.equal(s.state().draft.durationMs, 3400);
+    assert.equal(s.tracks[0].stopped, 1); assert.equal(s.revoked.length, 0);
+  } finally { s.dispose(); }
+});
+
+test('minimizing while the microphone is still opening drops the pending take', async () => {
+  const s = captureFixture(); let grant;
+  s.setOpen(() => new Promise(resolve => { grant = resolve; }));
+  try {
+    const opening = s.hook.start(); assert.equal(s.state().phase, 'preparing');
+    s.hide(); grant(s.makeStream()); await opening;
+    assert.equal(s.state().phase, 'idle'); assert.equal(s.recorders.length, 0); assert.equal(s.tracks[0].stopped, 1);
   } finally { s.dispose(); }
 });
 

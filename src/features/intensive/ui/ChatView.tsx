@@ -20,6 +20,7 @@ import { PanelArtwork } from '../../product/motion/PanelArtwork';
 import { PanelBorder } from '../../product/PanelBorder';
 import { useThemeColors, useThemeStyles } from '../../product/ProductTheme';
 import { useProduct } from '../../product/state/ProductProvider';
+import { useWebUpdateBlock } from '../../product/updates/webUpdateSafety';
 import type { ProductColors } from '../../product/theme';
 import { fonts } from '../../product/theme';
 import { ProductButton, ProductIconButton, ProductText } from '../../product/ui';
@@ -379,6 +380,9 @@ export function ChatView({ session, chat, onBack, action }: { session: Intensive
 
   // An edit ends by itself when its message is deleted elsewhere.
   const editingNow = editing && messages.some(m => m.id === editing.id) ? editing : null;
+  // A site update reloads the page, which locks the session and drops text held only in memory:
+  // it waits while a message is typed, being edited or not yet delivered.
+  useWebUpdateBlock(!!draft.trim() || !!editingNow || pending.length > 0);
   const ready = phase === 'ready';
   const voice = useChatVoice({
     active: focused && ready, enabled: ready && !editingNow,

@@ -23,6 +23,7 @@ import { beginReadingNavigation, requestReadingDestination } from '../navigation
 
 const lock = { uri: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M3 6V4Q3 1 6 1T9 4V6M1.5 6.5H10.5V13H1.5ZM6 9V10.5" stroke="#B69D4B" stroke-width=".75" stroke-linecap="round" stroke-linejoin="round"/></svg>')}` };
 const steps = [1, 2, 3, 4, 5, 6, 7] as const;
+const stayLocked = () => {};
 const sectionsIcon = require('../../../../assets/product/step-sections.svg');
 
 function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, onToggle, onEnter, onSection, busy }: {
@@ -36,27 +37,35 @@ function StepChoice({ value, current, disabled, expanded, inset, reducedMotion, 
     animation.start(); return () => animation.stop();
   }, [expanded, reducedMotion, motion]);
   const groups = value <= 7 && !disabled ? stepSections(value as ReadingStep) : [];
+  const label = <ProductText testID={`step-option-label-${value}`} fitToWidth variant="label" color={value === current ? colors.text : colors.muted} style={styles.optionText}>{`ШАГ ${value}. ${productStepNames[value]}`}</ProductText>;
+  const row = [styles.option, value === current && { backgroundColor: colors.subtle }];
+  const side = [styles.sectionButton, { marginRight: Math.max(0, inset - 8) }];
   return <View>
-    <View style={[styles.option, value === current && { backgroundColor: colors.subtle }]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ selected: value === current, disabled: disabled || busy }} disabled={disabled || busy}
-        accessibilityLabel={`Открыть шаг ${value}. ${productStepNames[value]}`} onPress={onEnter}
-        style={[styles.stepTitle, { paddingLeft: inset }]}>
-        <ProductText testID={`step-option-label-${value}`} fitToWidth variant="label" color={value === current ? colors.text : colors.muted} style={styles.optionText}>{`ШАГ ${value}. ${productStepNames[value]}`}</ProductText>
+    {disabled
+      // A locked step answers a tap with its lock's own rattle: the icon plays on its pressable's click.
+      ? <Pressable testID={`step-option-locked-${value}`} accessibilityRole="button" accessibilityLabel={`Шаг ${value}. ${productStepNames[value]}. Пока закрыт`}
+        disabled={busy} onPress={stayLocked} style={row}>
+        <View style={[styles.stepTitle, { paddingLeft: inset }]}>{label}</View>
+        <View style={side}><RustIcon name="step-lock" width={12} height={14} color={colors.iconTint ?? '#B69D4B'} autoplay fallback={<Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" />} /></View>
       </Pressable>
-      {disabled ? <View style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }]}><RustIcon name="step-lock" width={12} height={14} color={colors.iconTint ?? '#B69D4B'} autoplay fallback={<Image pointerEvents="none" source={lock} tintColor={colors.iconTint} style={styles.lock} contentFit="contain" />} /></View>
-        : <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
-          onPress={onToggle} style={[styles.sectionButton, { marginRight: Math.max(0, inset - 8) }, Platform.OS === 'web' && { outlineWidth: 0 }]}>
+      : <View style={row}>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: value === current, disabled: busy }} disabled={busy}
+          accessibilityLabel={`Открыть шаг ${value}. ${productStepNames[value]}`} onPress={onEnter}
+          style={[styles.stepTitle, { paddingLeft: inset }]}>{label}</Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Разделы шага ${value}`} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy}
+          onPress={onToggle} style={[side, Platform.OS === 'web' && { outlineWidth: 0 }]}>
           <View pointerEvents="none" style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
           <RustIcon name="sections" width={18} height={18} stroke={.85} color={expanded ? colors.text : colors.accent} fallback={<Image pointerEvents="none" source={sectionsIcon} tintColor={expanded ? colors.text : colors.accent} style={{ width: 18, height: 18 }} contentFit="contain" />} />
-        </Pressable>}
-    </View>
+        </Pressable>
+      </View>}
     {!!groups.length && <Animated.View pointerEvents={expanded ? 'auto' : 'none'} accessibilityElementsHidden={!expanded} aria-hidden={!expanded}
       importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'} style={{ height: motion.interpolate({ inputRange: [0, 1], outputRange: [0, height] }), overflow: 'hidden' }}>
       <Animated.View onLayout={event => setHeight(event.nativeEvent.layout.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0, opacity: motion,
         transform: [{ translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }], paddingHorizontal: inset + 10, paddingTop: 12, paddingBottom: 20 }}>
         {groups.map(group => <View key={group.title} style={{ marginBottom: 12 }}>
           <ProductText variant="label" color={colors.muted} style={styles.groupTitle}>{group.title}</ProductText>
-          {group.items.map((item, index) => <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={item.title} disabled={busy}
+          {/* Collapsed sections leave the Tab order along with the screen reader. */}
+          {group.items.map((item, index) => <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={item.title} disabled={busy} tabIndex={expanded && !busy ? 0 : -1}
             hitSlop={{ top: 4, bottom: 4 }} onPress={() => onSection(item.destination)} style={styles.sectionRow}>
             <ProductText numberOfLines={1} color={colors.muted} style={styles.sectionNumber}>{String(index + 1).padStart(2, '0')}</ProductText>
             <ProductText color={colors.text} style={styles.sectionText}>{item.title}</ProductText>

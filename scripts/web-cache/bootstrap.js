@@ -2,7 +2,7 @@
 (function () {
   if (!window.isSecureContext || !('serviceWorker' in navigator)) return;
   var build = document.getElementById('watcher-graphics-cache')?.dataset.release;
-  var registration, checking = false, lastCheck = 0, pending = false, reloading = false, idleTimer, mixedRelease = false, identification = 0;
+  var registration, checking = false, lastCheck = 0, pending = false, reloading = false, idleTimer, mixedRelease = false, identification = 0, workerVersion;
   var resetting = false, stuckKey = 'watcher-graphics-stuck', resetKey = 'watcher-graphics-reset';
   var interactedAt = Date.now();
   function notify() {
@@ -52,8 +52,25 @@
     if (status.version !== build && status.clientRouting !== true) mixedRelease = true;
     if (status.clientRouting === true) await message('WATCHER_GRAPHICS_CLIENT_RELEASE', { version: build });
     if (sequence !== identification || controller !== navigator.serviceWorker.controller) return;
+    workerVersion = status.version;
     pending = !!build && status.clientRouting === true && (status.version !== build || mixedRelease);
     notify(); apply(false);
+  }
+  // Same-origin files this page has loaded, including those fetched before the
+  // worker took control (a first visit's home and current step).
+  function loaded() {
+    try {
+      var origin = new URL(location.href).origin;
+      return performance.getEntriesByType('resource').map(function (entry) { return new URL(entry.name); })
+        .filter(function (url) { return url.origin === origin; }).map(function (url) { return url.pathname; });
+    } catch { return []; }
+  }
+  // The worker keeps what this page loaded and, on Wi-Fi or a wired link, the
+  // rest of the release; on mobile data only the part. Only for this page's own
+  // release, so another release's files never mix in.
+  async function fill() {
+    if (!build || workerVersion !== build || pending || !navigator.serviceWorker.controller) return;
+    await message('WATCHER_GRAPHICS_CACHE_FILL', { paths: loaded() });
   }
   function stored(key, value) {
     try {
@@ -112,12 +129,14 @@
       await identify();
       await unstick(remote?.version);
       await message('WATCHER_GRAPHICS_CACHE_CLEANUP');
+      await fill();
     } catch { /* Offline: keep the complete installed snapshot and retry on resume. */ }
     finally { checking = false; }
   }
-  // A first visit has no worker yet. Its snapshot downloads the whole release,
-  // so let the page fetch its own engine and finish device tuning first; the
-  // fallback still installs offline support if graphics never become ready.
+  // A first visit has no worker yet. Its snapshot takes the engine and app code
+  // from what the page has just downloaded, so let the page fetch them and finish
+  // device tuning first; the fallback still installs offline support if
+  // graphics never become ready.
   var installGate = navigator.serviceWorker.controller ? Promise.resolve() : new Promise(function (resolve) {
     var started = false;
     function settle() {
@@ -137,7 +156,11 @@
   });
   window.addEventListener('watcher-update-safety', function () { apply(false); });
   ['pointerdown', 'keydown', 'input', 'wheel', 'touchmove'].forEach(function (name) { window.addEventListener(name, interaction, { passive: true }); });
-  navigator.serviceWorker.addEventListener('controllerchange', function () { void identify(); });
+  navigator.serviceWorker.addEventListener('controllerchange', function () { void identify().then(fill); });
+  // Joining Wi-Fi resumes the full download at once; leaving it stops it.
+  try { navigator.connection?.addEventListener('change', function () { void fill(); }); } catch { /* No connection info. */ }
+  // A first visit loads many files before the worker exists; keep their records.
+  try { performance.setResourceTimingBufferSize(1000); } catch { /* Optional. */ }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { apply(false); void check(true); } });
   ['focus', 'pageshow', 'online'].forEach(function (name) { window.addEventListener(name, function () { void check(true); }); });
   async function start() {

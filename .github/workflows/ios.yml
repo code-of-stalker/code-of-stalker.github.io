@@ -1,0 +1,116 @@
+name: iOS app (simulator check, unsigned build)
+
+# The iOS shell (ios-app/) is built on a GitHub macOS runner: there is no Mac and no paid
+# Apple account yet. It never signs anything, uses no secret and never deploys: it only
+# runs on the app branch or by hand, and uploads screenshots and an unsigned .ipa as
+# short-lived artifacts. Pages and the Intensive keep-awake job are separate workflows.
+on:
+  push:
+    branches: [claude/ios-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    if: github.ref != 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 170
+    env:
+      WATCHER_SITE_URL: https://code-of-stalker.github.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Versions
+        id: version
+        run: |
+          echo "marketing=$(node -p "const d = new Date(); [d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()].join('.')")" >> "$GITHUB_OUTPUT"
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Tools
+        run: |
+          brew install xcodegen
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      # Release web content: the same export as the site and the Android app.
+      - run: npx expo export --platform web --output-dir .expo-ios-export
+      - run: node scripts/ios/stage-ios-app.mjs .expo-ios-export
+      - name: Generate the Xcode project
+        working-directory: ios-app
+        run: xcodegen generate
+      - name: Simulator test build (release content, HARNESS on)
+        working-directory: ios-app
+        run: |
+          xcodebuild build -project CodeOfStalker.xcodeproj -scheme CodeOfStalker -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd-sim" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) HARNESS' \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
+          mkdir -p "$RUNNER_TEMP/apps/check"
+          cp -R "$RUNNER_TEMP/dd-sim/Build/Products/Release-iphonesimulator/CodeOfStalker.app" "$RUNNER_TEMP/apps/check/"
+      - name: Unsigned device build (.ipa, no HARNESS)
+        working-directory: ios-app
+        run: |
+          xcodebuild archive -project CodeOfStalker.xcodeproj -scheme CodeOfStalker -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/CodeOfStalker.xcarchive" -derivedDataPath "$RUNNER_TEMP/dd-device" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
+          app="$RUNNER_TEMP/CodeOfStalker.xcarchive/Products/Applications/CodeOfStalker.app"
+          if strings "$app/CodeOfStalker" | grep -q harnessEvents; then echo "The device build must not carry the test harness"; exit 1; fi
+          plutil -p "$app/Info.plist" | grep -E 'CFBundle(Identifier|DisplayName|ShortVersionString|Version)"|MinimumOSVersion'
+          lipo -info "$app/CodeOfStalker"
+          du -sh "$app"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" "$RUNNER_TEMP/out"
+          cp -R "$app" "$RUNNER_TEMP/ipa/Payload/"
+          name="CodeOfStalker-unsigned-${{ steps.version.outputs.marketing }}-${{ steps.version.outputs.sha }}.ipa"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$RUNNER_TEMP/out/$name" Payload)
+          ls -l "$RUNNER_TEMP/out"
+
+      # Development web content (__DEV__): the Intensive talks to the in-memory demo server.
+      - run: npx expo export --platform web --dev --output-dir .expo-ios-demo-export
+      - run: node scripts/ios/stage-ios-app.mjs .expo-ios-demo-export
+      - name: Simulator demo build (development content, HARNESS on)
+        working-directory: ios-app
+        run: |
+          xcodebuild build -project CodeOfStalker.xcodeproj -scheme CodeOfStalker -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd-demo" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) HARNESS' \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
+          mkdir -p "$RUNNER_TEMP/apps/demo"
+          cp -R "$RUNNER_TEMP/dd-demo/Build/Products/Release-iphonesimulator/CodeOfStalker.app" "$RUNNER_TEMP/apps/demo/"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-unsigned-ipa
+          path: ${{ runner.temp }}/out/*.ipa
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Simulator checks (offline fence on)
+        timeout-minutes: 120
+        run: |
+          node ios-app/harness/run.mjs --app "$RUNNER_TEMP/apps/check/CodeOfStalker.app" \
+            --demo "$RUNNER_TEMP/apps/demo/CodeOfStalker.app" --out "$RUNNER_TEMP/ios-check"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-check
+          path: ${{ runner.temp }}/ios-check
+          if-no-files-found: warn
+          retention-days: 14

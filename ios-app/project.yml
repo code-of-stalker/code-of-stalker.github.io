@@ -1,0 +1,52 @@
+# XcodeGen spec for the iOS shell. The Xcode project is generated, never committed:
+#   node scripts/ios/stage-ios-app.mjs <web export>   # fills ios-app/build/
+#   xcodegen generate --spec ios-app/project.yml
+# Signing stays with the owner: simulator builds sign locally ("-"); the device build is
+# archived unsigned (CODE_SIGNING_ALLOWED=NO) and signed later with his Apple account.
+name: CodeOfStalker
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: ru
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  CodeOfStalker:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: CodeOfStalker
+      - path: build/Assets.xcassets
+      - path: build/web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: CodeOfStalker
+        PRODUCT_BUNDLE_IDENTIFIER: code.of.stalker
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+schemes:
+  CodeOfStalker:
+    build:
+      targets:
+        CodeOfStalker: all
+    run:
+      config: Release
+    archive:
+      config: Release

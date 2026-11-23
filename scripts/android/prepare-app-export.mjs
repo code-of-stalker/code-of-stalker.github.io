@@ -83,7 +83,9 @@ const registerSource = `// Code Of Stalker app: start the script cache once the 
 })();
 `;
 
-export async function prepareAppExport(outputDirectory) {
+// `scriptCache: false` leaves the worker out: the iOS shell serves a custom scheme, and
+// WKWebView runs no service worker there (scripts/ios/prepare-ios-export.mjs).
+export async function prepareAppExport(outputDirectory, { scriptCache = true } = {}) {
   const root = await fs.realpath(path.resolve(outputDirectory));
   const htmlPath = path.join(root, 'index.html');
   let html = await fs.readFile(htmlPath, 'utf8');
@@ -94,12 +96,17 @@ export async function prepareAppExport(outputDirectory) {
   const scriptDir = path.join(root, '_expo', 'static', 'js', 'web');
   const names = (await fs.readdir(scriptDir)).filter(name => name.endsWith('.js')).sort();
   if (!names.length) throw new Error('Export has no page scripts');
-  const digest = createHash('sha256');
-  for (const name of names) digest.update(name).update('\0').update(await fs.readFile(path.join(scriptDir, name))).update('\0');
-  const scripts = names.map(name => `/_expo/static/js/web/${name}`);
-  await fs.writeFile(path.join(root, scriptCacheWorker), scriptCacheSource(scripts, digest.digest('hex').slice(0, 16)));
-  await fs.writeFile(path.join(root, scriptCacheRegister), registerSource);
-  html = html.replace('</body>', `<script src="/${scriptCacheRegister}" defer></script></body>`);
+  if (scriptCache) {
+    const digest = createHash('sha256');
+    for (const name of names) digest.update(name).update('\0').update(await fs.readFile(path.join(scriptDir, name))).update('\0');
+    const scripts = names.map(name => `/_expo/static/js/web/${name}`);
+    await fs.writeFile(path.join(root, scriptCacheWorker), scriptCacheSource(scripts, digest.digest('hex').slice(0, 16)));
+    await fs.writeFile(path.join(root, scriptCacheRegister), registerSource);
+    html = html.replace('</body>', `<script src="/${scriptCacheRegister}" defer></script></body>`);
+  } else {
+    await fs.rm(path.join(root, scriptCacheWorker), { force: true });
+    await fs.rm(path.join(root, scriptCacheRegister), { force: true });
+  }
   await fs.writeFile(htmlPath, html);
   for (const name of siteOnly) await fs.rm(path.join(root, name), { force: true });
   await fs.rm(path.join(root, 'graphics-cache-assets'), { recursive: true, force: true });

@@ -111,5 +111,11 @@ secrets.*.json
 /android-app/app/build/
 /android-app/local.properties
 /android-app/app/src/main/assets/
+
+# iOS app shell (ios-app/): the staged web export, icons and the generated Xcode project.
+/ios-app/build/
+/ios-app/*.xcodeproj/
+/ios-app/DerivedData/
+*.ipa
 *.aab
 *.idsig

@@ -1,9 +1,9 @@
 import { BACKUP_MAX_BYTES } from './backup-model';
-import { isAndroidApp, saveFileInAndroidApp } from '../platform/androidApp';
+import { isAppShell, saveFileInApp } from '../platform/androidApp';
 /** Resolves true once the file is handed over, false when the person cancelled the app's save dialog. */
 export async function downloadBackup(bytes: Uint8Array<ArrayBuffer>, createdAt: number): Promise<boolean> {
   const name = `watcher-${new Date(createdAt).toISOString().slice(0, 19).replace(/[:T]/g, '-')}.watcherbackup`;
-  if (isAndroidApp()) return saveFileInAndroidApp(bytes, name, 'application/octet-stream');
+  if (isAppShell()) return saveFileInApp(bytes, name, 'application/octet-stream');
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
   const link = document.createElement('a');
   link.href = url; link.download = name;

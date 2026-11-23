@@ -1,0 +1,34 @@
+Код Сталкера для iOS (iPhone и iPad)
+
+Что это
+- Оболочка на Swift: одно окно WKWebView. Внутри то же приложение, что на сайте
+  и в Android-приложении; все файлы лежат в самом приложении, сеть не нужна.
+- Страница открывается по адресу codeofstalker://localhost/ (адрес постоянный,
+  поэтому дневник и настройки переживают обновления приложения).
+- Ключ шифрования дневника хранится в связке ключей iOS.
+- Сохранение копии: системное окно «Файлы». Восстановление: обычный выбор файла.
+- Назад: свайп самой страницы, как на сайте. Микрофон: только для нашей страницы.
+- Внешние ссылки открываются в Safari, внутри приложения никогда.
+
+Сборка (Mac не нужен)
+- .github/workflows/ios.yml собирает на облачном Mac GitHub (ветка claude/ios-app
+  или запуск вручную). Ничего не подписывает, секретов не использует, на сайт не влияет.
+- Результаты прогона (артефакты, хранятся 14 дней):
+  ios-unsigned-ipa      неподписанный .ipa для iPhone/iPad, подписывается потом
+  ios-simulator-check   снимки и журнал проверок в iOS Simulator (index.html, summary.json)
+
+Сборка на Mac вручную
+  npx expo export --platform web --output-dir .expo-ios-export
+  node scripts/ios/stage-ios-app.mjs .expo-ios-export
+  cd ios-app && xcodegen generate && open CodeOfStalker.xcodeproj
+
+Проверки в симуляторе
+- Тестовая сборка с флагом HARNESS (только для симулятора, в .ipa его нет):
+  ios-app/CodeOfStalker/Harness.swift и ios-app/harness/*.mjs.
+- Приложение запускается с -harnessOffline: любой запрос в интернет блокируется
+  и записывается. Интенсив проверяется только на демо-сервере (сборка --dev).
+
+Файлы
+- CodeOfStalker/*.swift  оболочка; Info.plist, PrivacyInfo.xcprivacy
+- project.yml            описание проекта для XcodeGen (сам .xcodeproj не хранится)
+- build/                 собирается скриптом, в git не попадает

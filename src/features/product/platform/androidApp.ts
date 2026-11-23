@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 
 /**
- * Bridge to the Android app shell (`android-app/`). The shell serves this same web
- * export from the APK and injects `CodeOfStalkerAndroid` into our origin's main
- * frame only (WebViewCompat.addWebMessageListener). On the site the object does not
- * exist, so every function here is a no-op and the site behaves exactly as before.
+ * Bridge to the app shells. The Android shell (`android-app/`) serves this same web
+ * export from the APK and injects `CodeOfStalkerAndroid` into our origin's main frame
+ * only (WebViewCompat.addWebMessageListener). The iOS shell (`ios-app/`) serves it from
+ * the app bundle and injects `CodeOfStalkerIOS`, a port with the same messages over
+ * WebKit's script message handler. On the site neither object exists, so every function
+ * here is a no-op and the site behaves exactly as before.
  */
 type ShellMessage = { data: unknown };
 type ShellPort = {
@@ -13,13 +15,20 @@ type ShellPort = {
   removeEventListener?(type: 'message', listener: (event: ShellMessage) => void): void;
 };
 
+type ShellWindow = { CodeOfStalkerAndroid?: ShellPort; CodeOfStalkerIOS?: ShellPort };
+const usable = (port: ShellPort | undefined) => port && typeof port.postMessage === 'function' ? port : null;
+const android = () => typeof window === 'undefined' ? null : usable((window as unknown as ShellWindow).CodeOfStalkerAndroid);
+
 function shell(): ShellPort | null {
   if (typeof window === 'undefined') return null;
-  const port = (window as unknown as { CodeOfStalkerAndroid?: ShellPort }).CodeOfStalkerAndroid;
-  return port && typeof port.postMessage === 'function' ? port : null;
+  return android() ?? usable((window as unknown as ShellWindow).CodeOfStalkerIOS);
 }
 
-export function isAndroidApp(): boolean { return shell() !== null; }
+/** Android only: its system back and leaving the app have no iOS counterpart. */
+export function isAndroidApp(): boolean { return android() !== null; }
+
+/** Inside either app shell, where files are saved through the system picker. */
+export function isAppShell(): boolean { return shell() !== null; }
 
 function post(message: Record<string, unknown>) { shell()?.postMessage(JSON.stringify(message)); }
 
@@ -52,14 +61,14 @@ function base64(bytes: Uint8Array) {
 }
 
 /**
- * Save bytes through Android's own «save as» picker (Storage Access Framework).
- * A WebView cannot download blob: links, so the file goes to the shell in
- * acknowledged chunks, which keeps memory bounded for large backups.
- * Resolves true when the file was written, false when the person cancelled.
+ * Save bytes through the system's own «save as» picker: Android's Storage Access
+ * Framework, or the Files export sheet on iOS. A web view cannot download blob: links,
+ * so the file goes to the shell in acknowledged chunks, which keeps memory bounded for
+ * large backups. Resolves true when the file was written, false when the person cancelled.
  */
-export function saveFileInAndroidApp(bytes: Uint8Array, name: string, mime: string): Promise<boolean> {
+export function saveFileInApp(bytes: Uint8Array, name: string, mime: string): Promise<boolean> {
   const port = shell();
-  if (!port?.addEventListener || !port.removeEventListener) return Promise.reject(new Error('Android shell is not available.'));
+  if (!port?.addEventListener || !port.removeEventListener) return Promise.reject(new Error('App shell is not available.'));
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   return new Promise<boolean>((resolve, reject) => {
     let offset = 0;

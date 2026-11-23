@@ -4,9 +4,9 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 const script = await fs.readFile(new URL('./bootstrap.js', import.meta.url), 'utf8');
 const flush = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(); };
-function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false, firstVisit = false, stuck = false, saved = new Map(), cacheNames = [] } = {}) {
+function fixture({ legacy = false, registered = true, readyState = 'complete', online = true, hangFirst = false, hangFirstBody = false, firstVisit = false, stuck = false, saved = new Map(), cacheNames = [], entries = [] } = {}) {
   let now = 100000, nextTimer = 0, remote = 'new-1', active = legacy ? 'old-9' : 'new-1', reloads = 0, dialog = false;
-  const timers = new Map(), intervals = [], checks = [], registrations = [], pinned = [], events = [];
+  const timers = new Map(), intervals = [], checks = [], registrations = [], pinned = [], events = [], messages = [];
   const window = new EventTarget(), document = new EventTarget(), serviceWorker = new EventTarget();
   const root = { dataset: { watcherUpdateReady: 'true', watcherUpdateBusy: 'false' } };
   Object.assign(document, { documentElement: root, visibilityState: 'visible', readyState, activeElement: { tagName: 'BODY' },
@@ -24,6 +24,7 @@ function fixture({ legacy = false, registered = true, readyState = 'complete', o
   }
   function controller() {
     return { postMessage(data, ports) {
+      messages.push(data);
       if (data.type === 'WATCHER_GRAPHICS_CLIENT_RELEASE') pinned.push(data.version);
       ports[0].postMessage({ version: active, clientRouting: !legacy || active !== 'old-9' });
     } };
@@ -38,11 +39,13 @@ function fixture({ legacy = false, registered = true, readyState = 'complete', o
     active = remote; reg.active.scriptURL = new URL(url, location.href).href;
     serviceWorker.controller = controller(); serviceWorker.dispatchEvent(new Event('controllerchange')); return reg;
   };
-  const navigator = { serviceWorker, onLine: online };
-  vm.runInNewContext(script, { window, document, navigator, location, URL, AbortController, MessageChannel: Channel, Event, CustomEvent,
+  const connection = new EventTarget(), navigator = { serviceWorker, onLine: online, connection };
+  const performance = { getEntriesByType: type => type === 'resource' ? entries.map(name => ({ name })) : [], setResourceTimingBufferSize() {} };
+  vm.runInNewContext(script, { window, document, navigator, location, performance, URL, AbortController, MessageChannel: Channel, Event, CustomEvent,
     Date: class extends Date { static now() { return now; } },
     fetch: async (url, options) => { checks.push({ url, options }); const first = checks.length === 1; const stalled = () => new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(Error('request timeout')), { once: true })); if (hangFirst && first) await stalled(); return { ok: true, json: async () => { if (hangFirstBody && first) await stalled(); return { version: remote }; } }; } });
-  return { window, document, navigator, registrations, checks, events, pinned, saved, cacheNames, reloads: () => reloads, unregistered: () => unregistered,
+  return { window, document, navigator, registrations, checks, events, pinned, messages, saved, cacheNames,
+    fills: () => messages.filter(data => data.type === 'WATCHER_GRAPHICS_CACHE_FILL'), reloads: () => reloads, unregistered: () => unregistered,
     remote: value => { remote = value; }, dialog: value => { dialog = value; }, busy: value => { root.dataset.watcherUpdateBusy = String(value); window.dispatchEvent(new Event('watcher-update-safety')); },
     async advance(ms) { now += ms; await flush(); const due = [...timers].filter(([, timer]) => timer.at <= now); for (const [id, timer] of due) { timers.delete(id); timer.callback(); } for (const timer of intervals) if (timer.at <= now) { timer.at = now + timer.delay; timer.callback(); } await flush(); } };
 }
@@ -140,4 +143,19 @@ test('the network load after a reset clears the old snapshots and keeps voice ca
     cacheNames: ['watcher-graphics-v1-old-9', 'watcher-graphics-clients-v1', 'unrelated-audio-cache'] });
   await flush();
   assert.deepEqual(app.cacheNames, ['unrelated-audio-cache']); assert.equal(app.saved.has('watcher-graphics-reset'), false);
+});
+test('a page asks its own release to keep what it loaded, and to resume the download when the link changes', async () => {
+  const app = fixture({ entries: ['https://watcher.test/graphics/scene-a/runtime.js', 'https://elsewhere.test/font.woff2', 'https://watcher.test/assets/icon%402x.png?v=1'] });
+  await flush();
+  assert.equal(app.fills().length, 1);
+  assert.deepEqual(app.fills()[0].paths, ['/graphics/scene-a/runtime.js', '/assets/icon%402x.png']);
+  app.navigator.connection.dispatchEvent(new Event('change')); await flush();
+  assert.equal(app.fills().length, 2, 'joining Wi-Fi resumes at once');
+  await app.advance(60000); assert.equal(app.fills().length, 3, 'and every minute while the page is open');
+});
+test('a page never asks another release to keep its files', async () => {
+  const app = fixture({ legacy: true, registered: false, stuck: true }); app.busy(true); await flush();
+  app.navigator.connection.dispatchEvent(new Event('change')); await flush();
+  await app.advance(60000);
+  assert.equal(app.fills().length, 0);
 });

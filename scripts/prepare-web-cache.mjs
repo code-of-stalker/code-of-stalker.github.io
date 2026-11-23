@@ -19,10 +19,22 @@ export function isCacheAsset(name) {
     || /^_expo\/static\/(?:js\/web\/.*\.js|css\/.*\.css)$/.test(name);
 }
 
+// Every app route opens offline from the cached shell. A test keeps this list
+// in step with the screens in src/app.
+export const ROUTES = ['/', '/index.html', '/update', '/launch', '/home', '/diary', '/settings', '/levels', '/practice', '/observation', '/transitions', '/intensive', '/admin', '/network', '/sdk', '/recovery'];
+
+// The worker template with the file-selection rules (selection.mjs) inlined.
+export async function workerSource() {
+  const template = await fs.readFile(path.join(here, 'web-cache/worker.template.js'), 'utf8');
+  const selection = (await fs.readFile(path.join(here, 'web-cache/selection.mjs'), 'utf8')).replace(/^export /gm, '');
+  if (!template.includes('/* __WATCHER_SELECTION__ */')) throw new Error('Worker template has no selection marker');
+  return template.replace('/* __WATCHER_SELECTION__ */', () => selection.trim());
+}
+
 export async function prepareWebCache(outputDirectory) {
   const root = await fs.realpath(path.resolve(outputDirectory));
   const htmlPath = path.join(root, 'index.html');
-  const template = await fs.readFile(path.join(here, 'web-cache/worker.template.js'), 'utf8');
+  const template = await workerSource();
   const bootstrap = await fs.readFile(path.join(here, 'web-cache/bootstrap.js'), 'utf8');
   let html = await fs.readFile(htmlPath, 'utf8');
   html = await secureShell(await prepareAppManifest(root, html));
@@ -57,7 +69,7 @@ export async function prepareWebCache(outputDirectory) {
   }
   await visit(root);
   assets.sort((a, b) => a.url.localeCompare(b.url, 'en'));
-  const routes = ['/', '/index.html', '/update', '/launch', '/home', '/diary', '/settings', '/levels', '/practice', '/observation', '/transitions', '/network', '/sdk', '/recovery'];
+  const routes = ROUTES;
   const version = sha256(JSON.stringify({ assets, routes, template })).slice(0, 24);
   // Hash the normalized shell template first, then stamp its release. This
   // avoids a circular hash while including every authored shell change.
@@ -66,7 +78,7 @@ export async function prepareWebCache(outputDirectory) {
   const shell = assets.find(asset => asset.url === '/index.html');
   shell.bytes = Buffer.byteLength(html); shell.sha256 = sha256(html);
   const release = { version, assets, routes, shellHtml: html, bytes: assets.reduce((sum, asset) => sum + asset.bytes, 0) };
-  await fs.writeFile(path.join(root, 'graphics-cache-worker.js'), template.replace('/* __WATCHER_RELEASE__ */ null', JSON.stringify(release)));
+  await fs.writeFile(path.join(root, 'graphics-cache-worker.js'), template.replace('/* __WATCHER_RELEASE__ */ null', () => JSON.stringify(release)));
   await fs.writeFile(path.join(root, 'graphics-cache-manifest.json'), JSON.stringify(release, null, 2) + '\n');
   // Network-only small probe; the worker never intercepts this endpoint.
   await fs.writeFile(path.join(root, 'graphics-cache-version.json'), JSON.stringify({ version }) + '\n');

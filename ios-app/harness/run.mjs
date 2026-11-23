@@ -288,33 +288,41 @@ async function mic(app, dir) {
 
 async function back(app, dir) {
   const swipeBack = () => app.fn(h => h.swipe(30, innerHeight * 0.55, Math.min(innerWidth - 24, 330), innerHeight * 0.55, 260));
-  // /levels opens with a page load; «ПРОДОЛЖИТЬ» then moves inside the app, so there is a way back.
+  // Where the person is: the route plus, in the practice, the step and page. In the practice the
+  // swipe is the step's own back (Step 3: the previous step), so the route alone does not show it.
+  const place = async () => { const s = await app.fn(h => h.state()); return { path: s.path, step: s.step ?? '', key: `${s.path} ${s.step ?? ''} ${s.counter || s.q || ''}`.trim() }; };
+  // A fixed start that shows without WebGL: step 3, opened from the step menu.
   await openPractice(app);
-  const trail = [await app.path()];
+  await app.fn(() => scrollTo(0, 0));
+  if (!await app.has('label', 'Открыть шаг 3')) await app.tap('label', 'Выбрать шаг', 1500);
+  await app.tap('label', 'Открыть шаг 3', 3500);
+  const trail = [await place()];
   app.shot(`${dir}/back-01-start`);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     await swipeBack();
     await sleep(1800);
-    trail.push(await app.path());
+    trail.push(await place());
     app.shot(`${dir}/back-0${i + 2}`);
   }
   await openPractice(app);
-  const pathWithMenu = await app.path();
+  const placeWithMenu = await place();
   await app.tap('label', 'Выбрать шаг', 1200);
   const menuBefore = await app.has('label', 'Открыть шаг 1');
   await swipeBack();
   await sleep(1500);
   const menuAfter = await app.has('label', 'Открыть шаг 1');
-  const pathAfterMenu = await app.path();
-  app.shot(`${dir}/back-05-menu-swipe`);
+  const placeAfterMenu = await place();
+  app.shot(`${dir}/back-04-menu-swipe`);
   const problems = [];
-  expect(problems, trail[0] === '/practice', `the walk did not start in the practice (${trail[0]})`);
-  expect(problems, trail[1] !== trail[0], `a swipe from the left edge did not go back (${trail.join(' → ')})`);
+  const [from, to] = trail;
+  expect(problems, from.path === '/practice' && from.step === '3', `the swipe did not start on step 3 (${from.key})`);
+  // Step 3's own back (its button and the swipe) leads to the end of step 2, as on the site.
+  expect(problems, to.path === '/practice' && to.step === '2', `a swipe from the left edge did not go back to step 2 (${trail.map(p => p.key).join(' → ')})`);
   // As on the site, an open menu blocks the page swipe (it closes by its own button), so the swipe
-  // must not leave the page underneath it.
+  // must not move the page underneath it.
   expect(problems, menuBefore, 'the step menu did not open');
-  expect(problems, pathAfterMenu === pathWithMenu, `a swipe over the open step menu left the page (${pathWithMenu} → ${pathAfterMenu})`);
-  return { trail, menuOpenBefore: menuBefore, menuOpenAfter: menuAfter, pathWithMenu, pathAfterMenu, problems };
+  expect(problems, placeAfterMenu.key === placeWithMenu.key, `a swipe over the open step menu moved the page (${placeWithMenu.key} → ${placeAfterMenu.key})`);
+  return { trail: trail.map(p => p.key), menuOpenBefore: menuBefore, menuOpenAfter: menuAfter, placeWithMenu: placeWithMenu.key, placeAfterMenu: placeAfterMenu.key, problems };
 }
 
 async function backupSave(app, dir) {

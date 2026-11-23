@@ -2,6 +2,7 @@ package code.of.stalker;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -39,6 +40,9 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.ServiceWorkerClientCompat;
+import androidx.webkit.ServiceWorkerControllerCompat;
+import androidx.webkit.ServiceWorkerWebSettingsCompat;
 import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewCompat;
@@ -106,10 +110,8 @@ public final class MainActivity extends ComponentActivity {
         EdgeToEdge.enable(this, SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT));
         prefs = getSharedPreferences("shell", MODE_PRIVATE);
         clearExports();
-        loader = new WebViewAssetLoader.Builder()
-            .setDomain(HOST)
-            .addPathHandler("/", new WebExport(getAssets()))
-            .build();
+        loader = assetLoader(this);
+        ScriptCacheClient.install(this);
         root = new FrameLayout(this);
         // The page never sits under the status/navigation bars or the keyboard: the
         // bars show the theme's page color behind them instead.
@@ -131,6 +133,46 @@ public final class MainActivity extends ComponentActivity {
             }
         });
         web.loadUrl(ORIGIN + "/");
+    }
+
+    /** The page's files from the APK (assets/www) at the fixed app origin. */
+    static WebViewAssetLoader assetLoader(Context context) {
+        return new WebViewAssetLoader.Builder()
+            .setDomain(HOST)
+            .addPathHandler("/", new WebExport(context.getApplicationContext().getAssets()))
+            .build();
+    }
+
+    /**
+     * The page's script cache worker (app-script-cache.js) loads its files from the APK
+     * too. WebView keeps compiled code only for scripts in Cache Storage, not for files
+     * the app serves itself, so without the worker every start compiles the 2.9 MB entry
+     * script again. Process-wide and holding no Activity, so it is set up once.
+     */
+    private static final class ScriptCacheClient extends ServiceWorkerClientCompat {
+        private static boolean installed;
+        private final WebViewAssetLoader files;
+
+        private ScriptCacheClient(WebViewAssetLoader files) {
+            this.files = files;
+        }
+
+        static void install(Context context) {
+            if (installed) return;
+            installed = true;
+            if (!WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)
+                || !WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) return;
+            ServiceWorkerControllerCompat controller = ServiceWorkerControllerCompat.getInstance();
+            ServiceWorkerWebSettingsCompat settings = controller.getServiceWorkerWebSettings();
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_FILE_ACCESS)) settings.setAllowFileAccess(false);
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_CONTENT_ACCESS)) settings.setAllowContentAccess(false);
+            controller.setServiceWorkerClient(new ScriptCacheClient(assetLoader(context)));
+        }
+
+        @Override
+        public WebResourceResponse shouldInterceptRequest(@NonNull WebResourceRequest request) {
+            return files.shouldInterceptRequest(request.getUrl());
+        }
     }
 
     private void configure(WebView view) {

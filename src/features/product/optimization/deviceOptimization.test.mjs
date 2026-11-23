@@ -6,7 +6,7 @@ const module = { exports: {} };
 new Function('exports', ts.transpileModule(fs.readFileSync(new URL('./deviceOptimization.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText)(module.exports);
-const { DeviceOptimizationRun, readDeviceProfile } = module.exports;
+const { DeviceOptimizationRun, readDeviceProfile, deliverProfile } = module.exports;
 function snapshot(view, options) {
   const requested = view.candidate.targetFps, cap = (options.cap ?? (() => 120))(view), fps = Math.min(requested, cap);
   const uiFps = options.uiFps ?? options.hz ?? 60, effect = { fps, p95: 1000 / fps, samples: 60 };
@@ -80,4 +80,25 @@ test('cancel always selects balanced quality, 60 FPS and disabled smoothness, ex
 test('persisted profiles reject invalid settings/version/corrupt JSON', () => {
   const profile = simulate(); assert.deepEqual(readDeviceProfile(JSON.stringify(profile)), profile);
   for (const value of [null, '{', JSON.stringify({ ...profile, version: 2 }), JSON.stringify({ ...profile, quality: 'ultra' }), JSON.stringify({ ...profile, targetFps: 240 })]) assert.equal(readDeviceProfile(value), null);
+});
+test('a failed graphics engine still lets the person leave the setup screen', () => {
+  const run = new DeviceOptimizationRun(); const profile = run.cancel(); const finished = [], warnings = [];
+  const warn = console.warn; console.warn = (...args) => warnings.push(args);
+  try {
+    // A Rust engine that has panicked throws on every call, e.g. "recursive use of an object detected".
+    const broken = { finishOptimization() { throw new Error('recursive use of an object detected'); } };
+    assert.doesNotThrow(() => deliverProfile(broken, profile, value => finished.push(value)));
+  } finally { console.warn = warn; }
+  assert.deepEqual(finished, [profile]); assert.equal(warnings.length, 1);
+});
+test('a working engine gets the chosen profile before the app continues', () => {
+  const profile = simulate(), order = [];
+  deliverProfile({ finishOptimization: (...args) => order.push(['engine', ...args]) }, profile, value => order.push(['finish', value]));
+  assert.deepEqual(order, [['engine', profile.quality, profile.targetFps, profile.smoothness], ['finish', profile]]);
+  const alone = []; deliverProfile(null, profile, value => alone.push(value)); assert.deepEqual(alone, [profile]);
+});
+test('the setup screen hands every profile over through deliverProfile', () => {
+  const screen = fs.readFileSync(new URL('./DeviceOptimizationScreen.tsx', import.meta.url), 'utf8');
+  assert.equal((screen.match(/deliverProfile\(controller, /g) ?? []).length, 2, 'the measured result and the defaults button both use deliverProfile');
+  assert.doesNotMatch(screen, /finishOptimization\([^)]*\);\s*onFinish\(/, 'no engine call may stand between the profile and onFinish');
 });

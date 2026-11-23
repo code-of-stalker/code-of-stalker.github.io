@@ -11,7 +11,7 @@ function load(file, modules) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'),
     { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, console: { error() {} }, Float64Array, Event, ResizeObserver: class { observe() {} disconnect() {} },
+  vm.runInNewContext(code, { exports, console: { error() {} }, Float64Array, Event, ResizeObserver: class { observe() {} disconnect() {} }, setTimeout, clearTimeout, queueMicrotask,
     require: name => { if (name in modules) return modules[name]; throw new Error(`unexpected import ${name}`); } });
   return exports;
 }
@@ -26,7 +26,7 @@ function hooks() {
   return { react, begin() { cursor = 0; }, effects() { pending.splice(0).forEach(fn => fn()); } };
 }
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const element = () => ({ dataset: {}, style: {}, dispatchEvent() {} });
+const element = () => ({ dataset: {}, style: {}, dispatchEvent() {}, hasAttribute: () => false });
 
 test('a glass surface that cannot start reports a finished reveal and readiness', async () => {
   const h = hooks(), reveal = [], ready = [];

@@ -73,10 +73,10 @@ test('file reader accepts the new size cap and rejects larger files before readi
 });
 test('import preserves newer records and progress, deduplicates repeated imports and restores an empty installation', () => {
   const data = sample(), current = emptyProduct();
-  current.progress.questionIndex = 1; current.progress.selectedLevel = 'basic'; current.settings.theme = 'light';
+  current.progress.questionIndex = 1; current.progress.selectedLevel = 'basic'; current.settings.theme = 'violet';
   current.diaryEntries = [{ id: '4'.repeat(32), category: 'dynamics', kind: 'text', createdAt: 500, text: 'Новая запись' }];
   const merged = mergeBackup(current, data);
-  assert.equal(merged.diaryEntries.length, 3); assert.equal(merged.settings.theme, 'light'); assert.equal(merged.progress.questionIndex, 1);
+  assert.equal(merged.diaryEntries.length, 3); assert.equal(merged.settings.theme, 'violet'); assert.equal(merged.progress.questionIndex, 1);
   assert.deepEqual(mergeBackup(merged, data), merged);
   const restored = mergeBackup(emptyProduct(), data);
   assert.equal(restored.settings.theme, 'neutral'); assert.equal(restored.progress.questionIndex, 3);

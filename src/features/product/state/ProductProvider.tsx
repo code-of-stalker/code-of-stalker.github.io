@@ -61,8 +61,27 @@ export function ProductProvider({ children }: PropsWithChildren) {
     const subscription = AppState.addEventListener('change', state => { if (state === 'background') clean(); });
     return () => { alive.current = false; subscription.remove(); clean(); };
   }, [reportError]);
+  // Another tab or the installed app saved: show its entries, progress and settings here too.
+  // A save started in this tab meanwhile already includes them and wins the race.
+  const writes = useRef(0), shown = useRef('');
+  useEffect(() => { shown.current = JSON.stringify(snapshot); }, [snapshot]);
+  useEffect(() => {
+    const refresh = () => {
+      if (!ready || resetInFlight.current) return;
+      const started = writes.current, revision = generation.current;
+      void productStorage.read().then(state => {
+        if (!alive.current || started !== writes.current || revision !== generation.current) return;
+        if (JSON.stringify(state) !== shown.current) setSnapshot(state);
+      }).catch(() => {});
+    };
+    const unsubscribe = productStorage.subscribe(refresh);
+    // Safety net where cross-tab messages are missing: read again whenever the app returns.
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') refresh(); });
+    return () => { unsubscribe(); subscription.remove(); };
+  }, [ready]);
   const apply = useCallback(async (work: () => Promise<ProductSnapshot>) => {
     if (resetInFlight.current) throw new Error('Сбрасываем данные. Подожди завершения.');
+    writes.current += 1;
     const revision = generation.current;
     const release = blockWebUpdate();
     try { const next = await work(); if (alive.current && revision === generation.current) { setSnapshot(next); setError(''); } }
@@ -94,6 +113,7 @@ export function ProductProvider({ children }: PropsWithChildren) {
     if (resetInFlight.current) throw new Error('Сбрасываем данные. Подожди завершения.');
     const revision = generation.current;
     const meta = metadata ?? { level: progress.selectedLevel ?? 'basic', step: progress.step, questionIndex: progress.questionIndex };
+    writes.current += 1;
     const release = blockWebUpdate();
     try {
       const result = await productStorage.save(draft, meta);

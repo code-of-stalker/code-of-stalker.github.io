@@ -84,7 +84,8 @@ test('filters combine sources, media, levels, seven basic steps and inclusive lo
   assert.equal(diaryMaterial(entries[1]), null);
   assert.equal(diaryMaterial({ ...entries[0], level: 'intensive' }), null);
   assert.match(diaryQuestion({ ...entries[0], step: 2, questionIndex: 0 }), /^Если все вокруг были бы главными героями/);
-  assert.match(diaryMaterial({ ...entries[0], step: 2 }), /Присмотрись к телу|Ты знаешь только это тело/);
+  // Step two's material is its two task blocks: what to notice today and what to try.
+  assert.match(diaryMaterial({ ...entries[0], step: 2 }), /^Заметь сегодня:[\s\S]*Попробуй:\nВзять и рассмотреть свою жизнь как книгу/);
   assert.equal(parseDiaryDate('29.02.2024'), '2024-02-29'); assert.equal(parseDiaryDate('29.02.2025'), null);
   assert.equal(parseDiaryDate('31.04.2026'), null); assert.equal(parseDiaryDate(''), '');
 });

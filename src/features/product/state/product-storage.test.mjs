@@ -143,9 +143,9 @@ test('metadata commit failure preserves old state and its audio',async()=>{
 });
 test('queued settings updates retain both changes and delete removes only referenced audio',async()=>{
   const fixture=setup(),repository=await fresh();
-  await Promise.all([repository.updateSettings({theme:'light'}),repository.updateSettings({reducedMotion:true})]);
+  await Promise.all([repository.updateSettings({theme:'neutral'}),repository.updateSettings({reducedMotion:true})]);
   const result=await repository.save(draft,meta);
-  const state=await repository.read();assert.equal(state.settings.theme,'light');assert.equal(state.settings.reducedMotion,true);
+  const state=await repository.read();assert.equal(state.settings.theme,'neutral');assert.equal(state.settings.reducedMotion,true);
   await repository.delete(result.observation.id);
   assert.equal((await repository.read()).observations.length,0);
   assert.equal(fixture.files.has(draft.uri),true);

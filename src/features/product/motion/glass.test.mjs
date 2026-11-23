@@ -147,7 +147,8 @@ test('step header notches translate horizontally without changing their width or
     assert.equal(p[5][1]-p[4][1],12);
     assert.equal(p[6][0]-p[5][0],-36);
     assert.equal(p[7][0],width-136);
-    assert.equal(Math.max(...shape.linePolygons(body)[0].map(([_,y])=>y)),height-.25);
+    // The bottom edge sits 1px inside, so Chrome's half-pixel snap cannot clip the hairline.
+    assert.equal(Math.max(...shape.linePolygons(body)[0].map(([_,y])=>y)),height-1);
   }
   const source=shape.stepPanelPaths(288,314).path;
   const fitted=shape.linePolygons(shape.fitPanelPath(source,288,314,416,700));

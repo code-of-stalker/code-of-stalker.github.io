@@ -15,37 +15,46 @@ export type ProductPorts = {
   resetStorage(): Promise<void>;
   readAudioBytes?(record: AudioRecord): Promise<Uint8Array<ArrayBuffer>>;
   restoreBackup?(next: ProductSnapshot, audio: BackupAudio[], expected: ProductSnapshot): Promise<void>;
+  /** Runs `work` while no other tab or installed app window of this origin changes the data. */
+  exclusive?<T>(work: () => Promise<T>): Promise<T>;
+  /** Tells other tabs that the stored data changed. */
+  announce?(): void;
+  /** Calls `listener` when another tab changed the stored data. */
+  subscribe?(listener: () => void): () => void;
 };
 function clone(value: ProductSnapshot): ProductSnapshot { return JSON.parse(JSON.stringify(value)); }
 
 // All saves share one queue. A stale screen cannot overwrite a newer setting or
 // delete another recording while an encrypted write is still being committed.
+// Several tabs (or the installed app beside a browser tab) share one store: every
+// change is applied to the stored snapshot read inside the cross-tab lock, never to
+// a copy kept in memory, so the last writer cannot erase another tab's work.
 export class ProductRepository {
   private tail: Promise<unknown> = Promise.resolve();
-  private state: ProductSnapshot | null = null;
   constructor(private ports: ProductPorts) {}
   private serial<T>(work: () => Promise<T>): Promise<T> {
-    const next = this.tail.then(work);
+    const locked = () => this.ports.exclusive ? this.ports.exclusive(work) : work();
+    const next = this.tail.then(locked);
     this.tail = next.catch(() => {});
     return next;
   }
   private async current() {
-    if (!this.state) this.state = validateSnapshot(await this.ports.readState() ?? emptyProduct());
-    return clone(this.state);
+    return clone(validateSnapshot(await this.ports.readState() ?? emptyProduct()));
   }
   private async commit(next: ProductSnapshot) {
     validateSnapshot(next);
-    try { await this.ports.writeState(next); }
-    catch (error) { this.state = null; throw error; }
-    this.state = clone(next);
+    await this.ports.writeState(next);
+    this.changed();
     return clone(next);
   }
+  private changed() { try { this.ports.announce?.(); } catch { /* Other tabs still refresh when shown. */ } }
+  /** Another tab changed the stored data; read() returns it. */
+  subscribe(listener: () => void) { return this.ports.subscribe?.(listener) ?? (() => {}); }
   read() { return this.serial(() => this.current()); }
   createBackup() {
     return this.serial(async (): Promise<BackupData> => {
       if (!this.ports.readAudioBytes) throw new Error('Резервные копии пока доступны в веб-версии.');
       const snapshot = validateSnapshot(await this.ports.readState() ?? emptyProduct());
-      this.state = clone(snapshot);
       const data: BackupData = { createdAt: Date.now(), snapshot: clone(snapshot), audio: [] };
       data.snapshot.settings.lastBackupAt = data.createdAt;
       try {
@@ -67,9 +76,8 @@ export class ProductRepository {
       // Refresh from disk before merging, including changes from another tab.
       const current = validateSnapshot(await this.ports.readState() ?? emptyProduct());
       const next = mergeBackup(current, data);
-      try { await this.ports.restoreBackup(next, data.audio, current); }
-      catch (error) { this.state = null; throw error; }
-      this.state = clone(next); return clone(next);
+      await this.ports.restoreBackup(next, data.audio, current);
+      this.changed(); return clone(next);
     });
   }
   reset() {
@@ -77,9 +85,8 @@ export class ProductRepository {
       // Clear the whole namespace, including orphaned audio from failed saves.
       // A reset must also work when the old snapshot cannot be decrypted.
       try { await this.ports.resetStorage(); }
-      catch (error) { this.state = null; throw error; }
-      this.state = emptyProduct();
-      return clone(this.state);
+      finally { this.changed(); }
+      return emptyProduct();
     });
   }
   updateSettings(patch: Partial<ProductSettings>) {

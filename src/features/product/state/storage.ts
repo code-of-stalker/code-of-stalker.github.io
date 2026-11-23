@@ -63,7 +63,25 @@ async function open(value: Sealed, aad: string) {
   if (!key || !value?.iv || !value?.bytes) throw new Error('Локальный ключ или зашифрованная запись недоступны.');
   return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: value.iv, additionalData: new TextEncoder().encode(aad), tagLength: 128 }, key, value.bytes));
 }
+// Tabs and the installed app share this origin's store. The lock serialises every
+// read-modify-write across them; the channel tells the others to read again.
+const lockName = 'watcher-product-state', channelName = 'watcher-product-state';
+const source = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+type Locks = { request<T>(name: string, work: () => Promise<T>): Promise<T> };
+function locks(): Locks | undefined { return (globalThis.navigator as { locks?: Locks } | undefined)?.locks; }
 export const productStorage = new ProductRepository({
+  exclusive(work) { const shared = locks(); return shared ? shared.request(lockName, work) : work(); },
+  announce() {
+    if (typeof BroadcastChannel === 'undefined') return;
+    // Posted messages are delivered even after the sender closes.
+    const channel = new BroadcastChannel(channelName); channel.postMessage({ type: 'changed', source }); channel.close();
+  },
+  subscribe(listener) {
+    if (typeof BroadcastChannel === 'undefined') return () => {};
+    const channel = new BroadcastChannel(channelName);
+    channel.onmessage = event => { const message = event.data as { type?: string; source?: string } | null; if (message?.type === 'changed' && message.source !== source) listener(); };
+    return () => channel.close();
+  },
   async randomId() { return Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join(''); },
   async readState() {
     const value = await read<Sealed>('state');

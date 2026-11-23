@@ -3,7 +3,7 @@ import { AppState, Platform, StyleSheet, useWindowDimensions, View } from 'react
 import { useEffectsController } from '../motion/EffectsQuality';
 import { ProductButton, ProductScreen, ProductText } from '../ui';
 import { useThemeColors } from '../ProductTheme';
-import { DeviceOptimizationRun, type DeviceOptimizationProfile } from './deviceOptimization';
+import { deliverProfile, DeviceOptimizationRun, type DeviceOptimizationProfile } from './deviceOptimization';
 import { OptimizationScene } from './OptimizationScene';
 import { OptimizationMascot } from './OptimizationMascot';
 
@@ -28,7 +28,7 @@ export function DeviceOptimizationScreen({ onFinish, saving, error, onRetry, onC
       const changed = nextKey !== key;
       if (changed) { key = nextKey; if (!next.result) controller.probe(next.candidate.quality, next.candidate.targetFps); }
       if (next.result) {
-        delivered.current = true; setView(next); controller.finishOptimization(next.result.quality, next.result.targetFps, next.result.smoothness); onFinish(next.result); return;
+        delivered.current = true; setView(next); deliverProfile(controller, next.result, onFinish); return;
       }
       if (changed || at - published >= 500) { setView(next); published = at; }
       frame = requestAnimationFrame(tick);
@@ -52,7 +52,7 @@ export function DeviceOptimizationScreen({ onFinish, saving, error, onRetry, onC
   function keepDefaults() {
     if (delivered.current) return;
     delivered.current = true; const profile = run.cancel(); setView(run.view);
-    controller?.finishOptimization(profile.quality, profile.targetFps, profile.smoothness); onFinish(profile);
+    deliverProfile(controller, profile, onFinish);
   }
   return <View testID="device-optimization" style={[styles.root, { backgroundColor: colors.background }]}>
     {view.scene && !saving && !error && <OptimizationScene active={foreground} onReady={markReady} />}

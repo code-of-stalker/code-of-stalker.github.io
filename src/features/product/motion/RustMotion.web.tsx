@@ -11,6 +11,8 @@ export type MotionValues = readonly [opacity: number, x: number, y: number, scal
 export const shown: MotionValues = [1, 0, 0, 1, 0, 100];
 export const hidden: MotionValues = [0, 0, 0, 1, 0, 100];
 export const gentle = [.22, .8, .2, 1] as const;
+/** Extra wait past a transition's own length before its completion is forced. */
+export const completionSafetyMs = 1200;
 
 /** Target events only. The shared Rust clock writes the presentation style and
  * reports completion; React never calculates a transition's intermediate frame. */
@@ -42,17 +44,64 @@ export function RustMotion({ children, initial = shown, target = shown, duration
   const [startingHeight] = useState(initialHeight ?? height);
   const completion = useRef(false);
   const previousFocus = useRef(focused);
+  const engine = useRef<'loading' | 'ready' | 'failed'>('loading'), safety = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const settleQueued = useRef(false), shownScale = useRef(initialValues[3]);
+  // Closing sheets, dialogs and menus unmount on completion. Without the engine (old GPU, failed
+  // download, crash) or with a stalled frame loop, completion must still arrive: an absent engine
+  // jumps straight to the end values, and every transition keeps a timeout safety net.
+  const [settling] = useState(() => {
+    const finish = () => {
+      clearTimeout(safety.current); safety.current = undefined;
+      if (completion.current) return;
+      completion.current = true;
+      root.current?.dispatchEvent(new Event(motionSettledEvent, { bubbles: true }));
+      latest.current.onComplete?.();
+    };
+    /** Writes the end values the engine would paint last; no intermediate frame is computed here. */
+    const withoutEngine = () => {
+      const element = root.current, value = latest.current;
+      if (element) {
+        const [opacity, x, y, scale, rotation] = value.target;
+        shownScale.current = value.springScale ? value.scale : Number.isNaN(scale) ? shownScale.current : scale;
+        element.style.opacity = String(opacity);
+        element.style.transform = `translate3d(${x}px,${y}px,0) ${element.hasAttribute('data-rust-scale-x') ? 'scaleX' : 'scale'}(${shownScale.current}) rotate(${rotation}deg)`;
+        if (value.height !== undefined) element.style.height = `${value.height}px`;
+        // The scan's starting mask hides everything; without the engine nothing would lift it.
+        if (value.scanDuration !== undefined) { element.style.maskImage = 'none'; element.style.webkitMaskImage = 'none'; }
+      }
+      finish();
+    };
+    const arm = () => {
+      clearTimeout(safety.current); safety.current = undefined;
+      if (engine.current === 'failed') {
+        // Height and target can change in one commit; settle once after both.
+        if (!settleQueued.current) { settleQueued.current = true; queueMicrotask(() => { settleQueued.current = false; if (!completion.current) withoutEngine(); }); }
+        return;
+      }
+      const value = latest.current;
+      if (!value.onComplete || value.loop) return;
+      const wait = value.delay + Math.max(value.duration, value.scanDuration ?? 0) + completionSafetyMs;
+      safety.current = setTimeout(() => { safety.current = undefined; if (!completion.current) withoutEngine(); }, wait);
+    };
+    return { finish, withoutEngine, arm };
+  });
+  useEffect(() => () => clearTimeout(safety.current), []);
   useEffect(() => {
-    if (!root.current || !controller) return;
+    if (!root.current || !controller) { engine.current = 'failed'; settling.arm(); return; }
     let disposed = false, detach = () => {}, unregister = () => {};
     void loadGraphics().then(module => {
       if (disposed || !root.current) return;
+      engine.current = 'ready';
       const node = module.ElementTimeline.create(root.current); handle.current = node;
-      node.initial(Float64Array.from(initialValues)); const value = latest.current;
-      if(startingHeight!==undefined)node.initial_height(startingHeight);
-      if(value.height!==undefined)node.target_height_curve(value.height,value.duration,Float64Array.from(value.curve));
-      if(value.scanDuration!==undefined)node.scan_reveal(systemReduced?0:value.scanDuration,value.delay);
-      node.target(Float64Array.from(value.target), value.duration, value.delay, Float64Array.from(value.curve));
+      // The safety net may have shown the end state while the engine was still downloading:
+      // continue from there instead of replaying the transition.
+      const value = latest.current, early = completion.current;
+      node.initial(Float64Array.from(early ? [value.target[0], value.target[1], value.target[2], shownScale.current, value.target[4], value.target[5]] : initialValues));
+      if (early && value.height !== undefined) node.initial_height(value.height);
+      else if(startingHeight!==undefined)node.initial_height(startingHeight);
+      if(value.height!==undefined)node.target_height_curve(value.height,early?0:value.duration,Float64Array.from(value.curve));
+      if(value.scanDuration!==undefined)node.scan_reveal(systemReduced||early?0:value.scanDuration,early?0:value.delay);
+      node.target(Float64Array.from(value.target), early ? 0 : value.duration, early ? 0 : value.delay, Float64Array.from(value.curve));
       if (value.springScale) node.spring_scale(value.scale, value.duration <= 0);
       node.active(value.active); if (value.loop) node.loop(value.loop.width, value.loop.speed);
       if (value.breath) node.breathe(value.breath.period, value.breath.low);
@@ -60,28 +109,26 @@ export function RustMotion({ children, initial = shown, target = shown, duration
       detach = controller.frameJob(at => {
         const value = latest.current; node.active(value.active); const drew = node.frame(at), moving = node.moving();
         controller.activity(token, value.active, moving);
-        if (drew && !moving && !completion.current) {
-          completion.current = true;
-          root.current?.dispatchEvent(new Event(motionSettledEvent, { bubbles: true }));
-          value.onComplete?.();
-        }
+        if (drew && !moving && !completion.current) settling.finish();
       });
-    }).catch(problem => { console.error('Rust transition:', problem); if (root.current) { root.current.dataset.graphicsError = String(problem); root.current.style.opacity = String(latest.current.target[0]);
-      // The scan's starting mask hides everything; without the engine nothing would lift it.
-      if (latest.current.scanDuration !== undefined) { root.current.style.maskImage = 'none'; root.current.style.webkitMaskImage = 'none'; }
-      latest.current.onComplete?.(); } });
+    }).catch(problem => {
+      if (disposed) return;
+      console.error('Rust transition:', problem); engine.current = 'failed';
+      if (root.current) root.current.dataset.graphicsError = String(problem);
+      settling.withoutEngine();
+    });
     return () => { disposed = true; detach(); unregister(); handle.current?.dispose(); handle.current = null; };
-  }, [controller, initialValues, startingHeight, systemReduced]);
-  useEffect(() => { completion.current = false; handle.current?.target(Float64Array.from(resolvedTarget), duration, delay, Float64Array.from(resolvedCurve)); }, [resolvedTarget, duration, delay, resolvedCurve]);
+  }, [controller, initialValues, startingHeight, systemReduced, settling]);
+  useEffect(() => { completion.current = false; handle.current?.target(Float64Array.from(resolvedTarget), duration, delay, Float64Array.from(resolvedCurve)); settling.arm(); }, [resolvedTarget, duration, delay, resolvedCurve, settling]);
   useEffect(() => {
-    if (springScale) { completion.current = false; handle.current?.spring_scale(scale, duration <= 0); }
-  }, [springScale, scale, duration]);
+    if (springScale) { completion.current = false; handle.current?.spring_scale(scale, duration <= 0); settling.arm(); }
+  }, [springScale, scale, duration, settling]);
   useEffect(() => { handle.current?.active(active && focused); }, [active, focused]);
   useEffect(()=>{
-    if(focused&&!previousFocus.current&&scanDuration!==undefined){completion.current=false;handle.current?.scan_reveal(systemReduced?0:scanDuration,delay);}
+    if(focused&&!previousFocus.current&&scanDuration!==undefined){completion.current=false;handle.current?.scan_reveal(systemReduced?0:scanDuration,delay);settling.arm();}
     previousFocus.current=focused;
-  },[focused,scanDuration,delay,systemReduced]);
-  useEffect(()=>{if(height!==undefined){completion.current=false;handle.current?.target_height_curve(height,duration,Float64Array.from(resolvedCurve));}},[height,duration,resolvedCurve]);
+  },[focused,scanDuration,delay,systemReduced,settling]);
+  useEffect(()=>{if(height!==undefined){completion.current=false;handle.current?.target_height_curve(height,duration,Float64Array.from(resolvedCurve));settling.arm();}},[height,duration,resolvedCurve,settling]);
   const breathPeriod = breath?.period ?? 0, breathLow = breath?.low ?? 1;
   useEffect(() => { handle.current?.breathe(breathPeriod, breathLow); }, [breathPeriod, breathLow]);
   const loopWidth = loop?.width, loopSpeed = loop?.speed;

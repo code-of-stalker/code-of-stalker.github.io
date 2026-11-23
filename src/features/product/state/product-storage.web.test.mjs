@@ -176,3 +176,57 @@ test('browser reset clears a preceding write and never restores its cached setti
   assert.deepEqual(await repository.read(), emptyProduct());
   assert.equal(fixture.values.size, 0);
 });
+
+// Two tabs (or the installed app and a browser tab) are two module instances over one store.
+test('two tabs never erase each other: every save applies to the stored snapshot', async () => {
+  const fixture = indexedDbFixture(), tabA = await fresh(), tabB = await fresh();
+  // Both tabs have the diary open with the same state in memory.
+  await tabA.read(); await tabB.read();
+  await tabB.saveDiaryText('tab B entry', 'dynamics');
+  await tabA.saveDiaryText('tab A entry', 'dynamics');
+  await tabA.updateSettings({ theme: 'neutral' });
+  await tabB.updateProgress({ stepThreeReading: { chapter: 1, page: 2, offset: 40 } });
+  for (const tab of [tabA, tabB, await fresh()]) {
+    const state = await tab.read();
+    assert.deepEqual(state.diaryEntries.map(entry => entry.text).sort(), ['tab A entry', 'tab B entry']);
+    assert.equal(state.settings.theme, 'neutral');
+    assert.deepEqual(state.progress.stepThreeReading, { chapter: 1, page: 2, offset: 40 });
+  }
+  assert.ok(fixture.values.has('state'));
+});
+
+test('simultaneous saves from two tabs all survive', async () => {
+  indexedDbFixture(); const tabA = await fresh(), tabB = await fresh();
+  await Promise.all(Array.from({ length: 6 }, (_, index) => (index % 2 ? tabA : tabB).saveDiaryText(`entry ${index}`, 'dynamics')));
+  assert.equal((await (await fresh()).read()).diaryEntries.length, 6);
+});
+
+test('a voice entry deleted in one tab does not come back from another tab, and backups still work', async () => {
+  const fixture = indexedDbFixture(), tabA = await fresh(), tabB = await fresh(), voice = capture();
+  try {
+    const saved = await tabA.saveDiaryVoice(voice, 'dynamics');
+    await tabB.read();
+    await tabA.delete(saved.entry.id);
+    await tabB.updateSettings({ theme: 'violet' });
+    await tabB.saveDiaryText('after delete', 'dynamics');
+    const state = await (await fresh()).read();
+    assert.deepEqual(state.diaryEntries.map(entry => entry.kind), ['text']);
+    assert.equal([...fixture.values.keys()].some(key => key.startsWith('audio-')), false);
+    const backup = await tabB.createBackup();
+    assert.equal(backup.audio.length, 0);
+    assert.equal(backup.snapshot.diaryEntries.length, 1);
+  } finally { URL.revokeObjectURL(voice.uri); }
+});
+
+test('a save tells the other tabs to read again, but not itself', async () => {
+  indexedDbFixture(); const tabA = await fresh(), tabB = await fresh();
+  let seenByA = 0, seenByB = 0;
+  const stopA = tabA.subscribe(() => { seenByA += 1; }), stopB = tabB.subscribe(() => { seenByB += 1; });
+  try {
+    await tabA.saveDiaryText('notify', 'dynamics');
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(seenByB, 1);
+    assert.equal(seenByA, 0);
+    assert.equal((await tabB.read()).diaryEntries[0].text, 'notify');
+  } finally { stopA(); stopB(); }
+});

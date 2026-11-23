@@ -48,7 +48,7 @@
     "build:android": "node scripts/android/build.mjs",
     "sign:android": "node scripts/android/build.mjs --sign-only",
     "prepare:site": "node scripts/prepare-site-source.mjs",
-    "test:web-cache": "node --test scripts/web-cache/cache.test.mjs scripts/web-cache/bootstrap.test.mjs scripts/web-cache/shell-security.test.mjs",
+    "test:web-cache": "node --test scripts/web-cache/selection.test.mjs scripts/web-cache/cache.test.mjs scripts/web-cache/bootstrap.test.mjs scripts/web-cache/shell-security.test.mjs",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",

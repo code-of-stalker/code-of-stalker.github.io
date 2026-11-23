@@ -9,6 +9,10 @@ export function usePanelReveal(enabled: boolean, reducedMotion: boolean) {
   useEffect(() => { latest.current.immediate = !enabled || reducedMotion; if (ref.current) apply.current?.(ref.current as unknown as HTMLElement, latest.current.value, latest.current.immediate); }, [enabled, reducedMotion]);
   useEffect(() => { let disposed = false; void loadGraphics().then(module => { if (disposed) return; apply.current = module.panel_reveal;
     if (ref.current) apply.current(ref.current as unknown as HTMLElement, latest.current.value, latest.current.immediate);
+  }).catch(problem => { console.error('Rust panel reveal:', problem);
+    // Without the engine no scan can lift the starting mask: show the panel as it is.
+    const element = ref.current as unknown as HTMLElement | null;
+    if (!disposed && element) { element.style.maskImage = 'none'; element.style.webkitMaskImage = 'none'; }
   }); return () => { disposed = true; }; }, []);
   const report = useCallback((value: number) => { latest.current.value = value;
     if (ref.current) apply.current?.(ref.current as unknown as HTMLElement, value, latest.current.immediate);

@@ -66,7 +66,10 @@ export function RustMotion({ children, initial = shown, target = shown, duration
           value.onComplete?.();
         }
       });
-    }).catch(problem => { console.error('Rust transition:', problem); if (root.current) { root.current.dataset.graphicsError = String(problem); root.current.style.opacity = String(latest.current.target[0]); latest.current.onComplete?.(); } });
+    }).catch(problem => { console.error('Rust transition:', problem); if (root.current) { root.current.dataset.graphicsError = String(problem); root.current.style.opacity = String(latest.current.target[0]);
+      // The scan's starting mask hides everything; without the engine nothing would lift it.
+      if (latest.current.scanDuration !== undefined) { root.current.style.maskImage = 'none'; root.current.style.webkitMaskImage = 'none'; }
+      latest.current.onComplete?.(); } });
     return () => { disposed = true; detach(); unregister(); handle.current?.dispose(); handle.current = null; };
   }, [controller, initialValues, startingHeight, systemReduced]);
   useEffect(() => { completion.current = false; handle.current?.target(Float64Array.from(resolvedTarget), duration, delay, Float64Array.from(resolvedCurve)); }, [resolvedTarget, duration, delay, resolvedCurve]);

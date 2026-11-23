@@ -28,7 +28,9 @@ export function RustGlass(props: ArtProps) {
       const current=latest.current,node=session.add(output,current.scanOnMount!==false,value=>latest.current.onRevealProgress?.(value),()=>latest.current.onReady?.(),current.kind==='rain',current.kind==='attention',undefined,current.kind==='gallery'||current.kind==='mirror'||current.kind==='voice-presence'||current.kind==='grounding-hero'?current.kind:undefined);
       handle.current=node;if(current.glass)node.resize(current.glass);else if(current.kind!=='glass'){const {width,height}=output.getBoundingClientRect();if(width>0&&height>0)node.resize({width,height,path:`M0 0H${width}V${height}H0Z`,background:'clear'});}node.active(activity.current.active,activity.current.reduced);
       if(current.controllerRef)current.controllerRef.current={interact:value=>{if(value.action==='benchmark'){node.benchmark(value.at??0);return;}if(value.action.startsWith('glass-')){point.current={x:value.x??point.current.x,y:value.y??point.current.y};node.pointer(point.current.x,point.current.y,value.action!=='glass-release');}}};
-    }).catch(problem=>{if(!cancelled){console.error('Rust effect creation:',latest.current.kind,problem);output.dataset.graphicsError=String(problem);setFailed(String(problem));}});
+    }).catch(problem=>{if(!cancelled){console.error('Rust effect creation:',latest.current.kind,problem);output.dataset.graphicsError=String(problem);setFailed(String(problem));
+      // As on native: a surface that cannot start finishes its reveal, so the panel it scans is shown, not left masked.
+      latest.current.onRevealProgress?.(1);latest.current.onReady?.();}});
     return()=>{cancelled=true;handle.current?.release();handle.current=null;if(latest.current.controllerRef)latest.current.controllerRef.current=null;};
   },[controller,failed]);
   useEffect(()=>{if(props.glass)handle.current?.resize(props.glass);},[props.glass]);

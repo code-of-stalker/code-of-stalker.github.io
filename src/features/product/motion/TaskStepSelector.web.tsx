@@ -37,7 +37,7 @@ export function TaskStepSelector({ step, availableAt, testUnlockAll = false, ope
   const bleed = pinned ? 1 : 0;
   const headerHeight = triggerSize?.height ?? 26, below: readonly [number, number, number, number, number, number] = [0, 0, pinned ? 0 : menuHeight - headerHeight, 1, 0, 100];
   if (open && !present) setPresent(true);
-  useBackSwipeBlocked(open || present);
+  useBackSwipeBlocked(open || present, open ? onToggle : undefined);
   return <View ref={ref} pointerEvents="box-none" style={[styles.slot, anchor === 'top' && { marginTop: 0, height: Math.max(headerHeight, menuOffset + menuHeight) }, style]} onLayout={onLayout}>
     <RustMotion initial={shown} target={[!pinned && ready ? 0 : 1, 0, 0, 1, 0, 100]} duration={reducedMotion ? 0 : 120} curve={[0, 0, .58, 1]} aria-hidden={!pinned && open}
       style={{ position: 'absolute', left: 0, ...(pinned ? { top: 0 } : { bottom: 0 }), zIndex: 1, height: headerHeight, width: triggerSize?.width ?? shortWidth, pointerEvents: !pinned && open ? 'none' : 'auto', display: 'flex' }}>

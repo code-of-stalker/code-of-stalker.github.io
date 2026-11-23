@@ -25,7 +25,7 @@ export function BottomSheet({ children, open, onClose, onDismiss, bottomInset = 
   if (open && focused && !present) setPresent(true);
   if (!focused && present) setPresent(false);
   useEffect(() => { if (focused) return () => dismiss.current?.(); }, [focused]);
-  useBackSwipeBlocked(open || present);
+  useBackSwipeBlocked(open || present, open ? onClose : undefined);
   const [height, setHeight] = useState(600);
   const duration = reducedMotion ? 0 : open ? 460 : 280;
   return <Modal visible={focused && (open || present)} transparent animationType="none" onRequestClose={onClose}>

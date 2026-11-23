@@ -14,6 +14,7 @@ import { DeviceOptimizationGate, type DeviceOptimizationMode } from '../../featu
 import { StartupSkeleton } from '../../features/product/skeleton/StartupSkeleton';
 import { useGraphicsEngineLoading } from '../../features/product/skeleton/useGraphicsEngineLoading';
 import { useWebUpdateReady } from '../../features/product/updates/webUpdateSafety';
+import { useAndroidSystemBars } from '../../features/product/platform/androidApp';
 
 function ProductStack() {
   const colors = useThemeColors();
@@ -22,6 +23,7 @@ function ProductStack() {
   const [gate, setGate] = useState<DeviceOptimizationMode>('loading');
   const engineLoading = useGraphicsEngineLoading();
   useWebUpdateReady(ready && (loaded || !!fontError));
+  useAndroidSystemBars(colors.background, isLightTheme(colors));
   if (error && !ready) return <ProductScreen>
     <ProductText variant="title">НЕ УДАЛОСЬ ОТКРЫТЬ ДНЕВНИК</ProductText>
     <ProductText style={{ marginVertical: 24 }}>{error}</ProductText>

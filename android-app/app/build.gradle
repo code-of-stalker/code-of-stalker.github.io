@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Everything that changes per build comes from scripts/android/build.mjs:
+//   watcherAssets      folder that holds `www/` (the prepared web export)
+//   versionCode/Name   from git (commit count; commit date + short hash)
+//   watcherTestSigning sign the release with the SDK debug key (emulator checks only)
+//   watcherWebDebug    allow chrome://inspect on the page (emulator checks only)
+def prop = { String name, String fallback -> providers.gradleProperty(name).getOrElse(fallback) }
+
+android {
+    namespace = 'code.of.stalker'
+    compileSdk = 37
+
+    defaultConfig {
+        // Permanent (Art, 2026-11-22): Android keeps the diary per package and signing key.
+        applicationId = 'code.of.stalker'
+        minSdk = 26
+        targetSdk = 36
+        versionCode = prop('versionCode', '1') as int
+        versionName = prop('versionName', 'dev')
+        resValue 'bool', 'watcher_web_debug', prop('watcherWebDebug', 'false')
+    }
+
+    signingConfigs {
+        // Release builds stay unsigned unless this is an emulator check: Art signs with
+        // his own key afterwards (npm run sign:android prompts for the password).
+        if (prop('watcherTestSigning', 'false') == 'true') {
+            testRelease {
+                initWith(signingConfigs.debug)
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (prop('watcherTestSigning', 'false') == 'true') signingConfig = signingConfigs.testRelease
+        }
+    }
+
+    buildFeatures {
+        resValues = true
+    }
+
+    sourceSets {
+        main {
+            def webAssets = providers.gradleProperty('watcherAssets')
+            if (webAssets.isPresent()) assets.srcDirs = [webAssets.get()]
+        }
+    }
+
+    androidResources {
+        // aapt's default pattern drops `_*` folders and dotfiles, which would lose Expo's
+        // `_expo/` bundle. Keep only the version-control and OS junk exclusions.
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        // Already-compressed formats gain nothing from the APK's zip; skip re-compressing.
+        noCompress += ['z', 'webp', 'woff2']
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError = true
+        checkReleaseBuilds = true
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.13.0'
+    implementation 'androidx.core:core:1.19.1'
+    implementation 'androidx.webkit:webkit:1.18.0'
+}

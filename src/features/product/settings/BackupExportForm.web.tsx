@@ -28,7 +28,8 @@ export function BackupExportForm({ onCancel, onCreated, onBusyChange }: BackupEx
       try {
         const encrypted = await encryptBackup(data, password);
         if (!alive.current) return;
-        downloadBackup(encrypted, data.createdAt);
+        // In the Android app the person may cancel the save dialog: then nothing was saved.
+        if (!await downloadBackup(encrypted, data.createdAt)) return;
         await product.updateSettings({ lastBackupAt: data.createdAt });
         if (alive.current) { setPassword(''); setRepeat(''); onCreated(); }
       } finally { clearBackup(data); }

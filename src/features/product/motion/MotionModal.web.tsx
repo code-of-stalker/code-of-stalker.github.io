@@ -10,10 +10,12 @@ const exitCurve = [.47, 0, .745, .715] as const;
 
 /** Keep the established 250 ms modal motion; Rust owns its interpolation. */
 export function MotionModal({ visible = true, animationType = 'none', transparent = false, backdropColor = 'white', children, ...props }: ModalProps) {
+  const { onRequestClose } = props;
   const [present, setPresent] = useState(visible);
   const { height } = useWindowDimensions();
   if (visible && !present) setPresent(true);
-  useBackSwipeBlocked(visible || present);
+  // Android back closes it as React Native's own Modal does: through onRequestClose.
+  useBackSwipeBlocked(visible || present, visible && onRequestClose ? () => onRequestClose(undefined as never) : undefined);
   const hidden = useMemo<MotionValues>(() => animationType === 'slide'
     ? [1, 0, height, 1, 0, 100] : [0, 0, 0, 1, 0, 100], [animationType, height]);
   return <Modal {...props} visible={visible || present} transparent animationType="none">

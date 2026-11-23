@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 import { Platform, View } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
@@ -8,21 +8,24 @@ import { BackSwipeFeedback } from './BackSwipeFeedback';
 import type { BackSwipeFeedbackHandle } from './BackSwipeFeedback.types';
 import { useProduct } from '../state/ProductProvider';
 import { useWebUpdateBlock } from '../updates/webUpdateSafety';
+import { exitAndroidApp, useAndroidBack } from '../platform/androidApp';
 
 type Registration = { action(): void; priority: number };
-type Registry = { register(key: object, entry: Registration): () => void; block(key: object): () => void; allowsSwipe(): boolean };
+/** A blocker may say how it closes; the Android back button uses that for the top overlay. */
+type Closer = () => (() => void) | undefined;
+type Registry = { register(key: object, entry: Registration): () => void; block(key: object, close: Closer): () => void; allowsSwipe(): boolean };
 const Context = createContext<Registry | null>(null);
 const allowSwipe = () => true;
 
 export function BackSwipeProvider({ children }: PropsWithChildren) {
   const entries = useRef(new Map<object, Registration>()), gesture = useRef(new BackSwipe());
-  const blockers = useRef(new Set<object>());
+  const blockers = useRef(new Map<object, Closer>());
   const feedback = useRef<BackSwipeFeedbackHandle | null>(null);
   const { settings } = useProduct();
   const registry = useMemo<Registry>(() => ({ register(key, entry) {
     entries.current.set(key, entry); return () => { entries.current.delete(key); gesture.current.cancel(); };
-  }, block(key) {
-    blockers.current.add(key); gesture.current.cancel(); feedback.current?.finish(false);
+  }, block(key, close) {
+    blockers.current.set(key, close); gesture.current.cancel(); feedback.current?.finish(false);
     return () => { blockers.current.delete(key); };
   }, allowsSwipe() { return blockers.current.size === 0; } }), []);
   const back = () => {
@@ -32,6 +35,15 @@ export function BackSwipeProvider({ children }: PropsWithChildren) {
     if (chosen) chosen.action(); else if (router.canGoBack()) router.back();
   };
   const latestBack = useRef(back); useLayoutEffect(() => { latestBack.current = back; });
+  // Android app only: the system back closes the top overlay, then takes the
+  // screen's own back step, and leaves the app from the home screen.
+  useAndroidBack(useCallback(() => {
+    if (blockers.current.size) { [...blockers.current.values()].at(-1)?.()?.(); return; }
+    if (window.location.pathname === '/home') { exitAndroidApp(); return; }
+    let chosen: Registration | undefined;
+    for (const entry of entries.current.values()) if (!chosen || entry.priority >= chosen.priority) chosen = entry;
+    if (chosen) chosen.action(); else if (router.canGoBack()) router.back(); else router.replace('/home');
+  }, []));
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const start = (event: TouchEvent) => {
@@ -95,12 +107,13 @@ export function useBackSwipe(action: () => void, enabled = true, priority = 0) {
 
 /** A visible overlay owns interaction until its closing animation is finished.
  * Independent blockers let nested windows close without enabling the page below. */
-export function useBackSwipeBlocked(blocked: boolean) {
-  const focused = useIsFocused(), registry = useContext(Context), key = useRef({});
+export function useBackSwipeBlocked(blocked: boolean, close?: () => void) {
+  const focused = useIsFocused(), registry = useContext(Context), key = useRef({}), latestClose = useRef(close);
+  useLayoutEffect(() => { latestClose.current = close; });
   useWebUpdateBlock(focused && blocked);
   useLayoutEffect(() => {
     if (!registry || !focused || !blocked) return;
-    return registry.block(key.current);
+    return registry.block(key.current, () => latestClose.current);
   }, [registry, focused, blocked]);
 }
 

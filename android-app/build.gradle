@@ -1,0 +1,12 @@
+plugins {
+    id 'com.android.application' version '9.5.2' apply false
+}
+
+// Build output lives outside the repository (the export alone is ~110 MB, and
+// Metro must not crawl it). scripts/android/build.mjs passes -PwatcherBuildRoot.
+def buildRoot = providers.gradleProperty('watcherBuildRoot')
+if (buildRoot.isPresent()) {
+    allprojects { project ->
+        project.layout.buildDirectory.set(new File(buildRoot.get(), project.name))
+    }
+}

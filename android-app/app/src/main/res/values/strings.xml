@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Код Сталкера</string>
+    <string name="no_app_for_link">Нет приложения, чтобы открыть ссылку.</string>
+    <string name="no_file_picker">Нет приложения для выбора файла.</string>
+</resources>

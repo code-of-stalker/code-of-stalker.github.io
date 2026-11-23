@@ -40,7 +40,7 @@ export function StepPanel({ children, title, expanded, onSelect, contentInset = 
   const usesSelector = readingStep !== undefined && !!readingSelection && readingProgress >= .88;
   const opensAbove = readingStep !== undefined && !!readingSelection && !usesSelector;
   const replacesBody = expanded && !usesSelector && !opensAbove;
-  useBackSwipeBlocked(expanded && !usesSelector);
+  useBackSwipeBlocked(expanded && !usesSelector, onSelect);
   const styles = useThemeStyles(createStyles);
   const {ref,size,onLayout}=usePanelSize({width:288,height:314});
   const {ref:headerRef,size:headerSize,onLayout:onHeaderLayout}=usePanelSize({width:288,height:25});

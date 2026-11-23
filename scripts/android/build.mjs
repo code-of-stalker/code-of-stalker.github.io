@@ -61,12 +61,15 @@ const size = file => `${(fs.statSync(file).size / 1048576).toFixed(1)} MB`;
 const commit = git('rev-parse', '--short=7', 'HEAD');
 const versionCode = Number(git('rev-list', '--count', 'HEAD'));
 const dirty = git('status', '--porcelain', '--untracked-files=no') !== '';
-const stamp = path.join(work, 'last-build.json');
+// Test builds (debug key, inspectable page) keep their own Gradle outputs and stamp, so
+// `npm run sign:android` always signs the last release build, never a test one.
+const buildRoot = path.join(work, test ? 'out-test' : 'out');
+const stamp = path.join(work, test ? 'last-test-build.json' : 'last-build.json');
 // Signing alone names the files after the build it signs, not after the current checkout.
 const versionName = signOnly && fs.existsSync(stamp) ? JSON.parse(fs.readFileSync(stamp, 'utf8')).versionName
   : `${git('show', '-s', '--format=%cs', 'HEAD').replace(/-/g, '.')}-${commit}${dirty ? '-local' : ''}`;
 const base = `code-of-stalker-${versionName}`;
-const gradleOut = path.join(work, 'out', 'app', 'outputs');
+const gradleOut = path.join(buildRoot, 'app', 'outputs');
 const builtApk = () => [path.join(gradleOut, 'apk', 'release', 'app-release.apk'), path.join(gradleOut, 'apk', 'release', 'app-release-unsigned.apk')].find(f => fs.existsSync(f));
 const builtAab = path.join(gradleOut, 'bundle', 'release', 'app-release.aab');
 
@@ -89,11 +92,11 @@ if (!signOnly) {
   const assets = path.join(work, 'assets');
   fs.rmSync(assets, { recursive: true, force: true });
   fs.cpSync(exportDir, path.join(assets, 'www'), { recursive: true });
-  fs.rmSync(path.join(work, 'out'), { recursive: true, force: true });
+  fs.rmSync(buildRoot, { recursive: true, force: true });
   const gradle = path.join(repo, 'android-app', windows ? 'gradlew.bat' : 'gradlew');
   run(gradle, [
     '--no-daemon', '--project-cache-dir', path.join(work, 'gradle-project'),
-    `-PwatcherBuildRoot=${path.join(work, 'out')}`, `-PwatcherAssets=${assets}`,
+    `-PwatcherBuildRoot=${buildRoot}`, `-PwatcherAssets=${assets}`,
     `-PversionCode=${versionCode}`, `-PversionName=${versionName}`,
     ...(test ? ['-PwatcherTestSigning=true', '-PwatcherWebDebug=true'] : []),
     ':app:assembleRelease', ...(test ? [] : [':app:bundleRelease']),
@@ -109,6 +112,8 @@ if (!signOnly) {
 fs.mkdirSync(outDir, { recursive: true });
 const apk = builtApk();
 if (!apk) fail('No release APK found; run npm run build:android first.');
+// A release output left by an older script version could still be a test build.
+if (!test && fs.existsSync(stamp) && JSON.parse(fs.readFileSync(stamp, 'utf8')).test) fail('The last build is a test build; run npm run build:android first.');
 if (test) {
   const target = path.join(outDir, `${base}-test.apk`);
   fs.copyFileSync(apk, target);
@@ -123,7 +128,14 @@ fs.copyFileSync(apk, unsignedApk);
 if (fs.existsSync(builtAab)) fs.copyFileSync(builtAab, path.join(outDir, `${base}-unsigned.aab`));
 if (unsigned || !fs.existsSync(keystore) || !process.stdin.isTTY) {
   console.log(`\nUnsigned APK: ${unsignedApk} (${size(unsignedApk)})`);
-  if (!fs.existsSync(keystore)) console.log(`No release key at ${keystore}: create it first (see docs/claude/state.md, "Android app").`);
+  if (!fs.existsSync(keystore)) {
+    // keytool does not create the folder, so it comes first.
+    const keytool = path.join(jdk, 'bin', windows ? 'keytool.exe' : 'keytool');
+    const keyArgs = `-genkeypair -v -keystore "${keystore}" -alias ${keyAlias} -keyalg RSA -keysize 4096 -validity 36500`;
+    console.log(`No release key at ${keystore}. Create it once, keep a copy of the file and its password, then run \`npm run sign:android\`:`);
+    console.log(windows ? `  New-Item -ItemType Directory -Force "${path.dirname(keystore)}"` : `  mkdir -p "${path.dirname(keystore)}"`);
+    console.log(windows ? `  & "${keytool}" ${keyArgs}` : `  "${keytool}" ${keyArgs}`);
+  }
   else if (!unsigned) console.log('Signing needs the key password: run `npm run sign:android` in a terminal.');
   process.exit(0);
 }

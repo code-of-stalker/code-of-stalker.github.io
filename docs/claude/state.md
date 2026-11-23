@@ -841,13 +841,19 @@ Art: «приложение работало без интернета … од�
   `output/android/`, signs with Art's key after a hidden password prompt);
   `-- --test` = SDK debug key + inspectable page, for device checks over USB (no emulator);
   uninstall the test app before installing a release build (different key);
-  `npm run sign:android` re-signs the last build. Tools outside the repo in
+  `npm run sign:android` signs the last release build (test builds keep their own outputs
+  and are refused). Tools outside the repo in
   `%USERPROFILE%\Android\` (`jdk-17*`, `sdk`, `gradle-home`, `build`); env vars only inside
   the script. versionCode = commit count, versionName = `YYYY.MM.DD-<sha7>`.
 - Release key (Art creates it, never in the repo):
   `%USERPROFILE%\Android\keys\code-of-stalker-release.jks`, alias `code-of-stalker`. Without
   it no update and no Play release. Play App Signing: upload this same key, so Play
-  updates the sideloaded install.
+  updates the sideloaded install. Steps (PowerShell; keytool does not create the folder,
+  and `npm run build:android` prints the same lines while the key is missing):
+  1. `New-Item -ItemType Directory -Force "$env:USERPROFILE\Android\keys"`
+  2. `& "$env:USERPROFILE\Android\jdk-17.0.21.1+2\bin\keytool.exe" -genkeypair -v -keystore "$env:USERPROFILE\Android\keys\code-of-stalker-release.jks" -alias code-of-stalker -keyalg RSA -keysize 4096 -validity 36500`
+  3. Keep a copy of the .jks and its password outside this PC.
+  4. `npm run sign:android` (asks the password, signs the last APK and AAB).
 - Package id `code.of.stalker`, name «Код Сталкера» (Art, 2026-11-22; permanent).
 - Versions: AGP 9.5.2, Gradle 9.6.0 (wrapper pinned by sha256), compileSdk 37, targetSdk 36, minSdk 26.
 - Status 2026-11-23 (night, Art stopped for the day): test APK 615 checked on Art's phone

@@ -117,12 +117,16 @@ async function theme(app, label, dir) {
   const checked = () => app.fn((h, name) => [...document.querySelectorAll('[role="radio"]')].find(e => h.norm(e.getAttribute('aria-label')) === h.norm(name))?.getAttribute('aria-checked') ?? null, [label]);
   for (let i = 0; i < 4 && (await checked()) !== 'true'; i++) await app.tap('label', label, 2500);
   const page = await app.fn(() => {
-    // The color a person sees at the top of the page: the first painted background under that point.
-    let el = document.elementFromPoint(innerWidth / 2, 2), top = null;
-    for (; el && !top; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (c && c !== 'transparent' && !/,\s*0\)$/.test(c)) top = c; }
+    // The color a person sees at the top of the page: the first painted background under that point, in
+    // stacking order. Only a zero alpha is see-through; black rgb(0, 0, 0) is a painted color (Матрица, Искра).
+    const clear = c => !c || c === 'transparent' || /^rgba\([^)]*,\s*0(\.0+)?\)$/.test(c);
+    const shown = e => { for (let a = e; a; a = a.parentElement) { const s = getComputedStyle(a); if (s.opacity === '0' || s.visibility === 'hidden') return false; } return true; };
+    const top = document.elementsFromPoint(innerWidth / 2, 2).map(e => [e, getComputedStyle(e).backgroundColor]).find(([e, c]) => !clear(c) && shown(e))?.[1] ?? null;
     return { body: getComputedStyle(document.body).backgroundColor, top, meta: document.querySelector('meta[name="theme-color"]')?.content || '' };
   });
   const native = await app.native();
+  // Read the choice while the settings page, with its radios, is still open.
+  const selected = await checked();
   await app.fn(() => scrollTo(0, 0));
   await sleep(700);
   app.shot(`${dir}/settings`, 'png');
@@ -131,7 +135,7 @@ async function theme(app, label, dir) {
     await sleep(wait);
     app.shot(`${dir}/${name}`, 'png');
   }
-  const result = { checked: await checked(), ...page, shell: { background: native.background, window: native.windowBackground, statusBarLight: native.statusBarLight, safeArea: native.safeArea } };
+  const result = { checked: selected, ...page, shell: { background: native.background, window: native.windowBackground, statusBarLight: native.statusBarLight, safeArea: native.safeArea } };
   const problems = [];
   expect(problems, result.checked === 'true', `theme ${label} is not selected`);
   // The page's own background (the theme's) against the color the shell paints behind and around it.
@@ -206,8 +210,12 @@ async function allSteps(app, dir, options = {}) {
 async function diary(app, dir) {
   await app.go('/diary');
   await sleep(1500);
+  // The product store keeps the diary inside a few encrypted records, so their count need not grow;
+  // a unique line that is absent before and shown after the restart is the proof.
+  const marker = `Проверка iOS ${Date.now().toString(36)}: запись до перезапуска.`;
   const before = await app.fn(h => h.diaryCount());
-  const typed = await app.fn(h => h.type('Текст наблюдения', 'Проверка iOS: запись до перезапуска.'));
+  const shownBefore = (await app.fn(() => document.body.innerText)).toLowerCase().includes(marker.slice(0, 22).toLowerCase());
+  const typed = await app.fn((h, line) => h.type('Текст наблюдения', line), [marker]);
   await sleep(700);
   const saved = await app.tap('label', 'Сохранить текст', 2500);
   const notice = await app.fn(() => document.body.innerText.match(/ЗАПИСЬ СОХРАНЕНА/i)?.[0] ?? null);
@@ -219,12 +227,14 @@ async function diary(app, dir) {
   await sleep(2500);
   const afterRestart = await app.fn(h => h.diaryCount());
   const text = await app.text(400);
+  const entryShown = (await app.fn(() => document.body.innerText)).toLowerCase().includes(marker.slice(0, 22).toLowerCase());
   app.shot(`${dir}/diary-02-after-restart`, 'png');
-  const result = { before, typed, saved, notice, afterSave, afterRestart, entryShown: text.toLowerCase().includes('проверка ios'), text };
+  const result = { marker, shownBefore, before, typed, saved, notice, afterSave, afterRestart, entryShown, text };
   const problems = [];
   expect(problems, typed && saved, 'the text entry could not be typed or saved');
-  expect(problems, typeof afterRestart === 'number' && typeof before === 'number' && afterRestart > before, `the diary holds ${afterRestart} records after the restart, ${before} before`);
-  expect(problems, result.entryShown, 'the saved entry is not shown after the restart');
+  expect(problems, !shownBefore, 'the test line was already in the diary before it was typed');
+  expect(problems, typeof afterRestart === 'number' && afterRestart > 0, `the encrypted store is empty after the restart (${afterRestart})`);
+  expect(problems, entryShown, 'the saved entry is not shown after the restart');
   return { ...result, problems };
 }
 
@@ -278,9 +288,8 @@ async function mic(app, dir) {
 
 async function back(app, dir) {
   const swipeBack = () => app.fn(h => h.swipe(30, innerHeight * 0.55, Math.min(innerWidth - 24, 330), innerHeight * 0.55, 260));
-  await app.go('/home');
-  await app.tap('label', 'Архитектура наблюдения', 2500);
-  if (!await app.tap('label', 'ПРОДОЛЖИТЬ', 3500, 3)) await app.tap('label', 'НАЧАТЬ', 3500);
+  // /levels opens with a page load; «ПРОДОЛЖИТЬ» then moves inside the app, so there is a way back.
+  await openPractice(app);
   const trail = [await app.path()];
   app.shot(`${dir}/back-01-start`);
   for (let i = 0; i < 3; i++) {
@@ -290,16 +299,22 @@ async function back(app, dir) {
     app.shot(`${dir}/back-0${i + 2}`);
   }
   await openPractice(app);
+  const pathWithMenu = await app.path();
   await app.tap('label', 'Выбрать шаг', 1200);
   const menuBefore = await app.has('label', 'Открыть шаг 1');
   await swipeBack();
   await sleep(1500);
   const menuAfter = await app.has('label', 'Открыть шаг 1');
+  const pathAfterMenu = await app.path();
+  app.shot(`${dir}/back-05-menu-swipe`);
   const problems = [];
   expect(problems, trail[0] === '/practice', `the walk did not start in the practice (${trail[0]})`);
   expect(problems, trail[1] !== trail[0], `a swipe from the left edge did not go back (${trail.join(' → ')})`);
-  expect(problems, menuBefore && !menuAfter, `the step menu was ${menuBefore ? '' : 'not '}open and ${menuAfter ? 'stayed open' : 'closed'} after a swipe`);
-  return { trail, menuOpenBefore: menuBefore, menuOpenAfter: menuAfter, pathAfterMenu: await app.path(), problems };
+  // As on the site, an open menu blocks the page swipe (it closes by its own button), so the swipe
+  // must not leave the page underneath it.
+  expect(problems, menuBefore, 'the step menu did not open');
+  expect(problems, pathAfterMenu === pathWithMenu, `a swipe over the open step menu left the page (${pathWithMenu} → ${pathAfterMenu})`);
+  return { trail, menuOpenBefore: menuBefore, menuOpenAfter: menuAfter, pathWithMenu, pathAfterMenu, problems };
 }
 
 async function backupSave(app, dir) {
@@ -501,8 +516,9 @@ if (part('intensive') && demoPath) {
     expect(problems, feed.includes('Проверка из приложения на iOS'), 'the sent message is not in the conversation');
     return { start, welcome, persona, after, labels: labels.slice(0, 40), typed, sent, feed, problems };
   });
-  // The development build's reload client asks for ws://localhost/hot; the fence and the page CSP refuse it.
-  await check('Intensive page events', async () => events(demo, { allowOutside: ['ws://localhost/hot'] }));
+  // The development build's own client asks Metro for ws://localhost/hot (reload) and ws://localhost/message
+  // (dev menu); neither is the Intensive server, and the fence and the page CSP refuse both.
+  await check('Intensive page events', async () => events(demo, { allowOutside: ['ws://localhost/hot', 'ws://localhost/message'] }));
   demo.uninstall();
 }
 

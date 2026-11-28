@@ -1,6 +1,9 @@
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+// Any uncaught error shows a message and a way to start again, never a blank page.
+export { AppErrorScreen as ErrorBoundary } from '../features/product/screens/AppErrorScreen';
+
 // The navigator lays every screen on its theme's background before the screen draws. The default is
 // light grey (#f2f2f2), which flashed before the dark product screens; only that colour changes here.
 // The diagnostics paint their own light pages and keep the default header.

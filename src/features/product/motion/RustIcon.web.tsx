@@ -44,7 +44,7 @@ export function RustIcon({ name, width, height, color, filled = false, round = t
     return () => {
       disposed = true; trigger?.removeEventListener('click', onClick);
       cancelAnimationFrame(raf.current); raf.current = 0;
-      icon.current?.dispose(); icon.current = null;
+      const node = icon.current; icon.current = null; try { node?.dispose(); } catch { /* A crashed module refuses every call. */ }
     };
     // Autoplay is read once, at mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps

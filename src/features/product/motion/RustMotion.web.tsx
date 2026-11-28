@@ -85,6 +85,20 @@ export function RustMotion({ children, initial = shown, target = shown, duration
     };
     return { finish, withoutEngine, arm };
   });
+  // A timeline the engine can no longer drive (a crashed module refuses every call) stops here:
+  // the end values are written and completion arrives, so no screen waits on a frozen frame.
+  const [timeline] = useState(() => {
+    let detach = () => {};
+    const stop = (problem: unknown) => {
+      const node = handle.current; handle.current = null; detach(); detach = () => {};
+      engine.current = 'failed'; console.error('Rust transition stopped:', problem);
+      try { node?.dispose(); } catch { /* A crashed object cannot be freed; the page drops it. */ }
+      if (root.current) root.current.dataset.graphicsError = String(problem);
+      settling.withoutEngine();
+    };
+    const call = (work: (node: ElementTimeline) => void) => { const node = handle.current; if (!node) return; try { work(node); } catch (problem) { stop(problem); } };
+    return { stop, call, attach(value: () => void) { detach = value; } };
+  });
   useEffect(() => () => clearTimeout(safety.current), []);
   useEffect(() => {
     if (!root.current || !controller) { engine.current = 'failed'; settling.arm(); return; }
@@ -105,34 +119,30 @@ export function RustMotion({ children, initial = shown, target = shown, duration
       if (value.springScale) node.spring_scale(value.scale, value.duration <= 0);
       node.active(value.active); if (value.loop) node.loop(value.loop.width, value.loop.speed);
       if (value.breath) node.breathe(value.breath.period, value.breath.low);
-      const token = {}; unregister = controller.register(token, 'Переход · Rust', message => { if ((message as { type: string }).type === 'watcher-clock-reset') node.reset_clock(); });
-      detach = controller.frameJob(at => {
+      const token = {}; unregister = controller.register(token, 'Переход · Rust', message => { if ((message as { type: string }).type === 'watcher-clock-reset') timeline.call(node => node.reset_clock()); });
+      detach = controller.frameJob(at => timeline.call(node => {
         const value = latest.current; node.active(value.active); const drew = node.frame(at), moving = node.moving();
         controller.activity(token, value.active, moving);
         if (drew && !moving && !completion.current) settling.finish();
-      });
-    }).catch(problem => {
-      if (disposed) return;
-      console.error('Rust transition:', problem); engine.current = 'failed';
-      if (root.current) root.current.dataset.graphicsError = String(problem);
-      settling.withoutEngine();
-    });
-    return () => { disposed = true; detach(); unregister(); handle.current?.dispose(); handle.current = null; };
-  }, [controller, initialValues, startingHeight, systemReduced, settling]);
-  useEffect(() => { completion.current = false; handle.current?.target(Float64Array.from(resolvedTarget), duration, delay, Float64Array.from(resolvedCurve)); settling.arm(); }, [resolvedTarget, duration, delay, resolvedCurve, settling]);
+      }));
+      timeline.attach(detach);
+    }).catch(problem => { if (!disposed) timeline.stop(problem); });
+    return () => { disposed = true; detach(); unregister(); const node = handle.current; handle.current = null; try { node?.dispose(); } catch { /* Already crashed. */ } };
+  }, [controller, initialValues, startingHeight, systemReduced, settling, timeline]);
+  useEffect(() => { completion.current = false; timeline.call(node => node.target(Float64Array.from(resolvedTarget), duration, delay, Float64Array.from(resolvedCurve))); settling.arm(); }, [resolvedTarget, duration, delay, resolvedCurve, settling, timeline]);
   useEffect(() => {
-    if (springScale) { completion.current = false; handle.current?.spring_scale(scale, duration <= 0); settling.arm(); }
-  }, [springScale, scale, duration, settling]);
-  useEffect(() => { handle.current?.active(active && focused); }, [active, focused]);
+    if (springScale) { completion.current = false; timeline.call(node => node.spring_scale(scale, duration <= 0)); settling.arm(); }
+  }, [springScale, scale, duration, settling, timeline]);
+  useEffect(() => { timeline.call(node => node.active(active && focused)); }, [active, focused, timeline]);
   useEffect(()=>{
-    if(focused&&!previousFocus.current&&scanDuration!==undefined){completion.current=false;handle.current?.scan_reveal(systemReduced?0:scanDuration,delay);settling.arm();}
+    if(focused&&!previousFocus.current&&scanDuration!==undefined){completion.current=false;timeline.call(node=>node.scan_reveal(systemReduced?0:scanDuration,delay));settling.arm();}
     previousFocus.current=focused;
-  },[focused,scanDuration,delay,systemReduced,settling]);
-  useEffect(()=>{if(height!==undefined){completion.current=false;handle.current?.target_height_curve(height,duration,Float64Array.from(resolvedCurve));settling.arm();}},[height,duration,resolvedCurve,settling]);
+  },[focused,scanDuration,delay,systemReduced,settling,timeline]);
+  useEffect(()=>{if(height!==undefined){completion.current=false;timeline.call(node=>node.target_height_curve(height,duration,Float64Array.from(resolvedCurve)));settling.arm();}},[height,duration,resolvedCurve,settling,timeline]);
   const breathPeriod = breath?.period ?? 0, breathLow = breath?.low ?? 1;
-  useEffect(() => { handle.current?.breathe(breathPeriod, breathLow); }, [breathPeriod, breathLow]);
+  useEffect(() => { timeline.call(node => node.breathe(breathPeriod, breathLow)); }, [breathPeriod, breathLow, timeline]);
   const loopWidth = loop?.width, loopSpeed = loop?.speed;
-  useEffect(() => { if (loopWidth !== undefined && loopSpeed !== undefined) handle.current?.loop(loopWidth, loopSpeed); }, [loopWidth, loopSpeed]);
+  useEffect(() => { if (loopWidth !== undefined && loopSpeed !== undefined) timeline.call(node => node.loop(loopWidth, loopSpeed)); }, [loopWidth, loopSpeed, timeline]);
   return <div {...attributes} ref={root} data-rust-transition data-rust-scale-x={scaleX ? '' : undefined} style={{ ...style, height: startingHeight ?? style?.height,
     ...(scanDuration!==undefined&&!systemReduced?{maskImage:'linear-gradient(transparent,transparent)'}:{}),
     opacity: initialValues[0], transform: `translate3d(${initialValues[1]}px,${initialValues[2]}px,0) ${scaleX ? 'scaleX' : 'scale'}(${initialValues[3]})`, transition: 'none', animation: 'none' }}>{children}</div>;

@@ -80,7 +80,12 @@ export class EffectsController {
     if (at + .25 >= this.nextFrame) {
       if (!this.nextFrame || at - this.nextFrame > period * 2) this.nextFrame = at;
       this.nextFrame += period;
-      this.frameJobs.forEach(job => job(at));
+      // One job that throws (a crashed GPU renderer refuses every later call) leaves the clock;
+      // the others, every transition and scene on the page, keep their frames.
+      this.frameJobs.forEach(job => {
+        try { job(at); }
+        catch (problem) { this.frameJobs.delete(job); console.error('Effects frame job stopped:', problem); }
+      });
     }
     const active = [...this.frames.values()].some(frame => frame.active && frame.running);
     const effects = [...this.frames.values()].filter(frame => frame.active && frame.running && !frame.awaitingGlass).flatMap(frame => frame.metrics?.cadence ?? frame.cadence ?? []);

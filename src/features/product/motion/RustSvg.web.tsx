@@ -67,7 +67,7 @@ export function RustSvg(props: ArtProps) {
       });
       if (latest.current.controllerRef) latest.current.controllerRef.current = { interact: value => node.interact(value.action, value.x ?? 0, value.y ?? 0) };
     }).catch(problem => { if (!disposed) { host.dataset.graphicsError = String(problem); setFailed(true); } });
-    return () => { disposed = true; stopDecoder(); stopVisibility(); resize.disconnect(); detach(); unregister(); motion.current?.dispose(); motion.current = null; if (latest.current.controllerRef) latest.current.controllerRef.current = null; };
+    return () => { disposed = true; stopDecoder(); stopVisibility(); resize.disconnect(); detach(); unregister(); const node = motion.current; motion.current = null; try { node?.dispose(); } catch { /* A crashed module refuses every call. */ } if (latest.current.controllerRef) latest.current.controllerRef.current = null; };
   }, [controller, props.kind, failed]);
   const sendAudio = useCallback(() => {
     const current = latest.current, spectrum = current.audioSource?.read() ?? current.spectrum, level = current.audioSource ? 0 : current.level ?? 0;

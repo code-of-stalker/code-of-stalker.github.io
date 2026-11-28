@@ -74,7 +74,8 @@ export function EffectsQualityProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let frame = 0, disposed = false, foreground = AppState.currentState === 'active';
     const visible = () => foreground && (Platform.OS !== 'web' || !document.hidden);
-    const tick = (at: number) => { if (disposed || !visible()) return; controller.sample(at); frame = requestAnimationFrame(tick); };
+    // The next frame is asked for first, so nothing thrown while sampling stops the clock.
+    const tick = (at: number) => { if (disposed || !visible()) return; frame = requestAnimationFrame(tick); controller.sample(at); };
     const reset = () => { cancelAnimationFrame(frame); controller.resetWindow(); if (visible()) frame = requestAnimationFrame(tick); };
     const subscription = AppState.addEventListener('change', state => { foreground = state === 'active'; reset(); });
     if (Platform.OS === 'web') {

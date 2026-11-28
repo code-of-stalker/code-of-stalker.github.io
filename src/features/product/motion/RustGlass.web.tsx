@@ -22,15 +22,17 @@ export function RustGlass(props: ArtProps) {
   useEffect(()=>{
     if(failed||!controller||!canvas.current)return;
     let cancelled=false;const output=canvas.current;
+    // A surface that cannot start, or whose renderer crashes later, shows the fallback.
+    const fallBack=(problem:unknown)=>{if(cancelled)return;console.error('Rust effect:',latest.current.kind,problem);output.dataset.graphicsError=String(problem);setFailed(String(problem));
+      // As on native: a surface that cannot start finishes its reveal, so the panel it scans is shown, not left masked.
+      latest.current.onRevealProgress?.(1);latest.current.onReady?.();};
     // A painted scene waits for its published paintings; other effects need none.
     void Promise.all([rustSession(controller),sceneAssets(latest.current.kind)]).then(([session])=>{
       if(cancelled)return;
-      const current=latest.current,node=session.add(output,current.scanOnMount!==false,value=>latest.current.onRevealProgress?.(value),()=>latest.current.onReady?.(),current.kind==='rain',current.kind==='attention',undefined,current.kind==='gallery'||current.kind==='mirror'||current.kind==='voice-presence'||current.kind==='grounding-hero'?current.kind:undefined);
+      const current=latest.current,node=session.add(output,current.scanOnMount!==false,value=>latest.current.onRevealProgress?.(value),()=>latest.current.onReady?.(),current.kind==='rain',current.kind==='attention',undefined,current.kind==='gallery'||current.kind==='mirror'||current.kind==='voice-presence'||current.kind==='grounding-hero'?current.kind:undefined,fallBack);
       handle.current=node;if(current.glass)node.resize(current.glass);else if(current.kind!=='glass'){const {width,height}=output.getBoundingClientRect();if(width>0&&height>0)node.resize({width,height,path:`M0 0H${width}V${height}H0Z`,background:'clear'});}node.active(activity.current.active,activity.current.reduced);
       if(current.controllerRef)current.controllerRef.current={interact:value=>{if(value.action==='benchmark'){node.benchmark(value.at??0);return;}if(value.action.startsWith('glass-')){point.current={x:value.x??point.current.x,y:value.y??point.current.y};node.pointer(point.current.x,point.current.y,value.action!=='glass-release');}}};
-    }).catch(problem=>{if(!cancelled){console.error('Rust effect creation:',latest.current.kind,problem);output.dataset.graphicsError=String(problem);setFailed(String(problem));
-      // As on native: a surface that cannot start finishes its reveal, so the panel it scans is shown, not left masked.
-      latest.current.onRevealProgress?.(1);latest.current.onReady?.();}});
+    }).catch(fallBack);
     return()=>{cancelled=true;handle.current?.release();handle.current=null;if(latest.current.controllerRef)latest.current.controllerRef.current=null;};
   },[controller,failed]);
   useEffect(()=>{if(props.glass)handle.current?.resize(props.glass);},[props.glass]);

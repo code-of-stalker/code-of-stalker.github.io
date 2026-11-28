@@ -83,13 +83,17 @@ async function openRenderer(forceGl:boolean){
   return{renderer,atlas};
 }
 type Scene = { id: number; token: object; output: HTMLCanvasElement; context: CanvasRenderingContext2D | null; direct: boolean; active: boolean; rain:boolean; reveal?: (progress: number) => void; ready?: () => void;
-  drawCount:number;lastReveal: number; lastDraw?: number; intervals: number[]; postedAt: number; painted: boolean };
+  failed?: (problem: unknown) => void; drawCount:number;lastReveal: number; lastDraw?: number; intervals: number[]; postedAt: number; painted: boolean };
 const sessions = new WeakMap<EffectsController, Promise<RustSession>>();
 export function rustSession(controller: EffectsController) {
   let session = sessions.get(controller);
   if (!session) { session = RustSession.create(controller).catch(problem => { sessions.delete(controller); throw problem; }); sessions.set(controller, session); }
   return session;
 }
+/** A WebAssembly trap or the binding's poisoned-object error: the renderer crashed (on iOS a GPU
+ * that runs out of memory panics) and refuses every later call. A Rust `Err` is not a crash. */
+export const crashedGraphics = (problem: unknown) => (problem as { name?: unknown } | null)?.name === 'RuntimeError'
+  || /recursive use of an object|null pointer passed to rust|unreachable/i.test(String(problem));
 /** WebGPU presents directly to visible surfaces on one shared device. WebGL2
  * retains the atlas-to-Canvas2D adapter; Rust owns all animation and painting. */
 export class RustSession {
@@ -100,14 +104,16 @@ export class RustSession {
   private teardown?: ReturnType<typeof setTimeout>;
   private recovering=false;private recoveryAttempts=0;private disposed=false;private deferredSizes=new Map<number,GlassShape>();
   private paletteRequest = 0;
+  /** Set once the renderer has thrown outside surface recovery; the session then never calls it again. */
+  private broken = false;
   private constructor(private controller: EffectsController, private renderer: Renderer, private atlas: HTMLCanvasElement) {
     renderer.palette(graphicsPalette.get());
     // Light and dark themes draw different paintings: fetch them, then switch.
     this.detachPalette = graphicsPalette.subscribe(code => {
       const request = ++this.paletteRequest;
-      void loadGraphics().then(module => provideAssets(module, this.renderer.palette_assets(code)))
+      void loadGraphics().then(module => provideAssets(module, this.use(renderer => renderer.palette_assets(code), [])))
         .catch(problem => console.warn('Rust graphics palette inputs:', problem))
-        .then(() => { if (this.disposed || request !== this.paletteRequest) return; this.renderer.palette(code); this.pending = true; });
+        .then(() => { if (this.disposed || this.broken || request !== this.paletteRequest) return; this.use(renderer => renderer.palette(code), undefined); this.pending = true; });
     });
     this.detach = controller.frameJob(at => this.frame(at));
   }
@@ -116,41 +122,64 @@ export class RustSession {
     const session = new RustSession(controller, renderer, atlas), policy = controller.policy;
     renderer.quality(qualityDensity[policy.level], policy.cost, policy.smooth ? policy.targetFps : 60); return session;
   }
-  add(output: HTMLCanvasElement, scan: boolean, reveal?: Scene['reveal'], ready?: Scene['ready'],rain=false,observer=false,vector?: { root: Element; kind: string; card: boolean },raster?: string) {
+  /** `failed` hears when the renderer later crashes: the scene then shows its fallback instead of a frozen canvas. */
+  add(output: HTMLCanvasElement, scan: boolean, reveal?: Scene['reveal'], ready?: Scene['ready'],rain=false,observer=false,vector?: { root: Element; kind: string; card: boolean },raster?: string,failed?: Scene['failed']) {
+    if (this.broken) throw new Error('Rust graphics stopped after a renderer failure');
     clearTimeout(this.teardown);
-    const id = raster ? this.renderer.add_raster(raster) : vector ? this.renderer.add_vector(vector.root, vector.kind, vector.card) : rain ? this.renderer.add_rain() : observer ? this.renderer.add_observer() : this.renderer.add(scan);
+    let id: number;
+    try { id = raster ? this.renderer.add_raster(raster) : vector ? this.renderer.add_vector(vector.root, vector.kind, vector.card) : rain ? this.renderer.add_rain() : observer ? this.renderer.add_observer() : this.renderer.add(scan); }
+    catch (problem) { if (crashedGraphics(problem)) this.fail(problem); throw problem; }
     let direct: boolean, context: CanvasRenderingContext2D | null;
     try {
       direct = this.renderer.present_to(id, output);
       context = direct ? null : output.getContext('2d', { alpha: true });
       if (!direct && !context) throw new Error('Canvas presentation is unavailable');
-    } catch (problem) { this.renderer.remove(id); throw problem; }
-    const token = {}, scene: Scene = { id, token, output, context, direct, active: false, rain: rain || observer || !!vector || !!raster, reveal, ready, drawCount:-1,lastReveal: -1, intervals: [], postedAt: 0, painted: false };
+    } catch (problem) { if (crashedGraphics(problem)) this.fail(problem); else this.use(renderer => renderer.remove(id), undefined); throw problem; }
+    const token = {}, scene: Scene = { id, token, output, context, direct, active: false, rain: rain || observer || !!vector || !!raster, reveal, ready, failed, drawCount:-1,lastReveal: -1, intervals: [], postedAt: 0, painted: false };
     this.referenceCount++;
     output.dataset.graphicsSurface = scene.rain ? 'artwork' : 'glass';
     output.dataset.graphicsPresentation = direct ? 'direct-gpu' : 'atlas-canvas2d';
     this.scenes.set(id, scene);
     const unregister = this.controller.register(token, raster ? `${raster} · Rust GPU` : vector ? `${vector.kind} · Rust vectors` : rain?'Матричный дождь · Rust':observer?'Наблюдающий · Rust GPU':'Стекло · Rust', value => {
       const data = value as { type: string; density?: number; cost?: number; targetFps?: number };
-      if (data.type === 'watcher-quality') { const key = `${data.density}|${data.cost}|${data.targetFps}`; if(key !== this.qualityKey) {this.qualityKey=key;if(!this.recovering)this.renderer.quality(data.density!, data.cost!, data.targetFps!);this.pending = true;this.qualityReportPending = true;} }
-      if (data.type === 'watcher-clock-reset') { this.renderer.reset_clock(); this.scenes.forEach(s => { s.lastDraw = undefined; s.intervals = []; }); }
+      if (data.type === 'watcher-quality') { const key = `${data.density}|${data.cost}|${data.targetFps}`; if(key !== this.qualityKey) {this.qualityKey=key;if(!this.recovering)this.use(renderer => renderer.quality(data.density!, data.cost!, data.targetFps!), undefined);this.pending = true;this.qualityReportPending = true;} }
+      if (data.type === 'watcher-clock-reset') { this.use(renderer => renderer.reset_clock(), undefined); this.scenes.forEach(s => { s.lastDraw = undefined; s.intervals = []; }); }
       if (data.type === 'watcher-graphics-recover') void this.recover('Проверка восстановления графических ресурсов');
     }); this.pending = true;
+    // React effects, observers and pointer handlers call these: after a crash they do nothing, never throw.
     return {
-      resize: (shape: GlassShape) => { if(this.recovering)this.deferredSizes.set(id,shape);else this.renderer.resize(id, shape.width, shape.height, shape.path, shape.background === 'orbs'); this.pending = true; },
-      active: (active: boolean, reduced: boolean) => { if(scene.active !== active) {scene.lastDraw = undefined;scene.intervals = [];}scene.active = active;output.dataset.graphicsActive=String(active);this.renderer.active(id,active,reduced);this.controller.activity(token,active,!reduced&&this.renderer.moving(id));this.pending = true; },
-      pointer: (x: number,y: number,pressed: boolean) => {this.renderer.pointer(id,x,y,pressed);this.pending = true;},
-      benchmark: (at: number) => { this.renderer.benchmark(id, at); this.pending = true; },
-      audio: (low: number, mid: number, high: number, contour: Float64Array, reacting: boolean, progress: number, locked: boolean, playback:boolean) => { this.renderer.vector_audio(id, low, mid, high, contour, reacting, progress, locked,playback); this.pending = true; },
-      decoder: (visible: boolean) => { this.renderer.vector_decoder(id, visible); this.pending = true; },
-      replayScan: () => { this.renderer.replay_scan(id); scene.lastReveal = -1; this.pending = true; },
-      interact: (action: string, x = 0, y = 0) => { this.renderer.vector_interact(id, action, x, y); this.pending = true; },
-      down: (at: number, width: number, height: number, delay: number) => { this.renderer.vector_pointer_down(id, at, width, height, delay); this.pending = true; },
-      move: (at: number, dx: number, dy: number) => { this.renderer.vector_pointer_move(id, at, dx, dy); this.pending = true; },
-      up: (at: number, inside: boolean) => { const tapped = this.renderer.vector_pointer_up(id, at, inside); this.pending = true; return tapped; },
-      release: () => {unregister();this.renderer.remove(id);this.scenes.delete(id);this.pending = true;
-        if(--this.referenceCount===0)this.teardown=setTimeout(()=>{this.disposed=true;this.detach();this.detachPalette();this.renderer.dispose();sessions.delete(this.controller);},1000);},
+      resize: (shape: GlassShape) => { if(this.recovering)this.deferredSizes.set(id,shape);else this.use(renderer => renderer.resize(id, shape.width, shape.height, shape.path, shape.background === 'orbs'), undefined); this.pending = true; },
+      active: (active: boolean, reduced: boolean) => { if(this.broken)return;if(scene.active !== active) {scene.lastDraw = undefined;scene.intervals = [];}scene.active = active;output.dataset.graphicsActive=String(active);this.use(renderer => {renderer.active(id,active,reduced);this.controller.activity(token,active,!reduced&&renderer.moving(id));}, undefined);this.pending = true; },
+      pointer: (x: number,y: number,pressed: boolean) => {this.use(renderer => renderer.pointer(id,x,y,pressed), undefined);this.pending = true;},
+      benchmark: (at: number) => { this.use(renderer => renderer.benchmark(id, at), undefined); this.pending = true; },
+      audio: (low: number, mid: number, high: number, contour: Float64Array, reacting: boolean, progress: number, locked: boolean, playback:boolean) => { this.use(renderer => renderer.vector_audio(id, low, mid, high, contour, reacting, progress, locked,playback), undefined); this.pending = true; },
+      decoder: (visible: boolean) => { this.use(renderer => renderer.vector_decoder(id, visible), undefined); this.pending = true; },
+      replayScan: () => { this.use(renderer => renderer.replay_scan(id), undefined); scene.lastReveal = -1; this.pending = true; },
+      interact: (action: string, x = 0, y = 0) => { this.use(renderer => renderer.vector_interact(id, action, x, y), undefined); this.pending = true; },
+      down: (at: number, width: number, height: number, delay: number) => { this.use(renderer => renderer.vector_pointer_down(id, at, width, height, delay), undefined); this.pending = true; },
+      move: (at: number, dx: number, dy: number) => { this.use(renderer => renderer.vector_pointer_move(id, at, dx, dy), undefined); this.pending = true; },
+      up: (at: number, inside: boolean) => { const tapped = this.use(renderer => renderer.vector_pointer_up(id, at, inside), false); this.pending = true; return tapped; },
+      release: () => {unregister();this.use(renderer => renderer.remove(id), undefined);this.scenes.delete(id);this.pending = true;
+        // A crashed session stays in place, so later scenes show their fallback at once instead of
+        // asking a GPU that has just run out of memory for another renderer.
+        if(--this.referenceCount===0)this.teardown=setTimeout(()=>{this.disposed=true;this.detach();this.detachPalette();this.use(renderer => renderer.dispose(), undefined);if(!this.broken)sessions.delete(this.controller);},1000);},
     };
+  }
+  /** Every call into the renderer outside `frame` and recovery: a throw stops the session instead of escaping. */
+  private use<T>(work: (renderer: Renderer) => T, fallback: T): T {
+    if (this.broken) return fallback;
+    try { return work(this.renderer); } catch (problem) { this.fail(problem); return fallback; }
+  }
+  /** The renderer can no longer draw: stop its clock, free what it still holds and let every scene fall back. */
+  private fail(problem: unknown) {
+    if (this.broken) return;
+    this.broken = true;
+    console.error('Rust graphics stopped:', problem);
+    this.detach();
+    const scenes = [...this.scenes.values()];
+    scenes.forEach(scene => { scene.active = false; scene.output.dataset.graphicsError = String(problem); this.controller.activity(scene.token, false, false); });
+    try { this.renderer.dispose(); } catch { /* A crashed renderer cannot free itself; its canvases leave with the scenes. */ }
+    scenes.forEach(scene => { try { scene.failed?.(problem); } catch (error) { console.error('Rust graphics fallback:', error); } });
   }
   private async recover(problem:unknown) {
     if(this.recovering||this.disposed)return;this.recovering=true;this.recoveryAttempts++;
@@ -167,14 +196,14 @@ export class RustSession {
       const policy=this.controller.policy;this.renderer.quality(qualityDensity[policy.level],policy.cost,policy.smooth?policy.targetFps:60);
       for(const [id,shape] of this.deferredSizes){if(this.scenes.has(id))this.renderer.resize(id,shape.width,shape.height,shape.path,shape.background==='orbs');}this.deferredSizes.clear();
       this.scenes.forEach(scene=>{delete scene.output.dataset.graphicsError;delete scene.output.dataset.graphicsRecovery;});this.pending=true;this.controller.resetWindow();
-    }catch(error){replacement?.dispose();this.scenes.forEach(scene=>{scene.active=false;scene.output.dataset.graphicsError=String(error);delete scene.output.dataset.graphicsRecovery;this.controller.activity(scene.token,false,false);});console.error('Rust graphics recovery failed:',error);}
+    }catch(error){try{replacement?.dispose();}catch{/* Nothing more to free. */}this.scenes.forEach(scene=>{delete scene.output.dataset.graphicsRecovery;});console.error('Rust graphics recovery failed:',error);this.fail(error);}
     finally{this.recovering=false;}
   }
   private frame(at: number) {
-    if(this.recovering||this.disposed)return;
+    if(this.recovering||this.disposed||this.broken)return;
     const active=[...this.scenes.values()].filter(scene=>scene.active); if(!active.length)return;
-    const moving=active.some(scene=>this.renderer.moving(scene.id));if(!this.pending&&!moving&&!this.renderer.quality_pending())return;
     try {
+      const moving=active.some(scene=>this.renderer.moving(scene.id));if(!this.pending&&!moving&&!this.renderer.quality_pending())return;
       const reportQuality=this.qualityReportPending,changed=this.renderer.frame(at);this.pending=false;
       if(!changed&&!reportQuality)return;this.qualityReportPending=false;
       for(const scene of active){
@@ -200,6 +229,6 @@ export class RustSession {
           scene.output.dataset.graphicsDraws=String(draws);scene.output.dataset.graphicsTextures=String(textures);
         }
       }
-    }catch(problem){if(String(problem).includes('Graphics surface')&&this.recoveryAttempts<2){void this.recover(problem);return;}this.scenes.forEach(scene=>{scene.active=false;this.controller.activity(scene.token,false,false);scene.output.dataset.graphicsError=String(problem);});console.error('Rust graphics surface:',problem);}
+    }catch(problem){if(String(problem).includes('Graphics surface')&&this.recoveryAttempts<2){void this.recover(problem);return;}this.fail(problem);}
   }
 }

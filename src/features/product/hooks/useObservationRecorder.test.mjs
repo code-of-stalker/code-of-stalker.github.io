@@ -13,14 +13,15 @@ const microphones = {}; vm.runInNewContext(compile('../audio/microphone-input.ts
 // No real microphone, browser permissions, or stored user records are accessed.
 function captureFixture(mimeType = 'audio/webm', metered = false, limitSeconds) {
   const state = [], effects = [], recorders = [], tracks = [], revoked = [], writes = [];
-  const frames = new Map(); let nextFrame = 1, interval;
+  const frames = new Map(), timers = []; let nextFrame = 1, interval, stalls = false;
   let index = 0, now = 1000, updateBlocks = 0, open = async () => makeStream();
   function makeStream() { const track = { stopped: 0, label: 'Browser route', getSettings: () => ({ deviceId: 'default' }), addEventListener() {}, stop() { this.stopped++; } }; tracks.push(track); return { getTracks: () => [track], getAudioTracks: () => [track] }; }
   class Recorder {
     static isTypeSupported() { return true; }
     constructor() { this.state = 'inactive'; this.mimeType = mimeType; recorders.push(this); }
     start() { this.state = 'recording'; }
-    stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['synthetic opus chunk'], { type: this.mimeType }) }); this.onstop?.(); }
+    // A stalled recorder (seen on iPhone) accepts stop() and never reports the end of the take.
+    stop() { this.state = 'inactive'; if (stalls) return; this.ondataavailable?.({ data: new Blob(['synthetic opus chunk'], { type: this.mimeType }) }); this.onstop?.(); }
   }
   const exports = {};
   const react = {
@@ -41,10 +42,14 @@ function captureFixture(mimeType = 'audio/webm', metered = false, limitSeconds) 
       createMediaStreamSource() { return { connect() {} }; }
       createAnalyser() { return { fftSize: 2048, frequencyBinCount: 1024, getFloatFrequencyData: data => data.fill(-24), getFloatTimeDomainData: data => data.fill(.1) }; }
     } : undefined,
+    setTimeout: (callback, ms) => { timers.push({ callback, ms }); return timers.length; }, clearTimeout: id => { if (id) timers[id - 1].callback = null; },
     setInterval: callback => { interval = callback; return 1; }, clearInterval() { interval = undefined; }, requestAnimationFrame: callback => { const id = nextFrame++; frames.set(id, callback); return id; }, cancelAnimationFrame: id => frames.delete(id),
   });
   const hook = exports.useObservationRecorder(limitSeconds); const cleanups = effects.map(effect => effect());
-  return { hook, state: () => state[2], permission: () => state[5], recorders, tracks, revoked, makeStream,
+  return { api: exports, hook, state: () => state[2], stall: value => { stalls = value; }, timers: () => timers.filter(timer => timer.callback),
+    // Fires every pending timeout, as if its time had passed.
+    elapse: () => { for (const timer of timers) { const callback = timer.callback; timer.callback = null; callback?.(); } },
+    permission: () => state[5], recorders, tracks, revoked, makeStream,
     setOpen: value => { open = value; }, advance: ms => { now += ms; }, tick: () => interval?.(), writes,
     draw: time => { const pending = [...frames.values()]; frames.clear(); for (const callback of pending) callback(time); },
     hide: () => { doc.visibilityState = 'hidden'; listeners.get('visibilitychange')?.(); },
@@ -158,4 +163,30 @@ test('denial reports a readable microphone error', async () => {
   const s = captureFixture(); s.setOpen(async () => { const error = new Error('denied'); error.name = 'NotAllowedError'; throw error; });
   await s.hook.start(); assert.equal(s.state().phase, 'error'); assert.match(s.state().error, /Разреши.*микрофону/);
   assert.equal(s.recorders.length, 0); s.dispose();
+});
+test('a recorder that never reports the end of a take gives it up with a message, and the next take records', async () => {
+  const s = captureFixture();
+  try {
+    s.stall(true); await s.hook.start(); s.advance(2100);
+    const stopping = s.hook.stop(); assert.equal(s.state().phase, 'stopping');
+    assert.deepEqual(s.timers().map(timer => timer.ms), [s.api.recorderStopTimeoutMs]);
+    s.elapse(); await stopping;
+    assert.equal(s.state().phase, 'error'); assert.equal(s.state().error, s.api.recorderStuckMessage);
+    assert.equal(s.tracks[0].stopped, 1);
+    s.stall(false); await s.hook.start(); assert.equal(s.state().phase, 'recording'); assert.equal(s.recorders.length, 2);
+    s.advance(2100); await s.hook.stop(); assert.equal(s.state().phase, 'ready'); assert.equal(s.state().draft.durationMs, 2100);
+    assert.equal(s.timers().length, 0); // The answered take left no watch behind.
+    // A late end of the abandoned take changes nothing.
+    s.recorders[0].onstop?.(); assert.equal(s.state().phase, 'ready');
+  } finally { s.dispose(); }
+});
+test('cancelling a take whose end never comes frees the microphone for the next one', async () => {
+  const s = captureFixture();
+  try {
+    s.stall(true); await s.hook.start();
+    const cancelling = s.hook.cancel(); s.elapse(); await cancelling;
+    assert.equal(s.state().phase, 'idle'); assert.equal(s.state().error, ''); assert.equal(s.tracks[0].stopped, 1);
+    s.stall(false); await s.hook.start(); assert.equal(s.state().phase, 'recording'); assert.equal(s.recorders.length, 2);
+    await s.hook.cancel(); assert.equal(s.state().phase, 'idle');
+  } finally { s.dispose(); }
 });

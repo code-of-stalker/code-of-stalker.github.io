@@ -49,7 +49,7 @@ test('a renderer that crashes outside drawing stops once and every later call st
   assert.match(f.output.dataset.graphicsError,/recursive use of an object/);
   const calls=f.poison.calls; // The failed call and the attempt to free the renderer.
   assert.doesNotThrow(()=>{f.handle.active(true,false);f.handle.pointer(1,1,true);f.handle.replayScan();f.run();});
-  assert.equal(f.handle.up(0,true),false);
+  assert.equal(f.handle.up(0,true),undefined); // No verdict: the card bridge judges the press itself.
   assert.equal(f.poison.calls,calls);assert.equal(f.failures.length,1);
   // Later scenes fall back at once instead of asking the crashed renderer for more.
   assert.throws(()=>f.session.add({width:1,height:1,dataset:{}},false),/stopped after a renderer failure/);

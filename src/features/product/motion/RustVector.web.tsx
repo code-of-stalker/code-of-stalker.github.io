@@ -8,7 +8,8 @@ import { RustGlass } from './RustGlass.web';
 import { ArtUnavailable } from './ArtUnavailable';
 import { artLabels } from './types';
 import type { ArtProps, ArtController } from './types';
-import { artHoldDelay } from './gesture';
+import { artHoldDelay, cardPressMove, cardPressOpens, cardPressStart } from './gesture';
+import type { CardPress } from './gesture';
 import { fonts } from '../theme';
 import { observeMotionVisibility } from './motion-visibility.web';
 import { useThemeColors } from '../ProductTheme';
@@ -59,6 +60,8 @@ export function RustVector(props: ArtProps) {
   useEffect(() => { sendAudio(); }, [props.audioSource, props.spectrum, props.level, props.mode, props.lockProgress, props.locked, sendAudio]);
   useEffect(() => props.audioSource?.subscribe(sendAudio), [props.audioSource, sendAudio]);
   useEffect(() => { handle.current?.decoder(props.decoderVisible ?? false); }, [props.decoderVisible]);
+  // The press as this bridge saw it, so a tap counts while the engine is still downloading.
+  const pressing = useRef<CardPress | undefined>(undefined);
   const contact = (target: HTMLElement, x: number, y: number, pressed: boolean) => { const rect = target.getBoundingClientRect(); glass.current?.interact({ type: 'watcher-art-interaction', action: pressed ? 'glass-move' : 'glass-release', x: (x - rect.x) / rect.width, y: (y - rect.y) / rect.height }); };
   if (failed || !controller) return <ArtUnavailable {...props} />;
   return <View style={[{ width: props.width ?? '100%', height: props.height }, props.style]}>
@@ -66,10 +69,12 @@ export function RustVector(props: ArtProps) {
     <div ref={root} data-graphics="rust-vector-model" aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }} />
     <canvas ref={canvas} data-graphics="rust-vector-gpu" aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: props.kind === 'insight' ? 'auto' : '100%', aspectRatio: props.kind === 'insight' ? '400 / 94' : undefined, pointerEvents: 'none' }} />
     {props.onPress && <button type="button" aria-label={props.accessibilityLabel ?? artLabels[props.kind]} disabled={props.active === false || !focused} style={{ position: 'absolute', inset: 0, background: 'transparent', border: 0, cursor: 'pointer', touchAction: 'pan-y' }}
-      onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; origin.current = { x: event.clientX, y: event.clientY }; const rect = event.currentTarget.getBoundingClientRect(); handle.current?.down(performance.now(), rect.width, rect.height, artHoldDelay(props.kind)); event.currentTarget.setPointerCapture(event.pointerId); contact(event.currentTarget, event.clientX, event.clientY, true); }}
-      onPointerMove={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; handle.current?.move(performance.now(), event.clientX - origin.current.x, event.clientY - origin.current.y); contact(event.currentTarget, event.clientX, event.clientY, true); }}
-      onPointerUp={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; const rect = event.currentTarget.getBoundingClientRect(); const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom; if (handle.current?.up(performance.now(), inside)) press(); contact(event.currentTarget, event.clientX, event.clientY, false); event.currentTarget.releasePointerCapture(event.pointerId); }}
-      onPointerCancel={event => { handle.current?.interact('release'); contact(event.currentTarget, event.clientX, event.clientY, false); }} onLostPointerCapture={event => { handle.current?.interact('release'); contact(event.currentTarget, event.clientX, event.clientY, false); }}
+      onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; origin.current = { x: event.clientX, y: event.clientY }; pressing.current = cardPressStart(event.clientX, event.clientY, !!handle.current); const rect = event.currentTarget.getBoundingClientRect(); handle.current?.down(performance.now(), rect.width, rect.height, artHoldDelay(props.kind)); event.currentTarget.setPointerCapture(event.pointerId); contact(event.currentTarget, event.clientX, event.clientY, true); }}
+      onPointerMove={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; cardPressMove(pressing.current, event.clientX, event.clientY); handle.current?.move(performance.now(), event.clientX - origin.current.x, event.clientY - origin.current.y); contact(event.currentTarget, event.clientX, event.clientY, true); }}
+      onPointerUp={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; const rect = event.currentTarget.getBoundingClientRect(); const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+        const begun = pressing.current; pressing.current = undefined; cardPressMove(begun, event.clientX, event.clientY);
+        if (cardPressOpens(begun, inside, begun?.engine ? handle.current?.up(performance.now(), inside) : undefined)) press(); contact(event.currentTarget, event.clientX, event.clientY, false); event.currentTarget.releasePointerCapture(event.pointerId); }}
+      onPointerCancel={event => { pressing.current = undefined; handle.current?.interact('release'); contact(event.currentTarget, event.clientX, event.clientY, false); }} onLostPointerCapture={event => { pressing.current = undefined; handle.current?.interact('release'); contact(event.currentTarget, event.clientX, event.clientY, false); }}
       onClick={event => { if (event.detail === 0) { handle.current?.interact('tap'); press(); } }} />}
   </View>;
 }

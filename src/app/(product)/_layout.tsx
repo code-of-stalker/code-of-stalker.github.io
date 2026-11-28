@@ -12,6 +12,7 @@ import { useProductFonts } from '../../features/product/useProductFonts';
 import { BackSwipeProvider } from '../../features/product/navigation/BackSwipeProvider';
 import { DeviceOptimizationGate, type DeviceOptimizationMode } from '../../features/product/optimization/DeviceOptimizationGate';
 import { StartupSkeleton } from '../../features/product/skeleton/StartupSkeleton';
+import { nextStartupCover, startupCover } from '../../features/product/skeleton/startupCover';
 import { useGraphicsEngineLoading } from '../../features/product/skeleton/useGraphicsEngineLoading';
 import { useWebUpdateReady } from '../../features/product/updates/webUpdateSafety';
 import { useAndroidSystemBars } from '../../features/product/platform/androidApp';
@@ -24,20 +25,22 @@ function ProductStack() {
   const engineLoading = useGraphicsEngineLoading();
   useWebUpdateReady(ready && (loaded || !!fontError));
   useAndroidSystemBars(colors.background, isLightTheme(colors));
+  const booting = !ready || (!loaded && !fontError);
+  // The device setup screen has its own content; every other screen waits
+  // for the graphics engine behind the skeleton.
+  const holding = booting || gate === 'loading' || gate === 'ready' && engineLoading;
+  const [cover, setCover] = useState(() => startupCover(holding)), current = nextStartupCover(cover, holding);
+  if (current !== cover) setCover(current);
   if (error && !ready) return <ProductScreen>
     <ProductText variant="title">НЕ УДАЛОСЬ ОТКРЫТЬ ДНЕВНИК</ProductText>
     <ProductText style={{ marginVertical: 24 }}>{error}</ProductText>
     <ProductButton label="ПОВТОРИТЬ" onPress={() => { void retryLoad(); }} />
   </ProductScreen>;
-  const booting = !ready || (!loaded && !fontError);
-  // The device setup screen has its own content; every other screen waits
-  // for the graphics engine behind the skeleton.
-  const holding = booting || gate === 'loading' || gate === 'ready' && engineLoading;
   return <View style={{ flex: 1, backgroundColor: colors.background }}>
     {/* Mounted beneath the skeleton so the engine and screen can start, but
         unseen until the skeleton hands over to the screen's own reveal. */}
     {!booting && <View style={[{ flex: 1 }, holding && { opacity: 0 }]}><StatusBar style={isLightTheme(colors) ? 'dark' : 'light'} /><DeviceOptimizationGate key={sessionRevision} onMode={setGate}><Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} /></DeviceOptimizationGate></View>}
-    <StartupSkeleton key={sessionRevision} ready={!holding} />
+    <StartupSkeleton key={`${sessionRevision}:${current.count}`} ready={!holding} />
   </View>;
 }
 function ThemedProduct() {

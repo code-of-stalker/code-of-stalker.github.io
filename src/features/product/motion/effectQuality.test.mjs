@@ -8,10 +8,10 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('./effectQuality.ts',
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { exports });
 const { QualityPolicy, glassBufferLayout, artworkBufferLayout, qualityDensity, glassRenderDensity } = exports;
-const controllerExports = {};
+const controllerExports = {}, stoppedJobs = [];
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('./EffectsController.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText, { exports: controllerExports, require: () => exports });
+}).outputText, { exports: controllerExports, require: () => exports, console: { error: (...args) => stoppedJobs.push(args), warn() {}, log() {} } });
 const { EffectsController } = controllerExports;
 test('new controllers start at 60 FPS while retaining independent density limits', () => {
   const controller = new EffectsController();
@@ -240,4 +240,16 @@ test('fast rAF slots calibrate a high refresh screen despite occasional delayed 
   }
   assert.equal(policy.calibrated,true);
   assert.ok(Math.abs(policy.refreshMs-1000/120)<.01);
+});
+test('a frame job that throws leaves the shared clock while every other job keeps its frames', () => {
+  const controller = new EffectsController(), seen = [];
+  stoppedJobs.length = 0;
+  controller.frameJob(at => seen.push(['before', at]));
+  controller.frameJob(() => { throw new Error('recursive use of an object detected which would lead to unsafe aliasing in rust'); });
+  controller.frameJob(at => seen.push(['after', at]));
+  assert.doesNotThrow(() => { for (let at = 0; at <= 100; at += 1000 / 60) controller.sample(at); });
+  const before = seen.filter(([name]) => name === 'before').length, after = seen.filter(([name]) => name === 'after').length;
+  assert.ok(before >= 5); assert.equal(after, before);
+  // The crashed job is reported once and never called again.
+  assert.equal(stoppedJobs.length, 1); assert.match(String(stoppedJobs[0][1]), /recursive use of an object/);
 });

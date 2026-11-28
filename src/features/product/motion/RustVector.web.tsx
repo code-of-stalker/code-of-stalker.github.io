@@ -43,14 +43,16 @@ export function RustVector(props: ArtProps) {
     const resize = () => { const bounds = output.getBoundingClientRect(); if (bounds.width > 0 && bounds.height > 0) handle.current?.resize({ width: bounds.width, height: bounds.height, path: `M0 0H${bounds.width}V${bounds.height}H0Z`, background: 'clear' }); };
     const size = new ResizeObserver(resize); size.observe(output);
     const stopVisibility = observeMotionVisibility(output, visible => { active.current.visible = visible; activity(); });
+    // A scene that cannot start, or whose renderer crashes later, shows the fallback.
+    const fallBack = (problem: unknown) => { if (!disposed) { console.error('Rust vector:', latest.current.kind, problem); output.dataset.graphicsError = String(problem); setFailed(String(problem)); } };
     void Promise.all([rustSession(controller), sceneAssets(latest.current.kind)]).then(([session]) => {
       if (disposed) return;
-      const node = session.add(output, false, undefined, () => latest.current.onReady?.(), false, false, { root: element, kind: latest.current.kind, card: latest.current.presentation === 'card' });
+      const node = session.add(output, false, undefined, () => latest.current.onReady?.(), false, false, { root: element, kind: latest.current.kind, card: latest.current.presentation === 'card' }, undefined, fallBack);
       handle.current = node; resize(); activity(); sendAudio(); node.decoder(latest.current.decoderVisible ?? false);
       if (latest.current.kind === 'insight') stopDecoder = observeDecoderCompletion(element, () => latest.current.onDecoderComplete?.());
       if (latest.current.kind === 'insight') { const decoder = element.querySelector<HTMLElement>('.mx-decoder'); if (decoder) decoder.style.fontFamily = fonts.bodyBold; }
       if (latest.current.controllerRef) latest.current.controllerRef.current = { interact: event => node.interact(event.action, event.x, event.y) };
-    }).catch(problem => { if (!disposed) { console.error('Rust vector creation:', latest.current.kind, problem); output.dataset.graphicsError = String(problem); setFailed(String(problem)); } });
+    }).catch(fallBack);
     return () => { disposed = true; stopDecoder(); size.disconnect(); stopVisibility(); handle.current?.release(); handle.current = null; if (latest.current.controllerRef) latest.current.controllerRef.current = null; };
   }, [controller, props.kind, failed, sendAudio, insightTheme]);
   useEffect(() => { handle.current?.active((props.active ?? true) && focused && active.current.visible, props.reducedMotion ?? false); }, [props.active, props.reducedMotion, focused]);

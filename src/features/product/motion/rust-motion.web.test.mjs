@@ -6,7 +6,7 @@ import ts from 'typescript';
 
 // Run the real component's effects across parent rerenders. Only the DOM/WASM
 // adapters and the timers are fake; dependencies use React's Object.is comparison contract.
-async function fixture({ engine = 'ok', controller: withController = true } = {}) {
+async function fixture({ engine = 'ok', controller: withController = true, poison = { on: false } } = {}) {
   const slots=[],pending=[],calls=[],initials=[],timers=[];let cursor=0,job,completed=0,arrive;
   const same=(a,b)=>a&&b&&a.length===b.length&&a.every((v,i)=>Object.is(v,b[i]));
   const react={
@@ -15,8 +15,10 @@ async function fixture({ engine = 'ok', controller: withController = true } = {}
     useMemo(fn,deps){const id=cursor++;if(!same(slots[id]?.deps,deps))slots[id]={deps,value:fn()};return slots[id].value;},
     useEffect(fn,deps){const id=cursor++,old=slots[id];if(!same(old?.deps,deps)){slots[id]={deps,cleanup:old?.cleanup};pending.push(()=>{old?.cleanup?.();slots[id].cleanup=fn();});}},
   };react.useLayoutEffect=react.useEffect;
-  const node={initial(values){initials.push(Array.from(values));},target(values,duration,delay,curve){calls.push({values:Array.from(values),duration,delay,curve:Array.from(curve)});},
-    active(){},frame:()=>true,moving:()=>false,dispose(){},initial_height(){},target_height_curve(){},scan_reveal(){}};
+  const methods={initial(values){initials.push(Array.from(values));},target(values,duration,delay,curve){calls.push({values:Array.from(values),duration,delay,curve:Array.from(curve)});},
+    active(){},frame:()=>true,moving:()=>false,dispose(){},initial_height(){},target_height_curve(){},scan_reveal(){},spring_scale(){},breathe(){},loop(){},reset_clock(){}};
+  // Once poisoned, every call throws what wasm-bindgen throws for an object a Rust panic left borrowed.
+  const node=new Proxy(methods,{get:(target,key)=>(...args)=>{if(poison.on)throw new Error('recursive use of an object detected which would lead to unsafe aliasing in rust');return target[key](...args);}});
   const controller={register:()=>()=>{},frameJob(fn){job=fn;return()=>{};},activity(){}};
   const element={dataset:{},style:{},dispatchEvent(){},hasAttribute:()=>false};
   const module={ElementTimeline:{create:()=>node}};
@@ -99,4 +101,27 @@ test('an engine that arrives after the safety net continues from the end state i
   assert.deepEqual(f.initials.at(-1),[1,0,0,1,0,100]);
   assert.equal(f.calls.at(-1).duration,0);
   f.frame();assert.equal(f.completed(),1);
+});
+
+test('a timeline the crashed engine refuses writes its end values and still completes, once',async()=>{
+  const poison={on:false},f=await fixture({poison});f.frame();assert.equal(f.completed(),1);
+  poison.on=true;
+  // A dialog closes after the crash: the new target is refused, the end state is shown at once.
+  await f.render({target:[0,0,40,1,0,100]});
+  assert.equal(f.completed(),2);assert.equal(f.element.style.opacity,'0');
+  assert.equal(f.element.style.transform,'translate3d(0px,40px,0) scale(1) rotate(0deg)');
+  assert.match(f.element.dataset.graphicsError,/recursive use of an object/);
+  assert.doesNotThrow(()=>f.frame());assert.equal(f.completed(),2);
+  // Later transitions settle without the engine.
+  await f.render({target:[1,0,0,1,0,100]});assert.equal(f.completed(),3);assert.equal(f.element.style.opacity,'1');
+  f.elapse();assert.equal(f.completed(),3);
+});
+
+test('a frame the crashed engine refuses stops the timeline at the end values instead of throwing',async()=>{
+  const poison={on:false},f=await fixture({poison});f.frame();
+  await f.render({target:[0,0,12,1,0,100]});assert.equal(f.completed(),1);
+  poison.on=true;
+  assert.doesNotThrow(()=>f.frame());
+  assert.equal(f.completed(),2);assert.equal(f.element.style.opacity,'0');
+  assert.match(f.element.dataset.graphicsError,/recursive use of an object/);
 });

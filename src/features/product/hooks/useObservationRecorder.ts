@@ -10,6 +10,10 @@ import { createMicrophoneSignalMonitor, microphoneError, openMicrophone } from '
 
 type State = { phase: 'idle' | 'preparing' | 'recording' | 'stopping' | 'ready' | 'error'; durationMs: number; draft: ObservationDraft | null; error: string };
 const initial: State = { phase: 'idle', durationMs: 0, draft: null, error: '' };
+/** How long a stopped recorder may take to hand over its take before the take is given up. */
+export const recorderStopTimeoutMs = 8000;
+/** Some browsers (seen on iPhone) never report the end of a stopped take. */
+export const recorderStuckMessage = 'Браузер не завершил запись. Запиши ответ ещё раз.';
 function supportedMime() {
   if (typeof MediaRecorder === 'undefined') return 'audio/webm';
   return ['audio/webm', 'audio/mp4', 'audio/ogg'].find(type => MediaRecorder.isTypeSupported(type)) ?? 'audio/webm';
@@ -29,6 +33,8 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
   const alive = useRef(true), generation = useRef(0), preparing = useRef(false);
   const current = useRef<State>(initial), ownedUri = useRef<string | null>(null), startedAt = useRef(0);
   const media = useRef<MediaRecorder | null>(null), stream = useRef<MediaStream | null>(null);
+  /** The live take's own stop: it watches for the browser's `stop` event and gives the take up without it. */
+  const take = useRef<{ recorder: MediaRecorder; end(): void; settle(): void } | null>(null);
   const context = useRef<AudioContext | null>(null), finish = useRef<Promise<void> | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const visualFrame = useRef<number | null>(null);
@@ -52,7 +58,9 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
     if (preparing.current) { ++generation.current; releaseStream(); publish(initial); return; }
     const recorder = media.current;
     if (!recorder || recorder.state !== 'recording') return;
-    publish({ ...current.current, phase: 'stopping' }); recorder.stop(); await finish.current;
+    publish({ ...current.current, phase: 'stopping' });
+    if (take.current?.recorder === recorder) take.current.end(); else recorder.stop();
+    await finish.current;
   }, [publish, releaseStream]);
   const requestPermission = useCallback(() => {
     if (permissionJob.current) return permissionJob.current;
@@ -94,9 +102,27 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
       const recorder = new MediaRecorder(opened, { mimeType, audioBitsPerSecond: bitsPerSecond }); media.current = recorder;
       const chunks: Blob[] = [], levels: number[] = [];
       const signal = createMicrophoneSignalMonitor();
+      let resolveFinish: () => void = () => {}, watch: ReturnType<typeof setTimeout> | undefined;
+      finish.current = new Promise(resolve => { resolveFinish = resolve; });
+      const settle = () => { clearTimeout(watch); watch = undefined; resolveFinish(); };
+      // Without the browser's `stop` event the take would wait forever, every button busy:
+      // it is given up with a message instead, and the microphone is free for the next one.
+      const abandon = () => {
+        watch = undefined;
+        if (media.current === recorder) {
+          ++generation.current; media.current = null; releaseStream();
+          if (current.current.phase === 'stopping') publish({ ...initial, phase: 'error', error: recorderStuckMessage });
+        }
+        settle();
+      };
+      const end = () => {
+        clearTimeout(watch); watch = setTimeout(abandon, recorderStopTimeoutMs);
+        try { recorder.stop(); } catch { clearTimeout(watch); abandon(); }
+      };
+      take.current = { recorder, end, settle };
       const track = opened.getAudioTracks()[0];
       let disconnected = false;
-      track.addEventListener('ended', () => { disconnected = true; if (recorder.state === 'recording') { publish({ ...current.current, phase: 'stopping' }); recorder.stop(); } });
+      track.addEventListener('ended', () => { disconnected = true; if (recorder.state === 'recording') { publish({ ...current.current, phase: 'stopping' }); end(); } });
       let analyser: AnalyserNode | null = null, buffer: Float32Array<ArrayBuffer> | null = null;
       if (audioContext && audioContext.state !== 'closed') {
         try {
@@ -105,13 +131,11 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
           void audioContext.resume().catch(() => {});
         } catch { /* Recording still works if metering is unavailable. */ }
       }
-      let resolveFinish: () => void = () => {};
-      finish.current = new Promise(resolve => { resolveFinish = resolve; });
       recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
       recorder.onerror = () => {
-        if (media.current !== recorder) { opened.getTracks().forEach(track => track.stop()); resolveFinish(); return; }
+        if (media.current !== recorder) { opened.getTracks().forEach(track => track.stop()); settle(); return; }
         ++generation.current; media.current = null; releaseStream();
-        publish({ ...initial, phase: 'error', error: 'Браузер прервал запись. Попробуй ещё раз.' }); resolveFinish();
+        publish({ ...initial, phase: 'error', error: 'Браузер прервал запись. Попробуй ещё раз.' }); settle();
       };
       recorder.onstop = () => {
         const durationMs = Math.min((limitSeconds + 1) * 1000, Math.round(Date.now() - startedAt.current));
@@ -127,7 +151,7 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
             ? 'Микрофон отключился. Можно сохранить записанную часть или записать снова.'
             : signal.silent() ? 'В записи не обнаружен звук. Проверь источник в настройках и запиши снова.' : '' });
         } catch (problem) { releaseUri(); publish({ ...initial, phase: 'error', error: problem instanceof Error ? problem.message : 'Не удалось завершить запись.' }); }
-        finally { resolveFinish(); }
+        finally { settle(); }
       };
       startedAt.current = Date.now(); recorder.start(); publish({ ...initial, phase: 'recording' });
       if (analyser && audioContext) {
@@ -163,8 +187,11 @@ export function useObservationRecorder(limitSeconds = OBSERVATION_LIMIT_SECONDS,
   }, [audioSource, bitsPerSecond, limitSeconds, mimeType, publish, releaseStream, releaseUri, stop, supported, selectedInput]);
   const cancel = useCallback(async () => {
     ++generation.current;
-    const recorder = media.current;
-    if (recorder?.state === 'recording') { recorder.stop(); await finish.current; }
+    const recorder = media.current, own = take.current?.recorder === recorder ? take.current : null;
+    if (recorder?.state === 'recording') { if (own) own.end(); else recorder.stop(); await finish.current; }
+    // A stopped take whose end never came must not keep the next one from starting.
+    if (recorder && media.current === recorder) media.current = null;
+    own?.settle();
     releaseStream(); releaseUri(); if (alive.current) setWaveform([]); publish(initial);
   }, [publish, releaseStream, releaseUri]);
   useEffect(() => {

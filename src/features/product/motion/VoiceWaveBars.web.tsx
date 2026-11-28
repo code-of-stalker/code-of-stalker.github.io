@@ -28,7 +28,7 @@ export function VoiceWaveBars({ bars, positionMs, durationMs, playing, accent, m
       const value = latest.current, node = module.VoiceWave.create(host.current, value.positionMs, value.durationMs);
       node.reduced(value.reduced); node.sync(value.positionMs, value.durationMs, value.playing); wave.current = node; run();
     }).catch(problem => { if (!disposed) { console.error('Rust voice wave:', problem); setFailed(true); } });
-    return () => { disposed = true; cancelAnimationFrame(raf.current); raf.current = 0; wave.current?.dispose(); wave.current = null; };
+    return () => { disposed = true; cancelAnimationFrame(raf.current); raf.current = 0; const node = wave.current; wave.current = null; try { node?.dispose(); } catch { /* A crashed module refuses every call. */ } };
   }, [run]);
   useEffect(() => { if (wave.current) { wave.current.sync(positionMs, durationMs, playing); run(); } }, [positionMs, durationMs, playing, run]);
   useEffect(() => { if (wave.current) { wave.current.reduced(reduced); run(); } }, [reduced, run]);

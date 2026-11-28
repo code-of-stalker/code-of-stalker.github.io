@@ -17,20 +17,24 @@ export function useRustText(root: RefObject<unknown>, text: string, effect: numb
     let live = true, detach = () => {}, unregister = () => {}, visible = true;
     const stopVisibility = observeMotionVisibility(host, value => { visible = value; });
     let motion: ReturnType<Awaited<ReturnType<typeof loadGraphics>>['TextTimeline']['create']> | undefined;
-    const resize = new ResizeObserver(() => motion?.resize()); resize.observe(host);
+    // A crashed module refuses every call: the text then stays as written, and nothing throws into React.
+    const stop = (problem: unknown) => { const node = motion; motion = undefined; detach(); host.dataset.graphicsError = String(problem); console.error('Rust typography stopped:', problem);
+      try { node?.dispose(); } catch { /* Already crashed. */ } };
+    const call = (work: (node: NonNullable<typeof motion>) => void) => { if (!motion) return; try { work(motion); } catch (problem) { stop(problem); } };
+    const resize = new ResizeObserver(() => call(node => node.resize())); resize.observe(host);
     void loadGraphics().then(module => {
       if (!live) return;
       motion = module.TextTimeline.create(host, text, effect);
-      void document.fonts.ready.then(() => { if (live) motion?.resize(); });
+      void document.fonts.ready.then(() => { if (live) call(node => node.resize()); });
       const token = {};
-      unregister = controller.register(token, 'Текст · Rust', message => { if ((message as { type: string }).type === 'watcher-clock-reset') motion?.reset_clock(); });
-      detach = controller.frameJob(at => {
+      unregister = controller.register(token, 'Текст · Rust', message => { if ((message as { type: string }).type === 'watcher-clock-reset') call(node => node.reset_clock()); });
+      detach = controller.frameJob(at => call(node => {
         const value = latest.current, running = value.active && value.focused && visible;
-        motion!.active(running, value.reduced || value.systemReduced);
+        node.active(running, value.reduced || value.systemReduced);
         controller.activity(token, running, running && !value.reduced && !value.systemReduced);
-        motion!.frame(at);
-      });
+        node.frame(at);
+      }));
     }).catch(error => { host.dataset.graphicsError = String(error); console.error('Rust typography:', error); });
-    return () => { live = false; detach(); unregister(); stopVisibility(); resize.disconnect(); motion?.dispose(); };
+    return () => { live = false; detach(); unregister(); stopVisibility(); resize.disconnect(); const node = motion; motion = undefined; try { node?.dispose(); } catch { /* Already crashed. */ } };
   }, [controller, root, text, effect]);
 }

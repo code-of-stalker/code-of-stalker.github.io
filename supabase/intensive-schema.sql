@@ -24,7 +24,7 @@
 -- * Guides, admins, the main admin and anyone who enabled TOTP get no data
 --   without an aal2 (TOTP-verified) session: a restrictive policy on every table.
 --   For testing only, the project owner may switch the TOTP step off in this SQL
---   editor (no deploy needed); /admin then warns that it is off:
+--   editor (no deploy needed; the app shows no reminder, Art 2026-11-28):
 --     create or replace function private.totp_required() returns boolean language sql stable set search_path = '' as $$ select false; $$;
 --   The same line with `select true` switches it back on, and so does running
 --   this file again.

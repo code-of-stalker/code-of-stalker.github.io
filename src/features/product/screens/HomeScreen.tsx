@@ -99,7 +99,7 @@ export function HomeScreen({
       </View>
 
       <View style={[styles.mottoContainer, { marginTop: (gutter + 8) * air, marginHorizontal: -outside }]}>
-        <Marquee text="НЕТ ПРАВИЛЬНЫХ ОТВЕТОВ, ЕСТЬ ТОЛЬКО ТВОЁ НАБЛЮДЕНИЕ" active={focused && foreground}
+        <Marquee text="ПРОЕКТ ЯНЫ КОРНИЛОВОЙ" active={focused && foreground}
           reducedMotion={!!reducedMotion} style={{ marginTop: 0, marginBottom: 0 }} textStyle={styles.motto} />
       </View>
     </ProductScreen>

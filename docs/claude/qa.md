@@ -26,6 +26,11 @@ paused at 300×150 until it scrolls into view.
 - The service worker caches graphics: after a rebuild a normal profile may run a stale
   `runtime.js`. Use a fresh/incognito profile (or open `/update`).
 - Theme is per browser profile; set it in the same page session you check.
+- Slow network: CDP `Network.emulateNetworkConditions` (3G: 60000 B/s, 300 ms). Serve the export
+  gzipped like Pages (`npx serve` does not compress, so wasm takes ~3× longer than live). Count a
+  screen as seen only when its text's opacity through every ancestor is > 0.9: the product layout
+  holds screens at opacity 0 while the engine downloads. Tap home cards with a real mouse event,
+  1 s after the title shows, and expect /levels within a second.
 
 ## Sizes to check
 Phone 390×844, tablet 820×1180 and 1180×820, desktop 1440×900. Run them one after another;

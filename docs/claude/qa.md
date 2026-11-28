@@ -32,6 +32,14 @@ paused at 300×150 until it scrolls into view.
   holds screens at opacity 0 while the engine downloads. Tap home cards with a real mouse event,
   1 s after the title shows, and expect /levels within a second.
 
+- Step 1 inserts (`motion/stepOneInserts.ts`) are baked into the product engine: run
+  `node graphics/product-engine/prepare-reading.mjs <kind>` (headless Chrome samples the SVG), then
+  `build.ps1`. The script imports Playwright from an old Codex runtime path (line 8) that is gone on
+  Blade: install Playwright and point that import at it, or preload a CDP shim with `node --import`.
+  Called with a kind it moves that `catalog.json` entry to the end; restore the order before commit.
+  In a worktree, `build.ps1` needs the main checkout's `.local-rust` (`CARGO_HOME`, `RUSTUP_HOME`,
+  `PATH` with cargo and wasm-bindgen 0.2.129), and must run without `*>&1`.
+
 ## Sizes to check
 Phone 390×844, tablet 820×1180 and 1180×820, desktop 1440×900. Run them one after another;
 parallel headless runs time out and leave skeleton placeholders on screen.

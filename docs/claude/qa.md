@@ -56,6 +56,12 @@ parallel headless runs time out and leave skeleton placeholders on screen.
   GPU: the longest main-thread gap should stay under ~1 s.
 - Wheel input in tests: 120 px steps ~140 ms apart, and stop on state change, or «Всё открыто»
   lets the wheel run through all four Step 4 questions at once.
+- Graphics crash mid-step (what an iPhone GPU out of memory does): over CDP, `Fetch.enable` on
+  `*watcher_graphics.js*` at the Response stage and append a wrapper that makes every prototype
+  method of `ProductRenderer`, `ElementTimeline`, `TextTimeline`, `SvgTimeline`, `IconMotion`,
+  `VoiceWave` throw «recursive use of an object detected…» once a global flag is set; also
+  `Network.setBypassServiceWorker`. Set the flag on the page under test and keep walking: the
+  next screen (or the error screen) must open, never a black or frozen page.
 
 ## Intensive chat, end to end (never on the real Supabase)
 - Local server: Docker Desktop + `npx supabase@3.0.0 init` in a scratch folder, set

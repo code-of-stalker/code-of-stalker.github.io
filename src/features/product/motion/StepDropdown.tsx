@@ -11,7 +11,7 @@ import { useStepPanelSpacing } from '../layout';
 import { Reveal } from './Reveal';
 import { StepChevron } from './StepChevron';
 import { GlassHost } from './GlassHost';
-import { stepPanelPaths } from './glassShape';
+import { stepPanelBodyPath, stepPanelPaths } from './glassShape';
 import { PanelArtwork } from './PanelArtwork';
 import { usePanelSize } from './usePanelSize';
 import { readingMenuPath, type ReadingMenuCutout } from './reading-menu-geometry';
@@ -124,11 +124,14 @@ export function StepDropdown({ step, availableAt, testUnlockAll = false, reduced
     const svg = (content: string) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${content}</svg>`)}`;
     return {
       path,
+      // The list starts inside the body's cut top-right corner: the current step's tint
+      // crossed the diagonal. Clip it to the body contour in the list's own coordinates.
+      list: Platform.OS === 'web' && !headerless ? { clipPath: `path('${stepPanelBodyPath(w, h - topInset, paths.bodyTop - topInset)}')` } as ViewStyle : undefined,
       backing: { uri: svg(`<path d="${path}" fill="${colors.background}"/>`) },
       frame: { uri: svg(headerless ? `<path d="${path}" fill="none" stroke="${border}" stroke-width="${stroke}"/>` : `<path d="${paths.top}" fill="${colors.accent}" fill-opacity=".1" stroke="${border}" stroke-width="${stroke}"/><path d="${paths.body}" fill="none" stroke="${border}" stroke-width="${stroke}"/>`) },
     };
-  }, [size.width, size.height, headerHeight, gap, headerless, cutout, colors]);
-  const options = <ScrollView accessibilityLabel="Доступные и закрытые шаги" onContentSizeChange={(_, height) => setContentHeight(previous => previous === height ? previous : height)} style={embedded ? styles.embeddedList : [styles.list, { top: topInset, bottom: bottomInset }]}
+  }, [size.width, size.height, headerHeight, gap, headerless, cutout, colors, topInset]);
+  const options = <ScrollView accessibilityLabel="Доступные и закрытые шаги" onContentSizeChange={(_, height) => setContentHeight(previous => previous === height ? previous : height)} style={embedded ? styles.embeddedList : [styles.list, { top: topInset, bottom: bottomInset }, geometry.list]}
     contentContainerStyle={[styles.options, embedded && { paddingTop: 18, paddingBottom: inset }]} showsVerticalScrollIndicator={false}>
     {steps.map(value => {
       const disabled = value > 7 || value === 7 && !canOpenSeventhStep(progress, testUnlockAll) || value === 6 && !canOpenSixthStep(progress, testUnlockAll) || value === 5 && !canOpenFifthStep(progress, testUnlockAll) || value === 4 && !canOpenFourthStep(progress, testUnlockAll) || value === 3 && !progress.secondStepCompletedAt && !testUnlockAll || value === 2 && availableAt === null && !testUnlockAll;

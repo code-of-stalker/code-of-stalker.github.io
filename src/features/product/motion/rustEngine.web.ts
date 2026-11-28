@@ -158,7 +158,8 @@ export class RustSession {
       interact: (action: string, x = 0, y = 0) => { this.use(renderer => renderer.vector_interact(id, action, x, y), undefined); this.pending = true; },
       down: (at: number, width: number, height: number, delay: number) => { this.use(renderer => renderer.vector_pointer_down(id, at, width, height, delay), undefined); this.pending = true; },
       move: (at: number, dx: number, dy: number) => { this.use(renderer => renderer.vector_pointer_move(id, at, dx, dy), undefined); this.pending = true; },
-      up: (at: number, inside: boolean) => { const tapped = this.use(renderer => renderer.vector_pointer_up(id, at, inside), false); this.pending = true; return tapped; },
+      // Undefined when the renderer can no longer judge the press: the bridge then judges it itself.
+      up: (at: number, inside: boolean): boolean | undefined => { const tapped = this.use<boolean | undefined>(renderer => renderer.vector_pointer_up(id, at, inside), undefined); this.pending = true; return tapped; },
       release: () => {unregister();this.use(renderer => renderer.remove(id), undefined);this.scenes.delete(id);this.pending = true;
         // A crashed session stays in place, so later scenes show their fallback at once instead of
         // asking a GPU that has just run out of memory for another renderer.

@@ -19,7 +19,7 @@ function setup() {
   }, { filename });
   const gesture = exports.createArtGesture(value => events.push(value), () => { opens++; });
   const delay = exports.artHoldDelay('diary');
-  return { gesture, delay, timers, events, opens: () => opens,
+  return { gesture, delay, timers, events, card: exports, opens: () => opens,
     advance(ms) { now += ms; for (const [id, timer] of timers) if (timer.at <= now) { timers.delete(id); timer.fn(); } },
   };
 }
@@ -54,4 +54,26 @@ test('keyboard or screen reader activation cancels a pending hold and navigates'
   const { gesture, delay, advance, opens, events, timers } = setup();
   gesture.begin(288, 200, delay); gesture.activate(); advance(delay * 2);
   assert.equal(opens(), 1); assert.equal(events.at(-1).action, 'tap'); assert.equal(timers.size, 0);
+});
+// A home card's graphics can take a minute to download on 3G. A tap in that time used to wait for
+// the engine's verdict, got none and was dropped: the card never ignores a tap now.
+test('a card tap before the engine is ready opens the card', () => {
+  const { card } = setup();
+  const press = card.cardPressStart(100, 80, false);
+  card.cardPressMove(press, 104, 83);
+  assert.equal(card.cardPressOpens(press, true, undefined), true);
+  assert.equal(card.cardPressOpens(press, false, undefined), false); // Released outside.
+  const dragged = card.cardPressStart(100, 80, false);
+  card.cardPressMove(dragged, 100, 95); card.cardPressMove(dragged, 100, 81); // Strayed, then came back.
+  assert.equal(card.cardPressOpens(dragged, true, undefined), false);
+  assert.equal(card.cardPressOpens(undefined, true, undefined), false); // No press began here.
+});
+test('a press the engine followed keeps its verdict, and a lost verdict falls back to the tap rule', () => {
+  const { card } = setup();
+  const followed = card.cardPressStart(0, 0, true);
+  assert.equal(card.cardPressOpens(followed, true, false), false); // A hold plays the Laboratory instead.
+  assert.equal(card.cardPressOpens(followed, true, true), true);
+  assert.equal(card.cardPressOpens(followed, true, undefined), true); // The engine crashed mid-press.
+  // The engine became ready mid-press: it never saw the start, so its answer is not asked.
+  assert.equal(card.cardPressOpens(card.cardPressStart(0, 0, false), true, false), true);
 });

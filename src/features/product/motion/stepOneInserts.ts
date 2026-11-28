@@ -9,6 +9,7 @@ const printOutline = 'M0-55C-24-55-37-34-37-7C-37 19-28 45-13 54C-5 59 7 59 16 5
 
 // Open, asymmetric returning ridges, with local bifurcations, rather than
 // concentric ovals. Both prints have the same perimeter and different cores.
+// Art 2026-11-28: only ridges, no short loose strokes over them («убери эти палочки»).
 function fingerprint(whorl: boolean) {
   if (whorl) {
     // A continuous elliptical whorl, split only to give the light separate
@@ -27,14 +28,13 @@ function fingerprint(whorl: boolean) {
         samples += 'C' + point(a.x + a.dx / 72, a.y + a.dy / 72) + ' ' + point(b.x - b.dx / 72, b.y - b.dy / 72) + ' ' + point(b.x, b.y);
       }
       return `<path class="print-ridge" d="${samples}" stroke-width=".49"/>`;
-    }).join('') + '<path d="M-26 26l-3 2M19-26l3 1M9 43l2 4"/>';
+    }).join('');
   }
   const ridges = Array.from({ length: 16 }, (_, i) => {
     const r = 4 + i * 2.25, top = 10 - r * 1.7;
     return `M${point(-r * .87, 67)}C${point(-r * .5, 34)} ${point(-r * 1.27, top + 17)} ${point(-r * .79, top + 3)}C${point(-r * .43, top - 8)} ${point(r * .52, top - 6)} ${point(r * .75, top + 6)}C${point(r * 1.03, top + 21)} ${point(r * .62, 38)} ${point(r * .34, 67)}`;
   });
-  return ridges.map((d, i) => `<path class="print-ridge" d="${d}" stroke-width="${i % 4 === 0 ? '.66' : '.46'}"/>`).join('') +
-    '<path d="M-19-35Q-16-40-10-42M19 27Q19 34 24 38M-8 24Q-11 30-9 35"/>';
+  return ridges.map((d, i) => `<path class="print-ridge" d="${d}" stroke-width="${i % 4 === 0 ? '.66' : '.46'}"/>`).join('');
 }
 
 function imprints() {

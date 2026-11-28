@@ -82,8 +82,8 @@
   {
     "kind": "identity-imprints",
     "duration": 16,
-    "sourceSha256": "c9368a25cc207da86ad169c4bfbf750742f97defcc459f301b7bf547e88fba9d",
-    "svgBytes": 32196,
+    "sourceSha256": "407df8d09cc63c9dd99c6f2290097e63c7ea9b87fd3686d691fc4b3802852d43",
+    "svgBytes": 32033,
     "full": {
       "fields": 24,
       "knots": 6560,
